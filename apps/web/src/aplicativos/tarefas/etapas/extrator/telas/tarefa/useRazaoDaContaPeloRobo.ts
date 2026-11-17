@@ -2,7 +2,7 @@
 // Lançamentos do Contábil, conta a conta): pede ao robô do PC dele o razão da conta contábil do banco no período da Tarefa e,
 // quando a planilha volta, ela entra na linha "Razão" como se a pessoa tivesse subido. Só para o dono do robô (robosDePc).
 import { useEffect, useRef, useState } from 'react';
-import { ouvirRazoesDaConta, pedirRazaoDaConta, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoRazaoDaConta } from '../../../../dados/notasDoFiscal.firestore';
+import { cancelarPedidoDoFiscal, ouvirRazoesDaConta, pedirRazaoDaConta, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoRazaoDaConta } from '../../../../dados/notasDoFiscal.firestore';
 
 const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 const VISTOS = new Set<string>();
@@ -33,6 +33,8 @@ export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: str
   const andando = !!atual && ANDANDO.includes(atual.status);
   return {
     disponivel, rotulo: doPc?.rotulo || '', andando, pct: atual?.pct || 0,
+    // o Cancelar (17/11/2026): o robô para na hora e volta o Alterdata ao ponto de antes
+    cancelar: () => { if (atual && andando) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
     // sem movimento na conta (o aviso do Alterdata): "Movimento 09/2026 não importado" (Vitor, 17/11/2026), do jeito que veio
     erro: falha || (atual?.status === 'erro' ? (/^Movimento /.test(atual.erro) ? atual.erro : 'O robô não conseguiu puxar o razão: ' + atual.erro.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '')) : ''),
     pedir: async () => {

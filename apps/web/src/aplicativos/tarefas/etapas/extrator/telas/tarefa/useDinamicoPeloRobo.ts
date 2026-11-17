@@ -2,7 +2,7 @@
 // da Tarefa numa consulta só e, quando a planilha volta, ela entra como o balancete dinâmico, como se a pessoa tivesse subido.
 // Só para o dono do robô (robosDePc).
 import { useEffect, useRef, useState } from 'react';
-import { ouvirDinamicos, pedirDinamico, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
+import { cancelarPedidoDoFiscal, ouvirDinamicos, pedirDinamico, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
 
 const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 const VISTOS = new Set<string>();
@@ -31,7 +31,9 @@ export function useDinamicoPeloRobo(o: { codigo: number | null; empresa: string;
   }, [atual]);
   const andando = !!atual && ANDANDO.includes(atual.status);
   return {
-    disponivel, rotulo: doPc?.rotulo || '', andando,
+    disponivel, rotulo: doPc?.rotulo || '', andando, pct: atual?.pct || 0,
+    // o Cancelar (17/11/2026): o robô para na hora e volta o Alterdata ao ponto de antes
+    cancelar: () => { if (atual && andando) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
     erro: falha || (atual?.status === 'erro' ? 'O robô não conseguiu puxar o balancete: ' + atual.erro.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '') : ''),
     pedir: async () => {
       if (!disponivel || !o.codigo || andando) return;

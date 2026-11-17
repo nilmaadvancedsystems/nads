@@ -122,7 +122,7 @@ function RoboDoFiscal({ r }: { r: NotasDoRobo }) {
     <div className={'imp-robo-fiscal' + (r.erro || r.falha ? ' ext-neg' : '')} role="status" aria-label={barra ? 'Puxando do Alterdata' : undefined}>
       {barra && <div className="imp-robo-barra"><span style={{ width: (r.lendo ? 100 : Math.max(4, r.pct)) + '%' }} /></div>}
       {texto && <span>{texto}</span>}
-      {r.andando && r.dev && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void r.cancelar(); }}>Cancelar</button>}
+      {r.andando && <button type="button" className="btn btn-ghost btn-sm imp-robo-cancelar" onClick={() => { void r.cancelar(); }} title="O robô para e volta o Alterdata ao ponto de antes">Cancelar</button>}
       {r.bloqueia && <div className="imp-robo-bloqueio" aria-hidden="true" />}
       {r.diag.length > 0 && (
         <details className="imp-robo-diag">
