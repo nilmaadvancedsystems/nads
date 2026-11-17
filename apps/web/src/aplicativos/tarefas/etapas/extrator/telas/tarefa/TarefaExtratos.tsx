@@ -36,6 +36,7 @@ import { useEnviarVariosMeses } from './useEnviarVariosMeses';
 import { JanelaVariosMeses } from './JanelaVariosMeses';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
+import { roboDePcDoUsuario } from '../../../../dados/notasDoFiscal.firestore';
 import { useNovidade } from '../../../../../../comum/novidades';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
@@ -674,6 +675,8 @@ const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa
   { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
   // o balancete dinâmico (o primeiro passo: monta a Tarefa) e os razões das contas de uma vez (Vitor, 16/10/2026)
   { id: 'contabil', rotulo: 'Balancete e razões', icone: 'scale' },
+  // o balancete normal pelo robô do PC do Vitor (17/11/2026: "joga no modo desenvolvedor primeiro"): só no modo desenvolvedor
+  { id: 'balancete', rotulo: 'Balancete', icone: 'landmark' },
   { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
   { id: 'saidas', rotulo: 'Saídas', icone: 'arrowUp' },
   { id: 'tomados', rotulo: 'Tomados', icone: 'fileDown' },
@@ -808,7 +811,7 @@ export function TarefaExtratos() {
   const perguntarServicos = vm.perguntarServicos;
   const perguntaServicos = ponte.naTarefa && !vm.etapaCheque && vm.cadastroCarregado && vm.prestaServico === null;
   useEffect(() => { if (perguntaServicos) void perguntarServicos(); }, [perguntaServicos]); // eslint-disable-line react-hooks/exhaustive-deps
-  const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'contabil' || BALANCETE_NA_IMPORTACAO || roboNasEtapas()) && (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
+  const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'contabil' || BALANCETE_NA_IMPORTACAO || roboNasEtapas()) && (a.id !== 'balancete' || (modoDesenvolvedor() && !!roboDePcDoUsuario())) && (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
   const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : visiveis[0].id;
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
   useAbasDaEtapa(vm.etapaCheque ? [] : abas, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });

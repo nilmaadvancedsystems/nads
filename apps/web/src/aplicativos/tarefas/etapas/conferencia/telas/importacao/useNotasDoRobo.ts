@@ -8,7 +8,7 @@
 import { conferencia as c } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
-import { cancelarPedidoDoFiscal, ouvirPedidosDoFiscal, pedirNotasDoFiscal, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal, type RelatorioDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
+import { cancelarPedidoDoFiscal, ouvirBalancetesDoPeriodo, ouvirPedidosDoFiscal, pedirBalancetePeriodo, pedirNotasDoFiscal, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal, type RelatorioDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
 
 const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 // os pedidos que esta aba do navegador fez ou viu andando, e os já importados: fora do componente (17/11/2026: a pessoa trocou de
@@ -24,7 +24,9 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const dev = modoDesenvolvedor();
   // só quem tem o robô no próprio PC (o servidor ainda não tem o Fiscal): o botão leva o nome; o robô do PC só atende o dono
   const doPc = roboDePcDoUsuario();
-  const disponivel = !!doPc && !!relatorio && !!o.codigo && !!competencia;
+  // o balancete do período (17/11/2026, Vitor: "joga no modo desenvolvedor primeiro"): só no modo desenvolvedor
+  const balancete = o.tipo === 'balancete';
+  const disponivel = !!doPc && (balancete ? dev : !!relatorio) && !!o.codigo && !!competencia;
   const [pedidos, setPedidos] = useState<PedidoDoFiscal[] | null>(null);
   const [falha, setFalha] = useState('');
   const [pedindo, setPedindo] = useState(false);
@@ -34,10 +36,12 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   importar.current = o.importar;
 
   useEffect(() => {
-    if (!disponivel || !relatorio || !o.codigo) return;
+    if (!disponivel || !o.codigo || (!balancete && !relatorio)) return;
     setPedidos(null);
-    return ouvirPedidosDoFiscal(o.codigo, relatorio, l => { setPedidos(l); setFalha(''); }, e => setFalha(e.message));
-  }, [disponivel, relatorio, o.codigo]);
+    const chegou = (l: PedidoDoFiscal[]) => { setPedidos(l); setFalha(''); };
+    if (balancete) return ouvirBalancetesDoPeriodo(o.codigo, chegou, e => setFalha(e.message));
+    return ouvirPedidosDoFiscal(o.codigo, relatorio!, chegou, e => setFalha(e.message));
+  }, [disponivel, relatorio, balancete, o.codigo]);
 
   // o pedido deste período (o mais novo)
   const doPeriodo = (pedidos || []).filter(p => p.competencia === competencia && p.ate === ate && p.status !== 'cancelado');
@@ -54,10 +58,11 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   }, [atual]);
 
   async function pedir() {
-    if (!disponivel || !relatorio || !o.codigo || pedindo) return;
+    if (!disponivel || !o.codigo || pedindo || (!balancete && !relatorio)) return;
     setPedindo(true); setFalha('');
     try {
-      const id = await pedirNotasDoFiscal({ codigo: o.codigo, empresa: o.empresa, relatorio, competencia, ate });
+      const id = balancete ? await pedirBalancetePeriodo({ codigo: o.codigo, empresa: o.empresa, competencia, ate })
+        : await pedirNotasDoFiscal({ codigo: o.codigo, empresa: o.empresa, relatorio: relatorio!, competencia, ate });
       VISTOS.add(id);
     } catch (e) {
       setFalha(e instanceof Error ? e.message : String(e));
@@ -77,7 +82,7 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const bloqueia = !!atual && atual.status === 'trabalhando';
   // fora do modo desenvolvedor, o erro sem o detalhe da tela (o tamanho, as janelas, o caminho da foto)
   const erroLimpo = (t: string) => (dev ? t : t.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '').trim());
-  const situacao = !atual ? '' : atual.status === 'pendente' || atual.status === 'pendentePc' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || 'O robô está no Alterdata Fiscal')
+  const situacao = !atual ? '' : atual.status === 'pendente' || atual.status === 'pendentePc' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || (balancete ? 'O robô está no Alterdata Contábil' : 'O robô está no Alterdata Fiscal'))
     : atual.status === 'erro' ? 'O robô não conseguiu puxar do Alterdata: ' + (erroLimpo(atual.erro) || 'sem detalhe') : '';
   return {
     disponivel, pedindo, andando, lendo, bloqueia, dev, rotulo: doPc?.rotulo || '', pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',

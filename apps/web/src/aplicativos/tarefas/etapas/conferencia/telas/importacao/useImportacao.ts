@@ -268,7 +268,7 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[], c
   }
 
   // ---------- sem movimento no período (as notas) ----------
-  const nomeDoTipo = tipoNotas ? CONFIG[tipoNotas].titulo.replace(/^Importar /, '') : '';
+  const nomeDoTipo = tipoNotas ? CONFIG[tipoNotas].titulo.replace(/^Importar /, '') : tipo === 'balancete' ? 'o balancete' : '';
   function marcarSemMovimento(sem: boolean) {
     if (!tipoNotas || !mesesDaEtapa) return;
     s.aplicar(x => c.marcarSemNotas(x, tipoNotas, mesesDaEtapa, sem));

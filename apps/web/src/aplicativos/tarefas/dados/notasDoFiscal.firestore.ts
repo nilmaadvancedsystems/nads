@@ -160,3 +160,27 @@ export async function pedirDinamico(o: { codigo: number; empresa: string; compet
   });
   return r.id;
 }
+
+// o Balancete (Livros e Relatórios) do período, com o Salvar da visualização (17/11/2026, o caminho que o Vitor gravou): o mesmo
+// balancete normal que a Conferência importa; por enquanto só no modo desenvolvedor, na Importação, com o robô do PC do Vitor
+export function ouvirBalancetesDoPeriodo(codigo: number, chegou: (l: PedidoDoFiscal[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'balancetePeriodo')),
+      s => chegou(s.docs.map(x => doBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirBalancetePeriodo(o: { codigo: number; empresa: string; competencia: string; ate: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: statusDoPedido(), tipo: 'balancetePeriodo', codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
+}
