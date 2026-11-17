@@ -9,6 +9,12 @@
 
 export type TomDaSaude = 'ok' | 'aviso' | 'erro' | 'neutro';
 
+/**
+ * O retrato do backup que passou disto é atenção. Era 30 h (um por dia); desde 17/11/2026 o retrato em JSON é semanal (o
+ * backup de todo dia é o agendado do próprio Firestore): 7 dias e mais um de folga para as tentativas.
+ */
+export const BACKUP_VELHO_HORAS = 8 * 24;
+
 export interface ItemDaSaude {
   id: string;
   rotulo: string;
@@ -114,10 +120,10 @@ export function saudeDoRobo(d: DocsDaSaude, agora = Date.now()): ItemDaSaude[] {
     });
   }
 
-  // 6. o backup do dia
+  // 6. o retrato do backup (semanal)
   if (d.estado && e.backup) {
     const b = obj(e.backup);
-    const recente = idade(b.em, agora) < 30 * HORA;
+    const recente = idade(b.em, agora) < BACKUP_VELHO_HORAS * HORA;
     itens.push({
       id: 'backup', rotulo: 'Backup', tom: b.ok === false ? 'erro' : recente ? 'ok' : 'aviso',
       texto: b.ok === false ? 'O último backup falhou' : b.em ? 'Último backup ' + haQuanto(b.em, agora) : 'Sem backup registrado',

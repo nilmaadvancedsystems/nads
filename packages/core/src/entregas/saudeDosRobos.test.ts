@@ -89,7 +89,10 @@ describe('saúde dos robôs', () => {
     const bom = { backup: { ok: true, em: ha(120), resumo: '41 coleções, 83 MB' }, backupTentativas: { dia: '2026-11-07', backup: 1, planilha: 1, drive: 0 } };
     expect(cartaoDoBackup(bom, vm, AGORA)).toMatchObject({ tom: 'ok', fila: null, nota: 'Tentativas hoje: backup 1, planilha 1, Drive 0' });
     expect(cartaoDoBackup({ backup: { ok: false, em: ha(1600), tentadoEm: ha(5), resumo: 'sem espaço' } }, vm, AGORA)).toMatchObject({ tom: 'erro', rotulo: 'Parado' });
-    expect(cartaoDoBackup({ backup: { ok: true, em: ha(60 * 31) } }, vm, AGORA).tom).toBe('aviso');
+    // o retrato é semanal (17/11/2026): 31 h ainda está em dia; mais de 8 dias é atenção
+    expect(cartaoDoBackup({ backup: { ok: true, em: ha(60 * 31) } }, vm, AGORA).tom).toBe('ok');
+    expect(cartaoDoBackup({ backup: { ok: true, em: ha(60 * 24 * 7) } }, vm, AGORA).tom).toBe('ok');
+    expect(cartaoDoBackup({ backup: { ok: true, em: ha(60 * (24 * 8 + 1)) } }, vm, AGORA).tom).toBe('aviso');
     expect(cartaoDoBackup(bom, lerBatimento('vm', { robo: 'vm', em: ha(30) }), AGORA).tom).toBe('aviso');
     expect(cartaoDoBackup(null, vm, AGORA).tom).toBe('neutro');
   });

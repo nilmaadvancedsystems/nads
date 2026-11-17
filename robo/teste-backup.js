@@ -1,7 +1,7 @@
 // Testes do backup diário: prazo do filho, tentativas do dia, leitura em fluxo do retrato e envio retomável ao Drive (tudo com fakes).
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path');
-const { rodarFilho, tentativasDoDia } = require('./backup-diario');
+const { rodarFilho, tentativasDoDia, retratoVence } = require('./backup-diario');
 const { lerColecoes } = require('./backup-planilha');
 const { enviarArquivoRetomavel } = require('./drive-arquivos');
 let total = 0, falhas = 0;
@@ -14,6 +14,15 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bk-'));
   igual('mesmo dia: conta', tentativasDoDia({ backupTentativas: { dia: '2026-11-07', backup: 2 } }, '2026-11-07').backup, 2);
   igual('outro dia: zera', tentativasDoDia({ backupTentativas: { dia: '2026-11-06', backup: 2, avisado: { backup: '2026-11-06' } } }, '2026-11-07').backup, 0);
   igual('aviso de ontem não vale', tentativasDoDia({ backupTentativas: { dia: '2026-11-06', avisado: { backup: '2026-11-06' } } }, '2026-11-07').avisado, {});
+
+  // o retrato semanal (17/11/2026): conta em dias do calendário, não em horas
+  const em = h => ({ backup: { em: new Date(2026, 10, 9, h, 7).toISOString() } });   // segunda, 9/11
+  const no = (d, h) => new Date(2026, 10, d, h, 0).getTime();
+  igual('sem retrato bom: vence', retratoVence({}, no(17, 12)), true);
+  igual('retrato com falha sem em: vence', retratoVence({ backup: { ok: false } }, no(17, 12)), true);
+  igual('6 dias depois: não vence', retratoVence(em(13), no(15, 19)), false);
+  igual('7 dias depois, mais cedo que da outra vez: vence', retratoVence(em(13), no(16, 12)), true);
+  igual('no mesmo dia: não vence', retratoVence(em(13), no(9, 19)), false);
 
   // prazo do filho
   const lento = path.join(tmp, 'lento.js'); fs.writeFileSync(lento, 'setInterval(()=>{},1000)');

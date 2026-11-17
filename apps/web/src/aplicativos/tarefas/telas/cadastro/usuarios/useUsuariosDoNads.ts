@@ -28,6 +28,9 @@ export function useUsuariosDoNads() {
   useEffect(() => { const r = setInterval(() => setAgora(new Date()), 30 * 1000); return () => clearInterval(r); }, []);
   const equipe = repo.equipe();
   const sessoes = repo.sessoes();
+  // o ponto de cada pessoa (nadsPresenca, 17/11/2026): só esta tela escuta, e só enquanto está aberta
+  useEffect(() => repo.ouvirPresencas(), [repo]);
+  const presencas = repo.presencas();
   // os registros de cada inativo aberto (16/11/2026, excluir usuário): onde a pessoa está gravada; procura ao abrir a janela
   const [registros, setRegistros] = useState<Record<string, string[] | { semConferir: string[] }>>({});
   const [excluindo, setExcluindo] = useState(false);
@@ -47,6 +50,7 @@ export function useUsuariosDoNads() {
   }
 
   const todas = equipe.lista
+    .map(p => usuarios.comPresenca(p, presencas[p.uid]))
     .map(p => ({
       ...p,
       cargo: p.departamento || p.nivel ? usuarios.rotuloDoCargo(p) : '',
