@@ -4,7 +4,7 @@
 import { carteira, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { podeVerOFinanceiro } from '../../casca/navegacao';
+import { podeVerOFinanceiro, temNivelDiretor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useInsumos as useRepoDosInsumos, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
@@ -16,11 +16,13 @@ export function useInsumos() {
   const m = useMes();
   // uma lista só, sem o Meus e o Da equipe (Vitor, 13/11/2026: "não tem meus e nem da equipe, é um só, simples, que aparece no
   // financeiro"): cada pessoa vê os dela; o Diretor (e o Dono) e quem tem o Financeiro, os de todos (a mesma conta da regra do
-  // banco: podeNoFinanceiroNads), com a coluna da pessoa. A regra pede o login liberado, admin inclusive (o Financeiro, 09/11/2026);
-  // na Carteira, sem ele, o Diretor vê só os dele, como os outros, e não o "Sem permissão no banco" (16/11/2026: "Corrigir insumos")
+  // banco: podeNoFinanceiroNads), com a coluna da pessoa. A regra pede o login liberado de quem só tem o papel Financeiro; o
+  // Diretor e o Dono entram direto (17/11/2026). Sem ele, a pessoa vê só os dela, como os outros, e não o "Sem permissão no banco"
+  // (16/11/2026: "Corrigir insumos")
   const sessao = useAcesso().minhaSessao();
   const doFinanceiro = podeVerOFinanceiro(operador);
-  const veTodos = doFinanceiro && sessao.liberada;
+  const liberado = temNivelDiretor(operador) || sessao.liberada;
+  const veTodos = doFinanceiro && liberado;
   const [aberto, setAberto] = useState<carteira.Insumo | null | 'novo'>(null);
   // a lista dos insumos e os preços do Financeiro (15/11/2026): quem é do Financeiro vê os valores e muda a lista
   const [configurando, setConfigurando] = useState(false);
@@ -29,9 +31,9 @@ export function useInsumos() {
   const lista = fonte.lista.filter(x => x.competencia === m.mes);
   return {
     m, exemplos: repo.exemplos, veTodos, configurando, setConfigurando,
-    carregada: fonte.carregada && (!doFinanceiro || sessao.carregada), erro: fonte.erro, lista,
+    carregada: fonte.carregada && (!doFinanceiro || temNivelDiretor(operador) || sessao.carregada), erro: fonte.erro, lista,
     /** do Financeiro, mas com o login ainda não liberado: só os dele aqui; os de todos no Financeiro › Insumos da equipe */
-    semLiberacao: doFinanceiro && sessao.carregada && !sessao.liberada,
+    semLiberacao: doFinanceiro && sessao.carregada && !liberado,
     totais: carteira.totaisDosInsumos(lista, tipos.lista),
     nomeDe: (x: carteira.Insumo) => carteira.rotuloDoInsumo(x, tipos.lista),
     valorDe: (x: carteira.Insumo) => carteira.valorDoInsumo(x),
