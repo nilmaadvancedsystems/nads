@@ -1,44 +1,60 @@
-// O quadro de retificação do Relatório do Fiscal (16/11/2026: "um botão parecido com o do 13º salário do DP que, ao ser
-// apertado, muda a tabela"; escolhido o quadro de retificação do protocolo): com o interruptor ligado, entra no lugar da
-// tabela do mês — uma linha por retificação (as empresas com o Retif. ligado e as que entram pelo + Retificação), com a
-// referência (o mês retificado), as guias em R$, as conferências, a entrega e a situação; a lixeira tira a linha. Os
-// filtros e a busca da barra valem aqui também; o Excel e a impressora levam o quadro. Os dados e as ações vêm do
-// useRelatorioGeral (vm.retificacao).
+// A janela da retificação do Relatório do Fiscal (16/11/2026: "um botão parecido com o do 13º salário do DP"; escolhido o
+// quadro de retificação do protocolo; 17/11/2026: "queria que fosse uma opção [que] abra uma tela flutuante que possa ser
+// colocado o valor"): o botão Retificação no topo da tabela abre esta janela, e ligar o Retif. de uma empresa também (com a
+// linha dela em destaque). Uma linha por retificação (as empresas com o Retif. ligado e as que entram pelo + Retificação),
+// com a referência (o mês retificado), as guias em R$, as conferências, a entrega e a situação; a lixeira tira a linha. O
+// Excel leva o quadro; a impressora da barra imprime o protocolo com ele. Os dados e as ações vêm do useRelatorioGeral
+// (vm.retificacao).
 import { tarefas as t } from '@nads/core';
-import { Icone, Interruptor } from '@nads/ui';
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { baixarBytes, Icone, LogoExcel, useJanela } from '@nads/ui';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { useColunasAjustaveis } from '../../../../../comum/ColunasAjustaveis';
 import { Bolinha, Entrega, Valor } from './PartesDoRelatorio';
 import type { RegimeDoRelatorio, VmRelatorio } from './useRelatorioGeral';
 
-export function QuadroDeRetificacao({ vm, regime }: { vm: VmRelatorio; regime: RegimeDoRelatorio }) {
+export function JanelaDaRetificacao({ vm, regime }: { vm: VmRelatorio; regime: RegimeDoRelatorio }) {
   const r = vm.retificacao;
   const g = vm.grupo;
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, r.fechar);
   const [empresa, setEmpresa] = useState('');
   const [referencia, setReferencia] = useState('');
   const col = useColunasAjustaveis('fiscal-ret-' + g.id, [
-    { id: 'cod', padrao: 44 }, { id: 'cliente', padrao: 220 }, { id: 'ref', padrao: 78 },
+    { id: 'cod', padrao: 44 }, { id: 'cliente', padrao: 200 }, { id: 'ref', padrao: 78 },
     ...vm.guias.map(c => ({ id: c.id, padrao: 74 })), ...g.marcas.map(m => ({ id: m.id, padrao: 32 })),
     { id: 'ent', padrao: 68 }, { id: 'sit', padrao: 36 }, ...(vm.podeGravar ? [{ id: 'tirar', padrao: 40 }] : []),
   ], 'cliente');
-  const feitas = r.achadas - r.faltam;
+  const feitas = r.linhas.length - r.faltam;
   const listaId = 'fr-ret-empresas-' + g.id;
+  // a empresa que acabou de ser ligada: o cursor já no primeiro valor dela
+  useEffect(() => {
+    if (r.destaque == null || !janela.current) return;
+    const campo = janela.current.querySelector<HTMLInputElement>('tr.fr-ret-destaque td.fr-ret-primeiro input');
+    if (campo) { campo.scrollIntoView({ block: 'nearest' }); campo.focus(); }
+  }, [r.destaque]);
   function adicionar(e: FormEvent) {
     e.preventDefault();
     if (r.adicionar(empresa, referencia)) { setEmpresa(''); setReferencia(''); }
   }
+  const competencia = vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia;
   return (
-    <section className={'card fr-cartao fr-regime-' + regime} aria-label={'Retificação · ' + g.rotulo}>
-      <div className="fr-cartao-topo">
-        <b className="fr-ret-titulo">Retificação</b>
-        <span className="fr-andamento" title={r.faltam ? r.faltam + (r.faltam === 1 ? ' falta' : ' faltam') + ' de ' + r.achadas : 'tudo feito'}>
-          <span className="fr-andamento-barra" aria-hidden="true"><i style={{ width: (r.achadas ? Math.round((feitas / r.achadas) * 100) : 0) + '%' }} /></span>
-          <span className="fr-andamento-txt">{!r.achadas ? 'Nenhuma retificação' : r.faltam ? <><b>{feitas}</b> de {r.achadas} entregues · {r.faltam} {r.faltam === 1 ? 'falta' : 'faltam'}</> : <b>Tudo entregue</b>}</span>
-        </span>
-        <span className="tarefas-barra-espaco" />
+    // data-entrada-propria (17/11/2026: "tá travando muito para abrir"): a janela larga não cresce do botão nem traz as
+    // linhas em cascata; aparece de uma vez, só o fundo escurece
+    <div className="modal-overlay" data-entrada-propria="" onMouseDown={ev => { if (ev.target === ev.currentTarget) r.fechar(); }}>
+      <div ref={janela} className={'modal fr-ret-janela fr-regime-' + regime} role="dialog" aria-modal="true" aria-labelledby="frRetTitulo">
+        <div className="fr-ret-cabeca">
+          <h3 id="frRetTitulo"><Icone nome="fileText" width={16} height={16} />Retificação · {g.rotulo} · {competencia}</h3>
+          <span className="fr-andamento-txt hint">{!r.linhas.length ? 'Nenhuma retificação' : r.faltam ? <><b>{feitas}</b> de {r.linhas.length} entregues · {r.faltam} {r.faltam === 1 ? 'falta' : 'faltam'}</> : <b>Tudo entregue</b>}</span>
+          <span className="tarefas-barra-espaco" />
+          <button type="button" className="icon-btn" title="Exportar o quadro para o Excel" aria-label="Exportar o quadro de retificação para o Excel" disabled={!r.linhas.length}
+            onClick={() => { const x = r.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+            <LogoExcel />
+          </button>
+          <button type="button" className="icon-btn" onClick={r.fechar} title="Fechar" aria-label="Fechar a janela da retificação"><Icone nome="x" /></button>
+        </div>
         {vm.podeGravar && (
           <form className="fr-ret-novo" onSubmit={adicionar}>
-            <input type="text" list={listaId} value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Empresa (código ou nome)" aria-label="Empresa da retificação" className="fr-ret-empresa" />
+            <input type="text" list={listaId} value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Empresa (código ou nome)" aria-label="Empresa da retificação" className="fr-ret-empresa" autoFocus={r.destaque == null} />
             <datalist id={listaId}>{r.empresas.map(x => <option key={x} value={x} />)}</datalist>
             <input type="text" value={referencia} onChange={e => setReferencia(e.target.value)} placeholder={r.referenciaPadrao} aria-label="Referência: o mês retificado (mm/aaaa)" title="O mês retificado (mm/aaaa); vazio, o da competência" className="fr-ret-ref num" />
             <button type="submit" className="btn btn-sm btn-outline" disabled={!r.cabe || !empresa.trim()} title={r.cabe ? 'Pôr a empresa no quadro de retificação' : 'O quadro já está cheio'}>
@@ -46,11 +62,8 @@ export function QuadroDeRetificacao({ vm, regime }: { vm: VmRelatorio; regime: R
             </button>
           </form>
         )}
-        <Interruptor ligado onMudar={r.desligar} rotulo="Voltar para o relatório do mês" />
-      </div>
-      {!r.total ? <p className="hint dp-vazio">Nenhuma retificação neste mês: ligue o Retif. da empresa no relatório{vm.podeGravar ? ' ou use o + Retificação' : ''}.</p>
-        : !r.linhas.length ? <p className="hint dp-vazio">Nenhuma retificação com esses filtros.</p> : (
-          <div className="fr-rola">
+        {!r.linhas.length ? <p className="hint dp-vazio">Nenhuma retificação neste mês: ligue o Retif. da empresa na tabela{vm.podeGravar ? ' ou use o + Retificação' : ''}.</p> : (
+          <div className="fr-rola fr-ret-rola">
             <table className={'fr-tabela fr-ret fr-grupo-' + g.id} style={{ ...col.tabela, '--fr-cod': col.largura('cod') + 'px' } as CSSProperties}>
               <colgroup>
                 <col className="fr-c-cod" style={col.col('cod')} /><col className="fr-c-cliente" style={col.col('cliente')} /><col className="fr-c-ref" style={col.col('ref')} />
@@ -78,15 +91,16 @@ export function QuadroDeRetificacao({ vm, regime }: { vm: VmRelatorio; regime: R
                 {r.linhas.map(l => {
                   const x = l.retificacao;
                   const de = l.nome + ' (' + (x.referencia || 'sem referência') + ')';
+                  const classe = [l.situacao === 'concluida' ? 'fr-feita' : '', l.codigo != null && l.codigo === r.destaque ? 'fr-ret-destaque' : ''].filter(Boolean).join(' ');
                   return (
-                    <tr key={l.chave} className={l.situacao === 'concluida' ? 'fr-feita' : undefined}>
+                    <tr key={l.chave} className={classe || undefined}>
                       <td className="fr-num fr-cod">{l.codigo ?? ''}</td>
-                      <td className="fr-cliente"><span title={l.nome + (l.ligada ? ' · Retif. ligado no relatório' : '')}>{l.nome}</span></td>
+                      <td className="fr-cliente"><span title={l.nome + (l.ligada ? ' · Retif. ligado na tabela' : '')}>{l.nome}</span></td>
                       <td className="fr-centro">
                         <Valor estreito valor={x.referencia} molde="mm/aaaa" rotulo={'Referência da retificação de ' + l.nome} pode={vm.podeGravar} aoSalvar={v => r.mudarReferencia(l.chave, v)} />
                       </td>
                       {vm.guias.map((c, i) => (
-                        <td key={c.id} className={i === 0 ? 'fr-g' : undefined}>
+                        <td key={c.id} className={i === 0 ? 'fr-g fr-ret-primeiro' : undefined}>
                           <Valor estreito zeroComoTraco valor={x.valores[c.id] || ''} rotulo={c.nome + ' da retificação de ' + de} pode={vm.podeGravar} aoSalvar={v => r.mudarValor(l.chave, c.id, v)} />
                         </td>
                       ))}
@@ -116,6 +130,11 @@ export function QuadroDeRetificacao({ vm, regime }: { vm: VmRelatorio; regime: R
             </table>
           </div>
         )}
-    </section>
+        <div className="modal-actions">
+          <span className="hint fr-ret-dica">Os valores ficam guardados ao sair do campo; a impressora da barra imprime o protocolo com este quadro.</span>
+          <button type="button" className="btn btn-primary" onClick={r.fechar}>Pronto</button>
+        </div>
+      </div>
+    </div>
   );
 }

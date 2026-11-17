@@ -6,9 +6,10 @@
 // e a impressão do protocolo (as observações e a retificação saíram por enquanto). A coluna da REINF saiu
 // (29/10/2026: "a parte do R das conferencias ja e a reinf"). Quem grava o controle: o Fiscal e o admin; o resto da equipe só vê.
 // A retificação (16/11/2026: "um botão parecido com o do 13º salário do DP que, ao ser apertado, muda a tabela"; escolhido
-// o quadro de retificação do protocolo): ligada, a tabela vira o quadro do mês — uma linha por retificação (as empresas com
-// o Retif. ligado e as que entram pelo + Retificação), com a referência, as guias, as conferências e a entrega, guardado na
-// folha do grupo (controleTributosFolha) e impresso igual no protocolo. As regras são as de t.quadroDeRetificacao.
+// o quadro de retificação do protocolo; 17/11/2026: numa janela flutuante, não no lugar da tabela): o quadro do mês — uma
+// linha por retificação (as empresas com o Retif. ligado e as que entram pelo + Retificação), com a referência, as guias,
+// as conferências e a entrega, guardado na folha do grupo (controleTributosFolha) e impresso igual no protocolo. As regras
+// são as de t.quadroDeRetificacao.
 import { formatos, tarefas as t } from '@nads/core';
 import { logoNilmaParaImprimir, useRetorno } from '@nads/ui';
 import { useMemo, useRef, useState } from 'react';
@@ -69,14 +70,18 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const mes = repo.doMes(competencia);
   /** as colunas de guia: todas do grupo (o arroz e o parcelamento voltaram para a tabela, 28/10/2026) */
   const colunas = grupo.colunas;
+  /** as colunas das guias da página, com o nome curto (a mesma lista entre os desenhos: as linhas da tabela não se redesenham à toa) */
+  const guias = useMemo(() => colunas.map(c => ({ id: c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })), [colunas]);
   const [busca, setBusca] = useState('');
   const [status, setStatus] = useState('');
   const [pendenteEm, setPendenteEm] = useState('');
   const [entrega, setEntrega] = useState('');
   const { porPagina, porPaginaOpcoes, escolher: escolherPorPagina } = usePorPagina();
   const [pagina, setPagina] = useState(0);
-  // o modo retificação: o interruptor no topo da tabela, como o do 13º no DP
-  const [retificando, setRetificando] = useState(false);
+  // a janela da retificação (17/11/2026: "queria que fosse uma opção [que] abra uma tela flutuante que possa ser colocado
+  // o valor"): o botão no topo da tabela a abre; ligar o Retif. de uma empresa também, com a linha dela em destaque
+  const [janelaAberta, setJanelaAberta] = useState(false);
+  const [destaque, setDestaque] = useState<number | null>(null);
 
   // as empresas do regime no Cadastro do nads (o do Entregas, quando o nads não tem)
   const empresas = useMemo(() => lista.linhas
@@ -87,12 +92,16 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   // sem preenchimento vindo do Entregas (Vitor, 09/11/2026: "não haja preenchimento automático das entregas para o fiscal"): nem a sugestão apagada nos campos, nem o Preencher com o Entregas
   // o que acabou de ser gravado vale até o banco devolver (dois cliques seguidos não perdem o primeiro)
   const gravadas = useRef(new Map<string, t.LinhaDoControle>());
+  const brancas = useRef(new Map<string, t.LinhaDoControle>());
   const linhaDe = (codigo: number) => {
     const id = t.idDaLinhaDoControle(competencia, codigo);
     const minha = gravadas.current.get(id);
     const doBanco = mes.linhas.get(codigo);
     if (minha && doBanco && mesmoConteudo(minha, doBanco)) gravadas.current.delete(id);
-    return gravadas.current.get(id) || doBanco || t.linhaEmBranco(competencia, codigo, grupo.id);
+    // a linha em branco é sempre a mesma (17/11/2026): a linha da tabela só se desenha de novo quando muda
+    let branca = brancas.current.get(id);
+    if (!branca || branca.grupo !== grupo.id) { branca = t.linhaEmBranco(competencia, codigo, grupo.id); brancas.current.set(id, branca); }
+    return gravadas.current.get(id) || doBanco || branca;
   };
 
   /** as partes que faltam: as guias em branco, as conferências sem marca e a entrega */
@@ -153,7 +162,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     return { ...l, chave: l.indice != null ? 'f' + l.indice : 'l' + r.codigo, codigo: r.codigo, nome: nomeDe(r.codigo), entregue: r.entregue,
       situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias: pendenciasDe(r.valores, r.marcas, r.entregue) };
   });
-  const retificacoes = quadro.filter(passa);
+  // na janela, todas as retificações do mês (os filtros da barra são os da tabela)
+  const retificacoes = quadro;
   const mudarRet = (chave: string, f: (r: t.RetificacaoDoControle) => t.RetificacaoDoControle) => {
     const l = quadro.find(x => x.chave === chave);
     if (!l) return;
@@ -184,7 +194,7 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     },
     grupo,
     /** as colunas das guias da página, com o nome curto */
-    guias: colunas.map(c => ({ id: c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })),
+    guias,
     /** a página da lista: a anterior e a próxima */
     pagina: { atual, paginas,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
@@ -218,13 +228,19 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
       const data = e && e !== 'nao' && !l.data ? formatos.diaEmBrasilia() : l.data;
       void gravar({ ...l, entregue: e, data });
     },
-    /** a retificação da empresa no mês: o liga e desliga da linha (10/11/2026); ligada, entra no quadro do protocolo */
-    alternarRetificacao(codigo: number) { void gravar(t.alternarRetificacaoDaLinha(linhaDe(codigo))); },
-    /** o modo retificação (16/11/2026): a tabela vira o quadro de retificação do mês */
+    /** a retificação da empresa no mês: o liga e desliga da linha (10/11/2026); ligada, entra no quadro e abre a janela para pôr os valores */
+    alternarRetificacao(codigo: number) {
+      const nova = t.alternarRetificacaoDaLinha(linhaDe(codigo));
+      void gravar(nova);
+      if (t.linhaRetificada(nova) && podeGravar) { setDestaque(codigo); setJanelaAberta(true); }
+    },
+    /** a janela da retificação (17/11/2026): o quadro de retificação do mês numa janela flutuante */
     retificacao: {
-      ligada: retificando,
-      ligar: () => { setRetificando(true); setPagina(0); },
-      desligar: () => setRetificando(false),
+      aberta: janelaAberta,
+      abrir: () => { setDestaque(null); setJanelaAberta(true); },
+      fechar: () => { setJanelaAberta(false); setDestaque(null); },
+      /** a empresa que acabou de ser ligada (a linha dela em destaque na janela) */
+      destaque,
       linhas: retificacoes, total: quadro.length, achadas: retificacoes.length, faltam: retificacoes.filter(r => r.situacao !== 'concluida').length,
       cabe: t.cabeRetificacao(folha),
       /** as empresas do regime para o + Retificação ("código — nome") e o mês que entra se não escrever outro */
@@ -274,6 +290,16 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
         if (r.folha) void gravarFolha(r.folha);
         if (r.desligar != null) void gravar(t.alternarRetificacaoDaLinha(linhaDe(r.desligar)));
       },
+      /** o quadro em Excel */
+      exportar() {
+        const marca = (m: string | undefined) => (m === 'ok' ? 'OK' : m === 'na' ? '—' : '');
+        const cabecalho = ['Cód.', 'Cliente', 'Referência', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Entregue', 'Situação'];
+        const valores = retificacoes.map(r => [
+          r.codigo ?? '', r.nome, r.retificacao.referencia, ...colunas.map(c => r.retificacao.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.retificacao.marcas[m.id])),
+          t.ENTREGAS_DO_CONTROLE.find(e => e.valor === r.entregue)?.rotulo || '', r.rotuloSituacao,
+        ]);
+        return { bytes: t.planilhaXlsx('Retificação ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, valores), nome: 'Fiscal retificação ' + (regime === 'sn' ? 'Simples' : 'Presumido') + ' ' + competencia + '.xlsx' };
+      },
     },
     imprimir() {
       // as observações seguem fora da impressão (28/10/2026); a retificação sai como está no quadro
@@ -282,14 +308,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     },
     exportar() {
       const marca = (m: string | undefined) => (m === 'ok' ? 'OK' : m === 'na' ? '—' : '');
-      if (retificando) {
-        const cabecalho = ['Cód.', 'Cliente', 'Referência', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Entregue', 'Situação'];
-        const valores = retificacoes.map(r => [
-          r.codigo ?? '', r.nome, r.retificacao.referencia, ...colunas.map(c => r.retificacao.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.retificacao.marcas[m.id])),
-          t.ENTREGAS_DO_CONTROLE.find(e => e.valor === r.entregue)?.rotulo || '', r.rotuloSituacao,
-        ]);
-        return { bytes: t.planilhaXlsx('Retificação ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, valores), nome: 'Fiscal retificação ' + (regime === 'sn' ? 'Simples' : 'Presumido') + ' ' + competencia + '.xlsx' };
-      }
       const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Data', 'Entregue', 'Situação', 'Retificada'];
       const valores = linhas.map(r => [
         r.codigo, r.nome, ...colunas.map(c => r.linha.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.linha.marcas[m.id])),
