@@ -664,16 +664,24 @@ def preencher(h):
         else:
             diag('não achei o "Não" das canceladas: segui com o que a tela já tinha')
     else:
-        quero = ('Tomador', 'ISS Tomador', 'Tomados', 'Serviços Tomados') if RELATORIO == 'tomados' else ('ISS Saída', 'ISS Saida', 'Saída', 'Saida', 'Prestados', 'Serviços Prestados')
+        # a tela do ISS como o Vitor ensinou (17/11/2026, TfrmConsultaISSFatDed "Consulta de movimento de ISS / Faturamento e
+        # Deduções"): "ISS Saída" (os prestados) ou "ISS Tomador" (os tomados), depois "Referência" (a data da competência)
+        quero = ('ISS Tomador', 'Tomador', 'Tomados', 'Serviços Tomados') if RELATORIO == 'tomados' else ('ISS Saída', 'ISS Saida', 'Saída', 'Saida', 'Prestados', 'Serviços Prestados')
         passo('tipo ' + quero[0])
         radios = [e for e in its if tipo(e) == 'RadioButton']
         diag('as opções da tela: ' + ' | '.join(nome(e) for e in radios))
+        ref = next((e for e in radios if norm(nome(e)) == 'referencia'), None)
         if not escolher_opcao(its, quero, 'tipo') and not combo_ao_lado(its, ('tipo', 'iss', 'operacao', 'movimento'), quero[0], 'tipo'):
             chave = 'tomad' if RELATORIO == 'tomados' else 'saida'
             alvo = next((e for e in its if chave in norm(nome(e)) and tipo(e) not in ('Text', 'Pane', 'Window', 'Edit')), None)
             if not alvo:
                 falhar('não achei onde escolher ' + quero[0])
             clicar(alvo, 'tipo: ' + nome(alvo))
+        if ref:
+            time.sleep(.3)
+            clicar(ref, 'data pela Referência')
+        else:
+            diag('não achei o "Referência": segui com a data que a tela já tinha')
     time.sleep(.5)
     its = itens(h)
 
