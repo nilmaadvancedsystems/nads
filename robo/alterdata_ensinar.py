@@ -51,6 +51,11 @@ user32.WindowFromPoint.argtypes = [wt.POINT]
 user32.WindowFromPoint.restype = wt.HWND
 user32.GetAncestor.argtypes = [wt.HWND, ctypes.c_uint]
 user32.GetAncestor.restype = wt.HWND
+user32.UnhookWindowsHookEx.argtypes = [ctypes.c_void_p]
+# o handle do programa em 64 bits: sem dizer o tipo, o ctypes cortava em 32 bits e o Windows recusava o gancho (erro 126,
+# 17/11/2026 no PC do Vitor)
+kernel32.GetModuleHandleW.argtypes = [ctypes.c_wchar_p]
+kernel32.GetModuleHandleW.restype = ctypes.c_void_p
 
 TECLAS = {0x08: '{BACKSPACE}', 0x09: '{TAB}', 0x0D: '{ENTER}', 0x1B: '{ESC}', 0x20: ' ', 0x25: '{ESQUERDA}', 0x26: '{CIMA}',
           0x27: '{DIREITA}', 0x28: '{BAIXO}', 0x2E: '{DEL}', 0x24: '{HOME}', 0x23: '{END}', 0x6F: '/', 0xBF: '/', 0xC1: '/',
@@ -192,19 +197,21 @@ def main():
     t = threading.Thread(target=trabalhador, args=(saida, linhas), daemon=True)
     t.start()
     pm, pk = PROC(ao_mouse), PROC(ao_teclado)
-    hm = user32.SetWindowsHookExW(WH_MOUSE_LL, pm, kernel32.GetModuleHandleW(None), 0)
-    hk = user32.SetWindowsHookExW(WH_KEYBOARD_LL, pk, kernel32.GetModuleHandleW(None), 0)
+    mod = kernel32.GetModuleHandleW(None)
+    hm = user32.SetWindowsHookExW(WH_MOUSE_LL, pm, mod, 0) or user32.SetWindowsHookExW(WH_MOUSE_LL, pm, None, 0)
+    hk = user32.SetWindowsHookExW(WH_KEYBOARD_LL, pk, mod, 0) or user32.SetWindowsHookExW(WH_KEYBOARD_LL, pk, None, 0)
     if not hm or not hk:
         print('não consegui ouvir o mouse e o teclado (erro ' + str(ctypes.get_last_error()) + ')')
         return
     msg = wt.MSG()
+    user32.PeekMessageW.argtypes = [ctypes.POINTER(wt.MSG), wt.HWND, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
     while not fim.is_set():
         while user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
         time.sleep(.02)
-    user32.UnhookWindowsHookEx(ctypes.c_void_p(hm))
-    user32.UnhookWindowsHookEx(ctypes.c_void_p(hk))
+    user32.UnhookWindowsHookEx(hm)
+    user32.UnhookWindowsHookEx(hk)
     t.join(timeout=10)
     carimbo = time.strftime('%Y%m%d-%H%M%S')
     txt = os.path.join(PASTA, 'ensino-' + carimbo + '.txt')
