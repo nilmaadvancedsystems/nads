@@ -4,7 +4,7 @@
 // deixa ABERTOS E LOGADOS neste PC. A fila é a mesma do servidor (pedidosAlterdata): cada pedido é pego numa transação, então
 // o PC e o servidor juntos nunca fazem o mesmo; quem estiver com o Contábil pronto pega.
 //
-// Atualiza sozinho: a cada 5 min olha o ramo desenvolvimento no GitHub; se chegou commit que muda o robo/, pede para sair com
+// Atualiza sozinho: a cada minuto olha o ramo desenvolvimento no GitHub; se chegou commit que muda o robo/, pede para sair com
 // calma (termina o pedido do meio, não pega outro) e o iniciar.cmd puxa o código novo e liga de novo.
 //
 // Instalação: robo/pc-alterdata/LEIAME.md. Rodar à mão: node alterdata-no-pc.js
@@ -84,5 +84,6 @@ async function olharAtualizacao() {
   log('chegou código novo do robô (' + mudou.split('\n').slice(0, 6).join(', ') + '): saio com calma para o iniciar.cmd atualizar');
   void ocupado.pedirParada('atualização do GitHub');
 }
-if (!process.env.ALTERDATA_SEM_ATUALIZAR) setInterval(() => { void olharAtualizacao(); }, 5 * 60 * 1000).unref();
-setTimeout(() => { void olharAtualizacao(); }, 60 * 1000).unref();
+// a cada minuto (17/11/2026, Vitor: "corrija o mais rapido possivel esse robo": o git fetch é barato)
+if (!process.env.ALTERDATA_SEM_ATUALIZAR) setInterval(() => { void olharAtualizacao(); }, 60 * 1000).unref();
+setTimeout(() => { void olharAtualizacao(); }, 20 * 1000).unref();
