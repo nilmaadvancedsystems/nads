@@ -235,6 +235,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const codigo = Number(p.codigo);
     if (tipo === 'importar') return importar(id, p, codigo);
     if (tipo === 'fiscal' || tipo === 'razaoConta' || tipo === 'balanceteDinamico' || tipo === 'balancetePeriodo') return fiscal(id, p, codigo);
+    if (tipo === 'lancamentoPadrao') return lancamentoPadrao(id, p, codigo);
     if (tipo !== 'balancete' && tipo !== 'mensal') { await banco.atualizar(id, { status: 'erro', erro: 'tipo de relatório desconhecido: ' + tipo, fimEm: agora() }); return; }
     if (!Number.isInteger(codigo) || codigo <= 0) { await banco.atualizar(id, { status: 'erro', erro: 'código da empresa inválido', fimEm: agora() }); return; }
     if (!competenciaValida(p.competencia)) { await banco.atualizar(id, { status: 'erro', erro: 'competência inválida', fimEm: agora() }); return; }
@@ -505,6 +506,63 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     await banco.atualizar(id, { status: 'pronto', erro: '', diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
     if (painel) painel.atividade('alterdata', 'Puxou ' + rotuloRel.toLowerCase() + ' ' + codigo + ' ' + lote + (doContabil ? ' no Alterdata Contábil' : ' no Alterdata Fiscal'), p.criadoPor ? 'pedido de ' + p.criadoPor : '');
     log('Alterdata: fim do Fiscal', id, nome, buf.length, 'bytes');
+  }
+
+  /**
+   * O lançamento fora do padrão corrigido no Alterdata Fiscal (17/11/2026, o caminho que o Vitor gravou): o pedido leva a empresa,
+   * o período, os CFOPs do grupo, o lançamento atual, o padrão e quantas notas o nads espera; o roteiro filtra a grade, confere a
+   * quantidade e só então troca o "Lanc. Cont. Vl. Contábil" (ensaio: para antes de mudar). Não há planilha: o resultado vai no pedido.
+   */
+  async function lancamentoPadrao(id, p, codigo) {
+    const andamentoFim = st => ({ pct: 100, etapa: st, clique: '', em: agora() });
+    const erro = msg => banco.atualizar(id, { status: 'erro', erro: String(msg).slice(0, 500), fimEm: agora(), andamento: andamentoFim('erro') });
+    const cfops = Array.isArray(p.cfops) ? p.cfops.map(String).filter(c => /^\d{4}$/.test(c)) : [];
+    const atual = String(p.atual || '').replace(/\D/g, ''), padrao = String(p.padrao || '').replace(/\D/g, '');
+    const esperado = Number(p.esperado) || 0;
+    if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
+    if (!cfops.length || !atual || !padrao) return erro('faltou o CFOP, o lançamento atual ou o padrão');
+    if (!p.ensaio && esperado <= 0) return erro('sem o número de notas esperado não altero nada');
+    const ate = p.ate || p.competencia;
+    if (!competenciaValida(p.competencia) || !competenciaValida(ate) || ate < p.competencia) return erro('período inválido');
+    if (fiscalSemLogin) return erro('o login do robô no Alterdata Fiscal não deu (' + fiscalSemLogin + ')');
+    const passos = [];
+    let etapa = 'começando', ultimoClique = 0;
+    const total = PASSOS_DO_ROTEIRO.fiscal + 4;
+    const pct = () => Math.min(99, Math.round(passos.length / total * 100));
+    const passo = nome => {
+      passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), quando: agora() });
+      etapa = String(nome).slice(0, 200);
+      return banco.atualizar(id, { passos, andamento: { pct: pct(), etapa, clique: '', em: agora() } }).catch(() => {});
+    };
+    const clique = nome => {
+      if (Date.now() - ultimoClique < CLIQUE_MS) return;
+      ultimoClique = Date.now();
+      return banco.atualizar(id, { andamento: { pct: pct(), etapa, clique: String(nome).slice(0, 120), em: agora() } }).catch(() => {});
+    };
+    const [inicio] = periodo(p.competencia);
+    const [, fim] = periodo(ate);
+    await banco.atualizar(id, { status: 'trabalhando', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    const rotulo = 'Lançamento ' + atual + ' → ' + padrao + ' (CFOP ' + cfops.join(', ') + ') ' + codigo;
+    if (painel) painel.fazendo('alterdata', rotulo + (p.ensaio ? ' (ensaio)' : '') + ' no Alterdata Fiscal');
+    log('Alterdata: lançamento padrão', rotulo, p.ensaio ? 'ensaio' : 'de verdade', id);
+    const r = await comPrazo('lancamentoPadrao', { codigo, inicio, fim, cfops, atual, padrao, esperado, ensaio: !!p.ensaio }, passo, clique, id);
+    const fimP = await banco.ler(id);
+    if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
+      if (limparTela) { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois de cancelar', err.message); } }
+      await banco.atualizar(id, { andamento: { pct: 0, etapa: 'cancelado', clique: '', em: agora() } }).catch(() => {});
+      return;
+    }
+    const diag = Array.isArray(r.diag) ? r.diag : [];
+    if (!r.ok) {
+      if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
+      await banco.atualizar(id, { status: 'erro', erro: String(r.erro || 'o roteiro parou').slice(0, 500), diag, andamento: andamentoFim('erro'), fimEm: agora() });
+      if (painel) painel.erro('alterdata', rotulo, String(r.erro || ''), { pedido: id });
+      return;
+    }
+    deuCerto();
+    await banco.atualizar(id, { status: 'pronto', erro: '', diag, ensaio: !!r.ensaio, achadas: Number(r.achadas ?? r.alteradas ?? 0), alteradas: Number(r.alteradas || 0), andamento: andamentoFim('pronto'), fimEm: agora() });
+    if (painel) painel.atividade('alterdata', (r.ensaio ? 'Ensaio: ' : 'Alterou ') + rotulo, p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+    log('Alterdata: fim do lançamento padrão', id, r.ensaio ? 'ensaio, achou ' + r.achadas : 'alterou ' + r.alteradas);
   }
 
   return {
