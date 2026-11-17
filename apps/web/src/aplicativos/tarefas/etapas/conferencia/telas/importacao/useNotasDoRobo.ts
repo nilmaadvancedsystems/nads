@@ -72,7 +72,9 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const andando = !!atual && ANDANDO.includes(atual.status);
   // a tela travada enquanto o robô está no Alterdata ou a planilha está entrando (Vitor, 17/11/2026: "so bloqueia toda a acao
   // da tela"); na fila (sem máquina pronta pode demorar) só o botão fica carregando
-  const bloqueia = (!!atual && atual.status === 'trabalhando') || lendo;
+  // só enquanto o robô mexe no Alterdata; a importação que vem depois tem a pergunta dela (17/11/2026: a camada ficava por cima
+  // do "Como importar?" e a tela travava)
+  const bloqueia = !!atual && atual.status === 'trabalhando';
   // fora do modo desenvolvedor, o erro sem o detalhe da tela (o tamanho, as janelas, o caminho da foto)
   const erroLimpo = (t: string) => (dev ? t : t.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '').trim());
   const situacao = !atual ? '' : atual.status === 'pendente' || atual.status === 'pendentePc' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || 'O robô está no Alterdata Fiscal')

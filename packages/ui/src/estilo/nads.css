@@ -1696,7 +1696,7 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-robo-fiscal > span{flex:1 1 200px;min-width:0;}
 .imp-robo-diag{flex:1 0 100%;}
 /* a tela travada enquanto o robô puxa do Alterdata (17/11/2026): nada responde ao clique; a barra continua à mostra */
-.imp-robo-bloqueio{position:fixed;inset:0;z-index:900;cursor:progress;background:transparent;}
+.imp-robo-bloqueio{position:fixed;inset:0;z-index:60;cursor:progress;background:transparent;}
 .imp-robo-fiscal .imp-robo-barra{flex:1 1 200px;}
 /* o botão só com a marca do Alterdata (17/11/2026) */
 .btn-icone-alterdata{padding-inline:12px;min-width:44px;justify-content:center;gap:6px;}
@@ -7305,4 +7305,4 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 /* o robô puxando no ⬆ (17/11/2026): a barra e o × no lugar do botão; o Cancelar fica acima da camada que trava a tela */
 .imp-robo-mini{display:inline-flex;align-items:center;gap:6px;min-width:96px;}
 .imp-robo-mini .imp-robo-barra{flex:1 1 60px;min-width:60px;}
-.imp-robo-cancelar{position:relative;z-index:901;}
+.imp-robo-cancelar{position:relative;z-index:61;}
