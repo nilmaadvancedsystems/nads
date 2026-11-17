@@ -221,7 +221,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     // pegar: de uma vez só (transação), passa de pendente a trabalhando nesta máquina; null = cancelado, já pego por outra
     // máquina, ou o Contábil daqui não está pronto (o pedido fica para quem estiver)
     const p = banco.pegar ? await banco.pegar(id) : await banco.ler(id);
-    if (!p || p.status !== 'pendente') return;
+    if (!p || (p.status !== 'pendente' && p.status !== 'pendentePc')) return;
     const tipo = p.tipo || 'balancete';
     const codigo = Number(p.codigo);
     if (tipo === 'importar') return importar(id, p, codigo);

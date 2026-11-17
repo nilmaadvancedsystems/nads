@@ -58,6 +58,10 @@ let ROBOS_DE_PC = [];
 try { ROBOS_DE_PC = require('../packages/core/src/robos/robosDePc.json'); } catch (e) { /* sem o arquivo: nenhum */ }
 const DONO_UID = (ROBOS_DE_PC.find(r => r.maquina === ONDE) || {}).uid || '';
 const DONOS_DE_PC = new Set(ROBOS_DE_PC.map(r => r.uid));
+// a fila só do robô de PC (17/11/2026): o servidor ainda no robô de 11/11 pegava os pedidos do Vitor (o razão de uma conta, as
+// notas do Fiscal) e respondia "tipo desconhecido". O pedido com status 'pendentePc' o servidor antigo não enxerga (ele só ouve
+// 'pendente'); o robô de um PC ouve os dois.
+const ESPERANDO = DONO_UID ? ['pendente', 'pendentePc'] : ['pendente'];
 const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', abrindo: 'entrando (tela de abertura)', fechado: 'fechado', dois: 'aberto duas vezes', erro: 'sem resposta' };
 
 /** Se já tem um Contábil (wcont.exe) rodando nesta máquina, mesmo sem janela à mostra (05/11/2026, Vitor: "o robo tem que
@@ -330,7 +334,7 @@ function iniciarAlterdata(db, log) {
       const ref = pedidos.doc(id);
       return db.runTransaction(async t => {
         const s = await t.get(ref);
-        if (!s.exists || s.data().status !== 'pendente') return null;
+        if (!s.exists || !ESPERANDO.includes(s.data().status)) return null;
         t.update(ref, { status: 'trabalhando', onde: ONDE, pegoEm: agora() });
         return s.data();
       });
@@ -399,7 +403,7 @@ function iniciarAlterdata(db, log) {
   // os pendentes: cada um entra na fila (o mesmo id não entra duas vezes); a cada minuto, com o Contábil pronto, os que
   // ficaram (o Contábil estava fechado quando chegaram) entram de novo
   const pendentes = new Set();
-  ouvir('pedidos do Alterdata', () => pedidos.where('status', '==', 'pendente'), snap => {
+  ouvir('pedidos do Alterdata', () => (ESPERANDO.length > 1 ? pedidos.where('status', 'in', ESPERANDO) : pedidos.where('status', '==', 'pendente')), snap => {
     for (const ch of snap.docChanges()) {
       if (ch.type === 'removed') { pendentes.delete(ch.doc.id); fila.saiu(ch.doc.id); } else {
         pendentes.add(ch.doc.id); fila.chegou(ch.doc.id);
