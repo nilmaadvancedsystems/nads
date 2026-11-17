@@ -7324,5 +7324,9 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .drive-nav-vazio{padding:16px;margin:0;}
 /* o robô puxando no ⬆ (17/11/2026): a barra e o × no lugar do botão; o Cancelar fica acima da camada que trava a tela */
 .imp-robo-mini{display:inline-flex;align-items:center;gap:6px;min-width:96px;}
+/* o Escolher arquivo do Verificar por conta com o botão Vitor ao lado (17/11/2026) */
+.vc-razao-linha{display:flex;align-items:stretch;gap:8px;}
+.vc-razao-linha .file-picker{flex:1 1 auto;min-width:0;}
+.vc-razao-linha .imp-robo-mini{min-width:140px;}
 .imp-robo-mini .imp-robo-barra{flex:1 1 60px;min-width:60px;}
 .imp-robo-cancelar{position:relative;z-index:61;}
