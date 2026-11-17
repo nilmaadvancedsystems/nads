@@ -22,7 +22,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const { drive, acesso } = useDrive();
   const [login, setLogin] = useState({ aberto: false, usuario: '', senha: '', entrando: false, erro: '' });
   const [pendente, setPendente] = useState<Linha | null>(null);
-  const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[] } | null>(null);
+  // mes: o mês da grade em que entra (o Selecionar no Drive de um mês, 17/11/2026); sem ele, a competência da tela
+  const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[]; mes?: string; titulo?: string } | null>(null);
   const [buscando, setBuscando] = useState<string | null>(null);
   // "Cancelar" a busca de vários meses: para antes do próximo mês
   const cancelado = useRef(false);
@@ -166,11 +167,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const doMes = (r: { arquivo: creditor.ArquivoAchado | null; candidatos: creditor.ArquivoAchado[] }) =>
     r.arquivo ? [r.arquivo, ...r.candidatos.filter(c => c.id !== r.arquivo?.id && c.daCompetencia)] : [];
 
-  async function usar(linha: Linha, a: creditor.ArquivoAchado, outros: creditor.ArquivoAchado[] = []) {
+  async function usar(linha: Linha, a: creditor.ArquivoAchado, outros: creditor.ArquivoAchado[] = [], mes?: string) {
     setEscolha(null);
     vm.marcarLendo(linha.id);
     try {
-      await trazer(linha, [a, ...outros]);
+      await trazer(linha, [a, ...outros], mes);
     } catch (e) {
       vm.marcarLendo(null);
       vm.avisarErro('O extrato não veio do Drive', mensagemDeErro(e));
@@ -203,6 +204,31 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
       if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo, doMes(r).slice(1));
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
+    } catch (e) {
+      vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
+    } finally {
+      setBuscando(null);
+    }
+  }
+
+  /**
+   * Selecionar no Drive (Vitor, 17/11/2026: "abre uma popup no mês do contábil da empresa e o usuário seleciona o arquivo"): a
+   * janela de escolha com os arquivos do mês na pasta da empresa; o escolhido entra no extrato daquele mês.
+   */
+  async function selecionar(linha: Linha, mes: string) {
+    if (!acesso.entrou) {
+      if (drive.loginDeFora) { vm.avisarErro('Entre no Entregas', 'O Drive usa o mesmo login do Entregas.'); return; }
+      depois.current = () => { void selecionar(linha, mes); };
+      setLogin(l => ({ ...l, aberto: true, erro: '' }));
+      return;
+    }
+    setBuscando(linha.id);
+    try {
+      const pasta = await drive.pastaDoCliente(codigo);
+      const lista = x.arquivosDoMesNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
+      const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
+      setEscolha({ linha, mes, titulo: 'Selecionar no Drive · ' + linha.nome + ' · ' + rotulo, candidatos: lista,
+        texto: !pasta ? 'Não achei a pasta da empresa no Drive.' : lista.length ? 'Escolha o extrato de ' + rotulo + ' na pasta da empresa.' : 'Nenhum arquivo de ' + rotulo + ' na pasta da empresa no Drive.' });
     } catch (e) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
     } finally {
@@ -442,7 +468,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     /** pede o login do Entregas e, ao entrar, faz `f` */
     pedirLogin: (f: () => void) => { depois.current = f; setLogin(l => ({ ...l, aberto: true, erro: '' })); },
     escolha,
-    usar: (a: creditor.ArquivoAchado) => { if (escolha) void usar(escolha.linha, a); },
+    usar: (a: creditor.ArquivoAchado) => { if (escolha) void usar(escolha.linha, a, [], escolha.mes); },
+    selecionar: (linha: Linha, mes: string) => { void selecionar(linha, mes); },
     fecharEscolha: () => setEscolha(null),
     /** o link temporário para ver o arquivo do Drive (não guardar) */
     link: (arquivo: { id: string; nome: string }) => drive.link(arquivo.id, arquivo.nome),

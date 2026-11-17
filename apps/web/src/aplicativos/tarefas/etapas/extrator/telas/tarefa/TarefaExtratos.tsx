@@ -323,7 +323,7 @@ function DriveDoSemMovimento({ subindo, arquivo }: { subindo: boolean; arquivo: 
   return <span className="icon-btn icon-btn-sm imp-btn imp-drive" title={'Arquivado no Drive: ' + arquivo.nome} aria-label="Arquivado no Drive"><LogoDrive /></span>;
 }
 
-function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive , roboDoRazao}: {
+function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onSelecionar, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive , roboDoRazao}: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
@@ -331,7 +331,7 @@ function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceita
   soltar?: boolean;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
-  onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
+  onDrive: (mes: string) => void; onSelecionar?: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
   /** o olhinho do mês importado sem o Drive ligado: o arquivo (do computador nesta aba, ou o do Drive) ou os lançamentos;
    *  semMovimento = o olhinho do "s/ mov." sem o arquivo à mão */
   onVerImportado: (lado: 'banco' | 'sistema', mes: string, semMovimento?: boolean) => void;
@@ -374,7 +374,7 @@ function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceita
     }
     if (lado === 'banco' && !info.qtdArquivos) {
       return <FaltaExtratoDoMes rotulo={m.rotulo} aceitar={aceitarExtrato} travado={trava} naTarefa={naTarefa} direita={n >= meses.length / 2}
-        onArquivos={fs => onArquivos(lado, fs, m.mes)} onDrive={() => onDrive(m.mes)} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
+        onArquivos={fs => onArquivos(lado, fs, m.mes)} onDrive={() => onDrive(m.mes)} onSelecionar={onSelecionar ? () => onSelecionar(m.mes) : undefined} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
     }
     // o olhinho em todo mês importado (Vitor, 19/10/2026: "deixa eu visualizar o importado, não somente deixe o check"): o
     // arquivo que veio do e-mail ou do computador (só nesta aba); senão, onVerImportado (o do Drive, ou os lançamentos)
@@ -428,9 +428,9 @@ function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceita
 }
 
 /** O extrato que falta num mês: só o ícone de importar; clicou, as opções (do computador, do Drive, sem movimento). */
-function FaltaExtratoDoMes({ rotulo, aceitar, travado, naTarefa, direita, onArquivos, onDrive, onEmail, onSemMovimento }: {
+function FaltaExtratoDoMes({ rotulo, aceitar, travado, naTarefa, direita, onArquivos, onDrive, onSelecionar, onEmail, onSemMovimento }: {
   rotulo: string; aceitar: string; travado: boolean; naTarefa: boolean; direita: boolean;
-  onArquivos: (fs: File[]) => void; onDrive: () => void; onEmail?: () => void; onSemMovimento: () => void;
+  onArquivos: (fs: File[]) => void; onDrive: () => void; onSelecionar?: () => void; onEmail?: () => void; onSemMovimento: () => void;
 }) {
   const arquivo = useRef<HTMLInputElement>(null);
   if (travado) return <span className="icon-btn icon-btn-sm imp-btn is-locked" aria-disabled="true" title={'Extrato de ' + rotulo}><Icone nome="upload" /></span>;
@@ -445,6 +445,12 @@ function FaltaExtratoDoMes({ rotulo, aceitar, travado, naTarefa, direita, onArqu
             <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onDrive(); }}>
               <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
             </button>
+            {/* a pessoa escolhe o arquivo do mês na pasta da empresa (Vitor, 17/11/2026) */}
+            {onSelecionar && (
+              <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onSelecionar(); }}>
+                <LogoDrive cor /><span className="popover-texto">Selecionar no Drive</span>
+              </button>
+            )}
             {/* o extrato que chegou por e-mail (Vitor, 13/10/2026): os filtros e o Buscar ficam na janela */}
             {onEmail && (
               <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onEmail(); }}>
@@ -1118,6 +1124,7 @@ export function TarefaExtratos() {
                 onVerImportado={(lado, mes, semMov) => { void verImportado(b, lado, mes, semMov); }}
                 onExcluir={(lado, mes) => { if (lado === 'banco') esquecerPuxado(chaveDoExtrato(s.codigo, b.id), mes); void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
+                onSelecionar={mes => d.selecionar(b, mes)}
                 onEmail={em.existe ? mes => em.abrir(b, mes) : undefined}
                 onVer={visualizarDoDrive}
                 puxados={mes => puxadosDe(chaveDoExtrato(s.codigo, b.id), mes)}
@@ -1148,11 +1155,11 @@ export function TarefaExtratos() {
         <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
           <div className={classeDaJanela({}) + ' drive-escolha'} role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
             <BotaoFechar canto onClick={d.fecharEscolha} />
-            <h3 id="tituloEscolha">Extrato do {d.escolha.linha.nome} no Drive</h3>
+            <h3 id="tituloEscolha">{d.escolha.titulo || 'Extrato do ' + d.escolha.linha.nome + ' no Drive'}</h3>
             <p>{d.escolha.texto}</p>
             {d.escolha.candidatos.length > 0 && (
               <div className="drive-candidatos">
-                {d.escolha.candidatos.slice(0, 12).map(a => {
+                {d.escolha.candidatos.slice(0, d.escolha.mes ? 60 : 12).map(a => {
                   // o nome do arquivo em cima e a pasta embaixo (o caminho inteiro numa linha embolava)
                   const partes = a.caminho.split(' › ');
                   return (
