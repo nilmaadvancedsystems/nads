@@ -194,6 +194,22 @@ function novo(id, tipo, codigo, competencia) {
     assert.match(pedidos.get('fr2').erro, /login do robô no Alterdata Fiscal não deu/);
   }
 
+  // ── o Cancelar do nads (17/11/2026): o pedido cancelado no meio para o roteiro e a tela é limpa
+  {
+    let limpou = 0, parou = false;
+    const f4 = criarFilaAlterdata({ banco, limiteMs: 5000, cancelarVerificarMs: 20, pastaDoPedido: id => path.join(BASE, 'cancela', id), limparTela: async () => { limpou++; },
+      rodar: async (rel, a4, passo4, sinal) => { await new Promise(resolve => sinal.addEventListener('abort', resolve)); parou = true; return { ok: false, erro: 'parado' }; } });
+    pedidos.set('fc', { status: 'pendente', tipo: 'razaoConta', codigo: 401, conta: '10503', competencia: '2026-08', ate: '2026-08', criadoEm: new Date().toISOString() });
+    f4.chegou('fc');
+    await espera(60);
+    pedidos.set('fc', { ...pedidos.get('fc'), status: 'cancelado' });
+    await espera(5);
+    await f4.ocioso();
+    assert.ok(parou, 'o roteiro não parou com o cancelar');
+    assert.strictEqual(limpou, 1, 'a tela não foi limpa depois de cancelar');
+    assert.strictEqual(pedidos.get('fc').status, 'cancelado');
+  }
+
   fs.rmSync(BASE, { recursive: true, force: true });
   console.log('ok: ' + pedidos.size + ' pedidos, ' + chamadas.length + ' roteiros, no máximo ' + maximo + ' ao mesmo tempo; o travado virou erro e a fila seguiu; duas máquinas: ' + porMaquina.s.length / 2 + ' no servidor + ' + porMaquina.p.length / 2 + ' no PC, nenhum repetido');
 })().catch(err => { console.error('FALHOU:', err.message); process.exit(1); });

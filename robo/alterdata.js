@@ -391,7 +391,13 @@ function iniciarAlterdata(db, log) {
 
   const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata'),
     // ALTERDATA_COPIA: a pasta onde fica uma cópia de cada planilha do Fiscal (alterdata-no-pc.js: Downloads\robo)
-    copiarPara: process.env.ALTERDATA_COPIA || '' });
+    copiarPara: process.env.ALTERDATA_COPIA || '',
+    // o Cancelar do nads (17/11/2026): fecha o que o roteiro deixou aberto no Alterdata
+    limparTela: async () => {
+      const r = await rodarPy(path.join(__dirname, 'alterdata_limpar.py'), [], 60 * 1000);
+      const m = r.out.match(/RESULTADO:\s*(\{.*\})/);
+      log('Alterdata: cancelado; voltei a tela: ' + (m ? m[1] : 'sem resultado'));
+    } });
   pausaLocal.quandoRetomar('alterdata', () => fila.retomar());
 
   // o que ficou no meio, nesta máquina, quando o robô reiniciou volta para a fila uma vez

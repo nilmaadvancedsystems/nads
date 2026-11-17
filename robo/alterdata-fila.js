@@ -89,7 +89,8 @@ function mensagemClara(classe, erros, extra) {
 }
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true,
-  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false, copiarPara = '' }) {
+  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false, copiarPara = '',
+  limparTela = null, cancelarVerificarMs = 2000 }) {
   const fila = [];
   let ocupado = false;
   let atual = null;
@@ -206,15 +207,23 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   }
 
   /** Roda um relatório com prazo: estourou, o sinal para o roteiro e volta o erro. */
-  async function comPrazo(relatorio, args, passo, clique) {
+  async function comPrazo(relatorio, args, passo, clique, idDoPedido) {
     const ctl = new AbortController();
-    let relogio;
+    let relogio, vigia;
     const prazo = new Promise(resolve => {
       relogio = setTimeout(() => { ctl.abort(); resolve({ ok: false, prazo: true, erro: 'passou de ' + Math.round(limiteMs / 60000) + ' min sem terminar; o robô parou e seguiu a fila' }); }, limiteMs);
     });
+    // o Cancelar do nads (17/11/2026, Vitor: "o robô para tudo e volta pro ponto inicial"): o pedido cancelado no meio para o
+    // roteiro na hora (o sinal mata o Python); quem chamou limpa a tela
+    const cancelou = new Promise(resolve => {
+      if (!idDoPedido) return;
+      vigia = setInterval(() => {
+        void banco.ler(idDoPedido).then(p => { if (p && p.status === 'cancelado') { ctl.abort(); resolve({ ok: false, cancelado: true, erro: 'cancelado' }); } }).catch(() => {});
+      }, cancelarVerificarMs);
+    });
     try {
-      return await Promise.race([rodar(relatorio, args, passo, ctl.signal, clique).catch(e => ({ ok: false, erro: e.message })), prazo]);
-    } finally { clearTimeout(relogio); }
+      return await Promise.race([rodar(relatorio, args, passo, ctl.signal, clique).catch(e => ({ ok: false, erro: e.message })), prazo, cancelou]);
+    } finally { clearTimeout(relogio); clearInterval(vigia); }
   }
 
   async function atender(id) {
@@ -461,9 +470,16 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     // o número da empresa na frente (17/11/2026, Vitor: "ele coloca o numero da empresa e o nome do arquivo")
     const nomeBase = codigo + ' ' + rotuloRel + ' ' + lote;
     const destino = path.join(pasta, nomeBase + '.xls');
-    const r = await comPrazo(dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique);
+    const r = await comPrazo(dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique, id);
     const fimP = await banco.ler(id);
-    if (fimP && fimP.status === 'cancelado') return;
+    if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
+      // volta o Alterdata ao ponto de antes (fecha o que o roteiro abriu) e apaga a pasta do pedido
+      if (limparTela) { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois de cancelar', err.message); } }
+      try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (_) { /* segue */ }
+      await banco.atualizar(id, { andamento: { pct: 0, etapa: 'cancelado', clique: '', em: agora() } }).catch(() => {});
+      log('Alterdata: cancelado no meio', id);
+      return;
+    }
     const arquivo = r.ok ? [r.arquivo, destino].find(x => x && fs.existsSync(x)) : '';
     if (!arquivo) {
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);

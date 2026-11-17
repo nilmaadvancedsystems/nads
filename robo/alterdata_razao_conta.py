@@ -427,10 +427,16 @@ def janelas_dentro(h):
     return r
 
 
+BOTOES = {}
+
+
 def preencher(h):
     contar_tela(h, 'a consulta de lançamentos')
     x0, y0, _, _ = win32gui.GetWindowRect(h)
     its = itens(h)
+    # o Imprimir guardado agora, com a grade vazia (17/11/2026, Vitor: "um delay imenso para salvar em excel": depois do Consultar,
+    # achar o botão lia cada linha da grade pelo UI Automation)
+    BOTOES['imprimir'] = next((e for e in its if norm(nome(e)) == 'imprimir' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
     textos = sorted([e for e in its if classe(e) == 'TcxTextEdit'], key=lambda e: (caixa(e)[1] // 20, caixa(e)[0]))
     mascaras = sorted([e for e in its if classe(e) == 'TcxMaskEdit'], key=lambda e: (caixa(e)[1] // 20, caixa(e)[0]))
     diag('as caixas: ' + ' | '.join(classe(e) + '@' + str(caixa(e)[0] - x0) + ',' + str(caixa(e)[1] - y0) + ' ' + str(caixa(e)[2] - caixa(e)[0]) + 'w' for e in textos + mascaras))
@@ -509,7 +515,8 @@ def exportar(h):
     limite = time.time() + 120
     while time.time() < limite and not sv:
         checar_aviso('antes do Exportar')
-        imp = next((e for e in itens(h) if norm(nome(e)) == 'imprimir' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
+        imp = BOTOES.get('imprimir') or next((e for e in itens(h) if norm(nome(e)) == 'imprimir' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
+        BOTOES['imprimir'] = None
         if not imp:
             time.sleep(1)
             continue
@@ -527,7 +534,7 @@ def exportar(h):
         if not item:
             falhar('o Imprimir não mostrou o "Exportar para excel"')
         clicar(item, nome(item))
-        sv = esperar(salvar_como, 15)
+        sv = esperar(salvar_como, 15, .2)
         if not sv:
             checar_aviso('ao exportar')
     if not sv:
@@ -567,7 +574,7 @@ def exportar(h):
             novo = max(novos, key=os.path.getmtime)
             t = os.path.getsize(novo)
             tamanhos.append(t)
-            if t > 0 and tamanhos[-4:] == [t, t, t, t]:
+            if t > 0 and tamanhos[-2:] == [t, t]:
                 break
     if not novo or os.path.getsize(novo) <= 0:
         falhar('a planilha não apareceu na pasta depois do Salvar')

@@ -2,7 +2,7 @@
 # o resto deu bug, para puxar o balancete dinamico"). O caminho ensinado, no Contábil JÁ ABERTO E LOGADO:
 #   aba Consultas → Balancete Dinâmico (TfrmBalanceteDinamicoConsulta) → a empresa (a caixa com botão, Enter) → o período em
 #   mês/ano, as duas caixas lado a lado (01/2026 a 09/2026: uma consulta só, não mês a mês) → "Saldo por mês" → "Ocultar contas
-#   sem movimento" marcado → Exportar (sem o Consultar) → "Configurações para salvar em excel": Gravar → o "Salvar" do Windows.
+#   sem movimento" DESMARCADO → Exportar (sem o Consultar) → "Configurações para salvar em excel": Gravar → o "Salvar" do Windows.
 # Travas: só preenche empresa e período, marca as duas opções ensinadas e clica em Exportar, Gravar (a configuração do Excel, sem
 # mexer nela) e Salvar; pergunta depois do Salvar leva Não; janela inesperada: para e conta.
 #
@@ -416,9 +416,15 @@ def abrir_a_consulta(principal):
     return h
 
 
+BOTOES = {}
+
+
 def preencher(h):
     contar_tela(h, 'o balancete dinâmico')
     its = itens(h)
+    # o Exportar guardado agora, com a tela vazia (17/11/2026, Vitor: "salvar rapido, que ta com um delay imenso": procurar o botão
+    # na tela cheia lia cada célula da grade pelo UI Automation)
+    BOTOES['exportar'] = next((e for e in its if norm(nome(e)) == 'exportar' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
     emp = sorted([e for e in its if classe(e) == 'TcxButtonEdit'], key=lambda e: (caixa(e)[1] // 20, caixa(e)[0]))
     if not emp:
         falhar('não achei a caixa da empresa')
@@ -452,16 +458,22 @@ def preencher(h):
     if not r:
         falhar('não achei a opção "Saldo por mês"')
     clicar(r, 'Saldo por mês')
-    passo('ocultar contas sem movimento')
+    # "Ocultar contas sem movimento" DESMARCADO (17/11/2026, Vitor: "falta desmarcar ocultar contas sem movimento"): vem marcado
+    passo('mostrar as contas sem movimento')
     cb = next((e for e in its if tipo(e) == 'CheckBox' and 'ocultar contas sem movimento' in norm(nome(e))), None)
     if not cb:
         falhar('não achei "Ocultar contas sem movimento"')
     try:
         marcado = cb.get_toggle_state() == 1
     except Exception:
-        marcado = False
-    if not marcado:
-        clicar(cb, 'Ocultar contas sem movimento')
+        marcado = True   # sem saber, o padrão da tela: marcado
+    if marcado:
+        clicar(cb, 'desmarcar Ocultar contas sem movimento')
+        try:
+            if cb.get_toggle_state() == 1:
+                clicar(cb, 'desmarcar Ocultar contas sem movimento')
+        except Exception:
+            pass
     time.sleep(.5)
 
 
@@ -483,19 +495,27 @@ def exportar(h):
     sv = None
     limite = time.time() + 120
     while time.time() < limite and not sv:
-        b = next((e for e in itens(h) if norm(nome(e)) == 'exportar' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
+        b = BOTOES.get('exportar') or next((e for e in itens(h) if norm(nome(e)) == 'exportar' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
+        BOTOES['exportar'] = None   # se não abriu, procura de novo na próxima volta
         if not b:
             time.sleep(1)
             continue
         clicar(b, 'Exportar')
         # a "Configurações para salvar em excel": Gravar, sem mexer em nada (como o Vitor fez)
-        cf = esperar(lambda: next((x for x in topo_do_fiscal() if win32gui.GetClassName(x) == 'TfrmConfiguraExibicaoSaldo'), None), 8)
+        cf = esperar(lambda: next((x for x in topo_do_fiscal() if win32gui.GetClassName(x) == 'TfrmConfiguraExibicaoSaldo'), None), 8, .2)
         if cf:
-            g = next((e for e in itens(cf) if tipo(e) == 'Button' and norm(nome(e)) == 'gravar'), None)
-            if not g:
-                falhar('não achei o Gravar das Configurações para salvar em excel')
-            clicar(g, 'Gravar')
-        sv = esperar(salvar_como, 30)
+            # o Gravar pelo Windows (é um botão-janela): sem ler a tela pelo UI Automation
+            g = botao_win32(cf, 'Gravar', '&Gravar')
+            if g:
+                clique('Gravar')
+                x0, y0, x1, y1 = win32gui.GetWindowRect(g)
+                mouse.click(coords=((x0 + x1) // 2, (y0 + y1) // 2))
+            else:
+                gg = next((e for e in itens(cf) if tipo(e) == 'Button' and norm(nome(e)) == 'gravar'), None)
+                if not gg:
+                    falhar('não achei o Gravar das Configurações para salvar em excel')
+                clicar(gg, 'Gravar')
+        sv = esperar(salvar_como, 30, .2)
         if not sv:
             mensagem_na_frente('ao exportar')
     if not sv:
@@ -535,7 +555,7 @@ def exportar(h):
             novo = max(novos, key=os.path.getmtime)
             t = os.path.getsize(novo)
             tamanhos.append(t)
-            if t > 0 and tamanhos[-4:] == [t, t, t, t]:
+            if t > 0 and tamanhos[-2:] == [t, t]:
                 break
     if not novo or os.path.getsize(novo) <= 0:
         falhar('a planilha não apareceu na pasta depois do Salvar')
