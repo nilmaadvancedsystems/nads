@@ -598,8 +598,14 @@ def combo_ao_lado(its, comecos, texto, oque):
     return True
 
 
+BOTOES = {}
+
+
 def preencher(h):
     its = itens(h)
+    # o Exportar guardado agora, com a grade vazia (17/11/2026, Vitor: "um delay imenso": depois do Filtrar, achar o botão lia cada
+    # linha da grade pelo UI Automation; 35 s parado em "exportando")
+    BOTOES['exportar'] = next((e for e in its if 'excel' in norm(nome(e)) and ('export' in norm(nome(e)) or 'dados' in norm(nome(e))) and tipo(e) not in ('Text', 'Pane', 'Window')), None)
     contar_tela(h, 'a tela ' + TELA)
     if SO_VER:
         fim(ok=True, so_ver=True)
@@ -768,6 +774,10 @@ def preencher(h):
 
 
 def achar_exportar(h, principal):
+    if BOTOES.get('exportar'):
+        b = BOTOES['exportar']
+        BOTOES['exportar'] = None   # se não abrir, procura de novo na próxima volta
+        return b
     for w in (h, principal):
         for e in itens(w):
             n = norm(nome(e))
@@ -801,7 +811,7 @@ def exportar(h, principal):
             time.sleep(2)
             continue
         clicar(b, 'Exportar dados em Excel')
-        sv = esperar(salvar_como, 8)
+        sv = esperar(salvar_como, 8, .2)
         if sv:
             break
         msgs = mensagens()
@@ -865,7 +875,7 @@ def exportar(h, principal):
             novo = max(novos, key=os.path.getmtime)
             t = os.path.getsize(novo)
             tamanhos.append(t)
-            if t > 0 and tamanhos[-4:] == [t, t, t, t]:
+            if t > 0 and tamanhos[-2:] == [t, t]:
                 break
     if not novo or os.path.getsize(novo) <= 0:
         falhar('a planilha não apareceu na pasta depois do Salvar')
