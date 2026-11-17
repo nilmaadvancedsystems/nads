@@ -19,6 +19,9 @@ process.env.ALTERDATA_ONDE = process.env.ALTERDATA_ONDE || ('pc-' + String(proce
 // depois: "excluir o arquivo fisico depois de upar"): cada pedido trabalha numa subpasta de lá; com a planilha no nads, a
 // subpasta é apagada (a que deu erro fica, para ver o que houve)
 process.env.ALTERDATA_PEDIDOS = process.env.ALTERDATA_PEDIDOS || path.join(process.env.USERPROFILE || __dirname, 'Downloads', 'robo');
+// só os pedidos endereçados a este PC (17/11/2026, Vitor: "se todo mundo for usar meu pc, lascou"): o balancete e o razão que
+// o nads pede sozinho, e os pedidos de outras pessoas, ficam para o servidor
+process.env.ALTERDATA_SO_ENDERECADOS = process.env.ALTERDATA_SO_ENDERECADOS || '1';
 // as fotos da tela (o erro de janela) ficam fora do Downloads
 process.env.ALTERDATA_TELA = process.env.ALTERDATA_TELA || path.join(process.env.LOCALAPPDATA || __dirname, 'nads-alterdata', 'tela');
 

@@ -308,6 +308,10 @@ function iniciarAlterdata(db, log) {
       // o pedido do Fiscal (16/11/2026) precisa do Fiscal aberto e logado, não do Contábil (no PC do Vitor, o Contábil
       // ficou com a janela oculta e o pedido do Fiscal esperou à toa)
       const ped = await pedidos.doc(id).get();
+      // o pedido endereçado a uma máquina (17/11/2026, Vitor: "se todo mundo for usar meu pc, lascou"): o robô de um PC
+      // (ALTERDATA_SO_ENDERECADOS, alterdata-no-pc.js) só pega o que tem maquina == ele; o servidor não pega o que é de outra
+      const para = ped.exists ? String(ped.data().maquina || '') : '';
+      if (process.env.ALTERDATA_SO_ENDERECADOS === '1' ? para !== ONDE : (para && para !== ONDE)) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
       if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
