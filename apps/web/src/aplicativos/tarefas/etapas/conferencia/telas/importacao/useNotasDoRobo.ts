@@ -67,12 +67,15 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   }
 
   const andando = !!atual && ANDANDO.includes(atual.status);
+  // a tela travada enquanto o robô está no Alterdata ou a planilha está entrando (Vitor, 17/11/2026: "so bloqueia toda a acao
+  // da tela"); na fila (sem máquina pronta pode demorar) só o botão fica carregando
+  const bloqueia = (!!atual && atual.status === 'trabalhando') || lendo;
   // fora do modo desenvolvedor, o erro sem o detalhe da tela (o tamanho, as janelas, o caminho da foto)
   const erroLimpo = (t: string) => (dev ? t : t.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '').trim());
   const situacao = !atual ? '' : atual.status === 'pendente' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || 'O robô está no Alterdata Fiscal')
     : atual.status === 'erro' ? 'O robô não conseguiu puxar do Alterdata: ' + (erroLimpo(atual.erro) || 'sem detalhe') : '';
   return {
-    disponivel, pedindo, andando, lendo, pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',
+    disponivel, pedindo, andando, lendo, bloqueia, dev, pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',
     erro: atual?.status === 'erro' && !andando, falha, pedir, cancelar,
     /** o que o robô viu nas telas do Fiscal (o modo desenvolvedor mostra embaixo) */
     diag: !andando && dev ? atual?.diag || [] : [],

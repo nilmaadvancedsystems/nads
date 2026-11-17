@@ -1693,9 +1693,11 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-robo-barra > span{display:block;height:100%;background:var(--success);}
 /* o robô do Fiscal embaixo da caixa da Importação (16/11/2026): a barra e o que ele está fazendo, numa linha */
 .imp-robo-fiscal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--ink-muted);}
-.imp-robo-fiscal .imp-robo-barra{flex:0 0 120px;}
 .imp-robo-fiscal > span{flex:1 1 200px;min-width:0;}
 .imp-robo-diag{flex:1 0 100%;}
+/* a tela travada enquanto o robô puxa do Alterdata (17/11/2026): nada responde ao clique; a barra continua à mostra */
+.imp-robo-bloqueio{position:fixed;inset:0;z-index:900;cursor:progress;background:transparent;}
+.imp-robo-fiscal .imp-robo-barra{flex:1 1 200px;}
 /* o botão só com a marca do Alterdata (17/11/2026) */
 .btn-icone-alterdata{padding-inline:12px;min-width:44px;justify-content:center;}
 .imp-robo-diag pre{max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;background:var(--surface-2);padding:8px;border-radius:6px;}
