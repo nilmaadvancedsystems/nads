@@ -4,6 +4,10 @@
 // Pagas) dentro do cartão, cada uma com as ações em três casas fixas, e embaixo o que o escritório entrega no mês numa
 // lista simples alinhada; à direita, o calendário discreto (só os pontos; o clique no dia destaca o que vence nele) e os
 // avisos da contabilidade. No celular, uma coluna: as guias primeiro. Só desenha: o estado e as contas vêm de useGuias.ts.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"): saíram o cartão "O que o escritório
+// entrega" (trabalho interno do escritório) e os "Avisos da contabilidade" (já aparecem no "Precisa de você" da Visão
+// geral); o resumo ficou com dois fatos; cada guia com a data curta, o valor e um botão (o resto no "⋯"). Ficam a lista
+// (com as abas A pagar e Pagas) e, ao lado, o calendário.
 import './guias.css';
 import { Icone, SeletorMes } from '@nads/ui';
 import { useRef } from 'react';
@@ -15,7 +19,6 @@ import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
 
 const SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-const TOM_DO_CERTIFICADO = { ok: 'Em dia', warn: 'Vence logo', bad: 'Vencido' } as const;
 
 export function Guias(props: DaCasca) {
   const vm = useGuias(props);
@@ -24,17 +27,17 @@ export function Guias(props: DaCasca) {
   const escolherDia = (dia: number) => {
     const soltar = vm.diaEscolhido === dia;
     vm.escolherDia(dia);
-    if (!soltar) requestAnimationFrame(() => raiz.current?.querySelector<HTMLElement>('.cli-gu-lista [data-dia="' + dia + '"], .cli-gu-entregas [data-dia="' + dia + '"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    if (!soltar) requestAnimationFrame(() => raiz.current?.querySelector<HTMLElement>('.cli-gu-lista [data-dia="' + dia + '"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   };
-  const temAvisos = vm.avisos.length > 0 || !!vm.certificado;
-  const temLado = vm.calendario.mostra || temAvisos;
+  // (16/11/2026) sobrou só o calendário ao lado: sem nada no mês, a lista ocupa a largura toda
+  const temLado = vm.calendario.mostra;
   const naPagas = vm.aba === 'pagas';
   return (
     <>
       <div className="cli-titulo">
         <div>
           <MarcaDaTela /><h1 className="page-title">Guias e obrigações</h1><AjudaDaTela />
-          {/* os números do mês numa linha (13/11/2026: no lugar dos três cartões grandes do alto) */}
+          {/* os números do mês numa linha (16/11/2026, "muita informação": no máximo dois fatos) */}
           <p className="cli-subtitulo cli-gu-resumo cli-numeros-guias">
             {vm.resumo.map((t, i) => (
               <span key={i} className={'cli-gu-trecho' + (t.tom ? ' t-' + t.tom : '')}>{t.antes && t.antes + ' '}<b>{t.valor}</b>{t.depois && ' ' + t.depois}</span>
@@ -77,70 +80,29 @@ export function Guias(props: DaCasca) {
               </ul>
             ) : <p className="cli-gu-vazio"><Icone nome="checkCircle" width={18} height={18} />{vm.vazio}</p>}
           </section>
-
-          {/* o que o escritório entrega no mês, numa lista simples alinhada: a data, o nome e a situação */}
-          {vm.entregas.length > 0 && (
-            <section className="card cli-gu-entregas">
-              <div className="cli-gu-cabeca"><h3>O que o escritório entrega</h3><span className="cli-gu-cabeca-dir">{vm.resumoDasEntregas}</span></div>
-              <ul className="cli-gu-entregas-lista">
-                {vm.entregas.map(e => (
-                  <li key={e.id} data-dia={e.dia} className={'cli-gu-entrega' + (e.feita ? ' feita' : '') + (e.hoje ? ' hoje' : '') + (e.escolhida ? ' escolhida' : '')}>
-                    <span className="cli-gu-data">{e.data}</span>
-                    <span className="cli-gu-entrega-nome">{e.nome}</span>
-                    <span className="cli-gu-entrega-sit">{e.feita ? <><Icone nome="check" width={13} height={13} />Entregue</> : e.hoje ? 'Hoje' : 'A entregar'}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
 
         {temLado && (
           <div className="cli-gu-col cli-gu-lado">
             {/* o calendário do mês, discreto: hoje em carmim, os pontos na cor da situação; o clique destaca o dia */}
-            {vm.calendario.mostra && (
-              <section className="card cli-gu-agenda cli-agenda-mes">
-                <div className="cli-gu-cabeca"><h3>{vm.calendario.titulo}</h3></div>
-                <div className="cli-gu-semana" aria-hidden="true">{SEMANA.map((d, k) => <span key={k}>{d}</span>)}</div>
-                <div className="cli-gu-cal cli-calendario">
-                  {vm.calendario.semanas.flat().map(d => d.vazio ? <span key={d.chave} /> : (
-                    <button key={d.chave} type="button" disabled={!d.pontos.length} title={d.titulo || undefined} aria-label={d.titulo || 'Dia ' + d.dia}
-                      aria-pressed={d.pontos.length ? d.escolhido : undefined} onClick={() => escolherDia(d.dia)}
-                      className={'cli-gu-dia' + (d.hoje ? ' hoje cli-cal-hoje' : '') + (d.passou ? ' passou' : '') + (d.escolhido ? ' escolhido' : '') + (d.pontos.length ? ' tem' : '')}>
-                      <span className="cli-gu-num">{d.dia}</span>
-                      <span className="cli-gu-pontos">{d.pontos.map((c, k) => <i key={k} className={c} />)}</span>
-                    </button>
-                  ))}
-                </div>
-                {/* (13/11/2026, revisão) só as cores que aparecem no mês */}
-                <p className="cli-gu-legenda cli-legenda-cal" aria-hidden="true">
-                  {vm.calendario.legenda.map(l => <span key={l.classe}><i className={l.classe} />{l.rotulo}</span>)}
-                </p>
-              </section>
-            )}
-
-            {/* os avisos da contabilidade: uma lista fina, sem ícones */}
-            {temAvisos && (
-              <section className="card cli-gu-avisos">
-                <div className="cli-gu-cabeca"><h3>Avisos da contabilidade</h3></div>
-                <ul className="cli-gu-avisos-lista">
-                  {vm.avisos.map(a => (
-                    <li key={a.id}>
-                      <b>{a.titulo}</b>
-                      <p>{a.texto}</p>
-                      {a.ir && <button type="button" className="cli-gu-link" onClick={() => vm.irPara(a.ir!)}>{a.ir === 'documentos' ? 'Enviar agora' : 'Abrir'}<Icone nome="chevronRight" width={14} height={14} /></button>}
-                    </li>
-                  ))}
-                  {vm.certificado && (
-                    <li>
-                      <span className="cli-gu-aviso-topo"><b>Certificado digital {vm.certificado.tipo}</b><span className={'cli-gu-tom t-' + vm.certificado.tom}>{TOM_DO_CERTIFICADO[vm.certificado.tom]}</span></span>
-                      <p>{vm.certificado.texto}</p>
-                      {vm.certificado.tom !== 'ok' && <button type="button" className="cli-gu-link" onClick={() => vm.irPara('chamados')}>Pedir a renovação<Icone nome="chevronRight" width={14} height={14} /></button>}
-                    </li>
-                  )}
-                </ul>
-              </section>
-            )}
+            <section className="card cli-gu-agenda cli-agenda-mes">
+              <div className="cli-gu-cabeca"><h3>{vm.calendario.titulo}</h3></div>
+              <div className="cli-gu-semana" aria-hidden="true">{SEMANA.map((d, k) => <span key={k}>{d}</span>)}</div>
+              <div className="cli-gu-cal cli-calendario">
+                {vm.calendario.semanas.flat().map(d => d.vazio ? <span key={d.chave} /> : (
+                  <button key={d.chave} type="button" disabled={!d.pontos.length} title={d.titulo || undefined} aria-label={d.titulo || 'Dia ' + d.dia}
+                    aria-pressed={d.pontos.length ? d.escolhido : undefined} onClick={() => escolherDia(d.dia)}
+                    className={'cli-gu-dia' + (d.hoje ? ' hoje cli-cal-hoje' : '') + (d.passou ? ' passou' : '') + (d.escolhido ? ' escolhido' : '') + (d.pontos.length ? ' tem' : '')}>
+                    <span className="cli-gu-num">{d.dia}</span>
+                    <span className="cli-gu-pontos">{d.pontos.map((c, k) => <i key={k} className={c} />)}</span>
+                  </button>
+                ))}
+              </div>
+              {/* (13/11/2026, revisão) só as cores que aparecem no mês */}
+              <p className="cli-gu-legenda cli-legenda-cal" aria-hidden="true">
+                {vm.calendario.legenda.map(l => <span key={l.classe}><i className={l.classe} />{l.rotulo}</span>)}
+              </p>
+            </section>
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 // As telas do Administrativo da Área do Cliente (12/11/2026): os Dados cadastrais e o Fale com o escritório (antes,
 // janelas; "quero uma tela melhor disso aqui") e o Faturamento ("quero o faturamento do cliente aqui via fiscal"). Só
 // desenham: os dados vêm de useAdministrativo.ts.
-import { Icone, LogoBanco, LogoExcel, LogoGmail, SeletorMes, useRetorno } from '@nads/ui';
+import { Icone, LogoBanco, LogoExcel, LogoGmail, MenuSuspenso, SeletorMes, useRetorno } from '@nads/ui';
 import { WhatsAppContorno } from '../partes/WhatsAppContorno';
 import { useRef, type ReactNode } from 'react';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
@@ -13,8 +13,13 @@ import { useVisualizar } from './useVisualizar';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
+import './faturamento.css';
 
-/** O relatório do dia, no estilo da lista do portal do SIEG: os totais no alto e uma linha por nota. */
+/**
+ * O relatório do dia, no estilo da lista do portal do SIEG: os totais no alto e uma linha por nota. Enxuto em 16/11/2026
+ * ("muita informação"): cada nota só com o número, o destinatário, o valor e a DANFE; a série, o CFOP e a situação
+ * "Autorizada" saíram (a cancelada continua marcada) e a chave de acesso foi para o menu "⋯".
+ */
 function RelatorioDoDia({ r, onCopiar, pegarDanfe }: { r: VistaDoRelatorio; onCopiar: (chave: string) => void; pegarDanfe: (chave: string) => Promise<{ nome: string; arquivo: Blob } | { erro: string }> }) {
   // a DANFE abre na janela de visualização (a mesma da guia), por cima do relatório
   const vista = useVisualizar();
@@ -24,29 +29,29 @@ function RelatorioDoDia({ r, onCopiar, pegarDanfe }: { r: VistaDoRelatorio; onCo
       <div className="cli-relatorio-resumo">
         {r.resumo.map(x => <div key={x.rotulo}><span className="cli-sobre">{x.rotulo}</span><b>{x.valor}</b></div>)}
       </div>
-      {r.porTipo && <p className="hint">{r.porTipo}</p>}
       {r.aviso && <p className="hint">{r.aviso}</p>}
       {r.vazio ? <p className="hint cli-ficha-dica">Nenhuma nota emitida neste dia.</p> : (
         <div className="cli-relatorio-rolo">
-          <table className="cli-tabela cli-tabela-sieg">
-            <thead><tr><th>Número</th><th>Modelo</th><th>Destinatário</th><th className="cli-so-largo">CFOP</th><th className="num">Valor</th><th>Situação</th><th className="cli-so-largo">Chave de acesso</th><th aria-label="DANFE" /></tr></thead>
+          <table className="cli-tabela cli-tabela-sieg cli-fat-notas">
+            <thead><tr><th>Número</th><th>Destinatário</th><th className="num">Valor</th><th aria-label="Ações" /></tr></thead>
             <tbody>
               {r.notas.map(n => (
                 <tr key={n.chave} className={(n.cancelada ? 'cancelada' : '') + (n.temDanfe ? ' cli-linha-clica' : '')} onClick={n.temDanfe ? () => verDanfe(n.chave) : undefined}>
-                  <td className="num-esq"><b>{n.numero}</b><span className="hint"> · série {n.serie}</span></td>
-                  <td><span className={'cli-modelo m-' + n.tipo.replace(/\W/g, '').toLowerCase()}>{n.tipo}</span></td>
-                  <td className="cli-relatorio-cliente" title={n.cliente}>{n.cliente}</td>
-                  <td className="cli-so-largo cli-suave">{n.cfop}</td>
+                  <td className="num-esq"><span className="cli-fat-nota-num"><b>{n.numero}</b><span className={'cli-modelo m-' + n.tipo.replace(/\W/g, '').toLowerCase()}>{n.tipo}</span></span></td>
+                  <td className="cli-relatorio-cliente" title={n.cliente}>{n.cliente}{n.cancelada && <span className="badge badge-bad cli-fat-cancelada">Cancelada</span>}</td>
                   <td className="num"><span className="cli-valor">{n.valor}</span></td>
-                  <td>{n.cancelada ? <span className="badge badge-bad">Cancelada</span> : <span className="badge badge-ok">Autorizada</span>}</td>
-                  <td className="cli-so-largo">{n.chaveCurta && <button type="button" className="cli-chave-botao" title={n.chaveInteira} onClick={ev => { ev.stopPropagation(); onCopiar(n.chaveInteira); }}>{n.chaveCurta}<Icone nome="copiar" width={13} height={13} /></button>}</td>
                   <td className="cli-relatorio-danfe">
-                    {n.temDanfe && (
-                      <button type="button" className="btn btn-sm" disabled={!!vista.abrindo} aria-label={'Ver a DANFE da nota ' + n.numero}
-                        onClick={ev => { ev.stopPropagation(); verDanfe(n.chave); }}>
-                        <Icone nome="olho" width={14} height={14} />{vista.abrindo === n.chave ? 'Abrindo…' : 'DANFE'}
-                      </button>
-                    )}
+                    <span className="cli-fat-acoes" onClick={ev => ev.stopPropagation()}>
+                      {n.temDanfe ? (
+                        <button type="button" className="btn btn-sm" disabled={!!vista.abrindo} aria-label={'Ver a DANFE da nota ' + n.numero} onClick={() => verDanfe(n.chave)}>
+                          <Icone nome="olho" width={14} height={14} />{vista.abrindo === n.chave ? 'Abrindo…' : 'DANFE'}
+                        </button>
+                      ) : <span className="cli-fat-vaga" aria-hidden="true" />}
+                      {n.chaveCurta ? (
+                        <MenuSuspenso rotulo="" icone="mais" className="icon-btn" semSeta direita flutuante compacto dica="Mais ações" titulo={'Mais ações: nota ' + n.numero}
+                          itens={[{ rotulo: 'Copiar a chave de acesso', icone: 'copiar', onClick: () => onCopiar(n.chaveInteira) }]} />
+                      ) : <span className="cli-fat-vaga-menu" aria-hidden="true" />}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -96,15 +101,18 @@ export function Colunas({ colunas, eixo, rotulo, onFoco, onClique, compacto }: {
   );
 }
 
-/** Uma lista em ranking (os maiores clientes, as operações): o nome, o valor, a parte e a barra. */
-function Ranking({ itens, fim }: { itens: { chave: string; nome: string; detalhe?: string; valor: string; parte: string; largura: number }[]; fim?: { texto: string; valor: string; parte: string } | null }) {
+/**
+ * Os maiores clientes em ranking: o nome, as notas, a barra e o valor (16/11/2026, "muita informação": sem a % ao lado
+ * do valor, que a barra já mostra).
+ */
+function Ranking({ itens, fim }: { itens: { chave: string; nome: string; detalhe?: string; valor: string; largura: number }[]; fim?: { texto: string; valor: string } | null }) {
   return (
-    <ol className="cli-ranking">
+    <ol className="cli-ranking cli-fat-ranking">
       {itens.map(x => (
         <li key={x.chave}>
           <span className="cli-ranking-topo">
             <span className="cli-ranking-nome"><b>{x.nome}</b>{x.detalhe && <span className="hint">{x.detalhe}</span>}</span>
-            <span className="cli-ranking-num"><b>{x.valor}</b><span className="hint">{x.parte}</span></span>
+            <span className="cli-ranking-num"><b>{x.valor}</b></span>
           </span>
           <span className="cli-ranking-barra" aria-hidden="true"><span style={{ width: x.largura + '%' }} /></span>
         </li>
@@ -113,7 +121,7 @@ function Ranking({ itens, fim }: { itens: { chave: string; nome: string; detalhe
         <li className="cli-ranking-fim">
           <span className="cli-ranking-topo">
             <span className="cli-ranking-nome"><span className="hint">{fim.texto}</span></span>
-            <span className="cli-ranking-num"><b>{fim.valor}</b><span className="hint">{fim.parte}</span></span>
+            <span className="cli-ranking-num"><b>{fim.valor}</b></span>
           </span>
         </li>
       )}
@@ -227,6 +235,12 @@ export function Contato(props: DaCasca & { contato: Parameters<typeof useContato
   );
 }
 
+/**
+ * O Faturamento. Enxuto em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"): o mês com dois
+ * números e o gráfico da venda por dia (o dia em foco numa linha só); o Banco sem os números repetidos; os Clientes sem
+ * as porcentagens; o ano, recolhido, sem os três cartões que repetiam o resumo e o gráfico. O estilo novo fica em
+ * faturamento.css.
+ */
 export function Faturamento(props: DaCasca) {
   const vm = useFaturamento(props);
   const p = vm.painel;
@@ -272,77 +286,43 @@ export function Faturamento(props: DaCasca) {
             </nav>
           )}
 
-          {/* ---------- o mês ---------- */}
+          {/* ---------- o mês ----------
+              (16/11/2026, "muita informação") dois números: o faturado e as notas (a média por nota foi para a frase das
+              notas; os clientes do mês estão na aba Clientes); o dia em foco numa linha só no topo do gráfico */}
           {vm.secao === 'mes' && <>
-          <div className="cli-numeros cli-numeros-fat">
+          <div className="cli-numeros cli-numeros-fat cli-fat-numeros">
             <div className="cli-numero cli-numero-principal">
-              <span className="cli-sobre">{p.emAndamento && <span className="cli-ponto-vivo" aria-hidden="true" />}Faturado em {p.titulo.toLowerCase()}</span>
+              <span className="cli-sobre">{p.emAndamento && <span className="cli-ponto-vivo" aria-hidden="true" />}Faturado no mês</span>
               <span className="cli-numero-valor menor">{p.numeros.total}</span>
-              {p.numeros.anterior ? <span className="hint"><span className={'cli-variacao ' + (p.numeros.anterior.subiu ? 'sobe' : 'desce')}>{p.numeros.anterior.variacao || p.numeros.anterior.diferenca}</span> sobre {p.numeros.anterior.mes.toLowerCase()}</span>
+              {p.numeros.anterior ? <span className="hint"><span className={'cli-variacao ' + (p.numeros.anterior.subiu ? 'sobe' : 'desce')}>{p.numeros.anterior.variacao || p.numeros.anterior.diferenca}</span> {p.numeros.sobre}</span>
                 : <span className="hint">{p.emAndamento ? 'em andamento' : ' '}</span>}
             </div>
             <div className="cli-numero">
               <span className="cli-sobre">Notas emitidas</span>
               <span className="cli-numero-valor menor">{p.numeros.notas}</span>
-              <span className="hint">{p.numeros.canceladas}</span>
-            </div>
-            <div className="cli-numero">
-              <span className="cli-sobre">Média por nota</span>
-              <span className="cli-numero-valor menor">{p.numeros.ticket}</span>
-              <span className="hint">{p.numeros.clientes !== '—' ? p.numeros.clientes + ' clientes ' + p.numeros.clientesDica : p.numeros.clientesDica}</span>
+              <span className="hint">{p.numeros.notasDica || ' '}</span>
             </div>
           </div>
 
-          {!p.temNotas && p.tem && (
-            <div className="cli-aviso-fat"><Icone nome="lampada" width={16} height={16} /><span>A venda por dia, os clientes e as operações aparecem quando o escritório baixa os XMLs do mês no SIEG.</span></div>
-          )}
+          <section className="card cli-painel-dias cli-fat-dias">
+            <div className="card-head">
+              <h3>Venda por dia</h3>
+              {p.temNotas && p.dias.foco && (
+                <span className="cli-fat-foco" aria-live="polite"><span>{p.dias.foco.texto}</span><b>{p.dias.foco.valor}</b></span>
+              )}
+            </div>
+            {p.temNotas
+              ? <Colunas colunas={p.dias.colunas} eixo={p.dias.eixo} rotulo="A venda de cada dia do mês. Clique num dia para ver as notas dele" onFoco={vm.focarDia} onClique={c => void abrirDia(Number(c) - 1)} compacto />
+              : <Vazio icone="barChart" titulo="Ainda sem a venda por dia" texto="Aparece quando as notas do mês chegam ao escritório." />}
+          </section>
           </>}
 
-          {vm.secao !== 'banco' && <div className="cli-painel-fat so-um">
-            {vm.secao === 'mes' && <section className="card cli-painel-dias">
-              <div className="card-head">
-                <h3>Venda por dia</h3>
-                {p.temNotas && <span className="card-head-ctl hint">{p.dias.diasComVenda}</span>}
-              </div>
-              {p.temNotas ? (
-                <>
-                  {p.dias.foco && (
-                    <div className="cli-foco" aria-live="polite">
-                      <span className="cli-sobre">{p.dias.foco.data}</span>
-                      <span className="cli-foco-valor"><b>{p.dias.foco.valor}</b>{p.dias.foco.melhor && <span className="badge badge-neutral">melhor dia do mês</span>}</span>
-                    </div>
-                  )}
-                  <Colunas colunas={p.dias.colunas} eixo={p.dias.eixo} rotulo="A venda de cada dia do mês. Clique num dia para ver as notas dele" onFoco={vm.focarDia} onClique={c => void abrirDia(Number(c) - 1)} compacto />
-                </>
-              ) : <Vazio icone="barChart" titulo="Ainda sem o detalhe do mês" texto="Chega com os XMLs do SIEG." />}
-            </section>}
-
-            {vm.secao === 'clientes' && <section className="card cli-painel-como">
-              <div className="card-head"><h3>Como vendeu</h3></div>
-              {p.composicao.partes ? (
-                <>
-                  <div className="cli-partes alta" role="img" aria-label={'NF-e ' + p.composicao.textoNfe + ', NFC-e ' + p.composicao.textoNfce}>
-                    {p.composicao.partes.nfe > 0 && <span className="cli-parte-nfe" style={{ width: p.composicao.partes.nfe + '%' }}>{p.composicao.partes.nfe >= 14 && p.composicao.textoNfe}</span>}
-                    {p.composicao.partes.nfce > 0 && <span className="cli-parte-nfce" style={{ width: p.composicao.partes.nfce + '%' }}>{p.composicao.partes.nfce >= 14 && p.composicao.textoNfce}</span>}
-                  </div>
-                  <ul className="cli-como">
-                    <li><span><i className="cli-chave cli-parte-nfe" />NF-e <span className="hint">nota de venda</span></span><b>{p.composicao.nfe}</b></li>
-                    <li><span><i className="cli-chave cli-parte-nfce" />NFC-e <span className="hint">cupom do balcão</span></span><b>{p.composicao.nfce}</b></li>
-                    {p.composicao.servicos && <li><span><i className="cli-chave cli-parte-servico" />Serviços <span className="hint">{p.composicao.servicos.notas}</span></span><b>{p.composicao.servicos.valor}</b></li>}
-                  </ul>
-                </>
-              ) : <Vazio icone="recibo" titulo="Nenhuma nota no mês" texto="Sem venda de produto neste mês." />}
-            </section>}
-          </div>}
-
-          {/* o faturado contra o que entrou no banco (13/11/2026: "comparação com os extratos bancários") */}
+          {/* ---------- o banco ----------
+              (16/11/2026, "muita informação") os dois valores e a leitura curta; o gráfico dos meses; uma linha por conta
+              com o que saiu e o saldo (sem os três cartões que repetiam o "entrou"); os lançamentos sem o resumo */}
           {vm.banco && vm.secao === 'banco' && (
-            <section className="card cli-fb">
-              <div className="card-head">
-                <h3>Faturado × entrou no banco</h3>
-                {vm.banco.contas && <span className="card-head-ctl hint">pelos extratos de {vm.banco.contas}</span>}
-              </div>
-              {/* a escolha do banco (13/11/2026: "subseleção por banco") */}
+            <section className="card cli-fb cli-fat-banco">
+              <div className="card-head"><h3>Faturado × entrou no banco</h3></div>
               {vm.banco.contasDaEmpresa.length > 0 && (
                 <div className="cli-fb-contas" role="radiogroup" aria-label="Conta">
                   {vm.banco.contasDaEmpresa.map(b => (
@@ -355,59 +335,42 @@ export function Faturamento(props: DaCasca) {
               )}
               <div className="cli-fb-corpo">
                 <div className="cli-fb-mes">
-                  {/* (13/11/2026: "os gráficos estão confusos"): os dois valores lado a lado, sem as barras */}
                   <div className="cli-fb-dois">
-                    <div><span className="cli-fb-rotulo"><span className="cli-fb-ponto fat" />Faturado (notas)</span><b className="cli-valor">{vm.banco.faturado}</b></div>
-                    <div><span className="cli-fb-rotulo"><span className="cli-fb-ponto banco" />{vm.banco.rotuloEntradas}</span><b className="cli-valor">{vm.banco.entradas}</b></div>
+                    <div><span className="cli-fb-rotulo"><span className="cli-fb-ponto fat" />Faturado</span><b className="cli-valor">{vm.banco.faturado}</b></div>
+                    <div><span className="cli-fb-rotulo" title="Todos os créditos dos extratos: entram também transferências entre as suas contas e empréstimos"><span className="cli-fb-ponto banco" />{vm.banco.rotuloEntradas}</span><b className="cli-valor">{vm.banco.entradas}</b></div>
                   </div>
                   <div className={'cli-fb-leitura t-' + vm.banco.tom}>
                     <Icone nome={vm.banco.tom === 'bom' ? 'checkCircle' : vm.banco.tom === 'atencao' ? 'ajuda' : 'clock'} width={16} height={16} />
-                    <span>
-                      {vm.banco.cobertura && <b>{vm.banco.cobertura} do faturado entrou no banco{vm.banco.diferenca && ' (' + vm.banco.diferenca + ')'}. </b>}
-                      {vm.banco.leitura}
-                    </span>
+                    <span>{vm.banco.leituraCurta.forte && <b>{vm.banco.leituraCurta.forte}</b>}{vm.banco.leituraCurta.forte && vm.banco.leituraCurta.resto && ' '}{vm.banco.leituraCurta.resto}</span>
                   </div>
                 </div>
                 <div className="cli-fb-grafico">
-                <p className="cli-fb-legenda"><span><span className="cli-fb-ponto fat" />Faturado</span><span><span className="cli-fb-ponto banco" />{vm.banco.rotuloEntradas}</span><span className="hint">últimos {vm.banco.serie.length} meses · toque num mês</span></p>
-                <div className="cli-fb-meses" role="img" aria-label="Os últimos meses: o faturado e o que entrou no banco, lado a lado">
-                  {vm.banco.serie.map(x => (
-                    <button key={x.chave} type="button" className={'cli-fb-col' + (x.escolhido ? ' escolhido' : '')} title={x.aria} aria-label={x.aria} onClick={() => vm.abrirMes(x.chave)}>
-                      <span className="cli-fb-par">
-                        <span className="fat" style={{ height: x.faturado + '%' }} />
-                        <span className={'banco' + (x.semBanco ? ' vazio' : '')} style={{ height: (x.semBanco ? 100 : x.entradas) + '%' }} />
-                      </span>
-                      <span className="cli-fb-mes-rot">{x.rotulo}</span>
-                    </button>
-                  ))}
-                </div>
+                  <p className="cli-fb-legenda"><span><span className="cli-fb-ponto fat" />Faturado</span><span><span className="cli-fb-ponto banco" />{vm.banco.rotuloEntradas}</span></p>
+                  <div className="cli-fb-meses" role="img" aria-label="Os últimos meses: o faturado e o que entrou no banco, lado a lado. Toque num mês para abri-lo">
+                    {vm.banco.serie.map(x => (
+                      <button key={x.chave} type="button" className={'cli-fb-col' + (x.escolhido ? ' escolhido' : '')} title={x.aria} aria-label={x.aria} onClick={() => vm.abrirMes(x.chave)}>
+                        <span className="cli-fb-par">
+                          <span className="fat" style={{ height: x.faturado + '%' }} />
+                          <span className={'banco' + (x.semBanco ? ' vazio' : '')} style={{ height: (x.semBanco ? 100 : x.entradas) + '%' }} />
+                        </span>
+                        <span className="cli-fb-mes-rot">{x.rotulo}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              {/* o movimento das contas no mês (13/11/2026: "quero mais informações do banco") */}
-              {vm.banco.movimento && (vm.banco.movimento.saiu !== '—' || vm.banco.movimento.contas.length > 1) && (
-                <div className="cli-mv">
-                  {vm.banco.movimento.saiu !== '—' && <div className="cli-mv-numeros">
-                    <div><span className="cli-sobre">Entrou</span><b className="cli-valor">{vm.banco.movimento.entrou}</b></div>
-                    <div><span className="cli-sobre">Saiu</span><b className="cli-valor">{vm.banco.movimento.saiu}</b></div>
-                    {vm.banco.movimento.saldo && <div><span className="cli-sobre">Saldo atual</span><b className={'cli-valor cli-variacao ' + vm.banco.movimento.saldoTom}>{vm.banco.movimento.saldo}</b><span className="hint">{vm.banco.movimento.saldoEm}</span></div>}
-                  </div>}
-                  {vm.banco.movimento.contas.length > 1 && (
-                    <div className="cli-mv-tabela" role="table" aria-label="O movimento de cada conta no mês">
-                      <div className="cli-mv-linha cli-mv-cabeca" role="row"><span role="columnheader">Conta</span><span role="columnheader">Parte das entradas</span><span role="columnheader">Entrou</span><span role="columnheader">Saiu</span><span role="columnheader">Saldo</span></div>
-                      {vm.banco.movimento.contas.map(x => (
-                        <div key={x.id} className="cli-mv-linha" role="row">
-                          <span className="cli-mv-conta" role="cell"><span className="cli-fb-conta-logo" aria-hidden="true">{x.marca ? <LogoBanco banco={x.marca} cor /> : <Icone nome="landmark" width={15} height={15} />}</span>{x.nome}</span>
-                          <span className="cli-mv-parte" role="cell"><span className="cli-mv-barra"><span style={{ width: x.largura + '%' }} /></span>{x.parte}</span>
-                          <span className="cli-valor" role="cell">{x.entrou}</span>
-                          <span className="cli-valor cli-mv-fraco" role="cell">{x.saiu}</span>
-                          <span className={'cli-valor cli-variacao ' + x.saldoTom} role="cell">{x.saldo}</span>
-                        </div>
-                      ))}
+              {vm.banco.movimento && vm.banco.movimento.contas.length > 0 && (
+                <div className="cli-fat-contas" role="table" aria-label="O que saiu de cada conta no mês e o saldo">
+                  <div className="cli-fat-conta cli-fat-conta-cabeca" role="row"><span role="columnheader">Conta</span><span role="columnheader">Saiu no mês</span><span role="columnheader">Saldo</span></div>
+                  {vm.banco.movimento.contas.map(x => (
+                    <div key={x.id} className="cli-fat-conta" role="row">
+                      <span className="cli-mv-conta" role="cell"><span className="cli-fb-conta-logo" aria-hidden="true">{x.marca ? <LogoBanco banco={x.marca} cor /> : <Icone nome="landmark" width={15} height={15} />}</span>{x.nome}</span>
+                      <span className="cli-valor cli-mv-fraco" role="cell"><span className="cli-fat-rot-cel">Saiu </span>{x.saiu}</span>
+                      <span className={'cli-valor cli-variacao ' + x.saldoTom} role="cell" title={x.saldoEm}><span className="cli-fat-rot-cel">Saldo </span>{x.saldo}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
-              {/* os lançamentos do mês (13/11/2026): cada valor que entrou e saiu, como no extrato */}
               {vm.lancamentos && (vm.lancamentos.carregando || vm.lancamentos.tem) && (
                 <div className="cli-lc">
                   <div className="cli-lc-topo">
@@ -422,13 +385,13 @@ export function Faturamento(props: DaCasca) {
                   </div>
                   {vm.lancamentos.carregando ? <p className="hint">Carregando os lançamentos…</p> : (
                     <>
-                      <p className="hint cli-lc-resumo">{vm.lancamentos.quantos} {vm.lancamentos.quantos === 1 ? 'lançamento' : 'lançamentos'} · entrou {vm.lancamentos.entrou} · saiu {vm.lancamentos.saiu}</p>
-                      <ul className={'cli-lc-lista' + (vm.lancamentos.linhas.some(l => l.conta) ? ' com-conta' : '')}>
+                      {/* a conta só pela logo (o nome no passar do mouse) */}
+                      <ul className={'cli-lc-lista cli-fat-lc' + (vm.lancamentos.linhas.some(l => l.conta) ? ' com-conta' : '')}>
                         {vm.lancamentos.linhas.map(l => (
                           <li key={l.chave} className="cli-lc-linha">
                             <span className="cli-lc-data">{l.data}</span>
                             <span className="cli-lc-hist" title={l.historico}>{l.historico}</span>
-                            {l.conta && <span className="cli-lc-conta"><span className="cli-fb-conta-logo" aria-hidden="true">{l.conta.marca ? <LogoBanco banco={l.conta.marca} cor /> : <Icone nome="landmark" width={14} height={14} />}</span>{l.conta.nome}</span>}
+                            {l.conta && <span className="cli-fb-conta-logo" role="img" title={l.conta.nome} aria-label={l.conta.nome}>{l.conta.marca ? <LogoBanco banco={l.conta.marca} cor /> : <Icone nome="landmark" width={14} height={14} />}</span>}
                             <span className={'cli-valor cli-lc-valor' + (l.entrada ? ' entra' : ' sai')}>{l.valor}</span>
                           </li>
                         ))}
@@ -439,78 +402,74 @@ export function Faturamento(props: DaCasca) {
                   )}
                 </div>
               )}
-              <p className="hint cli-fb-nota">As entradas são todos os créditos dos extratos: entram também transferências entre as suas contas, empréstimos e aportes.</p>
             </section>
           )}
 
-          {vm.secao === 'clientes' && p.temNotas && p.clientes.length > 0 && (
+          {/* ---------- os clientes ----------
+              (16/11/2026, "muita informação") como vendeu numa faixa só (a barra e os três valores lado a lado) e os
+              maiores clientes sem a % e sem o "23 no mês" (o "Mais 18 clientes" já fecha a conta) */}
+          {vm.secao === 'clientes' && <>
+            <section className="card cli-painel-como cli-fat-como">
+              <div className="card-head"><h3>Como vendeu</h3></div>
+              {p.composicao.partes ? (
+                <>
+                  <div className="cli-partes" role="img" aria-label={'NF-e ' + p.composicao.textoNfe + ', NFC-e ' + p.composicao.textoNfce}>
+                    {p.composicao.partes.nfe > 0 && <span className="cli-parte-nfe" style={{ width: p.composicao.partes.nfe + '%' }} />}
+                    {p.composicao.partes.nfce > 0 && <span className="cli-parte-nfce" style={{ width: p.composicao.partes.nfce + '%' }} />}
+                  </div>
+                  <ul className="cli-fat-como-lista">
+                    <li><span><i className="cli-chave cli-parte-nfe" />NF-e <span className="hint">nota de venda</span></span><b>{p.composicao.nfe}</b></li>
+                    <li><span><i className="cli-chave cli-parte-nfce" />NFC-e <span className="hint">cupom do balcão</span></span><b>{p.composicao.nfce}</b></li>
+                    {p.composicao.servicos && <li><span><i className="cli-chave cli-parte-servico" />Serviços</span><b>{p.composicao.servicos.valor}</b></li>}
+                  </ul>
+                </>
+              ) : <Vazio icone="recibo" titulo="Nenhuma nota no mês" texto="Sem venda de produto neste mês." />}
+            </section>
+            {p.temNotas && p.clientes.length > 0 && (
               <section className="card">
-                <div className="card-head"><h3>Maiores clientes</h3><span className="card-head-ctl hint">{p.numeros.clientes} no mês</span></div>
-                {p.clientes.length ? <Ranking itens={p.clientes.map(c => ({ chave: c.chave, nome: c.nome, detalhe: c.notas, valor: c.valor, parte: c.parte, largura: c.largura }))} fim={p.outrosClientes} />
-                  : <p className="hint">Só serviço neste mês.</p>}
+                <div className="card-head"><h3>Maiores clientes</h3></div>
+                <Ranking itens={p.clientes.map(c => ({ chave: c.chave, nome: c.nome, detalhe: c.notas, valor: c.valor, largura: c.largura }))} fim={p.outrosClientes} />
               </section>
-          )}
+            )}
+          </>}
 
-          {/* ---------- o ano: recolhido (12/11/2026: "ficou muita informação") ---------- */}
+          {/* ---------- o ano: recolhido (12/11/2026: "ficou muita informação") ----------
+              (16/11/2026, "muita informação") sem os três números (o acumulado já está na linha do botão; o mês em
+              andamento, no gráfico e na tabela; os 12 meses foram para o topo do gráfico) e a tabela só com o total e
+              a variação (a NF-e, a NFC-e e as notas de cada mês estão na planilha) */}
           {vm.secao === 'mes' && <button type="button" className="cli-ver-ano" aria-expanded={vm.anoAberto} onClick={vm.alternarAno}>
             <span><b>O ano</b><span className="hint">{vm.anoResumo}</span></span>
             <Icone nome="chevronDown" width={16} height={16} className={vm.anoAberto ? 'aberta' : ''} />
           </button>}
           {vm.secao === 'mes' && vm.anoAberto && <>
-          <div className="cli-numeros cli-numeros-fat">
-            {vm.ano.acumulado && (
-              <div className="cli-numero">
-                <span className="cli-sobre">{vm.ano.acumulado.titulo}</span>
-                <span className="cli-numero-valor menor">{vm.ano.acumulado.valor}</span>
-                <span className="hint">{vm.ano.acumulado.periodo}{vm.ano.acumulado.comparacao && <> · <span className={'cli-variacao ' + (vm.ano.acumulado.subiu ? 'sobe' : 'desce')}>{vm.ano.acumulado.comparacao}</span></>}</span>
-              </div>
-            )}
-            <div className="cli-numero">
-              <span className="cli-sobre">Últimos 12 meses</span>
-              <span className="cli-numero-valor menor">{vm.ano.doze.valor}</span>
-              <span className="hint">{vm.ano.doze.media}</span>
-            </div>
-            <div className="cli-numero cli-numero-andamento">
-              <span className="cli-sobre"><span className="cli-ponto-vivo" aria-hidden="true" />{vm.ano.andamento.mes}</span>
-              <span className="cli-numero-valor menor">{vm.ano.andamento.valor}</span>
-              <span className="hint">em andamento</span>
-            </div>
-          </div>
-
           {vm.ano.limite && (
             <section className={'card cli-limite' + (vm.ano.limite.alerta ? ' alerta' : '')}>
               <div className="card-head"><h3>{vm.ano.limite.titulo}</h3><span className={'badge ' + vm.ano.limite.situacao.tom}>{vm.ano.limite.situacao.rotulo}</span></div>
               <div className="cli-limite-numeros">
                 <span><b className="cli-limite-usado">{vm.ano.limite.usado}</b> <span className="cli-suave">de {vm.ano.limite.teto}</span></span>
-                <span className="cli-suave">{vm.ano.limite.texto}{vm.ano.limite.resta && ' · ' + vm.ano.limite.resta}</span>
+                <span className="cli-suave">{vm.ano.limite.texto}</span>
               </div>
               <div className="cli-limite-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.ano.limite.fracao} aria-label={vm.ano.limite.texto}>
                 <span className="cli-limite-uso" style={{ width: vm.ano.limite.fracao + '%' }} />
                 {vm.ano.limite.sublimite && <span className="cli-limite-marca" style={{ left: vm.ano.limite.sublimite.posicao + '%' }} title={vm.ano.limite.sublimite.rotulo} />}
               </div>
-              <div className="cli-limite-regua">
-                <span>R$ 0</span>
-                {vm.ano.limite.sublimite && <span className="cli-limite-sub" style={{ left: vm.ano.limite.sublimite.posicao + '%' }}>{vm.ano.limite.sublimite.rotulo}</span>}
-                <span>{vm.ano.limite.tetoCurto}</span>
-              </div>
-              <p className="hint">Pelas notas de produto (NF-e e NFC-e) emitidas no ano. Se a empresa também presta serviço, a receita real é maior: fale com o escritório.</p>
+              {vm.ano.limite.sublimite && (
+                <div className="cli-limite-regua cli-fat-regua"><span className="cli-limite-sub" style={{ left: vm.ano.limite.sublimite.posicao + '%' }}>{vm.ano.limite.sublimite.rotulo}</span></div>
+              )}
+              <p className="hint cli-fat-limite-nota">Conta só as notas de produto (NF-e e NFC-e).</p>
             </section>
           )}
 
           <section className="card">
-            <div className="card-head"><h3>Mês a mês</h3></div>
+            <div className="card-head"><h3>Mês a mês</h3><span className="card-head-ctl hint">{vm.ano.doze.valor} nos últimos 12 meses</span></div>
             <Colunas colunas={vm.ano.colunas} eixo={vm.ano.eixo} rotulo="O faturamento de cada mês" onClique={abrir} />
-          </section>
-
-          <section className="card cli-card-tabela">
-            <div className="card-head cli-tabela-topo"><h3>Detalhe por mês</h3></div>
-            <table className="cli-tabela">
-              <thead><tr><th>Mês</th><th className="num cli-so-largo">NF-e</th><th className="num cli-so-largo">NFC-e</th><th className="num cli-so-largo">Notas</th><th className="num">Total</th><th className="num">Variação</th><th aria-label="Abrir o mês" /></tr></thead>
+            {/* a tabela no mesmo cartão do gráfico (16/11/2026: um cartão a menos) */}
+            <table className="cli-tabela cli-fat-tabela">
+              <thead><tr><th>Mês</th><th className="num">Total</th><th className="num">Variação</th><th aria-label="Abrir o mês" /></tr></thead>
               <tbody>
                 {vm.ano.linhas.map(l => (
                   <tr key={l.mes} className={'cli-linha-clica' + (l.escolhida ? ' escolhida' : '')} onClick={() => abrir(l.competencia)}>
                     <td><button type="button" className="cli-mes-botao" onClick={ev => { ev.stopPropagation(); abrir(l.competencia); }} aria-label={'Abrir o painel de ' + l.mes}>{l.mes}</button>{l.emAndamento && <span className="badge badge-neutral cli-badge-andamento">em andamento</span>}</td>
-                    <td className="num cli-so-largo cli-suave">{l.nfe}</td><td className="num cli-so-largo cli-suave">{l.nfce}</td><td className="num cli-so-largo cli-suave">{l.notas}</td>
                     <td className="num"><span className="cli-valor">{l.total}</span></td>
                     <td className="num">{l.variacao && <span className={'cli-variacao ' + (l.subiu ? 'sobe' : 'desce')}>{l.variacao}</span>}</td>
                     <td className="cli-seta" aria-hidden="true"><Icone nome="chevronRight" width={16} height={16} /></td>

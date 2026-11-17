@@ -1,6 +1,6 @@
 // As Solicitações da Área do Cliente como lista + painel (12/11/2026: "refaz essa parte inteira"; a escolhida: "lista +
-// painel ao lado"). À esquerda os filtros e a lista (a situação, o título, o assunto, a data e a prévia da última
-// resposta); à direita o painel: a solicitação escolhida (as etapas, o pedido, a resposta do escritório, enviar arquivos
+// painel ao lado"). À esquerda os filtros e a lista (o título, a data, a situação e a prévia da última
+// resposta); à direita o painel: a solicitação escolhida (a situação, o pedido, a resposta do escritório, enviar arquivos
 // e o WhatsApp) ou a nova (o assunto em cartões, depois o formulário). No celular, um de cada vez. Só desenha: o estado e
 // as ações vêm de useChamados.ts.
 import { Icone, type NomeIcone } from '@nads/ui';
@@ -15,6 +15,7 @@ import { useChamados } from './useChamados';
 import type { DaCasca } from './useAreaCliente';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
+import './solicitacoes.css';
 
 const SELO: Record<string, string> = { respondido: 'badge badge-ok', concluido: 'badge badge-neutral', aberto: 'badge badge-warn', 'em andamento': 'badge badge-warn' };
 const VAZIO_DO_FILTRO: Record<string, string> = { todas: 'Nenhuma solicitação.', abertas: 'Nada em andamento no escritório.', respondidas: 'Nenhuma resposta esperando você.', concluidas: 'Nenhuma solicitação concluída.' };
@@ -55,8 +56,9 @@ export function Chamados(props: DaCasca) {
                     <span className="cli-sc-ponto" aria-hidden="true" />
                     <span className="cli-sc-item-txt">
                       <span className="cli-sc-item-topo"><b>{c.titulo}</b><span className="cli-sc-data">{c.atualizada}</span></span>
-                      <span className="cli-sc-item-meio"><span className="cli-sc-situacao">{c.rotulo}</span><span aria-hidden="true">·</span><span>{c.assunto}</span></span>
-                      <span className="cli-sc-previa">{c.previaDoEscritorio && <b>{c.quemRespondeu}: </b>}{c.previa}</span>
+                      {/* 16/11/2026 ("muita informação"): a situação e a prévia numa linha só; o assunto saiu da linha
+                          (repetia o título e continua no painel) */}
+                      <span className="cli-sc-linha-previa"><span className="cli-sc-situacao">{c.rotulo}</span><span aria-hidden="true">·</span><span className="cli-sc-previa">{c.previaDoEscritorio && <b>{c.quemRespondeu}: </b>}{c.previa}</span></span>
                     </span>
                   </button>
                 </li>
@@ -141,16 +143,10 @@ export function Chamados(props: DaCasca) {
                   linha fina, o pedido e as respostas do escritório em ordem, e embaixo enviar arquivos e o WhatsApp */}
               <div className="cli-sol-cabeca">
                 <h2>{s.titulo}</h2>
-                <p className="cli-sol-meta"><span className={SELO[s.situacao]}>{s.rotulo}</span><span className="hint">{s.assunto} · aberta em {s.abertaEm}</span></p>
+                {/* 16/11/2026 ("muita informação"): só o selo e o assunto; os passos Recebida › Em andamento ›
+                    Respondida repetiam o selo e a data de abertura já está no "Você" logo abaixo */}
+                <p className="cli-sol-meta"><span className={SELO[s.situacao]}>{s.rotulo}</span><span className="hint">{s.assunto}</span></p>
               </div>
-              <ol className="cli-sol-passos" aria-label="Situação">
-                {vm.passos.map((p, i) => (
-                  <li key={p} className={i < s.passo || (i === s.passo && i === vm.passos.length - 1) ? 'feito' : i === s.passo ? 'atual' : ''} aria-current={i === s.passo ? 'step' : undefined}>
-                    <span className="cli-sol-passo-ponto">{i < s.passo || (i === s.passo && i === vm.passos.length - 1) ? <Icone nome="check" width={11} height={11} /> : null}</span>
-                    <span className="cli-sol-passo-nome">{i === vm.passos.length - 1 && s.passo === i ? s.rotulo : p}</span>
-                  </li>
-                ))}
-              </ol>
               <ol className="cli-sol-tempo">
                 <li className="cli-sol-evento voce">
                   <span className="cli-sol-quem cli-sc-voce" aria-hidden="true">{vm.empresa.logo ? <img src={vm.empresa.logo} alt="" /> : <Avatar nome={vm.empresa.nome} tamanho={30} />}</span>
@@ -171,7 +167,7 @@ export function Chamados(props: DaCasca) {
                 )) : (
                   <li className="cli-sol-evento esperando">
                     <span className="cli-sol-quem" aria-hidden="true"><Icone nome="clock" width={15} height={15} /></span>
-                    <div className="cli-sol-fala"><p className="hint">Aguardando o escritório. Quando ele responder, aparece aqui e no sino.</p></div>
+                    <div className="cli-sol-fala"><p className="hint">Aguardando a resposta do escritório.</p></div>
                   </li>
                 )}
               </ol>

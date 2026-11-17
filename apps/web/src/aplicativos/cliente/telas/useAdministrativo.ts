@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
 import { dadosParaCopiar, dataBr, iniciaisDaEmpresa, linkDoWhatsapp, seloDoRegime, tempoDeEmpresa } from '../dados/regras';
+import { dicaDasNotas, leituraDoBanco, semAno, textoDoDia } from '../dados/faturamentoEnxuto';
 import type { DaCasca } from './useAreaCliente';
 
 /** Os Dados cadastrais: a ficha da empresa em blocos (a identificação, a tributação, o endereço e os sócios). */
@@ -143,7 +144,8 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   // os lançamentos do mês (13/11/2026: "escolhendo um banco, os lançamentos do mês"): lidos ao abrir a aba Banco
   const [extrato, setExtrato] = useState<{ chave: string; dados: { lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null } | null>(null);
   const [filtroDoExtrato, setFiltroDoExtrato] = useState<'todos' | 'entradas' | 'saidas'>('todos');
-  const [quantosLancamentos, setQuantosLancamentos] = useState(40);
+  // (16/11/2026, "muita informação") os 10 primeiros lançamentos; o resto no "Mostrar mais"
+  const [quantosLancamentos, setQuantosLancamentos] = useState(10);
   const e = empresas[Math.min(escolhida, Math.max(0, empresas.length - 1))];
   const todos = e?.meses ?? [];
   const p = ac.painelDoFaturamento(todos, e?.regime, hoje);
@@ -187,13 +189,19 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     numeros: {
       total: m.total == null ? 'Sem nota' : formatos.reais(totalDoMes),
       anterior, anoPassado,
+      // (16/11/2026, "muita informação") "sobre setembro", sem o ano que o seletor já mostra
+      sobre: anterior ? 'sobre ' + semAno(anterior.mes) : '',
       notas: m.total == null ? '—' : numero(m.notas), canceladas: m.canceladas ? plural(m.canceladas, 'cancelada', 'canceladas') : 'nenhuma cancelada',
+      // a média por nota foi para a frase das notas (era um cartão à parte)
+      notasDica: dicaDasNotas(d?.ticketMedio == null ? null : formatos.reais(d.ticketMedio), m.canceladas ?? 0),
       ticket: d?.ticketMedio == null ? '—' : formatos.reais(d.ticketMedio),
       clientes: n ? numero(n.totalClientes) : '—', clientesDica: n ? 'compraram no mês' : 'chega com os XMLs do mês',
     },
     dias: {
       colunas: dias, eixo: [0, topoDias / 2, topoDias].map(v => ({ valor: v ? curto(v) : '0', posicao: Math.round((v / topoDias) * 1000) / 10 })),
-      foco: foco >= 0 ? { data: formatos.capital(dataDoDia(foco)), valor: porDia[foco] ? formatos.reais(porDia[foco]) : 'Sem venda', melhor: foco === melhor && porDia[foco] > 0 } : null,
+      foco: foco >= 0 ? { data: formatos.capital(dataDoDia(foco)), valor: porDia[foco] ? formatos.reais(porDia[foco]) : 'Sem venda', melhor: foco === melhor && porDia[foco] > 0,
+        // (16/11/2026, "muita informação") o dia numa frase só, no topo do cartão
+        texto: textoDoDia(dataDoDia(foco), foco === melhor && porDia[foco] > 0) } : null,
       media: diasComVenda ? formatos.reais(Math.round((porDia.reduce((t, v) => t + v, 0) / diasComVenda) * 100) / 100) : '—',
       diasComVenda: plural(diasComVenda, 'dia com venda', 'dias com venda'),
     },
@@ -209,8 +217,9 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
         notas: plural(x.notas, 'nota', 'notas'), valor: formatos.reais(x.valor),
       })),
     },
-    clientes: (n?.clientes ?? []).map((c, i) => ({ chave: i + c.nome, nome: c.nome, valor: formatos.reais(c.valor), notas: plural(c.notas, 'nota', 'notas'), parte: pctTexto(fracao(c.valor, vendas)), largura: fracao(c.valor, maiorCliente) })),
-    outrosClientes: n?.outrosClientes ? { texto: 'Mais ' + plural(n.outrosClientes.clientes, 'cliente', 'clientes'), valor: formatos.reais(n.outrosClientes.valor), parte: pctTexto(fracao(n.outrosClientes.valor, vendas)) } : null,
+    // (16/11/2026, "muita informação") sem a % ao lado do valor: a barra já mostra o tamanho de cada cliente
+    clientes: (n?.clientes ?? []).map((c, i) => ({ chave: i + c.nome, nome: c.nome, valor: formatos.reais(c.valor), notas: plural(c.notas, 'nota', 'notas'), largura: fracao(c.valor, maiorCliente) })),
+    outrosClientes: n?.outrosClientes ? { texto: 'Mais ' + plural(n.outrosClientes.clientes, 'cliente', 'clientes'), valor: formatos.reais(n.outrosClientes.valor) } : null,
     cfops: (n?.cfops ?? []).map(c => ({ chave: c.cfop || c.descricao, cfop: c.cfop, descricao: c.descricao, valor: formatos.reais(c.valor), parte: pctTexto(fracao(c.valor, vendas)), largura: fracao(c.valor, maiorCfop) })),
   };
 
@@ -239,6 +248,8 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     larguraFaturado: fb.mes.faturado != null ? Math.round((fb.mes.faturado / Math.max(fb.mes.faturado, fb.mes.entradas ?? 0, 1)) * 100) : 0,
     larguraEntradas: fb.mes.entradas != null ? Math.round((fb.mes.entradas / Math.max(fb.mes.faturado ?? 0, fb.mes.entradas, 1)) * 100) : 0,
     leitura: fb.mes.leitura, tom: fb.mes.tom,
+    // (16/11/2026, "muita informação") a leitura curta: a parte que entrou e a explicação só quando pede atenção
+    leituraCurta: leituraDoBanco({ cobertura: fb.mes.cobertura != null ? pctTexto(fb.mes.cobertura) : '', leitura: fb.mes.leitura, tom: fb.mes.tom }),
     // a escolha do banco: todas as contas ou uma
     contasDaEmpresa: bancosDaEmpresa.length > 1 ? [{ id: '', nome: 'Todas as contas', marca: undefined as string | undefined, ativo: bancoAtual === '' },
       ...bancosDaEmpresa.map(b => ({ id: b.id, nome: b.nome, marca: b.marca, ativo: bancoAtual === b.id }))] : [],
@@ -252,14 +263,17 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
       const r = (v: number | null) => (v == null ? '—' : formatos.reais(v));
       // o saldo de verdade (13/11/2026: "muda o nome para saldo atual"): o último que o extrato imprime no mês
       const dataCurta = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7);
+      // (16/11/2026, "muita informação") uma linha por conta, só com o que saiu e o saldo (o que entrou já está no alto,
+      // no total ou na conta escolhida); escolhida uma conta, só a linha dela
+      const linhas = daConta ? [daConta] : mv.contas;
       return {
         entrou: r(base.entradas), saiu: r(base.saidas),
         saldo: base.saldo ? formatos.reais(base.saldo.valor) : '', saldoEm: base.saldo ? 'no extrato de ' + dataCurta(base.saldo.data) : '',
         saldoTom: base.saldo ? (base.saldo.valor >= 0 ? '' : 'desce') : '',
-        contas: bancoAtual ? [] : mv.contas.map(x => ({
+        contas: linhas.map(x => ({
           id: x.id, nome: x.nome, marca: x.marca, entrou: r(x.entradas), saiu: r(x.saidas),
           saldo: x.saldo ? formatos.reais(x.saldo.valor) : '—', saldoTom: x.saldo && x.saldo.valor < 0 ? 'desce' : '',
-          parte: pctTexto(x.parte), largura: x.parte,
+          saldoEm: x.saldo ? 'Saldo no extrato de ' + dataCurta(x.saldo.data) : '',
         })),
       };
     })(),
@@ -287,7 +301,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     if (!chaveDoExtrato || extrato?.chave === chaveDoExtrato) return;
     let vivo = true;
     const [cod, m2] = chaveDoExtrato.split('|');
-    void repoAreaCliente.extratoDoMes(token, Number(cod), m2).then(d => { if (vivo) { setExtrato({ chave: chaveDoExtrato, dados: d }); setQuantosLancamentos(40); } });
+    void repoAreaCliente.extratoDoMes(token, Number(cod), m2).then(d => { if (vivo) { setExtrato({ chave: chaveDoExtrato, dados: d }); setQuantosLancamentos(10); } });
     return () => { vivo = false; };
   }, [chaveDoExtrato, extrato?.chave, token]);
   const contaPorId = new Map(bancosDaEmpresa.map(b => [b.id, b]));
@@ -298,7 +312,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   const lancamentos = chaveDoExtrato ? {
     carregando: !lancs && extrato?.chave !== chaveDoExtrato,
     tem: !!lancs && lancs.lancamentos.length > 0,
-    filtro: filtroDoExtrato, filtrar: (f: 'todos' | 'entradas' | 'saidas') => { setFiltroDoExtrato(f); setQuantosLancamentos(40); },
+    filtro: filtroDoExtrato, filtrar: (f: 'todos' | 'entradas' | 'saidas') => { setFiltroDoExtrato(f); setQuantosLancamentos(10); },
     quantos: filtrados.length, entrou: formatos.reais(somaDe(v => v > 0)), saiu: formatos.reais(-somaDe(v => v < 0)),
     linhas: filtrados.slice(0, quantosLancamentos).map((l, k) => {
       const conta = contaPorId.get(l.conta);
@@ -307,7 +321,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
         valor: (l.valor > 0 ? '+' : '−') + formatos.reais(Math.abs(l.valor)), entrada: l.valor > 0 };
     }),
     mais: filtrados.length > quantosLancamentos ? filtrados.length - quantosLancamentos : 0,
-    verMais: () => setQuantosLancamentos(q => q + 80),
+    verMais: () => setQuantosLancamentos(q => q + 40),
     cortados: lancs?.cortados ?? 0,
   } : null;
 

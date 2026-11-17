@@ -11,7 +11,8 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useLocation } from 'react-router';
 import { repoAreaCliente } from '../dados/repo';
-import { partesDaSolicitacao, passoDaSolicitacao, PASSOS_DA_SOLICITACAO, textoDoChamado, textoDosAnexos, whatsappDaSolicitacao } from '../dados/regras';
+import { partesDaSolicitacao, passoDaSolicitacao, textoDoChamado, textoDosAnexos, whatsappDaSolicitacao } from '../dados/regras';
+import { resumoDasSolicitacoes } from '../dados/solicitacoes';
 import type { DaCasca, PedidoDaTela } from './useAreaCliente';
 import { comMime } from './useEnviar';
 
@@ -56,12 +57,12 @@ export function useChamados({ token, area }: DaCasca) {
 
   const vista = (c: ac.ChamadoDoCliente) => {
     const partes = partesDaSolicitacao(c);
-    const { passo, rotulo } = passoDaSolicitacao(c.situacao);
+    const { rotulo } = passoDaSolicitacao(c.situacao);
     const primeira = c.mensagens[0];
     const ultima = c.mensagens[c.mensagens.length - 1];
     const resposta = partes.respostas[partes.respostas.length - 1];
     return {
-      id: c.id, titulo: c.titulo, situacao: c.situacao, rotulo, passo,
+      id: c.id, titulo: c.titulo, situacao: c.situacao, rotulo,
       assunto: ac.TIPOS_DE_CHAMADO.find(x => x.valor === c.tipo)?.rotulo ?? 'Outro assunto',
       abertaEm: primeira ? new Date(primeira.em).toLocaleDateString('pt-BR') : '',
       atualizada: ultima ? dia(ultima.em) : '',
@@ -118,21 +119,16 @@ export function useChamados({ token, area }: DaCasca) {
   return {
     filtros: (['todas', 'abertas', 'respondidas', 'concluidas'] as const).map(f => ({
       id: f, rotulo: { todas: 'Todas', abertas: 'Abertas', respondidas: 'Respondidas', concluidas: 'Concluídas' }[f], n: contagem[f], ativo: filtro === f,
-      // nos cartões do alto (13/11/2026: o mesmo padrão da Central): o ícone e o tom de cada situação
-      icone: ({ todas: 'mensagem', abertas: 'clock', respondidas: 'checkCircle', concluidas: 'check' } as const)[f],
-      tom: ({ todas: 'carmim', abertas: 'ambar', respondidas: 'verde', concluidas: 'neutro' } as const)[f],
     })),
     escolherFiltro: setFiltro,
     lista: visiveis.map(vista), total: todas.length,
-    // a linha embaixo do título (13/11/2026: "essa tem que ficar impecável"): no lugar dos cartões do alto
-    resumo: !todas.length ? '' : [
-      todas.length + (todas.length === 1 ? ' solicitação' : ' solicitações'),
-      contagem.respondidas ? contagem.respondidas + (contagem.respondidas === 1 ? ' respondida esperando você' : ' respondidas esperando você') : '',
-      contagem.abertas ? contagem.abertas + (contagem.abertas === 1 ? ' em andamento no escritório' : ' em andamento no escritório') : '',
-    ].filter(Boolean).join(' · '),
+    // a linha embaixo do título (13/11/2026: "essa tem que ficar impecável"); 16/11/2026 ("muita informação"): no
+    // máximo dois fatos, sem o total (já está na aba Todas)
+    resumo: resumoDasSolicitacoes({ total: todas.length, respondidas: contagem.respondidas, abertas: contagem.abertas }),
     // quem fala na conversa: a empresa (o "Você") com a logo ou as iniciais
     empresa: { nome: area.ficha?.nomeFantasia || area.ficha?.razaoSocial || area.resumo?.empresas?.[0]?.nome || 'Você', logo: area.logo },
-    modo, atual: atual ? vista(atual) : null, passos: PASSOS_DA_SOLICITACAO, painelNoCelular,
+    // os passos Recebida › Em andamento › Respondida saíram do painel (16/11/2026: "muita informação"): repetiam o selo
+    modo, atual: atual ? vista(atual) : null, painelNoCelular,
     abrir: (id: string) => { setEscolhida(id); setModo('ver'); setPainelNoCelular(true); },
     nova: () => { setModo('nova'); setErro(''); setPainelNoCelular(true); },
     voltar: () => setPainelNoCelular(false),

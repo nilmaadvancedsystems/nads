@@ -6,7 +6,11 @@
 // pedidos abrem em janela, como no protótipo, e viram uma solicitação do tipo certo.
 // Refeito (12/11/2026): os números no alto; a equipe na largura toda (os ativos ou quem saiu, a busca), a ficha numa janela
 // flutuante ("prefiro janela flutuante do que essa lateral"); embaixo, a folha do mês por categoria, no estilo extrato.
-import { CampoData, CampoEscolha, Icone, useRetorno } from '@nads/ui';
+// Enxuto (16/11/2026: o dono apresentou a área e ouviu "muita informação"): os três cartões de número viram dois fatos
+// embaixo do título; o cartão de cada funcionário só com o nome, o cargo, o salário e um selo quando pede atenção; as
+// férias com a data numa frase e a nota numa frase; o custo da folha com o total e três números (o holerite em "Ver
+// detalhes"); os documentos da folha só com o nome e o Baixar (o Ver no "⋯"). As janelas não mudaram.
+import { CampoData, CampoEscolha, Icone, MenuSuspenso, useRetorno } from '@nads/ui';
 import { IconeDoArquivo } from '../partes/IconeDoArquivo';
 import { useState } from 'react';
 import { Avatar } from '../partes/Avatar';
@@ -20,6 +24,7 @@ import { useDp, type DadosDoPedido, type Pedido } from './useDp';
 import type { DaCasca } from './useAreaCliente';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
+import './registro.css';
 
 const CONTRATOS = ['Prazo indeterminado', 'Experiência (45 + 45 dias)', 'Estágio', 'Aprendiz'];
 const DIAS = ['30 dias', '20 dias e vender 10', '15 dias (primeira parte)', '10 dias (uma parte)'];
@@ -255,7 +260,7 @@ function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar }: {
 }
 
 type VM = ReturnType<typeof useDp>;
-type Doc = VM['grupos'][number]['docs'][number];
+type Doc = VM['funcionarios'][number]['docs'][number];
 
 /** Uma linha de documento: o ícone pelo tipo, o nome, de quem e o mês, e o Ver e o Baixar (o grande demais, pedir ao escritório). */
 function LinhaDoDocumento({ d, vm }: { d: Doc; vm: VM }) {
@@ -280,6 +285,35 @@ function LinhaDoDocumento({ d, vm }: { d: Doc; vm: VM }) {
           <button type="button" className="icon-btn" title="Baixar" aria-label={'Baixar ' + d.nome} disabled={vm.baixando === d.id} onClick={() => vm.baixar(d.id)}><Icone nome="download" width={16} height={16} /></button>
         </span>
       ) : <span className="hint">Grande demais: peça ao escritório</span>}
+    </li>
+  );
+}
+
+/** Uma linha dos documentos da folha (16/11/2026: "muita informação"): o ícone, o nome (abre a visualização) e de quem é,
+ *  sem o mês e o tamanho (o mês já está no alto do cartão); a ação principal é o Baixar, o Ver vai no "⋯". A ficha
+ *  continua com a LinhaDoDocumento (a janela foi aprovada). */
+function LinhaDaFolha({ d, vm }: { d: Doc & { quem: string }; vm: VM }) {
+  return (
+    <li className="cli-reg-doc cli-rg-doc">
+      <IconeDoArquivo formato={d.formato} tamanho={30} />
+      {d.podeBaixar ? (
+        <button type="button" className="cli-reg-doc-txt cli-biblioteca-abrir" disabled={vm.vista.abrindo === d.id} onClick={() => vm.verDoc(d.id)} title={'Ver ' + d.nome}>
+          <b>{d.nome}</b>
+          {d.quem && <span className="hint">{d.quem}</span>}
+        </button>
+      ) : (
+        <span className="cli-reg-doc-txt">
+          <b>{d.nome}</b>
+          <span className="hint">Grande demais: peça ao escritório</span>
+        </span>
+      )}
+      {d.podeBaixar && (
+        <span className="cli-rg-doc-acoes">
+          <button type="button" className="btn btn-ghost btn-sm cli-rg-baixar" aria-label={'Baixar ' + d.nome} disabled={vm.baixando === d.id} onClick={() => vm.baixar(d.id)}><Icone nome="download" width={14} height={14} /><span className="cli-rg-baixar-txt">Baixar</span></button>
+          <MenuSuspenso rotulo="" icone="mais" semSeta direita flutuante compacto className="icon-btn cli-rg-mais" titulo={'Mais ações: ' + d.nome} dica="Mais ações"
+            itens={[{ rotulo: 'Ver', icone: 'olho', onClick: () => vm.verDoc(d.id) }]} />
+        </span>
+      )}
     </li>
   );
 }
@@ -351,7 +385,16 @@ export function DepartamentoPessoal(props: DaCasca) {
     <>
       <div className="cli-titulo">
         <div>
-          <MarcaDaTela /><h1 className="page-title">Registro</h1><AjudaDaTela />
+          <MarcaDaTela /><h1 className="page-title">RH</h1><AjudaDaTela />
+          {/* dois fatos numa linha (16/11/2026: "muita informação"; no lugar dos três cartões de número): os ativos e as
+              férias, que levam à aba Férias */}
+          <p className="cli-subtitulo cli-rg-resumo">
+            {vm.resumo.map((t, i) => t.aba ? (
+              <button key={i} type="button" className={'cli-rg-trecho cli-rg-trecho-link' + (t.tom ? ' t-' + t.tom : '')} onClick={() => vm.escolherAba('ferias')}><b>{t.valor}</b> {t.depois}</button>
+            ) : (
+              <span key={i} className="cli-rg-trecho"><b>{t.valor}</b> {t.depois}</span>
+            ))}
+          </p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('admissao', vm.novaAdmissao())}><Icone nome="plus" width={16} height={16} />Solicitar admissão</button>
@@ -359,17 +402,8 @@ export function DepartamentoPessoal(props: DaCasca) {
         </div>
       </div>
 
-      <div className="cli-numeros cli-numeros-reg">
-        <div className="cli-numero"><span className="cli-sobre">Funcionários ativos</span><span className="cli-numero-valor menor">{vm.numeros.ativos}</span><span className="hint">no registro</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Folha{vm.competencia ? ' de ' + vm.competencia : ''}</span><span className="cli-numero-valor menor">{formatos.reais(vm.numeros.folha)}</span><span className="hint">remuneração dos ativos</span></div>
-        <button type="button" className={'cli-numero cli-numero-clica' + (vm.feriasUrgentes ? ' alerta' : '')} onClick={() => vm.escolherAba('ferias')}>
-          <span className="cli-sobre">Férias para tirar</span><span className="cli-numero-valor menor">{vm.feriasParaTirar}</span>
-          <span className="hint">{vm.feriasUrgentes ? vm.feriasUrgentes + (vm.feriasUrgentes === 1 ? ' vence logo ou venceu' : ' vencem logo ou venceram') : 'ver as férias de cada um'}</span>
-        </button>
-      </div>
-
       {/* as abas (13/11/2026: "quero trabalhar no DP"): a equipe, as férias, a folha e o calendário, uma parte por vez */}
-      <nav className="cli-fat-abas" role="tablist" aria-label="Partes do Registro">
+      <nav className="cli-fat-abas cli-rg-abas" role="tablist" aria-label="Partes do RH">
         {vm.abas.map(x => (
           <button key={x.id} type="button" role="tab" data-aba={x.id} aria-selected={vm.aba === x.id} className={'cli-fat-aba' + (vm.aba === x.id ? ' ativa' : '')} onClick={() => vm.escolherAba(x.id)}>
             <Icone nome={x.icone} width={17} height={17} />{x.rotulo}{x.conta > 0 && <span className="cli-aba-conta">{x.conta}</span>}
@@ -396,15 +430,14 @@ export function DepartamentoPessoal(props: DaCasca) {
               <ul className="cli-eq-grade">
                 {vm.funcionarios.map(f => (
                   <li key={f.id}>
-                    <button type="button" className={'cli-eq-cartao' + (f.ativo ? '' : ' saiu')} onClick={() => void ficha(f)}>
-                      <span className="cli-eq-topo">
-                        <Avatar nome={f.nome} tamanho={44} />
-                        <span className="cli-eq-quem"><b>{f.nome}</b><span className="hint">{[f.cargo, f.ativo ? (f.tempo ? f.tempo + ' na empresa' : 'desde ' + f.desde) : f.situacao, !f.cargo && f.matricula ? 'mat. ' + f.matricula : ''].filter(Boolean).join(' · ')}</span></span>
-                      </span>
-                      <span className="cli-eq-pe">
-                        <span className="cli-eq-valor"><span className="cli-sobre">{f.salarioBase ? 'Salário' : 'Remuneração'}</span><b className="cli-valor">{f.salarioBase || f.remuneracao}</b></span>
-                        {f.afastado ? <span className="cli-eq-ferias t-neutro" title={f.afastado}>Afastado</span> : f.ferias && <span className={'cli-eq-ferias t-' + f.ferias.tom}>{f.ferias.rotulo}</span>}
-                        {f.documentos > 0 && <span className="cli-eq-docs" title="Documentos dele"><Icone nome="arquivo" width={13} height={13} />{f.documentos}</span>}
+                    {/* (16/11/2026: "muita informação") o nome, uma frase, o salário e um selo só quando pede atenção; o resto
+                        (a matrícula, os documentos, as férias em dia) está na ficha e na aba Férias */}
+                    <button type="button" className={'cli-eq-cartao cli-rg-cartao' + (f.ativo ? '' : ' saiu')} onClick={() => void ficha(f)}>
+                      <Avatar nome={f.nome} tamanho={40} />
+                      <span className="cli-rg-quem"><b>{f.nome}</b>{f.linha && <span className="hint">{f.linha}</span>}</span>
+                      <span className="cli-rg-lado">
+                        <b className="cli-valor">{f.salarioBase || f.remuneracao}</b>
+                        {f.selo && <span className={'cli-eq-ferias t-' + f.selo.tom} title={f.afastado || undefined}>{f.selo.rotulo}</span>}
                       </span>
                     </button>
                   </li>
@@ -419,29 +452,29 @@ export function DepartamentoPessoal(props: DaCasca) {
       {/* as férias de cada um (13/11/2026: os avisos de férias): a vencida primeiro, com o Programar férias */}
       {vm.aba === 'ferias' && (
         <section className="card cli-fe">
-          <div className="card-head"><h3>Férias da equipe</h3><span className="card-head-ctl hint">{vm.feriasFonte === 'folha' ? 'pela previsão de férias do DP' : vm.feriasFonte === 'misto' ? 'pela previsão do DP e pelo tempo no registro' : 'pelo tempo no registro'}</span></div>
+          <div className="card-head"><h3>Férias da equipe</h3></div>
           {vm.ferias.length ? (
             <ul className="cli-fe-lista">
               {vm.ferias.map(x => (
                 <li key={x.id} className={'cli-fe-linha t-' + x.tom}>
                   <Avatar nome={x.nome} tamanho={36} />
-                  <span className="cli-fe-txt"><b>{x.nome}</b><span className="hint">{x.texto}{vm.feriasFonte === 'misto' && !x.pelaFolha ? ' · estimativa' : ''}</span></span>
+                  <span className="cli-fe-txt"><b>{x.nome}</b><span className="hint" title={x.texto}>{x.frase}</span></span>
                   <span className={'cli-eq-ferias t-' + x.tom}>{x.rotulo}</span>
                   {x.podeProgramar ? <button type="button" className="btn btn-sm" onClick={() => void abrirPedido('ferias', vm.novasFerias(x.nome))}><Icone nome="calendar" width={14} height={14} />Programar</button> : <span className="cli-fe-vaga" />}
                 </li>
               ))}
             </ul>
           ) : <Vazio icone="calendar" titulo="Nenhum funcionário ativo" texto="As férias aparecem aqui pelo tempo de cada um no registro." />}
-          <p className="hint cli-fe-nota">{vm.feriasFonte === 'folha'
-            ? 'Pela previsão de vencimento de férias que o DP gera no sistema da folha. A férias vencida é paga em dobro.'
-            : 'Quem não tem a previsão de férias do DP fica com uma estimativa pelo mês em que entrou nas guias do FGTS: vale o período mais recente, que fica em dia com um recibo de férias depois dele. A férias vencida é paga em dobro; o escritório confirma pelo registro.'}</p>
+          {/* a nota numa frase (16/11/2026: "muita informação") */}
+          <p className="hint cli-fe-nota">{vm.notaDasFerias}</p>
         </section>
       )}
 
-      {/* o custo da folha mês a mês (13/11/2026) */}
+      {/* o custo da folha mês a mês (13/11/2026); enxuto (16/11/2026: "muita informação"): o total e três números à vista,
+          o resto dos holerites recolhido no "Ver detalhes" */}
       {vm.aba === 'folha' && vm.custoDoMes && (
-        <section className="card cli-cf">
-          <div className="card-head"><h3>Custo da folha</h3><span className="card-head-ctl hint">{vm.custoDoMes.holerite ? 'salários + FGTS, pelos holerites e pelas guias' : 'salários + FGTS, pelas guias do FGTS'}</span></div>
+        <section className="card cli-cf cli-rg-cf">
+          <div className="card-head"><h3>Custo da folha</h3></div>
           <div className="cli-cf-corpo">
             <div className="cli-cf-numeros">
               <div><span className="cli-sobre">{vm.custoDoMes.mes}</span><b className="cli-valor cli-cf-total">{vm.custoDoMes.total}</b>
@@ -449,17 +482,20 @@ export function DepartamentoPessoal(props: DaCasca) {
               <div className="cli-cf-partes">
                 <span>Salários<b className="cli-valor">{vm.custoDoMes.salarios}</b></span>
                 <span>FGTS<b className="cli-valor">{vm.custoDoMes.fgts}</b></span>
-                <span>Por funcionário<b className="cli-valor">{vm.custoDoMes.porFuncionario}</b></span>
+                {vm.custoDoMes.holerite
+                  ? <span>Líquido pago<b className="cli-valor">{vm.custoDoMes.holerite.liquido}</b></span>
+                  : <span>Por funcionário<b className="cli-valor">{vm.custoDoMes.porFuncionario}</b></span>}
               </div>
-              {/* pelos holerites do mês (13/11/2026: a folha de verdade): o que saiu de desconto e o que caiu na conta */}
               {vm.custoDoMes.holerite && (
-                <div className="cli-cf-partes cli-cf-holerite">
-                  <span className="cli-sobre">Nos holerites · {vm.custoDoMes.holerite.quantos}</span>
-                  <span>INSS descontado<b className="cli-valor">{vm.custoDoMes.holerite.inss}</b></span>
-                  <span>IRRF descontado<b className="cli-valor">{vm.custoDoMes.holerite.irrf}</b></span>
-                  <span>Todos os descontos<b className="cli-valor">{vm.custoDoMes.holerite.descontos}</b></span>
-                  <span className="cli-cf-liquido">Líquido pago<b className="cli-valor">{vm.custoDoMes.holerite.liquido}</b></span>
-                </div>
+                <details className="cli-rg-detalhes">
+                  <summary><Icone nome="chevronRight" width={14} height={14} />Ver detalhes</summary>
+                  <div className="cli-cf-partes cli-rg-detalhes-corpo">
+                    <span>Por funcionário<b className="cli-valor">{vm.custoDoMes.porFuncionario}</b></span>
+                    <span>INSS descontado<b className="cli-valor">{vm.custoDoMes.holerite.inss}</b></span>
+                    <span>IRRF descontado<b className="cli-valor">{vm.custoDoMes.holerite.irrf}</b></span>
+                    <span>Todos os descontos<b className="cli-valor">{vm.custoDoMes.holerite.descontos}</b></span>
+                  </div>
+                </details>
               )}
             </div>
             <div className="cli-cf-grafico">
@@ -513,7 +549,7 @@ export function DepartamentoPessoal(props: DaCasca) {
         {vm.grupos.length ? vm.grupos.map(g => (
           <div key={g.categoria} className="cli-reg-grupo">
             <p className="cli-biblioteca-mes-titulo">{g.rotulo.toUpperCase()}</p>
-            <ul className="cli-reg-docs">{g.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
+            <ul className="cli-reg-docs">{g.docs.map(d => <LinhaDaFolha key={d.id} d={d} vm={vm} />)}</ul>
           </div>
         )) : <Vazio icone="pastaAberta" titulo="Nenhum documento ainda" texto="A folha, os recibos e as guias do mês aparecem aqui quando o escritório salva na pasta da empresa." />}
       </section>}

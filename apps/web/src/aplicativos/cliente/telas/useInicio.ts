@@ -1,8 +1,10 @@
 // ViewModel da Visão geral da Área do Cliente (Vitor, 16/10/2026). Refeita em 13/11/2026 ("refaça esses 3"; "muita
 // informação"): a saudação com a linha do resumo do mês, o que precisa do cliente (dados/visaoGeral.ts, cada item com UMA
 // ação), as próximas guias a pagar (só as poucas que vêm; a agenda inteira fica nas Guias) e o enviar documento.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"): o resumo com dois fatos, cada
+// pendência numa linha e cada guia com o nome, "Vence 19/11", o valor e UM botão (Baixar); ver e copiar no menu "⋯".
 import { areaCliente as ac, formatos } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { useRetorno, type ItemMenu } from '@nads/ui';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { baixarArquivo } from '../dados/baixar';
@@ -18,7 +20,6 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirE
   const { toast } = useRetorno();
   const navegar = useNavigate();
   const [baixando, setBaixando] = useState('');
-  const [aberto, setAberto] = useState('');
   const pendencias = pendenciasDoCliente(area, hoje);
 
   // a pré-visualização da guia (12/11/2026: "quero que a pessoa tenha uma pré-visualização")
@@ -51,28 +52,33 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirE
 
   const hora = new Date().getHours();
   const atualizado = area.resumo?.atualizadoEm ? quandoFoi(area.resumo.atualizadoEm, hoje) : '';
-  const mes = formatos.capital(hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
 
-  // (13/11/2026: "refaça esses 3") as próximas guias numa lista curta e alinhada: a data, o nome, quanto falta e o valor;
-  // o clique abre as ações da guia (ver, copiar o código, baixar)
+  // (16/11/2026, "muita informação") as próximas guias como nas Guias: o nome, "Vence 19/11", o valor e UM botão, o
+  // Baixar (sem o PDF, o Copiar código; sem os dois, nada); o resto (ver a guia, copiar o código) no menu "⋯"
   const prox = proximasGuias(area.guias, hoje, PROXIMAS);
-  const proximas = prox.itens.map(p => ({
-    id: p.guia.id, dia: p.dia, semana: p.semana, faltam: p.faltam, nome: ac.ROTULO_DA_GUIA[p.guia.tipo],
-    valor: formatos.reais(p.guia.valor), temPdf: p.guia.temPdf, codigo: area.codigos[p.guia.id] ?? '', aberta: aberto === p.guia.id,
-  }));
+  const proximas = prox.itens.map(p => {
+    const id = p.guia.id, codigo = area.codigos[id] ?? '', nome = ac.ROTULO_DA_GUIA[p.guia.tipo];
+    const copiarCodigo = () => copiar(codigo, 'Código');
+    const principal = p.guia.temPdf ? { rotulo: 'Baixar', icone: 'download' as const, acao: () => void baixar(id) }
+      : codigo ? { rotulo: 'Copiar código', icone: 'copiar' as const, acao: copiarCodigo } : null;
+    const mais: ItemMenu[] = [
+      ...(p.guia.temPdf ? [{ rotulo: 'Ver a guia', icone: 'olho' as const, desabilitado: vista.abrindo === id, onClick: () => verGuia(id) }] : []),
+      ...(p.guia.temPdf && codigo ? [{ rotulo: 'Copiar o código de barras', icone: 'copiar' as const, onClick: copiarCodigo }] : []),
+    ];
+    return { id, nome, quando: p.quando, valor: formatos.reais(p.guia.valor), principal, mais };
+  });
 
   return {
     saudacao: hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite',
-    // a linha embaixo da saudação ("Novembro de 2026 · 4 pendências · atualizado hoje, 07:30")
-    resumo: linhaDoResumo(mes, pendencias.length, atualizado),
+    // a linha embaixo da saudação, dois fatos no máximo ("4 pendências · atualizado hoje, 07:30")
+    resumo: linhaDoResumo(pendencias.length, atualizado),
     pendencias, agir,
     /** o "tudo em dia" (13/11/2026, revisão: sem "a próxima guia vence em...": as próximas guias estão logo embaixo) */
     emDia: 'Nada pendente com você.',
     proximas,
     totalDasProximas: prox.quantas ? formatos.reais(prox.total) : '',
     rotuloDoTotal: rotuloDoTotal(prox.quantas, proximas.length),
-    abrirGuia: (id: string) => setAberto(a => (a === id ? '' : id)),
     verTodas: () => irPara('guias'),
-    vista, verGuia, baixando, baixar, copiarCodigo: (c: string) => copiar(c, 'Código'),
+    vista, baixando,
   };
 }

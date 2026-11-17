@@ -2,6 +2,9 @@
 // 13/11/2026 ("refaça esses 3"; "muita informação", a mesma guia aparecia na agenda e no "A pagar"): uma linha de resumo
 // embaixo do título; as guias do mês numa lista com abas (A pagar e Pagas); o calendário do mês só com os pontos (o
 // clique no dia destaca o que vence nele); a lista do que o escritório entrega no mês; os avisos da contabilidade.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"): saíram as entregas do escritório
+// (trabalho interno; nem os pontos delas ficam no calendário) e os avisos (já estão no "Precisa de você" da Visão
+// geral); o resumo ficou com dois fatos e cada guia só com a data curta (dados/guiasDoMes.ts).
 import { areaCliente as ac, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -10,7 +13,8 @@ import { repoAreaCliente } from '../dados/repo';
 import { nomeDoZip } from '../dados/biblioteca';
 import { useBaixarVarios } from './useBaixarVarios';
 import { useVisualizar } from './useVisualizar';
-import { abaDoDia, chaveDoMes, painelDasGuias, resumoDasGuias, situacaoDoCertificado, vencimentoDaGuia, legendaDoCalendario, type MarcaDoMes } from '../dados/regras';
+import { abaDoDia, chaveDoMes, painelDasGuias, legendaDoCalendario, type MarcaDoMes } from '../dados/regras';
+import { quandoVence, resumoCurtoDasGuias } from '../dados/guiasDoMes';
 import { tituloDaGuiaNova } from '../dados/visaoGeral';
 import type { DaCasca } from './useAreaCliente';
 
@@ -34,8 +38,6 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
   const mostraPagas = area.secoes.pagas;
   const pagas = mostraPagas ? area.pagas.filter(p => mesDaData(p.pagoEm) === mes) : [];
   const aba: AbaDasGuias = mostraPagas ? abaBruta : 'apagar';
-  // o que o escritório entrega no mês; o "não se aplica" não aparece para o cliente
-  const agenda: ac.ItemDaAgenda[] = (area.agenda.find(a => a.mes === mes)?.itens ?? []).filter(i => i.situacao !== 'nao se aplica' && i.vence.startsWith(mes)).sort((x, y) => x.vence.localeCompare(y.vence));
 
   // a pré-visualização da guia (12/11/2026: "quero que a pessoa tenha uma pré-visualização")
   const vista = useVisualizar();
@@ -58,23 +60,11 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     } finally { setBaixando(''); }
   }
 
-  // em dias até o vencimento (negativo: já venceu)
-  const diasAte = (g: ac.GuiaDoCliente) => {
-    const venc = ac.dataDoVencimento(g.vencimento);
-    if (!venc) return 0;
-    return Math.round((new Date(venc.getFullYear(), venc.getMonth(), venc.getDate()).getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime()) / 86_400_000);
-  };
-  // "em 4 dias", "há 5 dias"; no dia, nada (a situação já diz "Vence hoje")
-  const faltam = (g: ac.GuiaDoCliente) => {
-    if (!ac.dataDoVencimento(g.vencimento)) return '';
-    const dias = diasAte(g);
-    return dias > 0 ? 'em ' + dias + (dias === 1 ? ' dia' : ' dias') : dias < 0 ? 'há ' + -dias + (dias === -1 ? ' dia' : ' dias') : '';
-  };
   // a próxima a pagar leva o único Baixar carmim da tela ("melhora mais" de 17/10/2026: a vencida leva o "Pedir nova")
   const proxima = guias.find(g => g.situacao !== 'vencida') ?? null;
-  const nomeCurto = (g: ac.GuiaDoCliente) => ac.ROTULO_DA_GUIA[g.tipo].replace(/ \(.*\)$/, '');
 
-  const p = painelDasGuias(guias, pagas, agenda, mes, hoje, g => ac.ROTULO_DA_GUIA[g.tipo]);
+  // (16/11/2026, "muita informação") sem as entregas do escritório: o calendário marca só as guias e as pagas
+  const p = painelDasGuias(guias, pagas, [], mes, hoje, g => ac.ROTULO_DA_GUIA[g.tipo]);
   const nomeDoMes = formatos.rot(mes).toLowerCase().replace(/ de \d{4}$/, '');
   const porDia = new Map<number, MarcaDoMes[]>();
   for (const x of p.linha.marcas) porDia.set(x.dia, [...(porDia.get(x.dia) ?? []), x]);
@@ -97,23 +87,18 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
 
   const linhasDasGuias = guias.map(g => ({
     guia: g, dia: diaDaData(g.vencimento), escolhida: escolhido != null && diaDaData(g.vencimento) === escolhido,
-    // (13/11/2026, revisão) a linha menor: "Vencida em 08/11, há 5 dias", "Vence em 16/11, daqui a 3 dias"
-    quando: vencimentoDaGuia(g.situacao, g.vencimento, ac.dataDoVencimento(g.vencimento) ? diasAte(g) : null), codigo: area.codigos[g.id] as string | undefined, destaque: g.id === (proxima?.id ?? ''),
+    // (16/11/2026, "muita informação") só a data: "Vence 19/11", "Venceu 11/11"
+    quando: quandoVence(g.situacao, g.vencimento), codigo: area.codigos[g.id] as string | undefined, destaque: g.id === (proxima?.id ?? ''),
   }));
   const linhasDasPagas = pagas.map(x => ({ paga: x, dia: diaDaData(x.pagoEm), escolhida: escolhido != null && diaDaData(x.pagoEm) === escolhido }));
-  const entregas = agenda.map(x => {
-    const dia = Number(x.vence.slice(8, 10));
-    return { id: x.id, dia, data: x.vence.slice(8, 10) + '/' + x.vence.slice(5, 7), nome: x.nome, feita: x.situacao === 'feito', hoje: p.linha.hoje === dia, escolhida: escolhido === dia };
-  });
-  const feitas = entregas.filter(e => e.feita).length;
   const comPdf = guias.filter(g => g.temPdf);
 
   return {
     mes, mudarMes: setMes, ultimo,
-    // a linha embaixo do título (13/11/2026: no lugar dos três cartões grandes)
-    resumo: resumoDasGuias({
-      nomeDoMes, aPagar: { valor: formatos.reais(p.aPagar.valor), guias: p.aPagar.guias }, vencidas: { valor: formatos.reais(p.vencidas.valor), guias: p.vencidas.guias },
-      proxima: proxima ? { data: proxima.vencimento.slice(0, 5), nome: nomeCurto(proxima), faltam: faltam(proxima) } : null, pagas: pagas.length,
+    // a linha embaixo do título (16/11/2026, "muita informação": no máximo dois fatos)
+    resumo: resumoCurtoDasGuias({
+      nomeDoMes, aPagar: { valor: formatos.reais(p.aPagar.valor), guias: p.aPagar.guias }, vencidas: p.vencidas.guias,
+      proxima: proxima && /^\d\d\/\d\d/.test(proxima.vencimento) ? proxima.vencimento.slice(0, 5) : null, pagas: pagas.length,
     }),
     // as abas dentro do cartão da lista (como em Solicitações); as pagas só quando a área tem de onde tirar
     abas: [{ id: 'apagar' as const, rotulo: 'A pagar', n: guias.length }, ...(mostraPagas ? [{ id: 'pagas' as const, rotulo: 'Pagas', n: pagas.length }] : [])],
@@ -125,7 +110,6 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
         : mes < chaveDoMes(hoje) ? 'Nenhuma guia em ' + nomeDoMes + '.'
           : 'Quando o escritório mandar uma guia de ' + nomeDoMes + ', ela aparece aqui.',
     calendario: { titulo: 'Agenda de ' + nomeDoMes, semanas, legenda: legendaDoCalendario(p.linha.marcas), mostra: p.linha.marcas.length > 0 },
-    entregas, resumoDasEntregas: entregas.length ? feitas + ' de ' + entregas.length + (feitas === 1 ? ' entregue' : ' entregues') : '',
     diaEscolhido: escolhido,
     /** escolhe o dia (o clique no calendário): destaca o que vence nele e abre a aba certa; no mesmo dia, solta */
     escolherDia: (d: number) => {
@@ -139,7 +123,5 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     setas: vista.setas(comPdf.map(g => g.id), id => repoAreaCliente.baixarGuia(token, id)),
     comPdf: comPdf.length, juntando: zip.juntando,
     baixarTodas: () => { void zip.baixarVarios(comPdf.map(g => g.id), id => repoAreaCliente.baixarGuia(token, id), nomeDoZip(area.resumo?.empresas?.[0]?.nome ?? '', mes, 'Guias')); },
-    certificado: area.certificado ? { ...area.certificado, ...situacaoDoCertificado(area.certificado, hoje) } : null,
-    avisos: area.avisos, irPara,
   };
 }

@@ -1,6 +1,8 @@
 // A faixa dos primeiros passos na Visão geral (15/11/2026: "Pode fazer"): o título com o progresso, os itens lado a lado
 // (o feito com o visto verde, o que falta leva até onde se faz) e o "x" para ocultar. A regra fica em
 // dados/primeirosPassos.ts; aqui só desenha.
+// (16/11/2026: o dono apresentou a área e ouviu "tinha muita informação") mais discreta: só os passos que faltam (o feito
+// já conta no "2 de 5"), sem o número na bolinha.
 import { Icone } from '@nads/ui';
 import type { AcaoDoPrimeiroPasso, PrimeiroPasso } from '../dados/primeirosPassos';
 import type { AreaCliente } from '../telas/useAreaCliente';
@@ -31,12 +33,11 @@ export function PrimeirosPassos({ lista, irPara, enviar }: {
         </span>
       </div>
       <ol className="cli-pp-itens">
-        {lista.itens.map((x, k) => (
+        {lista.itens.filter(x => !x.feito).map(x => (
           <li key={x.id}>
-            <button type="button" className={'cli-pp-item' + (x.feito ? ' feito' : '')} aria-disabled={x.feito || undefined} onClick={x.feito ? undefined : () => fazer(x.id)}>
-              <span className="cli-pp-marca" aria-hidden="true">{x.feito ? <Icone nome="check" width={13} height={13} /> : k + 1}</span>
+            <button type="button" className="cli-pp-item" onClick={() => fazer(x.id)}>
+              <span className="cli-pp-marca" aria-hidden="true" />
               <span className="cli-pp-rotulo">{x.rotulo}</span>
-              {x.feito && <span className="sr-only">(feito)</span>}
             </button>
           </li>
         ))}

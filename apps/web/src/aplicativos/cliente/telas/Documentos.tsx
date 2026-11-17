@@ -4,7 +4,11 @@
 // abre a visualização, com as setas para o anterior e o próximo), a pasta num selo colorido, a data e as ações (ver e
 // baixar, que aparecem ao passar o mouse). Marcar vários (ou "Baixar o mês") junta tudo num .zip. O que o cliente enviou
 // aparece como "Recebido": o arquivo fica com o escritório. Só desenha: o estado e as ações vêm de useDocumentos.ts.
-import { CampoEscolha, Icone } from '@nads/ui';
+// 16/11/2026 (o dono apresentou a área e ouviu "muita informação"): a mesma estrutura, menos texto. A linha de baixo
+// sem o que já está na linha (o vencimento, o "recebido pelo escritório em", o mês), e o selo da pasta só no "Tudo";
+// numa pasta escolhida a coluna do selo some (documentos.css). Na revisão de consistência (16/11/2026, "muita
+// informação"): a linha tem uma ação, o Baixar; o Ver (o mesmo do clique no nome) foi para o "⋯", como nas Guias e no Registro.
+import { CampoEscolha, Icone, MenuSuspenso } from '@nads/ui';
 import { IconeDoArquivo } from '../partes/IconeDoArquivo';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { Vazio } from '../partes/Vazio';
@@ -13,6 +17,7 @@ import { useDocumentos } from './useDocumentos';
 import type { DaCasca } from './useAreaCliente';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
+import './documentos.css';
 
 export function Documentos(props: DaCasca) {
   const vm = useDocumentos(props);
@@ -38,7 +43,7 @@ export function Documentos(props: DaCasca) {
         ))}
       </nav>
 
-      <section className="card cli-biblioteca-lista">
+      <section className={'card cli-biblioteca-lista' + (vm.comPasta ? '' : ' cli-doc-sem-pasta')}>
         <div className="cli-biblioteca-filtros">
           <label className="cli-marcar-todos" title="Marcar todos os que abrem">
             <input type="checkbox" checked={vm.todosMarcados} onChange={vm.marcarTodos} aria-label="Marcar todos" />
@@ -68,21 +73,22 @@ export function Documentos(props: DaCasca) {
                   {i.abre ? (
                     <button type="button" className="cli-biblioteca-txt cli-biblioteca-abrir" disabled={vm.vista.abrindo === i.chave} onClick={() => vm.ver(i)} title={'Ver ' + i.nome}>
                       <b>{i.nome}{i.novo && <span className="badge badge-warn cli-biblioteca-novo">Novo</span>}</b>
-                      <span className="hint">{i.detalhe}</span>
+                      {i.linha && <span className="hint">{i.linha}</span>}
                     </button>
                   ) : (
                     <span className="cli-biblioteca-txt">
                       <b>{i.nome}</b>
-                      <span className="hint">{i.detalhe}</span>
+                      {i.linha && <span className="hint">{i.linha}</span>}
                     </span>
                   )}
-                  <span className="cli-biblioteca-pasta cli-so-largo"><span className={'cli-selo-pasta t-' + i.tomDaPasta}>{i.rotuloDaPasta}</span></span>
+                  {vm.comPasta && <span className="cli-biblioteca-pasta cli-so-largo"><span className={'cli-selo-pasta t-' + i.tomDaPasta}>{i.rotuloDaPasta}</span></span>}
                   <span className="cli-biblioteca-data cli-so-largo">{i.quando}</span>
                   <span className="cli-biblioteca-acoes">
                     {i.abre ? (
                       <>
-                        <button type="button" className="icon-btn" title="Ver" aria-label={'Ver ' + i.nome} disabled={vm.vista.abrindo === i.chave} onClick={() => vm.ver(i)}><Icone nome="olho" width={16} height={16} /></button>
                         <button type="button" className="icon-btn" title="Baixar" aria-label={'Baixar ' + i.nome} disabled={vm.baixando === i.chave} onClick={() => vm.baixar(i)}><Icone nome="download" width={16} height={16} /></button>
+                        <MenuSuspenso rotulo="" icone="mais" className="icon-btn" semSeta direita flutuante compacto dica="Mais ações" titulo={'Mais ações: ' + i.nome}
+                          itens={[{ rotulo: 'Ver', icone: 'olho', desabilitado: vm.vista.abrindo === i.chave, onClick: () => vm.ver(i) }]} />
                       </>
                     ) : <span className="cli-biblioteca-recebido"><Icone nome="check" width={14} height={14} />Recebido</span>}
                   </span>

@@ -39,6 +39,8 @@ type Base = PassoDoTutorial & { so?: ModoDoTutorial };
 // precisa de você, pagar uma guia e pedir algo ao escritório. O resto de cada tela fica no "?" ao lado do título, que a
 // pessoa abre quando quer (a ajuda puxada, não empurrada, como recomenda a Nielsen Norman Group). A busca e o sino
 // entram no "?" da Visão geral; a troca de empresa, no dos Dados cadastrais.
+// (16/11/2026: "muita informação") as telas ficaram mais enxutas: a guia com um botão e o "⋯"; os textos e as marcas
+// acompanham.
 const PASSOS: Base[] = [
   { id: 'oi', capitulo: 'Começo', titulo: 'Bem-vindo à sua Área do Cliente', icone: 'home',
     texto: 'Quatro passos rápidos para você se achar: o menu, o que precisa de você, as guias e os pedidos ao escritório.' },
@@ -50,18 +52,18 @@ const PASSOS: Base[] = [
     texto: 'O que pede uma ação sua agora, cada item com o botão certo. Quando estiver tudo em dia, ela avisa.' },
   { id: 'proximos', capitulo: 'Visão geral', aba: 'inicio', alvo: '.cli-inicio-proximos', titulo: 'As próximas guias', icone: 'calendar',
     texto: 'As guias que vencem nos próximos dias, com o total.',
-    marcas: [{ alvo: '.cli-inicio-proximos .cli-extrato-linha', texto: 'Toque numa guia para ver, baixar ou copiar o código' }, { alvo: '.cli-inicio-proximos .card-head .btn', texto: 'Todas as guias e a agenda do mês' }] },
+    marcas: [{ alvo: '.cli-inicio-proximos .cli-vg-guia-acoes', texto: 'Baixe a guia; no ⋯, veja ou copie o código' }, { alvo: '.cli-inicio-proximos .card-head .btn', texto: 'Todas as guias e a agenda do mês' }] },
   { id: 'enviar', capitulo: 'Visão geral', aba: 'inicio', alvo: '.cli-v-enviar', titulo: 'Mande documentos', icone: 'upload',
     texto: 'O arquivo vai direto para o escritório.',
     marcas: [{ alvo: '.cli-v-enviar .cli-envio-tipos', texto: 'Escolha o que é: extrato, nota, comprovante' }, { alvo: '.cli-v-enviar .cli-soltar', texto: 'Arraste ou toque para escolher o arquivo' }] },
   { id: 'guias-numeros', capitulo: 'Guias', aba: 'guias', alvo: '.cli-numeros-guias', titulo: 'As guias do mês', icone: 'recibo',
-    texto: 'Quanto há para pagar no mês, o que venceu e o próximo vencimento. Troque o mês no botão do alto.' },
+    texto: 'O total a pagar no mês e o que venceu (ou o próximo vencimento). Troque o mês no botão do alto.' },
   { id: 'agenda', capitulo: 'Guias', aba: 'guias', alvo: '.cli-agenda-mes', titulo: 'A agenda', icone: 'calendar',
-    texto: 'Os dias com guia a pagar ou entrega do escritório.',
+    texto: 'Os dias com guia a pagar, vencida ou paga.',
     marcas: [{ alvo: '.cli-agenda-mes .cli-cal-hoje, .cli-agenda-mes .cli-calendario button', texto: 'Toque num dia para ver o que vence nele' }, { alvo: '.cli-agenda-mes .cli-legenda-cal', texto: 'O que cada bolinha quer dizer' }] },
   { id: 'a-pagar', boasVindas: true, capitulo: 'Guias', aba: 'guias', alvo: '[data-tutorial="a-pagar"]', titulo: 'Pagar uma guia', icone: 'download',
     texto: 'Cada guia com o que dá para fazer com ela.',
-    marcas: [{ alvo: '[data-tutorial="a-pagar"] .cli-linha-guia .cli-g-acoes > :nth-child(1)', texto: 'Ver a guia sem baixar' }, { alvo: '[data-tutorial="a-pagar"] .cli-linha-guia .cli-g-acoes > :nth-child(2)', texto: 'Baixar o PDF (ou copiar o código)' }, { alvo: '[data-tutorial="a-pagar"] .cli-linha-guia .cli-g-acoes > :nth-child(3)', texto: 'Venceu? Peça uma nova: a vencida não passa no banco' }] },
+    marcas: [{ alvo: '[data-tutorial="a-pagar"] .cli-linha-guia .cli-g-acoes > :nth-child(1)', texto: 'Baixe a guia. Venceu? Peça uma nova: a vencida não passa no banco' }, { alvo: '[data-tutorial="a-pagar"] .cli-linha-guia .cli-gu-mais', texto: 'No ⋯: ver a guia sem baixar ou copiar o código' }] },
   { id: 'pastas', capitulo: 'Documentos', aba: 'documentos', alvo: '.cli-pastas-cartoes', titulo: 'Seus documentos por pasta', icone: 'pastaAberta',
     texto: 'Toque numa pasta para ver só os documentos dela.' },
   { id: 'lista', capitulo: 'Documentos', aba: 'documentos', alvo: '.cli-biblioteca-lista', titulo: 'Ver, baixar ou juntar', icone: 'olho',
@@ -71,15 +73,15 @@ const PASSOS: Base[] = [
     texto: 'Cada pedido com a situação: aberto, respondido ou concluído. As abas filtram.' },
   { id: 'sol-nova', boasVindas: true, capitulo: 'Solicitações', aba: 'chamados', alvo: '[data-tutorial="nova-solicitacao"]', titulo: 'Peça o que precisar', icone: 'plus',
     texto: 'Admissão, férias, um documento ou uma dúvida: escolha o assunto e escreva. A resposta chega aqui e no sino.' },
-  { id: 'equipe', capitulo: 'Registro', aba: 'dp', clicar: '.cli-fat-abas [data-aba="equipe"]', alvo: '.cli-reg-equipe', titulo: 'Sua equipe', icone: 'equipe',
+  { id: 'equipe', capitulo: 'RH', aba: 'dp', clicar: '.cli-fat-abas [data-aba="equipe"]', alvo: '.cli-reg-equipe', titulo: 'Sua equipe', icone: 'equipe',
     texto: 'Os funcionários do registro.',
     marcas: [{ alvo: '.cli-reg-equipe .cli-sol-filtros', texto: 'Quem está e quem já saiu' }, { alvo: '.cli-reg-equipe .cli-reg-busca', texto: 'Busque pelo nome, CPF ou matrícula' }, { alvo: '.cli-reg-equipe .cli-eq-cartao', texto: 'Toque para abrir a ficha: documentos, férias, desligamento' }] },
-  { id: 'ferias', capitulo: 'Registro', aba: 'dp', clicar: '.cli-fat-abas [data-aba="ferias"]', alvo: '.cli-fe', titulo: 'As férias da equipe', icone: 'calendar',
+  { id: 'ferias', capitulo: 'RH', aba: 'dp', clicar: '.cli-fat-abas [data-aba="ferias"]', alvo: '.cli-fe', titulo: 'As férias da equipe', icone: 'calendar',
     texto: 'Quem precisa tirar férias, a vencida primeiro.',
     marcas: [{ alvo: '.cli-fe-linha .cli-eq-ferias', texto: 'Em dia, vence logo ou vencida' }, { alvo: '.cli-fe-linha .btn', texto: 'Marque os dias no calendário e mande ao escritório' }] },
-  { id: 'custo', capitulo: 'Registro', aba: 'dp', clicar: '.cli-fat-abas [data-aba="folha"]', alvo: '.cli-cf', titulo: 'Quanto custa a folha', icone: 'barChart',
-    texto: 'Salários e FGTS do mês e, pelos holerites, os descontos e o líquido pago. Toque num mês do gráfico para comparar.' },
-  { id: 'folha', capitulo: 'Registro', aba: 'dp', clicar: '.cli-fat-abas [data-aba="folha"]', alvo: '.cli-reg-folha', titulo: 'Os documentos da folha', icone: 'arquivo',
+  { id: 'custo', capitulo: 'RH', aba: 'dp', clicar: '.cli-fat-abas [data-aba="folha"]', alvo: '.cli-cf', titulo: 'Quanto custa a folha', icone: 'barChart',
+    texto: 'O total do mês, os salários, o FGTS e o líquido pago; os descontos em Ver detalhes. Toque num mês do gráfico para comparar.' },
+  { id: 'folha', capitulo: 'RH', aba: 'dp', clicar: '.cli-fat-abas [data-aba="folha"]', alvo: '.cli-reg-folha', titulo: 'Os documentos da folha', icone: 'arquivo',
     texto: 'A folha, os recibos, as férias e as guias do mês, por tipo.',
     marcas: [{ alvo: '.cli-reg-folha .cli-baixar-tudo', texto: 'O mês inteiro num .zip' }, { alvo: '.cli-reg-folha .chip-f', texto: 'Troque o mês' }] },
   { id: 'fat-mes', capitulo: 'Administrativo', aba: 'faturamento', alvo: '.cli-numeros-fat', titulo: 'O que você vendeu', icone: 'barChart',
@@ -128,7 +130,7 @@ export function todosOsPassos(modo: ModoDoTutorial, abas: readonly string[]): Pa
 
 /** O ícone de cada capítulo (o roteiro do começo e o resumo do fim). */
 export const ICONE_DO_CAPITULO: Record<string, NomeIcone> = {
-  Menu: 'menu', 'Visão geral': 'home', Guias: 'recibo', Documentos: 'pastaAberta', Solicitações: 'mensagem', Registro: 'equipe', Administrativo: 'predio', Atalhos: 'search',
+  Menu: 'menu', 'Visão geral': 'home', Guias: 'recibo', Documentos: 'pastaAberta', Solicitações: 'mensagem', RH: 'equipe', Administrativo: 'predio', Atalhos: 'search',
 };
 
 /** Os capítulos do tutorial, na ordem, sem o começo e o fim. */

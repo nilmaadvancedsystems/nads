@@ -27,7 +27,7 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone; administrativo
   { id: 'inicio', rotulo: 'Visão geral', icone: 'home' },
   { id: 'documentos', rotulo: 'Central de documentos', icone: 'pastaAberta' },
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
-  { id: 'dp', rotulo: 'Registro', icone: 'equipe' },
+  { id: 'dp', rotulo: 'RH', icone: 'equipe' }, // (16/11/2026: "muda isso para RH") era Registro
   { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
   { id: 'faturamento', rotulo: 'Faturamento', icone: 'barChart', administrativo: true },
   { id: 'empresa', rotulo: 'Dados cadastrais', icone: 'predio', administrativo: true },
