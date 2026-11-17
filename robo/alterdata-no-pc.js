@@ -15,9 +15,12 @@ const { execFile } = require('child_process');
 
 // o nome deste PC na fila e no estado (robo/alterdata.maquinas.<onde>); a pasta de trabalho dos pedidos no disco local
 process.env.ALTERDATA_ONDE = process.env.ALTERDATA_ONDE || ('pc-' + String(process.env.COMPUTERNAME || 'windows').toLowerCase());
-// a cópia de cada planilha que o robô puxar do Fiscal (17/11/2026, Vitor: "C:\\Users\\Vitor\\Downloads\\robo\\ sao onde vao ficar os arquivos")
-process.env.ALTERDATA_COPIA = process.env.ALTERDATA_COPIA || path.join(process.env.USERPROFILE || __dirname, 'Downloads', 'robo');
-process.env.ALTERDATA_PEDIDOS = process.env.ALTERDATA_PEDIDOS || path.join(process.env.LOCALAPPDATA || __dirname, 'nads-alterdata', 'pedidos');
+// as planilhas saem em Downloads\\robo (17/11/2026, Vitor: "C:\\Users\\Vitor\\Downloads\\robo\\ sao onde vao ficar os arquivos";
+// depois: "excluir o arquivo fisico depois de upar"): cada pedido trabalha numa subpasta de lá; com a planilha no nads, a
+// subpasta é apagada (a que deu erro fica, para ver o que houve)
+process.env.ALTERDATA_PEDIDOS = process.env.ALTERDATA_PEDIDOS || path.join(process.env.USERPROFILE || __dirname, 'Downloads', 'robo');
+// as fotos da tela (o erro de janela) ficam fora do Downloads
+process.env.ALTERDATA_TELA = process.env.ALTERDATA_TELA || path.join(process.env.LOCALAPPDATA || __dirname, 'nads-alterdata', 'tela');
 
 const log = (...m) => console.log(new Date().toLocaleString('pt-BR'), '[alterdata-pc]', ...m);
 

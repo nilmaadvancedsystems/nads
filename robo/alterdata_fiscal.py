@@ -692,8 +692,39 @@ def preencher(h):
         clicar(interna(c), 'período ' + d)
         keyboard.send_keys('{HOME}' + d.replace('/', '') + '{TAB}', pause=0.04)
         time.sleep(.5)
-    lidos = [valor(c) or valor(interna(c)) for c in datas]
-    if not (INICIO in lidos[0] and FIM in lidos[1]):
+    # a data do DevExpress não diz o valor ao UI Automation (17/11/2026: voltava vazio): lê o texto da janela da caixa e o da
+    # caixa de dentro pelo Windows
+    def texto_da_data(c):
+        v = valor(c)
+        if v:
+            return v
+        try:
+            hd = c.handle
+        except Exception:
+            hd = None
+        if not hd:
+            return ''
+        t = (win32gui.GetWindowText(hd) or '').strip()
+        if t:
+            return t
+        filhos_t = []
+
+        def ver(x, _):
+            try:
+                tx = (win32gui.GetWindowText(x) or '').strip()
+                if tx:
+                    filhos_t.append(tx)
+            except Exception:
+                pass
+            return True
+        try:
+            win32gui.EnumChildWindows(hd, ver, None)
+        except Exception:
+            pass
+        return filhos_t[0] if filhos_t else ''
+    lidos = [texto_da_data(c) for c in datas]
+    diag('as datas na tela depois de digitar: ' + ' a '.join(x or '(sem leitura)' for x in lidos))
+    if all(lidos) and not (INICIO in lidos[0] and FIM in lidos[1]):
         falhar('o período na tela (' + ' a '.join(lidos) + ') não é o pedido (' + INICIO + ' a ' + FIM + ')')
     mensagem_na_frente('ao preencher o período')
 
