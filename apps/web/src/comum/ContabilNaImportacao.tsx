@@ -152,7 +152,7 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
           <div className="imp-grupos">
             <div className="imp-grupo" aria-label="Razões das contas">
               <span className="imp-rotulo">Razões</span>
-              <BotaoDiario onClick={diarioNosRazoes} titulo="Preencher os razões das contas que as etapas usam, pelo razão que o robô puxou" />
+              <BotaoDiario naImportacao onClick={diarioNosRazoes} titulo="Preencher os razões das contas que as etapas usam, pelo razão que o robô puxou" />
               <label htmlFor={idRaz} className="icon-btn icon-btn-sm imp-btn" title="Importar os razões (XLS da conciliação do Alterdata; vários de uma vez)" aria-label="Importar os razões"><Icone nome="upload" /></label>
               <CampoArquivo semCaixa multiplo id={idRaz} aceitar=".xls,.xlsx,.ods" onEscolherVarios={fs => { void importarRazoes(fs); }} />
             </div>
