@@ -184,3 +184,13 @@ export async function pedirBalancetePeriodo(o: { codigo: number; empresa: string
   });
   return r.id;
 }
+
+/** O estado que o robô do PC publica em robo/alterdata (maquinas.<pc>): o Contábil, o Fiscal e quando falou por último. */
+export function ouvirMaquinaDoPc(maquina: string, chegou: (m: { contabil: string; fiscal: string; em: string } | null) => void): () => void {
+  try {
+    return onSnapshot(doc(banco(), 'robo', 'alterdata'), s => {
+      const x = (((s.data() || {}).maquinas || {}) as Record<string, Record<string, unknown>>)[maquina] || {};
+      chegou({ contabil: String(x.contabil || ''), fiscal: String(x.fiscal || ''), em: String(x.em || '') });
+    }, () => chegou(null));
+  } catch { chegou(null); return () => {}; }
+}

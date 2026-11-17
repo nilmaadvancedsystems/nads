@@ -117,7 +117,8 @@ export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImp
 function RoboDoFiscal({ r }: { r: NotasDoRobo }) {
   if (!r.situacao && !r.falha && !r.lendo) return null;
   const barra = r.andando || r.lendo;
-  const texto = r.falha || (r.erro ? r.situacao : r.dev ? (r.lendo ? 'A planilha chegou: importando…' : r.situacao) + (r.clique ? ' · ' + r.clique : '') : '');
+  // parado na fila do PC: o porquê aparece para todos (17/11/2026: o Contábil aberto duas vezes e o botão só esperava)
+  const texto = r.falha || r.espera || (r.erro ? r.situacao : r.dev ? (r.lendo ? 'A planilha chegou: importando…' : r.situacao) + (r.clique ? ' · ' + r.clique : '') : '');
   return (
     <div className={'imp-robo-fiscal' + (r.erro || r.falha ? ' ext-neg' : '')} role="status" aria-label={barra ? 'Puxando do Alterdata' : undefined}>
       {barra && <div className="imp-robo-barra"><span style={{ width: (r.lendo ? 100 : Math.max(4, r.pct)) + '%' }} /></div>}
