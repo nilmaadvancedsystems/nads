@@ -197,10 +197,13 @@ function iniciarAlterdata(db, log) {
       log('Alterdata: o Contábil deste ' + ONDE + ' está ' + ESTADOS[novo] + (porque ? ' (' + porque + ')' : ''));
       painel.modulo('alterdata', 'Alterdata', novo === 'ok', 'o Contábil está ' + ESTADOS[novo]);
     }
+    // o robô acabou de ligar e o Contábil já estava aberto e pronto: não é Contábil recém-aberto, não espera assentar (17/11/2026,
+    // Vitor: "nao ta puxando... ta chato": cada atualização do robô reiniciava e o primeiro pedido esperava 1 min parado)
+    const acabouDeLigar = estado === '';
     estado = novo;
     // pronto desde quando: logo depois de abrir (o login, o Guia) o Contábil ainda carrega e não responde (05/11/2026: o
     // pedido feito na hora deu "Window is not responding"); o pedido só é pego com ASSENTAR_MS de Contábil pronto
-    if (estado !== 'ok') okDesde = 0; else if (!okDesde) okDesde = Date.now();
+    if (estado !== 'ok') okDesde = 0; else if (!okDesde) okDesde = acabouDeLigar ? Date.now() - ASSENTAR_MS : Date.now();
     if (estado === 'ok') loginParado = '';   // alguém (ou o robô) entrou: se o login tinha falhado, vale tentar de novo depois
     // só quando o estado ou o login mudam ou, sem mudança, a cada 5 min (batimento.js; 10/11/2026, consumo do banco: era a
     // cada verificação, 1 por minuto; a página Alterdata da empresa dá o sinal por velho depois de 12 min)
