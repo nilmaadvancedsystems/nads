@@ -54,6 +54,8 @@ function pastaVazia(base) {
 const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6, fiscal: 7 };
 // as notas do Alterdata Fiscal (16/11/2026): o relatório de cada uma e o nome do arquivo
 const RELATORIOS_FISCAIS = { entradas: 'Entradas', saidas: 'Saídas', tomados: 'Tomados', prestados: 'Prestados' };
+// o razão de uma conta do Contábil (17/11/2026, o caminho que o Vitor gravou): o mesmo jeito do Fiscal, outro roteiro
+const ROTULO_RAZAO_CONTA = 'Razão'; 
 const MAX_MESES_FISCAL = 12;
 const CLIQUE_MS = 700;
 
@@ -223,7 +225,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const tipo = p.tipo || 'balancete';
     const codigo = Number(p.codigo);
     if (tipo === 'importar') return importar(id, p, codigo);
-    if (tipo === 'fiscal') return fiscal(id, p, codigo);
+    if (tipo === 'fiscal' || tipo === 'razaoConta') return fiscal(id, p, codigo);
     if (tipo !== 'balancete' && tipo !== 'mensal') { await banco.atualizar(id, { status: 'erro', erro: 'tipo de relatório desconhecido: ' + tipo, fimEm: agora() }); return; }
     if (!Number.isInteger(codigo) || codigo <= 0) { await banco.atualizar(id, { status: 'erro', erro: 'código da empresa inválido', fimEm: agora() }); return; }
     if (!competenciaValida(p.competencia)) { await banco.atualizar(id, { status: 'erro', erro: 'competência inválida', fimEm: agora() }); return; }
@@ -420,14 +422,17 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   async function fiscal(id, p, codigo) {
     const andamentoFim = st => ({ pct: 100, etapa: st, clique: '', em: agora() });
     const erro = msg => banco.atualizar(id, { status: 'erro', erro: String(msg).slice(0, 500), fimEm: agora(), andamento: andamentoFim('erro') });
-    const rel = String(p.relatorio || '');
-    if (!RELATORIOS_FISCAIS[rel]) return erro('relatório fiscal desconhecido: ' + rel);
+    const razaoConta = p.tipo === 'razaoConta';
+    const conta = String(p.conta || '').replace(/[^\d.]/g, '');
+    const rel = razaoConta ? 'razaoConta' : String(p.relatorio || '');
+    if (razaoConta ? !conta : !RELATORIOS_FISCAIS[rel]) return erro(razaoConta ? 'sem a conta contábil' : 'relatório fiscal desconhecido: ' + rel);
+    const rotuloRel = razaoConta ? ROTULO_RAZAO_CONTA + ' ' + conta : RELATORIOS_FISCAIS[rel];
     if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
     const ate = p.ate || p.competencia;
     if (!competenciaValida(p.competencia) || !competenciaValida(ate) || ate < p.competencia) return erro('período inválido');
     const [a0, m0] = p.competencia.split('-').map(Number), [a1, m1] = ate.split('-').map(Number);
     if ((a1 - a0) * 12 + (m1 - m0) + 1 > MAX_MESES_FISCAL) return erro('o período passa de ' + MAX_MESES_FISCAL + ' meses');
-    if (fiscalSemLogin) return erro('o login do robô no Alterdata Fiscal não deu (' + fiscalSemLogin + '); entre no Fiscal do servidor e reinicie o robô');
+    if (!razaoConta && fiscalSemLogin) return erro('o login do robô no Alterdata Fiscal não deu (' + fiscalSemLogin + '); entre no Fiscal do servidor e reinicie o robô');
     const total = PASSOS_DO_ROTEIRO.fiscal + 1;
     const passos = [];
     let etapa = 'começando';
@@ -447,13 +452,13 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const [, fim] = periodo(ate);
     const lote = ate !== p.competencia ? p.competencia + ' a ' + ate : p.competencia;
     await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
-    if (painel) painel.fazendo('alterdata', RELATORIOS_FISCAIS[rel] + ' ' + codigo + ' ' + lote + ' no Alterdata Fiscal');
+    if (painel) painel.fazendo('alterdata', rotuloRel + ' ' + codigo + ' ' + lote + (razaoConta ? ' no Alterdata Contábil' : ' no Alterdata Fiscal'));
     log('Alterdata: Fiscal', rel, codigo, lote, id);
     const pasta = pastaVazia(pastaDoPedido(id));
     // o número da empresa na frente (17/11/2026, Vitor: "ele coloca o numero da empresa e o nome do arquivo")
-    const nomeBase = codigo + ' ' + RELATORIOS_FISCAIS[rel] + ' ' + lote;
+    const nomeBase = codigo + ' ' + rotuloRel + ' ' + lote;
     const destino = path.join(pasta, nomeBase + '.xls');
-    const r = await comPrazo('fiscal', { relatorio: rel, codigo, inicio, fim, destino }, passo, clique);
+    const r = await comPrazo(razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique);
     const fimP = await banco.ler(id);
     if (fimP && fimP.status === 'cancelado') return;
     const arquivo = r.ok ? [r.arquivo, destino].find(x => x && fs.existsSync(x)) : '';
@@ -461,7 +466,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
       const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
       await banco.atualizar(id, { status: 'erro', erro: msg, diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
-      if (painel) painel.erro('alterdata', 'Fiscal ' + RELATORIOS_FISCAIS[rel] + ' ' + codigo + ' ' + lote, msg, { pedido: id });
+      if (painel) painel.erro('alterdata', (razaoConta ? 'Contábil ' : 'Fiscal ') + rotuloRel + ' ' + codigo + ' ' + lote, msg, { pedido: id });
       log('Alterdata: fim do Fiscal', id, 'erro:', msg);
       return;
     }
@@ -477,7 +482,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     deuCerto();
     if (apagarPasta) { try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (err) { log('Alterdata: não apaguei a pasta', pasta, err.message); } }
     await banco.atualizar(id, { status: 'pronto', erro: '', diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
-    if (painel) painel.atividade('alterdata', 'Puxou ' + RELATORIOS_FISCAIS[rel].toLowerCase() + ' ' + codigo + ' ' + lote + ' no Alterdata Fiscal', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+    if (painel) painel.atividade('alterdata', 'Puxou ' + rotuloRel.toLowerCase() + ' ' + codigo + ' ' + lote + (razaoConta ? ' no Alterdata Contábil' : ' no Alterdata Fiscal'), p.criadoPor ? 'pedido de ' + p.criadoPor : '');
     log('Alterdata: fim do Fiscal', id, nome, buf.length, 'bytes');
   }
 

@@ -31,7 +31,7 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
 // tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
@@ -102,6 +102,7 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
       : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]
+        : relatorio === 'razaoConta' ? [String(a.codigo), a.conta, a.inicio, a.fim, a.destino]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
@@ -321,6 +322,7 @@ function iniciarAlterdata(db, log) {
       if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
       if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ped.data().tipo === 'fiscal')) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
+      // o razão de uma conta usa o Contábil (o de sempre)
       if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
       const falta = doFiscal ? 0 : ASSENTAR_MS - (Date.now() - okDesde);
