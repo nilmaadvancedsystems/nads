@@ -114,7 +114,9 @@ async function conectar(pedirQr) {
   const s = makeWASocket(Object.assign({
     auth: state,
     logger: registro(),
-    browser: baileys.Browsers.ubuntu('nads'),
+    // como um navegador conhecido (17/11/2026): com o nome "nads" o QR saía como "outro cliente" e o celular não
+    // conectava; no celular aparece "Chrome (Ubuntu)" em Aparelhos conectados
+    browser: baileys.Browsers.ubuntu('Chrome'),
     markOnlineOnConnect: false,          // o celular continua recebendo as notificações
     // sem o histórico antigo; o recente fica (a Baileys avisa que sem ele os contatos novos do WhatsApp, os "LID", se
     // perdem e a sessão cai); o chip é novo, então é pouca coisa
@@ -210,8 +212,12 @@ async function atenderPedido(p) {
   if (espera) await dormir(espera);
   if (!sock || estado.situacao !== 'conectado') throw new Error('o WhatsApp desconectou antes de mandar');
   const numero = R.numeroDoWhatsApp(p.para);
-  const [achado] = await sock.onWhatsApp(R.jidDe(numero));
-  if (!achado || !achado.exists) throw new Error(R.numeroFormatado(numero) + ' não tem WhatsApp');
+  let achado = null;
+  for (const n of R.variantesDoNumero(numero)) {
+    const [a] = await sock.onWhatsApp(R.jidDe(n));
+    if (a && a.exists) { achado = a; break; }
+  }
+  if (!achado) throw new Error(R.numeroFormatado(numero) + ' não tem WhatsApp');
   const msg = await sock.sendMessage(achado.jid, { text: String(p.texto).trim() });
   guardarEnvio(Date.now());
   st.log('whatsapp: mandou para', p.clienteNome || R.numeroFormatado(numero));

@@ -4,10 +4,13 @@
 // sistema, sabendo que não é o caminho oficial do WhatsApp e que o número pode ser bloqueado. Por isso o envio tem
 // freio: um de cada vez, com intervalo, um limite por hora e por dia, e só para o telefone que está no cadastro do
 // cliente. E a TRAVA (como a do Mandei): enquanto LIBERADO_PARA_CLIENTES for false, só sai para os números de teste
-// (o WhatsApp do escritório). Liberar é mudar a constante, com o ok do escritório, e atualizar o robô.
+// (NUMEROS_DE_TESTE). Liberar é mudar a constante, com o ok do escritório, e atualizar o robô.
 const LIBERADO_PARA_CLIENTES = false;
-/** o WhatsApp do escritório, (38) 9138-3638: o mesmo do e-mail de pedir extratos (já público no site) */
-const NUMEROS_DE_TESTE = ['553891383638'];
+/**
+ * Para onde a trava deixa sair: o celular que o dono indicou para o teste em 17/11/2026, (38) 9919-7340 (o primeiro é o
+ * que a tela usa de começo), e o WhatsApp do escritório, (38) 9138-3638 (o mesmo do e-mail de pedir extratos).
+ */
+const NUMEROS_DE_TESTE = ['553899197340', '553891383638'];
 
 const LIMITE_POR_HORA = 30;
 const LIMITE_POR_DIA = 150;
@@ -27,6 +30,17 @@ function numeroDoWhatsApp(telefone) {
 }
 
 const jidDe = numero => numero + '@s.whatsapp.net';
+
+/**
+ * Os jeitos de procurar o número no WhatsApp: celular do Brasil com e sem o 9 da frente (conta antiga ficou no WhatsApp
+ * com 8 dígitos). 553899197340 → ['553899197340', '5538999197340'].
+ */
+function variantesDoNumero(numero) {
+  const d = texto(numero).replace(/\D/g, '');
+  if (/^55\d{2}[6-9]\d{7}$/.test(d)) return [d, d.slice(0, 4) + '9' + d.slice(4)];
+  if (/^55\d{2}9[6-9]\d{7}$/.test(d)) return [d, d.slice(0, 4) + d.slice(5)];
+  return d ? [d] : [];
+}
 
 /** O número do WhatsApp para mostrar: 553891383638 → (38) 9138-3638. */
 function numeroFormatado(numero) {
@@ -48,7 +62,7 @@ function motivoParaNaoMandar(p, cliente, { liberado = LIBERADO_PARA_CLIENTES, te
   if (!msg) return 'mensagem vazia';
   if (msg.length > MAX_LETRAS) return 'mensagem longa demais (' + msg.length + ' letras; o máximo é ' + MAX_LETRAS + ')';
   if (teste.includes(para)) return '';
-  if (!liberado) return 'o WhatsApp do robô ainda não foi liberado para clientes: por enquanto só sai para o número do escritório, para o teste';
+  if (!liberado) return 'o WhatsApp do robô ainda não foi liberado para clientes: por enquanto só sai para os números de teste';
   if (!cliente) return 'cliente não encontrado';
   if (numeroDoWhatsApp(cliente.telefone) !== para) return numeroFormatado(para) + ' não é o telefone do cadastro deste cliente';
   return '';
@@ -104,5 +118,5 @@ function podeComandar(usuario) {
 
 module.exports = {
   LIBERADO_PARA_CLIENTES, NUMEROS_DE_TESTE, LIMITE_POR_HORA, LIMITE_POR_DIA, INTERVALO_MIN_MS, INTERVALO_MAX_MS, MAX_LETRAS, SITUACOES,
-  numeroDoWhatsApp, jidDe, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
+  numeroDoWhatsApp, jidDe, variantesDoNumero, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
 };

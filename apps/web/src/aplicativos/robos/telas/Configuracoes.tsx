@@ -7,7 +7,7 @@ import type { PessoaDaEquipe, ValoresDoGrupo } from '../dados/ajustes';
 import { IconeDoRobo } from '../partes/IconeDoRobo';
 import { Confirmacao, Janela } from '../partes/Janela';
 import { useAbaAjustes, useAbaAlertas, useAbaHorarios, useAbaQuemPode } from './useAjustes';
-import { useAbaWhatsapp } from './useWhatsapp';
+import { TAMANHO_DO_QR, useAbaWhatsapp } from './useWhatsapp';
 
 export type AbaDosAjustes = 'conta' | 'robos' | 'horarios' | 'alertas' | 'whatsapp' | 'pessoas';
 const ABAS: { id: AbaDosAjustes; nome: string; nivel: 'todos' | 'administrar' | 'admin' }[] = [
@@ -321,7 +321,7 @@ function AbaWhatsapp({ central }: { central: Central }) {
         </div>
         {w.qr && (
           <div className="cr-whats-qr">
-            <img src={w.qr} alt="QR code para conectar o WhatsApp" width={260} height={260} />
+            <img src={w.qr} alt="QR code para conectar o WhatsApp" width={TAMANHO_DO_QR} height={TAMANHO_DO_QR} />
             <ol className="cr-pequeno">
               <li>No celular do chip novo, abra o WhatsApp.</li>
               <li>Toque em ⋮ (ou Configurações) › Aparelhos conectados › Conectar um aparelho.</li>
@@ -338,7 +338,13 @@ function AbaWhatsapp({ central }: { central: Central }) {
       </section>
       <section className="cr-secao">
         <h2>Mensagem de teste</h2>
-        <p className="cr-fraco cr-pequeno">Vai para o WhatsApp do escritório{w.numeroDeTeste ? ', ' + w.numeroDeTeste : ''}, pela fila do robô.</p>
+        <p className="cr-fraco cr-pequeno">Vai para {w.numeroDeTeste || 'o número de teste'}, pela fila do robô. A trava só deixa os números de teste.</p>
+        {w.teste.numeros.length > 1 && (
+          <label className="cr-campo" style={{ marginTop: 8 }}>
+            <span>Para</span>
+            <span className="cr-busca"><select aria-label="Para quem vai o teste" value={w.teste.para} onChange={e => w.teste.escolher(e.target.value)}>{w.teste.numeros.map(n => <option key={n.valor} value={n.valor}>{n.rotulo}</option>)}</select></span>
+          </label>
+        )}
         <label className="cr-campo" style={{ marginTop: 8 }}>
           <span>Texto</span>
           <textarea className="cr-whats-texto" rows={3} aria-label="Texto da mensagem de teste" maxLength={1000} value={w.teste.texto} onChange={e => w.teste.escrever(e.target.value)} />
@@ -346,7 +352,7 @@ function AbaWhatsapp({ central }: { central: Central }) {
         <div className="cr-botoes"><button type="button" className="cr-botao" disabled={!w.teste.pode} onClick={w.teste.mandar}>Mandar o teste</button></div>
       </section>
       <p className="cr-nota">
-        {w.liberado ? 'Liberado para clientes: o Pedir extratos manda pelo robô quando ele está conectado.' : 'Trava de teste: por enquanto o robô só manda para o WhatsApp do escritório. Para os clientes, o Pedir extratos continua abrindo o WhatsApp com o texto pronto.'}
+        {w.liberado ? 'Liberado para clientes: o Pedir extratos manda pelo robô quando ele está conectado.' : 'Trava de teste: por enquanto o robô só manda para os números de teste. Para os clientes, o Pedir extratos continua abrindo o WhatsApp com o texto pronto.'}
         {' '}Não é o WhatsApp oficial: o número pode ser bloqueado. Por isso o robô manda um de cada vez, com intervalo, até 30 por hora e 150 por dia, e só para o telefone do cadastro do cliente.
         {w.exemplos ? ' Dados de exemplo: nada vai para o banco nem para o WhatsApp.' : ''}
       </p>

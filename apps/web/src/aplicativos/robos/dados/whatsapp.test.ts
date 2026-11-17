@@ -8,7 +8,7 @@ import roboImportado from '../../../../../../robo/whatsapp-regras.js';
 type Solto = Record<string, unknown>;
 const R = roboImportado as {
   LIBERADO_PARA_CLIENTES: boolean; NUMEROS_DE_TESTE: string[]; LIMITE_POR_HORA: number; LIMITE_POR_DIA: number; INTERVALO_MIN_MS: number; INTERVALO_MAX_MS: number;
-  numeroDoWhatsApp(t: unknown): string; numeroFormatado(n: string): string;
+  numeroDoWhatsApp(t: unknown): string; numeroFormatado(n: string): string; variantesDoNumero(n: string): string[];
   motivoParaNaoMandar(p: Solto, cliente: Solto | null, o?: { liberado?: boolean; teste?: string[] }): string;
   motivoDoFreio(enviados: number[], agora: number): string;
   esperaAntesDeMandar(ultimo: number, agora: number, sorteio: number): number;
@@ -19,12 +19,20 @@ const R = roboImportado as {
 const AGORA = Date.parse('2026-11-12T15:00:00.000Z');
 const MIN = 60000;
 const ESCRITORIO = '553891383638';
+const CELULAR_DO_TESTE = '553899197340';
 const CLIENTE = { nome: 'Padaria Boa', telefone: '(38) 99999-1234' };
 
 describe('a trava do robô', () => {
-  it('vem fechada: só o WhatsApp do escritório', () => {
+  it('vem fechada: só o celular do teste e o WhatsApp do escritório', () => {
     expect(R.LIBERADO_PARA_CLIENTES).toBe(false);
-    expect(R.NUMEROS_DE_TESTE).toEqual([ESCRITORIO]);
+    expect(R.NUMEROS_DE_TESTE).toEqual([CELULAR_DO_TESTE, ESCRITORIO]);
+    expect(R.motivoParaNaoMandar({ para: '(38) 9919-7340', texto: 'oi' }, null)).toBe('');
+  });
+
+  it('procura o celular com e sem o 9 da frente', () => {
+    expect(R.variantesDoNumero('553899197340')).toEqual(['553899197340', '5538999197340']);
+    expect(R.variantesDoNumero('5538999197340')).toEqual(['5538999197340', '553899197340']);
+    expect(R.variantesDoNumero('553832211234')).toEqual(['553832211234']);
   });
 
   it('o número de teste passa sem cliente; o do cliente, só liberado e se for o do cadastro', () => {
@@ -75,7 +83,7 @@ describe('a situação: o robô grava, o nads lê', () => {
 
   it('conectado e com notícia recente: pronto, com o número e a trava', () => {
     const w = ler({ situacao: 'conectado', numero: '5538999990000', nome: 'Nilma', desde: '2026-11-12T14:00:00.000Z', qr: 'não vai' });
-    expect(w).toMatchObject({ situacao: 'conectado', numero: '5538999990000', nome: 'Nilma', qr: '', pronto: true, liberado: false, teste: [ESCRITORIO] });
+    expect(w).toMatchObject({ situacao: 'conectado', numero: '5538999990000', nome: 'Nilma', qr: '', pronto: true, liberado: false, teste: [CELULAR_DO_TESTE, ESCRITORIO] });
     expect(robos.mandaPeloRobo(w, ESCRITORIO)).toBe(true);
     expect(robos.mandaPeloRobo(w, '5538999991234')).toBe(false);
     expect(robos.mandaPeloRobo({ ...w, liberado: true }, '5538999991234')).toBe(true);

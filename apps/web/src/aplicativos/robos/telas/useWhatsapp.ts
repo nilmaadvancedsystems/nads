@@ -7,6 +7,8 @@ import type { ComandoDoWhatsapp } from '../dados/whatsapp';
 import { useQr } from '../../tarefas/telas/entregas/useQr';
 
 const mensagemDe = (e: unknown) => (e instanceof Error ? e.message : String(e));
+/** o QR em tamanho real, sem a tela encolher (17/11/2026: encolhido para caber, a câmera do celular não lia) */
+export const TAMANHO_DO_QR = 320;
 const TEXTO_DO_TESTE = 'Teste do WhatsApp do nads: se esta mensagem chegou, o robô está mandando pelo chip novo.';
 
 /** 553891383638 → (38) 9138-3638 */
@@ -23,8 +25,10 @@ export function useAbaWhatsapp(por: string) {
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [confirmarDesconectar, setConfirmarDesconectar] = useState(false);
   const [texto, setTexto] = useState(TEXTO_DO_TESTE);
-  const qr = useQr(w.qr, 260);
-  const numeroDeTeste = w.teste[0] || '';
+  const qr = useQr(w.qr, TAMANHO_DO_QR);
+  const [escolhido, setEscolhido] = useState('');
+  // para quem vai o teste: um dos números que a trava deixa (o primeiro, se ninguém escolheu)
+  const numeroDeTeste = w.teste.includes(escolhido) ? escolhido : w.teste[0] || '';
 
   async function fazer(rotulo: string, f: () => Promise<'feito' | 'na-fila'>, feito: string) {
     if (ocupado) return;
@@ -66,8 +70,11 @@ export function useAbaWhatsapp(por: string) {
     desconectar: () => { setConfirmarDesconectar(false); void comandar('desconectar'); },
     teste: {
       texto, escrever: setTexto,
+      para: numeroDeTeste,
+      numeros: w.teste.map(n => ({ valor: n, rotulo: numeroFormatado(n) })),
+      escolher: setEscolhido,
       pode: !ocupado && w.pronto && !!numeroDeTeste && !!texto.trim(),
-      mandar: () => { void fazer('Mandando o teste', () => repo.testar(numeroDeTeste, texto.trim(), por), 'Mandou: confira no WhatsApp do escritório.'); },
+      mandar: () => { void fazer('Mandando o teste', () => repo.testar(numeroDeTeste, texto.trim(), por), 'Mandou: confira no WhatsApp de ' + numeroFormatado(numeroDeTeste) + '.'); },
     },
   };
 }
