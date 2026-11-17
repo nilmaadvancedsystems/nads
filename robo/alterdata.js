@@ -31,7 +31,7 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
 // tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
@@ -107,6 +107,7 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
       : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]
         : relatorio === 'razaoConta' ? [String(a.codigo), a.conta, a.inicio, a.fim, a.destino]
+          : relatorio === 'dinamicoPeriodo' ? [String(a.codigo), a.inicio, a.fim, a.destino]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
