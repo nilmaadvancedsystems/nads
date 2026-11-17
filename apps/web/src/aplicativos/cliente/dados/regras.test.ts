@@ -181,8 +181,8 @@ describe('o app no celular (13/11/2026)', () => {
     expect(ultimaEmpresa([])).toBe('');
   });
   it('as abas de baixo: Visão geral, Guias, Documentos (se tem) e Solicitações', () => {
-    expect(abasDoCelular(['inicio', 'documentos', 'guias', 'dp', 'chamados', 'empresa'])).toEqual(['inicio', 'guias', 'documentos', 'chamados']);
-    expect(abasDoCelular(['inicio', 'guias', 'chamados'])).toEqual(['inicio', 'guias', 'chamados']);
+    expect(abasDoCelular(['inicio', 'documentos', 'guias', 'dp', 'chamados', 'empresa'])).toEqual(['inicio', 'chamados']);
+    expect(abasDoCelular(['inicio', 'guias', 'chamados'])).toEqual(['inicio', 'chamados']);
   });
 });
 

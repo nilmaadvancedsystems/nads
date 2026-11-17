@@ -43,19 +43,18 @@ type Base = PassoDoTutorial & { so?: ModoDoTutorial };
 // acompanham.
 const PASSOS: Base[] = [
   { id: 'oi', capitulo: 'Começo', titulo: 'Bem-vindo à sua Área do Cliente', icone: 'home',
-    texto: 'Quatro passos rápidos para você se achar: o menu, o que precisa de você, as guias e os pedidos ao escritório.' },
+    texto: 'Quatro passos rápidos para você se achar: o menu, as guias a pagar, a tela das guias e os pedidos ao escritório.' },
   { id: 'menu', boasVindas: true, capitulo: 'Menu', so: 'pc', aba: 'inicio', alvo: '.cli-lateral .cli-menu', titulo: 'O menu', icone: 'menu',
     texto: 'Cada parte da sua empresa tem uma tela. O número avisa o que é novo ou venceu.' },
   { id: 'abas', boasVindas: true, capitulo: 'Menu', so: 'celular', aba: 'inicio', alvo: '.cli-abas-baixo', titulo: 'As abas', icone: 'menu',
     texto: 'Embaixo ficam as telas que você mais usa; o resto fica no Mais. O número avisa o que é novo ou venceu.' },
-  { id: 'precisa', boasVindas: true, capitulo: 'Visão geral', aba: 'inicio', alvo: '.cli-precisa, .cli-tudo-em-dia', titulo: 'O que precisa de você', icone: 'checklist',
-    texto: 'O que pede uma ação sua agora, cada item com o botão certo. Quando estiver tudo em dia, ela avisa.' },
-  { id: 'proximos', capitulo: 'Visão geral', aba: 'inicio', alvo: '.cli-inicio-proximos', titulo: 'As próximas guias', icone: 'calendar',
-    texto: 'As guias que vencem nos próximos dias, com o total.',
-    marcas: [{ alvo: '.cli-inicio-proximos .cli-vg-guia-acoes', texto: 'Baixe a guia; no ⋯, veja ou copie o código' }, { alvo: '.cli-inicio-proximos .card-head .btn', texto: 'Todas as guias e a agenda do mês' }] },
-  { id: 'enviar', capitulo: 'Visão geral', aba: 'inicio', alvo: '.cli-v-enviar', titulo: 'Mande documentos', icone: 'upload',
-    texto: 'O arquivo vai direto para o escritório.',
-    marcas: [{ alvo: '.cli-v-enviar .cli-envio-tipos', texto: 'Escolha o que é: extrato, nota, comprovante' }, { alvo: '.cli-v-enviar .cli-soltar', texto: 'Arraste ou toque para escolher o arquivo' }] },
+  // (17/11/2026: a tela inicial virou "Guias e documentos", sem o "Precisa de você" e sem as próximas guias)
+  { id: 'precisa', boasVindas: true, capitulo: 'Guias e documentos', aba: 'inicio', alvo: '.cli-ini-guias', titulo: 'As guias a pagar', icone: 'recibo',
+    texto: 'A que venceu vem primeiro: peça uma nova. As outras, é só baixar.' },
+  { id: 'proximos', capitulo: 'Guias e documentos', aba: 'inicio', alvo: '.cli-ini-docs', titulo: 'Os documentos', icone: 'pastaAberta',
+    texto: 'O que o escritório mandou por último. Todos ficam no Ver todos.' },
+  { id: 'enviar', capitulo: 'Guias e documentos', aba: 'inicio', alvo: '.cli-ini-enviar', titulo: 'Mande documentos', icone: 'upload',
+    texto: 'Extrato, nota ou comprovante: o arquivo vai direto para o escritório.' },
   { id: 'guias-numeros', capitulo: 'Guias', aba: 'guias', alvo: '.cli-numeros-guias', titulo: 'As guias do mês', icone: 'recibo',
     texto: 'O total a pagar no mês e o que venceu (ou o próximo vencimento). Troque o mês no botão do alto.' },
   { id: 'agenda', capitulo: 'Guias', aba: 'guias', alvo: '.cli-agenda-mes', titulo: 'A agenda', icone: 'calendar',
@@ -130,7 +129,7 @@ export function todosOsPassos(modo: ModoDoTutorial, abas: readonly string[]): Pa
 
 /** O ícone de cada capítulo (o roteiro do começo e o resumo do fim). */
 export const ICONE_DO_CAPITULO: Record<string, NomeIcone> = {
-  Menu: 'menu', 'Visão geral': 'home', Guias: 'recibo', Documentos: 'pastaAberta', Solicitações: 'mensagem', RH: 'equipe', Administrativo: 'predio', Atalhos: 'search',
+  Menu: 'menu', 'Guias e documentos': 'home', Guias: 'recibo', Documentos: 'pastaAberta', Solicitações: 'mensagem', RH: 'equipe', Administrativo: 'predio', Atalhos: 'search',
 };
 
 /** Os capítulos do tutorial, na ordem, sem o começo e o fim. */

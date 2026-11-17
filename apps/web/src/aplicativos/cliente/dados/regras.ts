@@ -324,7 +324,8 @@ export function ultimaEmpresa(lista: readonly PerfilGuardado[]): string {
  * área tem) e as Solicitações; o resto fica no "Mais", que abre o menu inteiro.
  */
 export function abasDoCelular<T extends string>(abas: readonly T[]): T[] {
-  const fixas = ['inicio', 'guias', 'documentos', 'chamados'] as const;
+  // (17/11/2026: a tela inicial virou "Guias e documentos") Guias e Documentos saíram da barra: ficam no Mais
+  const fixas = ['inicio', 'chamados'] as const;
   return fixas.filter(f => abas.includes(f as T)) as T[];
 }
 
