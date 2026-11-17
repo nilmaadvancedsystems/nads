@@ -41,8 +41,14 @@ export function ConviteDoNads() {
               {novo && (
                 <div className="field">
                   <label htmlFor="cNome">Nome</label>
-                  <input id="cNome" type="text" autoComplete="username" autoFocus value={vm.nome} onChange={e => vm.setNome(e.target.value)} placeholder="Ex.: Maria Souza" />
+                  <input id="cNome" type="text" autoComplete="username" autoFocus value={vm.nome} onChange={e => vm.setNome(e.target.value)} placeholder="Ex.: Maria" />
                   {vm.login && <span className="hint">Você vai entrar como <b>{vm.login}</b></span>}
+                </div>
+              )}
+              {novo && (
+                <div className="field" style={{ marginTop: 12 }}>
+                  <label htmlFor="cSobrenome">Sobrenome</label>
+                  <input id="cSobrenome" type="text" autoComplete="family-name" value={vm.sobrenome} onChange={e => vm.setSobrenome(e.target.value)} placeholder="Ex.: Souza" />
                 </div>
               )}
               <div className="field" style={{ marginTop: novo ? 12 : 0 }}>

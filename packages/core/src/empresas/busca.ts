@@ -1,6 +1,8 @@
-// Busca da escolha de empresa: por nome ou código do ERP.
+// Busca da escolha de empresa: por nome ou código do ERP. O nome é o da lista e a razão social trocada no cadastro
+// (13/11/2026): acha pelos dois.
 // Origem: conferencia.html candidatosBusca/renderBusca e o Enter do #buscaTxt (~L1620-1668).
 import { slug } from '../formatos';
+import { nomeParaMostrar } from './razaoSocial';
 import type { EmpresaDoEscritorio } from './tipos';
 
 /** Empresas que batem com o texto: código exato primeiro, depois código que começa com ele, depois o resto. */
@@ -17,7 +19,7 @@ export function buscarEmpresas<T extends EmpresaDoEscritorio>(lista: readonly T[
       .map((x, i) => [x, i] as const).sort((a, b) => peso(a[0]) - peso(b[0]) || a[1] - b[1]).map(x => x[0]);
   }
   return lista
-    .filter(x => x.nome.toLowerCase().indexOf(q) > -1 || (x.codigo != null && String(x.codigo).indexOf(q) > -1))
+    .filter(x => x.nome.toLowerCase().indexOf(q) > -1 || nomeParaMostrar(x).toLowerCase().indexOf(q) > -1 || (x.codigo != null && String(x.codigo).indexOf(q) > -1))
     .map((x, i) => [x, i] as const)
     .sort((a, b) => peso(a[0]) - peso(b[0]) || a[1] - b[1])
     .map(x => x[0]);

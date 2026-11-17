@@ -3,7 +3,7 @@
 // (robo/arquivador-regras.js: a pasta COMPROVANTES do tipo COMPROVANTE); aqui, achar no mapa da pasta do cliente os de cada mês
 // e o nome com que o comprovante vai para o Drive (o robô reconhece pelo conteúdo; o "COMPROVANTE" no nome ajuda).
 import { nomeNorm } from '../../../formatos';
-import type { ItemDrive } from '../../creditor/regras/drive';
+import { filhosDoMapa, type ItemDrive } from '../../creditor/regras/drive';
 import { bancoDoTexto } from '../../conversor/regras/arquivo';
 
 /** Um comprovante que está no Drive; banco: o da subpasta (COMPROVANTES/BRADESCO) ou do nome ('' = não diz). */
@@ -17,8 +17,7 @@ export function comprovantesNoDrive(itens: readonly ItemDrive[], raiz: string | 
   const out: Record<string, ComprovanteNoDrive[]> = {};
   for (const m of meses) out[m] = [];
   if (!raiz) return out;
-  const filhos = new Map<string, ItemDrive[]>();
-  for (const it of itens) filhos.set(it.p, [...(filhos.get(it.p) || []), it]);
+  const filhos = filhosDoMapa(itens);
   const pastas = (p: string) => (filhos.get(p) || []).filter(it => it.t === 'd');
   const pasta = (p: string, nome: string) => pastas(p).find(it => nomeNorm(it.n) === nome) || null;
   const contabil = pasta(raiz, 'contabil');

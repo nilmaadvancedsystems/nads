@@ -51,7 +51,12 @@ function pastaVazia(base) {
  * @param {number} [o.limiteMs]  o prazo de cada relatório
  */
 // quantos PASSO: cada roteiro escreve (mais o "pronto" da fila), para a porcentagem da barra
-const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6 };
+const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6, fiscal: 7 };
+// as notas do Alterdata Fiscal (16/11/2026): o relatório de cada uma e o nome do arquivo
+const RELATORIOS_FISCAIS = { entradas: 'Entradas', saidas: 'Saídas', tomados: 'Tomados', prestados: 'Prestados' };
+// o razão de uma conta do Contábil (17/11/2026, o caminho que o Vitor gravou): o mesmo jeito do Fiscal, outro roteiro
+const ROTULO_RAZAO_CONTA = 'Razão'; 
+const MAX_MESES_FISCAL = 12;
 const CLIQUE_MS = 700;
 
 // O Contábil que não responde (07/11/2026: 38 pedidos da 571 seguidos, todos "a janela não abriu", um por minuto depois de um
@@ -84,7 +89,8 @@ function mensagemClara(classe, erros, extra) {
 }
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true,
-  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false }) {
+  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false, copiarPara = '',
+  limparTela = null, cancelarVerificarMs = 2000 }) {
   const fila = [];
   let ocupado = false;
   let atual = null;
@@ -99,6 +105,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   let avisouPausa = false;
   let avisouSemTela = false;
   const marcados = new Set();
+  // o login do robô no Fiscal que não deu: nenhum pedido do Fiscal tenta de novo até reiniciar
+  let fiscalSemLogin = '';
   const emPausa = () => pausadoAte > Date.now();
 
   function pausar(ms, motivo) {
@@ -199,25 +207,34 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   }
 
   /** Roda um relatório com prazo: estourou, o sinal para o roteiro e volta o erro. */
-  async function comPrazo(relatorio, args, passo, clique) {
+  async function comPrazo(relatorio, args, passo, clique, idDoPedido) {
     const ctl = new AbortController();
-    let relogio;
+    let relogio, vigia;
     const prazo = new Promise(resolve => {
       relogio = setTimeout(() => { ctl.abort(); resolve({ ok: false, prazo: true, erro: 'passou de ' + Math.round(limiteMs / 60000) + ' min sem terminar; o robô parou e seguiu a fila' }); }, limiteMs);
     });
+    // o Cancelar do nads (17/11/2026, Vitor: "o robô para tudo e volta pro ponto inicial"): o pedido cancelado no meio para o
+    // roteiro na hora (o sinal mata o Python); quem chamou limpa a tela
+    const cancelou = new Promise(resolve => {
+      if (!idDoPedido) return;
+      vigia = setInterval(() => {
+        void banco.ler(idDoPedido).then(p => { if (p && p.status === 'cancelado') { ctl.abort(); resolve({ ok: false, cancelado: true, erro: 'cancelado' }); } }).catch(() => {});
+      }, cancelarVerificarMs);
+    });
     try {
-      return await Promise.race([rodar(relatorio, args, passo, ctl.signal, clique).catch(e => ({ ok: false, erro: e.message })), prazo]);
-    } finally { clearTimeout(relogio); }
+      return await Promise.race([rodar(relatorio, args, passo, ctl.signal, clique).catch(e => ({ ok: false, erro: e.message })), prazo, cancelou]);
+    } finally { clearTimeout(relogio); clearInterval(vigia); }
   }
 
   async function atender(id) {
     // pegar: de uma vez só (transação), passa de pendente a trabalhando nesta máquina; null = cancelado, já pego por outra
     // máquina, ou o Contábil daqui não está pronto (o pedido fica para quem estiver)
     const p = banco.pegar ? await banco.pegar(id) : await banco.ler(id);
-    if (!p || p.status !== 'pendente') return;
+    if (!p || (p.status !== 'pendente' && p.status !== 'pendentePc')) return;
     const tipo = p.tipo || 'balancete';
     const codigo = Number(p.codigo);
     if (tipo === 'importar') return importar(id, p, codigo);
+    if (tipo === 'fiscal' || tipo === 'razaoConta' || tipo === 'balanceteDinamico' || tipo === 'balancetePeriodo') return fiscal(id, p, codigo);
     if (tipo !== 'balancete' && tipo !== 'mensal') { await banco.atualizar(id, { status: 'erro', erro: 'tipo de relatório desconhecido: ' + tipo, fimEm: agora() }); return; }
     if (!Number.isInteger(codigo) || codigo <= 0) { await banco.atualizar(id, { status: 'erro', erro: 'código da empresa inválido', fimEm: agora() }); return; }
     if (!competenciaValida(p.competencia)) { await banco.atualizar(id, { status: 'erro', erro: 'competência inválida', fimEm: agora() }); return; }
@@ -404,6 +421,92 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     log('Alterdata: fim da importação', id, codigo, r.ok ? 'ok' : 'erro: ' + r.erro);
   }
 
+  /**
+   * As notas do Alterdata Fiscal (16/11/2026, Vitor: "ensinar o robo do servidor a pegar entradas, saidas e tomados e
+   * prestados"): o pedido leva o relatório (entradas, saidas, tomados, prestados), a empresa e o período (competencia até
+   * ate, um mês ou o lote da Tarefa). O roteiro (alterdata_fiscal.py) filtra e exporta no Fiscal; a planilha sobe em pedaços
+   * (partes/fiscal-nnn) e o resumo vai em arquivos.fiscal, como o razão do pedido mensal. O login do Fiscal que não deu
+   * para tudo (fiscalSemLogin) até o robô reiniciar: nunca tenta de novo em laço, a conta pode ser bloqueada.
+   */
+  async function fiscal(id, p, codigo) {
+    const andamentoFim = st => ({ pct: 100, etapa: st, clique: '', em: agora() });
+    const erro = msg => banco.atualizar(id, { status: 'erro', erro: String(msg).slice(0, 500), fimEm: agora(), andamento: andamentoFim('erro') });
+    const razaoConta = p.tipo === 'razaoConta';
+    // o Balancete Dinâmico do período numa consulta só (17/11/2026, o caminho que o Vitor gravou)
+    const dinamico = p.tipo === 'balanceteDinamico';
+    // o Balancete (Livros e Relatórios) do período, com o Salvar da visualização (17/11/2026, o caminho que o Vitor gravou)
+    const balancete = p.tipo === 'balancetePeriodo';
+    const conta = String(p.conta || '').replace(/[^\d.]/g, '');
+    const rel = balancete ? 'balancetePeriodo' : dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : String(p.relatorio || '');
+    if (dinamico || balancete ? false : razaoConta ? !conta : !RELATORIOS_FISCAIS[rel]) return erro(razaoConta ? 'sem a conta contábil' : 'relatório fiscal desconhecido: ' + rel);
+    const rotuloRel = balancete ? 'Balancete' : dinamico ? 'Balancete dinamico' : razaoConta ? ROTULO_RAZAO_CONTA + ' ' + conta : RELATORIOS_FISCAIS[rel];
+    const doContabil = razaoConta || dinamico || balancete;
+    if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
+    const ate = p.ate || p.competencia;
+    if (!competenciaValida(p.competencia) || !competenciaValida(ate) || ate < p.competencia) return erro('período inválido');
+    const [a0, m0] = p.competencia.split('-').map(Number), [a1, m1] = ate.split('-').map(Number);
+    if ((a1 - a0) * 12 + (m1 - m0) + 1 > MAX_MESES_FISCAL) return erro('o período passa de ' + MAX_MESES_FISCAL + ' meses');
+    if (!doContabil && fiscalSemLogin) return erro('o login do robô no Alterdata Fiscal não deu (' + fiscalSemLogin + '); entre no Fiscal do servidor e reinicie o robô');
+    const total = PASSOS_DO_ROTEIRO.fiscal + 1;
+    const passos = [];
+    let etapa = 'começando';
+    let ultimoClique = 0;
+    const pct = () => Math.min(99, Math.round(passos.length / total * 100));
+    const passo = nome => {
+      passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), quando: agora() });
+      etapa = String(nome).slice(0, 200);
+      return banco.atualizar(id, { passos, andamento: { pct: pct(), etapa, clique: '', em: agora() } }).catch(() => {});
+    };
+    const clique = nome => {
+      if (Date.now() - ultimoClique < CLIQUE_MS) return;
+      ultimoClique = Date.now();
+      return banco.atualizar(id, { andamento: { pct: pct(), etapa, clique: String(nome).slice(0, 120), em: agora() } }).catch(() => {});
+    };
+    const [inicio] = periodo(p.competencia);
+    const [, fim] = periodo(ate);
+    const lote = ate !== p.competencia ? p.competencia + ' a ' + ate : p.competencia;
+    await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    if (painel) painel.fazendo('alterdata', rotuloRel + ' ' + codigo + ' ' + lote + (doContabil ? ' no Alterdata Contábil' : ' no Alterdata Fiscal'));
+    log('Alterdata: Fiscal', rel, codigo, lote, id);
+    const pasta = pastaVazia(pastaDoPedido(id));
+    // o número da empresa na frente (17/11/2026, Vitor: "ele coloca o numero da empresa e o nome do arquivo")
+    const nomeBase = codigo + ' ' + rotuloRel + ' ' + lote;
+    const destino = path.join(pasta, nomeBase + '.xls');
+    const r = await comPrazo(balancete ? 'balancetePeriodo' : dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique, id);
+    const fimP = await banco.ler(id);
+    if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
+      // volta o Alterdata ao ponto de antes (fecha o que o roteiro abriu) e apaga a pasta do pedido
+      if (limparTela) { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois de cancelar', err.message); } }
+      try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (_) { /* segue */ }
+      await banco.atualizar(id, { andamento: { pct: 0, etapa: 'cancelado', clique: '', em: agora() } }).catch(() => {});
+      log('Alterdata: cancelado no meio', id);
+      return;
+    }
+    const arquivo = r.ok ? [r.arquivo, destino].find(x => x && fs.existsSync(x)) : '';
+    if (!arquivo) {
+      if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
+      const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
+      await banco.atualizar(id, { status: 'erro', erro: msg, semMovimento: !!r.semMovimento, diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
+      if (painel) painel.erro('alterdata', (doContabil ? 'Contábil ' : 'Fiscal ') + rotuloRel + ' ' + codigo + ' ' + lote, msg, { pedido: id });
+      log('Alterdata: fim do Fiscal', id, 'erro:', msg);
+      return;
+    }
+    const buf = fs.readFileSync(arquivo);
+    const nome = nomeBase + path.extname(arquivo);
+    clique('subindo a planilha para o nads');
+    const g = await banco.gravarArquivo(id, 'fiscal', buf, nome, 'fiscal');
+    // a cópia na pasta da máquina (17/11/2026, no PC do Vitor: Downloads\robo), além da que sobe para o nads
+    if (copiarPara) {
+      try { fs.mkdirSync(copiarPara, { recursive: true }); fs.writeFileSync(path.join(copiarPara, nome), buf); }
+      catch (err) { log('Alterdata: não copiei a planilha para', copiarPara, err.message); }
+    }
+    deuCerto();
+    if (apagarPasta) { try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (err) { log('Alterdata: não apaguei a pasta', pasta, err.message); } }
+    await banco.atualizar(id, { status: 'pronto', erro: '', diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
+    if (painel) painel.atividade('alterdata', 'Puxou ' + rotuloRel.toLowerCase() + ' ' + codigo + ' ' + lote + (doContabil ? ' no Alterdata Contábil' : ' no Alterdata Fiscal'), p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+    log('Alterdata: fim do Fiscal', id, nome, buf.length, 'bytes');
+  }
+
   return {
     chegou,
     saiu,
@@ -420,4 +523,4 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   };
 }
 
-module.exports = { criarFilaAlterdata, periodo, pastaVazia, classeDoErro, mensagemClara };
+module.exports = { criarFilaAlterdata, periodo, pastaVazia, classeDoErro, mensagemClara, RELATORIOS_FISCAIS };

@@ -8,7 +8,7 @@
 // pelo link wa.me com o texto pronto, como antes.
 // Cada pedido fica no histórico da empresa (extrator/{empresa}.pedidos).
 import { creditor, extrator as x, robos, tarefas } from '@nads/core';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 
 /** O que o pedido usa da tela (a etapa passa o ViewModel dela; a prévia passa um de exemplo). */
@@ -103,22 +103,38 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   // os meses que dá para pedir: o da tela primeiro, depois os anteriores
   const meses = [vm.competencia, ...vm.competencias.map(c => c.valor).filter(c => c !== vm.competencia)];
 
-  /** Por que o documento daquele mês não dá para pedir ('' = dá): já importado no sistema ou já no Drive. */
-  function travado(docId: string, comp: string): Travado {
+  /**
+   * O que já não dá para pedir, de cada documento em cada mês: já importado no sistema ou já no Drive. Calculado uma vez quando a
+   * janela abre e quando a pasta do Drive chega (Vitor, 16/11/2026: "nessa parte o sistema fica todo travado": cada caixinha, em
+   * cada desenho, procurava de novo no mapa inteiro da pasta do cliente — três vezes por documento e por mês, e mesmo com a janela
+   * fechada, a cada clique da Importação).
+   */
+  const aberta = etapa !== 'fechado';
+  const chaveDosBancos = vm.bancos.map(b => b.id + ':' + b.nome + ':' + b.conta + ':' + b.extrato.qtdArquivos).join('|');
+  const travados = useMemo(() => {
+    const m = new Map<string, Travado>();
+    if (!aberta) return m;
     // os comprovantes (Vitor, 04/11/2026: "faz a verificação, não deixa eu pedir tendo eles"): ficam no Drive, na pasta
     // COMPROVANTES do mês (aba Comprovantes); o mês trava quando já tem comprovante lá, de qualquer banco (os pagamentos
     // costumam sair de um banco só: na 10, só o BB tem comprovante)
-    if (docId === 'comprovantes') {
-      if (!pasta) return '';
-      return (x.comprovantesNoDrive(pasta.itens, pasta.raiz, [comp])[comp] || []).length > 0 ? 'no Drive' : '';
+    // ao abrir, só o mês da tela; os outros meses de um documento só quando a pessoa abre o "Outros meses" dele (16/11/2026: "vamos
+    // ter que mudar a dinâmica de pedir para parar de travar")
+    const mesesDe = (doc: string) => (mesesAbertos.includes(doc) ? meses : [vm.competencia]);
+    const comprovantes = pasta ? x.comprovantesNoDrive(pasta.itens, pasta.raiz, mesesDe('comprovantes')) : {};
+    for (const c of mesesDe('comprovantes')) if ((comprovantes[c] || []).length > 0) m.set(chave('comprovantes', c), 'no Drive');
+    for (const b of vm.bancos) {
+      for (const c of mesesDe('extrato:' + b.id)) {
+        if (vm.extratoImportado(b.id, c)) m.set(chave('extrato:' + b.id, c), 'importado');
+        else if (pasta && x.acharExtratoNoDrive(pasta.itens, pasta.raiz, c, { nome: b.nome, marca: b.marca, conta: b.conta || undefined }).situacao === 'achou') m.set(chave('extrato:' + b.id, c), 'no Drive');
+      }
     }
-    if (!docId.startsWith('extrato:')) return '';
-    const b = vm.bancos.find(bb => 'extrato:' + bb.id === docId);
-    if (!b) return '';
-    if (vm.extratoImportado(b.id, comp)) return 'importado';
-    if (pasta && x.acharExtratoNoDrive(pasta.itens, pasta.raiz, comp, { nome: b.nome, marca: b.marca, conta: b.conta || undefined }).situacao === 'achou') return 'no Drive';
-    return '';
-  }
+    return m;
+    // (as funções e listas do vm mudam a cada desenho; o que importa está nas chaves)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberta, pasta, chaveDosBancos, meses.join(','), mesesAbertos.join(',')]);
+
+  /** Por que o documento daquele mês não dá para pedir ('' = dá): já importado no sistema ou já no Drive. */
+  const travado = (docId: string, comp: string): Travado => travados.get(chave(docId, comp)) || '';
 
   function abrir() {
     if (precisaEntrar()) {
@@ -140,7 +156,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
 
   const catalogo = [...x.documentosDoPedido(vm.bancos.map(b => ({ id: b.id, nome: b.nome, marca: b.marca, conta: b.conta || undefined }))), ...extras];
   const vale = (docId: string, comp: string) => marcados.includes(chave(docId, comp)) && !travado(docId, comp);
-  const documentosDoPedido = catalogo
+  const documentosDoPedido = (aberta ? catalogo : [])
     .map(d => ({ ...d, competencias: meses.filter(c => vale(d.id, c)).sort() }))
     .filter(d => d.competencias.length);
   const compsDoPedido = [...new Set(documentosDoPedido.flatMap(d => d.competencias))].sort();
@@ -220,7 +236,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
      * Cada documento: a caixinha do mês da tela, e "Outros meses" (os meses anteriores, cada um com a sua;
      * travado = já importado no sistema ou já no Drive).
      */
-    documentos: catalogo.map(d => {
+    documentos: !aberta ? [] : catalogo.map(d => {
       const deste = (c: string) => ({ valor: c, rotulo: rotuloMes(c), marcado: vale(d.id, c), travado: travado(d.id, c) });
       const outros = meses.slice(1).map(deste);
       return { ...d, atual: deste(vm.competencia), outros, outrosMarcados: outros.filter(m => m.marcado), mesesAbertos: mesesAbertos.includes(d.id) };

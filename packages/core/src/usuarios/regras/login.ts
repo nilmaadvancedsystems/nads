@@ -5,19 +5,34 @@
 export const DOMINIO_LOGIN = '@nilma.local';
 export const SENHA_MINIMA = 6;
 
-/** Nome → e-mail de login: sem acento, minúsculo, tudo que não é letra/número vira um ponto. */
+/** Nome → e-mail de login: a chave do nome com o domínio. */
 export function emailDoNome(nome: string): string {
-  const slug = nome.trim().toLowerCase()
+  return chaveDoNome(nome) + DOMINIO_LOGIN;
+}
+
+/** Dois nomes iguais para o login (Vitor, 12/11/2026: "não deixa criar dois usuários com o mesmo nome"): sem diferenciar maiúscula, acento nem pontuação. */
+export function mesmoNome(a: string, b: string): boolean {
+  const ca = chaveDoNome(a);
+  return !!ca && ca === chaveDoNome(b);
+}
+
+/** A chave do nome: sem acento, minúsculo, tudo que não é letra/número vira um ponto ("José da Silva" → "jose.da.silva"). */
+export function chaveDoNome(nome: string): string {
+  return nome.trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.+|\.+$/g, '');
-  return slug + DOMINIO_LOGIN;
 }
 
 /** O que foi digitado no campo Nome: com "@" é um e-mail (contas antigas); senão, vira o e-mail do nome. */
 export function emailDoLogin(digitado: string): string {
   const t = digitado.trim();
   return t.indexOf('@') !== -1 ? t : emailDoNome(t);
+}
+
+/** O nome com o sobrenome, para as telas ("Maria" + "Souza" → "Maria Souza"); sem sobrenome, só o nome. */
+export function nomeCompleto(u: { nome: string; sobrenome?: string }): string {
+  return [u.nome.trim(), (u.sobrenome || '').trim()].filter(Boolean).join(' ');
 }
 
 /** Iniciais para a foto padrão: primeira letra do primeiro e do último nome ("Gustavo Santos" → "GS"). */
@@ -41,4 +56,29 @@ export function mensagemDeErroDeLogin(codigo: string, digitado = ''): string {
 /** O e-mail de entrada que dá para pôr numa conta (a troca do e-mail, 12/11/2026): algo@algo.algo, sem espaço. */
 export function ehEmailDeLogin(email: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+}
+
+/** O login feito do nome (nome@nilma.local): não é um e-mail de verdade, ninguém recebe nada nele. */
+export function ehEmailDoNome(email: string): boolean {
+  return email.trim().toLowerCase().endsWith(DOMINIO_LOGIN);
+}
+
+/**
+ * Falta o e-mail pessoal? (Vitor, 16/11/2026: "para concluir seu cadastro do NADS precisamos do seu e-mail principal"; "você
+ * atrela o login ao email, não ao usuario"; no mesmo dia: "quem registrou e não ficar lá no registro do usuário '@local' pode
+ * parar de pedir que a pessoa já atualizou, só insista e apareça essa popup para usuários que têm '@local'"; "@nilma.local"). O
+ * e-mail pessoal É o e-mail de entrada (o do Firebase Auth): falta só enquanto a conta entra pelo nome@nilma.local ou sem e-mail.
+ */
+export function precisaDoEmailPrincipal(u: { email: string }): boolean {
+  return !u.email.trim() || ehEmailDoNome(u.email);
+}
+
+/** O que está errado no e-mail principal digitado na janela ('' = pode enviar); duas vezes, para não errar o login. */
+export function problemaDoEmailPrincipal(email: string, confirmacao: string): string {
+  const e = email.trim().toLowerCase();
+  if (!e) return 'Escreva o seu e-mail pessoal.';
+  if (!ehEmailDeLogin(e)) return 'Escreva um e-mail válido (por exemplo, nome@gmail.com).';
+  if (ehEmailDoNome(e)) return 'Esse é o login feito do nome, não um e-mail. Escreva o e-mail que você usa.';
+  if (e !== confirmacao.trim().toLowerCase()) return 'Os dois e-mails não são iguais. Confira e digite de novo.';
+  return '';
 }

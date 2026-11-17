@@ -2237,6 +2237,52 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     igual('10/11: ... sem o "Emitido em" lido, continua como antes (o mês da referência)', d14(null)[2], '12-2026 - DAE TAXA - VALOR R$40,53 - VENCIMENTO 30-12-2026.pdf');
   }
 
+  // (13/11/2026) a razão social trocada no nads (Cadastro › Empresa): cadastro/{slug}.razaoSocial = { atual, em, por, anteriores: [{ nome, ate }] }.
+  // A razão nova vale; o nome do cadastro (a chave, que não muda) e as anteriores continuam reconhecendo as pastas e os documentos antigos.
+  {
+    const AUD = require('./arquivador-auditoria');
+    const VELHO = 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', NOVO = 'NUTRIVALE DISTRIBUIDORA LTDA', MEIO = 'NUTRIVALE ALIMENTOS LTDA';
+    const troca = (atual, anteriores) => ({ atual, em: '2026-11-13T15:00:00.000Z', por: 'Vitor', anteriores: anteriores.map(nome => ({ nome, ate: '2026-11-13T15:00:00.000Z' })) });
+    const jRs = rs => CAD19.juntar({ entregas: [
+      { codigoOrigem: '292', nome: 'FITO INDUSTRIA E COMERCIO DE ALIM', documento: '19.449.248/0001-62', enquadramento: 'Simples' },
+      { codigoOrigem: '294', nome: VELHO, documento: '19.449.248/0002-43', enquadramento: 'Simples', ativo: false },
+      { codigoOrigem: '309', nome: 'FITO ALIMENTOS LTDA', documento: '11.222.333/0001-81', enquadramento: 'Simples' },
+    ], nads: [{ codigo: 292, nome: VELHO, regime: 'Simples', razaoSocial: rs }] });
+    const lRs = rs => (l => [l.razao, l.outrosNomes, l.nomesAnteriores])(jRs(rs).linhas.find(l => l.codigo === 292));
+    igual('13/11 razão: sem a troca no nads, nada muda (a razão é o nome do cadastro, sem nomes anteriores)', lRs(undefined), [VELHO, ['FITO INDUSTRIA E COMERCIO DE ALIM'], []]);
+    igual('13/11 razão: ... "atual" vazio ou o campo fora do formato: como sem a troca', [lRs({ atual: '  ', anteriores: [{ nome: 'X LTDA' }] }), lRs('OUTRA LTDA')], [lRs(undefined), lRs(undefined)]);
+    igual('13/11 razão: trocada uma vez: a nova vale; o nome do cadastro vai para as outras grafias e os nomes anteriores', lRs(troca(NOVO, [VELHO])), [NOVO, ['FITO INDUSTRIA E COMERCIO DE ALIM', VELHO], [VELHO]]);
+    igual('13/11 razão: trocada duas vezes: as duas anteriores (a mais nova primeiro)', lRs(troca(NOVO, [MEIO, VELHO])), [NOVO, ['FITO INDUSTRIA E COMERCIO DE ALIM', VELHO, MEIO], [VELHO, MEIO]]);
+    igual('13/11 razão: voltou ao nome de antes: ele vale e não se repete nas outras grafias', lRs(troca(VELHO, [NOVO, VELHO])), [VELHO, ['FITO INDUSTRIA E COMERCIO DE ALIM', NOVO], [NOVO]]);
+    igual('13/11 razão: a troca não vira pendência do cadastro', jRs(troca(NOVO, [VELHO])).divergencias.filter(d => d.codigo === 292), []);
+
+    const PASTAS = ['292 - ' + VELHO, '294 - ' + VELHO, '309 - FITO ALIMENTOS LTDA'];
+    const cadRs = rs => { const c = R.montarCadastro(jRs(rs).linhas, PASTAS); c.mapaMigracao = MIG.carregar({}); return c; };
+    const antes = cadRs(undefined), depois = cadRs(troca(NOVO, [VELHO]));
+    igual('13/11 razão: o cadastro do arquivador com a razão nova e os nomes anteriores', [depois.porCod.get(292).razao, depois.porCod.get(292).nomesAnteriores], [NOVO, [VELHO]]);
+    // as regras fixas (apelidos, CNPJ, contas e arquivos confirmados) conferem o código pelo nome: o nome velho continua conferindo
+    igual('13/11 razão: as regras fixas continuam ligadas (confirmado: "FITO INDUSTRIA" = 292, antes e depois da troca)', [R.confirmado(292, 'FITO INDUSTRIA', antes), R.confirmado(292, 'FITO INDUSTRIA', depois)], [292, 292]);
+    igual('13/11 razão: ... o apelido "FITO IND." ainda vence o homônimo 294 (o nome de antes da troca)', [antes, depois].map(c => R.clientesPeloNomeNoTexto('DUPLICATA\nSACADO: ' + VELHO + '\nFITO IND. E COM.', c)), [[292], [292]]);
+    igual('13/11 razão: ... e a razão nova escrita no documento acha a 292', R.clientesPeloNomeNoTexto('BOLETO\nPAGADOR: ' + NOVO, depois), [292]);
+    // a auditoria: a pasta "292 - <nome velho>" não vira PASTA-FORA-DO-PADRAO; outro nome qualquer continua virando
+    const pastaRs = (n, c) => AUD.analisarPastaCliente(n, c).achados.map(a => a.g);
+    igual('13/11 razão: auditoria: a pasta com o nome de antes da troca não dá alarme; outro nome continua dando', [pastaRs('292 - ' + VELHO, depois), pastaRs('292 - ' + NOVO, depois), pastaRs('292 - OUTRA COISA QUALQUER LTDA', depois)], [[], [], ['PASTA-FORA-DO-PADRAO']]);
+    // o arquivamento: a pasta que já existe (com o nome velho) continua sendo a do cliente; o zip de movimento com o nome velho ainda é da 292 (não da 309, "FITO" solto)
+    const ctxRs = c => ({ cadastro: c, hoje: new Date(2026, 10, 13) });
+    const POSTO = '02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf';
+    const zipRs = (zip, c) => (d => [d.acao, d.cliente, d.destinoRelativo || d.motivo])(R.decidir({ nome: POSTO, rel: zip + String.fromCharCode(92) + POSTO, texto: ['qualquer coisa'] }, ctxRs(c)));
+    const DEST = ['292 - ' + VELHO, 'CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', '2026', '10', 'POSTO TRANSANIMAIS'].join(String.fromCharCode(92));
+    igual('13/11 razão: o zip "MOVIMENTO_FITO_INDUSTRIA_…" (o nome velho) depois da troca: a 292, na pasta que já existe', zipRs('MOVIMENTO_FITO_INDUSTRIA_OUTUBRO-2026.zip', depois), ['ARQUIVAR', 292, DEST]);
+    igual('13/11 razão: ... e o zip com a razão nova também', zipRs('MOVIMENTO_NUTRIVALE_DISTRIBUIDORA_OUTUBRO-2026.zip', depois), ['ARQUIVAR', 292, DEST]);
+    igual('13/11 razão: ... o mesmo zip antes da troca (nada mudou)', zipRs('MOVIMENTO_FITO_INDUSTRIA_OUTUBRO-2026.zip', antes), ['ARQUIVAR', 292, DEST]);
+    // a leitura do banco traz o campo (a seleção de campos e o ouvinte)
+    const pediu = [];
+    const dbRs = { collection: nome => ({ select: (...campos) => { pediu.push([nome, campos.includes('razaoSocial')]); return { get: async () => ({ docs: nome === 'cadastro' ? [{ data: () => ({ codigo: 292, nome: VELHO, razaoSocial: troca(NOVO, [VELHO]) }) }] : [] }) }; } }) };
+    const lidos = await CAD19.atualizar(dbRs, path.join(os.tmpdir(), 'nads-teste-razao-social-' + process.pid + '.json'));
+    igual('13/11 razão: atualizar() lê a razaoSocial do cadastro (e não a pede ao Entregas)', [pediu.sort(), lidos.nads[0].razaoSocial.atual], [[['cadastro', true], ['clientes', false]], NOVO]);
+    igual('13/11 razão: ... o ouvinte guarda o campo (soOsCampos com os campos do cadastro)', Object.keys(CAD19.soOsCampos({ codigo: 292, nome: VELHO, razaoSocial: {}, historico: [] }, CAD19.CAMPOS_CADASTRO)), ['codigo', 'nome', 'razaoSocial']);
+  }
+
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });

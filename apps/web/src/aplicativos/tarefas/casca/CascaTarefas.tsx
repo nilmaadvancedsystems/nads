@@ -8,6 +8,8 @@ import { useCascaTarefas } from './useCascaTarefas';
 import { JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
 import { peDaGaveta } from './PeDaGaveta';
 import { AvisoDeCertificados } from './AvisoDeCertificados';
+import { JanelaDaCobranca } from './JanelaDaCobranca';
+import { JanelaDoEmailPrincipal } from './JanelaDoEmailPrincipal';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 import { CartaoDaEmpresa } from './CartaoDaEmpresa';
 import { useCorreioDeTarefas } from './useCorreioDeTarefas';
@@ -58,7 +60,7 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo}
+    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo} saudacao={vm.saudacao}
       lateral={telaInteira || semLateral || vm.soAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || vm.semTitulo || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
@@ -71,6 +73,10 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
       {children}
+      {/* a cobrança de quem delegou, por cima de tudo até responder (16/11/2026; só no modo desenvolvedor) */}
+      <JanelaDaCobranca />
+      {/* o e-mail principal de quem ainda entra pelo nome (16/11/2026; só no modo desenvolvedor) */}
+      <JanelaDoEmailPrincipal />
     </Casca>
   );
 }

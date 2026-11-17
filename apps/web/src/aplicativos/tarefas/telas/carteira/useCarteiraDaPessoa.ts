@@ -5,9 +5,12 @@ import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
 import { empresasNovas } from '../../dados/fonte';
-import { useAcesso, useCarteira, useTodosOsCadastros } from '../../dados/repo';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../comum/novidades';
+import { useAcesso, useCarteira, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
+
 
 /** as contas ligadas à pessoa (a consulta já é só dela) como os pagamentos da Carteira */
 const pagamentosDe = (contas: readonly financeiro.ContaAPagar[]) => carteira.pagamentosDaCarteira(contas, contas[0]?.funcionario?.uid ?? '');
@@ -19,7 +22,9 @@ export function useMinhasComissoes() {
   const [aberta, setAberta] = useState<carteira.Comissao | null | 'nova'>(null);
   const todas = repo.minhasComissoes();
   const lista = todas.lista.filter(c => c.competencia === m.mes);
-  return { m, exemplos: repo.exemplos, carregada: todas.carregada, erro: todas.erro, lista, totais: carteira.totaisDasComissoes(lista), aberta, setAberta };
+  // a escondida conta como comissão, mas o valor dela não entra no total (16/11/2026: "não deixe essa informação visualizável")
+  const totais = { ...carteira.totaisDasComissoes(carteira.comValorParaAPessoa(lista)), quantas: lista.filter(c => c.situacao !== 'recusada').length };
+  return { m, exemplos: repo.exemplos, carregada: todas.carregada, erro: todas.erro, lista, totais, aberta, setAberta };
 }
 
 /** O cliente do cadastro no menu da comissão (pelo código do ERP). */
@@ -47,6 +52,11 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const equipe = useAcesso().equipe();
   const clientes = useClientesDoEscritorio();
   const servicos = repo.servicos();
+  // a comissão escondida (16/11/2026): quem tem a % própria registra sem ver a comissão; o robô da nuvem calcula. Pelo
+  // Financeiro, como sempre (a % do serviço)
+  const marca = repo.minhaComissaoOculta();
+  const novidade = useNovidade('comissao-oculta');
+  const oculta = comissao ? !!comissao.oculta : !doFinanceiro && novidade && marca.ligada;
   const agora = new Date();
   const [competencia, setCompetencia] = useState(comissao?.competencia ?? (doFinanceiro ? carteira.competenciaDe(agora) : carteira.mesDoPagamento(agora)));
   const [para, setPara] = useState<{ uid: string; nome: string } | null>(null);
@@ -60,9 +70,10 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const [valorServico, setValorServico] = useState(valorNoCampo(comissao?.valorServico ?? 0));
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
-  const travada = !!comissao && !carteira.podeEditar(comissao);
-  // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço
-  const percentual = travada ? comissao!.percentual ?? 0 : servicos.lista.find(s => s.nome === servico)?.percentual ?? 0;
+  // a escondida não muda depois de registrada (o valor do serviço sai do banco quando o robô calcula): só apaga, enquanto lançada
+  const travada = !!comissao && (!carteira.podeEditar(comissao) || oculta);
+  // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço (a escondida vai sem)
+  const percentual = travada ? comissao!.percentual ?? 0 : oculta ? 0 : carteira.percentualDoServico(servicos.lista, servico);
   const vs = valorDigitado(valorServico);
   const cliente = avulso ? nomeAvulso : clientes.find(c => c.codigo === clienteCodigo)?.nome ?? comissao?.cliente ?? '';
   const pessoas = equipe.lista.filter(u => u.ativo).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -74,7 +85,9 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     clientes, avulso, clienteCodigo, cliente, nomeAvulso, setNomeAvulso, porte, setPorte,
     escolherCliente: (codigo: number) => { setAvulso(false); setClienteCodigo(codigo); },
     marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
-    servicos: servicos.lista, servico, setServico, percentual,
+    servicos: servicos.lista, servico, setServico, percentual, oculta,
+    /** apagar: a própria pessoa, enquanto está lançada (a escondida também) */
+    podeApagar: !!comissao && carteira.podeEditar(comissao),
     valorServico, setValorServico,
     /** a comissão que vai sair (valor do serviço × %) */
     valor: travada ? comissao!.valor : vs > 0 && percentual > 0 ? carteira.valorDaComissao(vs, percentual) : 0,
@@ -82,7 +95,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
       if (travada) return;
       const c: carteira.ComissaoParaSalvar = {
         competencia, data: isoDaData(data), cliente: cliente.trim(), clienteCodigo: avulso ? null : clienteCodigo, porte: avulso ? porte : null,
-        servico, valorServico: vs, percentual,
+        servico, valorServico: vs, percentual, ...(oculta ? { oculta: true } : {}),
       };
       const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...carteira.conferirComissao(c)];
       setErros(problemas);
@@ -97,7 +110,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     },
     async apagar() {
       if (!comissao) return;
-      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar a comissão?', texto: comissao.cliente + ' · R$ ' + comissao.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar a comissão?', texto: comissao.cliente + ' · ' + (comissao.oculta ? comissao.descricao : 'R$ ' + comissao.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-danger' }] });
       if (!ok) return;
       try { await repo.apagarComissao(comissao.id); toast('Comissão apagada.'); fechar(); } catch (e) { toast(mensagem(e, 'Não consegui apagar.')); }
@@ -147,12 +160,14 @@ export function useHoleritesEPagamentos() {
   const m = useMes();
   const comissoes = repo.minhasComissoes(), docs = repo.meusDocumentos(), contas = repo.minhasContas();
   const pags = pagamentosDe(contas.lista);
-  const hist = carteira.historico(m.meses.slice(0, 6), comissoes.lista, [], docs.lista);
+  // a escondida fica fora dos valores da pessoa (16/11/2026)
+  const comValor = carteira.comValorParaAPessoa(comissoes.lista);
+  const hist = carteira.historico(m.meses.slice(0, 6), comValor, [], docs.lista);
   return {
     m, exemplos: repo.exemplos, carregando: !comissoes.carregada || !docs.carregada || !contas.carregada, erro: comissoes.erro || docs.erro || contas.erro,
     salario: carteira.salarioDoMes(docs.lista, m.mes),
     recebido: carteira.recebidoNoMes(pags, m.mes),
-    totais: carteira.totaisDasComissoes(comissoes.lista.filter(c => c.competencia === m.mes)),
+    totais: carteira.totaisDasComissoes(comValor.filter(c => c.competencia === m.mes)),
     hist, maior: Math.max(1, ...hist.map(h => h.salario + h.comissoes)),
     docs: docs.lista, docsCarregados: docs.carregada, pags, contasCarregadas: contas.carregada,
     abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
@@ -170,8 +185,9 @@ export function useComissoesDaEquipe() {
   // as janelas do Financeiro: registrar a comissão de alguém (a retroativa) e os serviços comissionados com a %
   const [janela, setJanela] = useState<'' | 'registrar' | 'servicos'>('');
   const doMes = repo.comissoesDoMes(m.mes);
+  const [dev] = useModoDesenvolvedor();
   return {
-    m, exemplos: repo.exemplos, carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
+    m, exemplos: repo.exemplos, dev, teste: useTesteDaCarteira(), carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
     resumo: carteira.resumoParaPagar(doMes.lista), totais: carteira.totaisDasComissoes(doMes.lista),
     aberta, alternar: (uid: string) => setAberta(a => (a === uid ? '' : uid)), fazendo, janela, setJanela,
     /** aprovar, recusar (com o motivo), marcar como pago (confirma antes) ou voltar para lançada */
@@ -246,4 +262,10 @@ export function useJanelaDoDocumento(para: { uid: string; nome: string; tipo: ca
       finally { setEnviando(false); }
     },
   };
+}
+
+/** O ⚡ da Carteira (13/11/2026): no modo desenvolvedor, o que está ligado dos exemplos e como ligar. */
+export function useDadosDeTesteDaCarteira() {
+  const [dev] = useModoDesenvolvedor();
+  return { dev, t: useTesteDaCarteira() };
 }

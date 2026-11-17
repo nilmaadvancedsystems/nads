@@ -2,11 +2,14 @@
 // usuarios/{uid}. Mesmas regras do formulário de novo acesso do Entregas (~L12128-12157: nome e
 // senha ≥ 6; "Já existe um acesso com esse nome."), mais departamento e nível obrigatórios.
 import type { Departamento, DocUsuario, Nivel, Papel } from '../tipos';
-import { emailDoNome, SENHA_MINIMA } from './login';
+import { emailDoNome, mesmoNome, SENHA_MINIMA } from './login';
 import { ehDepartamento, ehNivel, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc } from './papeis';
 
 export interface NovaConta {
+  /** o nome de usuário (o login; único) */
   nome: string;
+  /** obrigatório na conta nova (12/11/2026) */
+  sobrenome: string;
   senha: string;
   departamento: Departamento | '';
   nivel: Nivel | '';
@@ -14,15 +17,16 @@ export interface NovaConta {
   extras?: Papel[];
 }
 
-/** O que está errado (vazio = pode criar). `emailsExistentes`: os e-mails de login já usados. */
-export function conferirNovaConta(c: NovaConta, emailsExistentes: readonly string[]): string[] {
+/** O que está errado (vazio = pode criar). `emailsExistentes`: os e-mails de login já usados; `nomesExistentes`: os nomes da equipe (o nome é único). */
+export function conferirNovaConta(c: NovaConta, emailsExistentes: readonly string[], nomesExistentes: readonly string[] = []): string[] {
   const erros: string[] = [];
   const nome = c.nome.trim().replace(/\s+/g, ' ');
   if (nome.length < 2) erros.push('Escreva o nome da pessoa.');
+  if (c.sobrenome.trim().replace(/[^\p{L}]/gu, '').length < 2) erros.push('Escreva o sobrenome.');
   if (c.senha.length < SENHA_MINIMA) erros.push('A senha precisa de pelo menos ' + SENHA_MINIMA + ' caracteres.');
   if (!ehDepartamento(c.departamento)) erros.push('Escolha o departamento.');
   if (!ehNivel(c.nivel)) erros.push('Escolha o nível.');
-  if (nome.length >= 2 && emailsExistentes.includes(emailDoNome(nome))) erros.push('Já existe um acesso com esse nome.');
+  if (nome.length >= 2 && (emailsExistentes.includes(emailDoNome(nome)) || nomesExistentes.some(n => mesmoNome(n, nome)))) erros.push('Já existe um acesso com esse nome.');
   return erros;
 }
 
@@ -33,6 +37,7 @@ export function docDaContaNova(c: NovaConta, agora: Date): DocUsuario & { roles:
   const nivel = ehNivel(c.nivel) ? c.nivel : null;
   return {
     nome,
+    sobrenome: c.sobrenome.trim().replace(/\s+/g, ' '),
     email: emailDoNome(nome),
     roles: papeisDaContaNova(departamento, nivel, c.extras),
     ...(departamento ? { departamento } : {}),

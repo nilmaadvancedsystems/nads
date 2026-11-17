@@ -3,11 +3,14 @@
 //   areasClientePorEmpresa/{codigo} { token, atualizadoEm }                                (para achar o link da empresa)
 //   chamados/{id}                   a equipe lê e grava (responder, mudar a situação); o robô cria e espelha para o cliente
 //   areaClienteRecebidos/{id}       a equipe lê; só o robô grava
+//   logosDasEmpresas/{codigo}       { logo, atualizadoEm, por } (12/11/2026): o admin e os diretores gravam; o robô leva a
+//                                   logo para o espelho do link (resumo/marca). PRECISA da regra nova no banco (Vitor):
+//                                   docs/area-do-cliente/contrato.md, "A logo da empresa".
 // O cliente nunca lê estas coleções: só o espelho por token, que o robô grava.
 import { arrayUnion, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, type Query } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
-import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LinkDaEmpresa, type ListaAoVivo, type MensagemNaEquipe, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
+import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LinkDaEmpresa, type ListaAoVivo, type LogoDaEmpresa, type MensagemNaEquipe, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
 
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
@@ -75,6 +78,12 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     tipo: dentro(TIPOS_DE_ENVIO, x.tipo, 'outro'), tamanho: numero(x.tamanho), pastaDrive: texto(x.pastaDrive), recebidoEm: instante(x.recebidoEm),
   }));
 
+  const logos = aoVivo<LogoDaEmpresa>(() => collection(db, 'logosDasEmpresas'), (id, x) => {
+    const codigo = Number(id);
+    const logo = texto(x.logo);
+    return Number.isFinite(codigo) && logo.startsWith('data:image/') ? { codigo, logo, atualizadoEm: instante(x.atualizadoEm) } : null;
+  });
+
   /** Grava o token novo para as empresas do link: primeiro o link, depois os ponteiros (o ponteiro nunca aponta para nada). */
   async function criar(token: string, cods: number[], nome: string, criadoPor: string, criadoEm: string): Promise<void> {
     const agora = new Date().toISOString();
@@ -85,7 +94,13 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
 
   return {
     exemplos: false,
-    links, chamados, recebidos,
+    links, chamados, recebidos, logos,
+    async gravarLogo(codigo, logo) {
+      await setDoc(doc(db, 'logosDasEmpresas', String(codigo)), { logo, atualizadoEm: new Date().toISOString(), por: quem() || 'Escritório' });
+    },
+    async apagarLogo(codigo) {
+      await deleteDoc(doc(db, 'logosDasEmpresas', String(codigo)));
+    },
     async gerar(e) {
       const ponteiro = await getDoc(doc(db, 'areasClientePorEmpresa', String(e.codigo)));
       const existente = texto(ponteiro.data()?.token);

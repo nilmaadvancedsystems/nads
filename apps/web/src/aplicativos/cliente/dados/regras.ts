@@ -113,9 +113,57 @@ export function textoDaAdmissao(p: PedidoDeAdmissao): string {
 
 export function erroDasFerias(p: PedidoDeFerias): string {
   if (!p.empregado) return 'Escolha o funcionário.';
-  if (!DATA.test(p.inicio)) return 'Escreva o primeiro dia das férias (dd/mm/aaaa).';
+  if (!DATA.test(p.inicio)) return 'Marque no calendário o primeiro dia das férias.';
+  // as partes (art. 134 da CLT): cada uma com pelo menos 5 dias; no máximo os 30 do período
+  const dias = Number(/\d+/.exec(p.dias)?.[0] ?? 30);
+  if (dias < 5) return 'Cada parte das férias tem pelo menos 5 dias.';
+  if (dias > 30) return 'As férias têm no máximo 30 dias.';
   return '';
 }
+// ------------------------------------------------------------------ as contas que a janela mostra enquanto preenche
+// (13/11/2026: "melhore visualmente esses dois, principalmente a parte de programar férias")
+const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const deBr = (br: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br); if (!m) return null; const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12); return d.getDate() === Number(m[1]) ? d : null; };
+const maisDias = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12);
+const brCurto = (d: Date) => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+const comSemana = (d: Date) => SEMANA[d.getDay()] + ', ' + brCurto(d) + '/' + d.getFullYear();
+
+/** As férias pedidas, contadas: de quando a quando, a volta, o pagamento (até 2 dias antes, art. 145 da CLT; no fim de semana, na sexta), os dias
+ *  vendidos e os avisos (a data que já passou, menos de 30 dias de aviso, começar na sexta ou no sábado). Sem a data, null. */
+export function contaDasFerias(p: Pick<PedidoDeFerias, 'inicio' | 'dias'>, hoje: Date, limite = ''): { de: string; ate: string; dias: number; vende: number; volta: string; pagarAte: string; avisos: string[] } | null {
+  const inicio = deBr(p.inicio);
+  if (!inicio) return null;
+  const dias = Number(/\d+/.exec(p.dias)?.[0] ?? 30);
+  const vende = Number(/vender (\d+)/.exec(p.dias)?.[1] ?? 0);
+  const fim = maisDias(inicio, dias - 1), volta = maisDias(inicio, dias);
+  // o pagamento até 2 dias antes; caindo no fim de semana, na sexta antes
+  let pagar = maisDias(inicio, -2);
+  while (pagar.getDay() === 0 || pagar.getDay() === 6) pagar = maisDias(pagar, -1);
+  const avisos: string[] = [];
+  const faltam = Math.round((meioDia(inicio) - meioDia(hoje)) / DIA);
+  if (faltam < 0) avisos.push('Essa data já passou.');
+  else if (faltam < 30) avisos.push('Faltam ' + faltam + (faltam === 1 ? ' dia' : ' dias') + ': a lei pede o aviso de férias 30 dias antes. O escritório confere se dá.');
+  // (13/11/2026: "e se o cliente quiser dar só 7 dias?") pode, como uma das partes: até 3, uma com 14 ou mais e as outras com 5 ou mais
+  if (dias < 5) avisos.push('Menos de 5 dias não pode: cada parte das férias tem pelo menos 5 dias.');
+  else if (dias > 30) avisos.push('Passa de 30 dias: as férias de um período têm no máximo 30.');
+  else if (dias < 14) avisos.push('Com ' + dias + ' dias, esta é uma das partes: a lei deixa dividir as férias em até 3, uma com pelo menos 14 dias e as outras com pelo menos 5.');
+  if (inicio.getDay() === 5 || inicio.getDay() === 6) avisos.push((inicio.getDay() === 5 ? 'Começa na sexta' : 'Começa no sábado') + ': para quem folga no domingo, as férias não podem começar nos dois dias antes da folga.');
+  // o limite do período da pessoa ('aaaa-mm'): o que passar do fim desse mês é pago em dobro (art. 137 da CLT)
+  if (/^\d{4}-\d{2}$/.test(limite) && fim > new Date(Number(limite.slice(0, 4)), Number(limite.slice(5, 7)), 0, 23)) avisos.push('Termina depois de ' + limite.slice(5, 7) + '/' + limite.slice(0, 4) + ', o limite do período: os dias que passarem são pagos em dobro.');
+  return { de: brCurto(inicio), ate: brCurto(fim) + '/' + fim.getFullYear(), dias, vende, volta: comSemana(volta), pagarAte: comSemana(pagar), avisos };
+}
+
+/** A admissão pedida, contada: o prazo do eSocial (o dia antes do primeiro dia), o fim da experiência (45 + 45) e o aviso
+ *  quando está em cima da hora. Sem a data, null. */
+export function contaDaAdmissao(p: Pick<PedidoDeAdmissao, 'inicio' | 'contrato'>, hoje: Date): { registrarAte: string; experiencia: string; aviso: string } | null {
+  const inicio = deBr(p.inicio);
+  if (!inicio) return null;
+  const faltam = Math.round((meioDia(inicio) - meioDia(hoje)) / DIA);
+  const experiencia = /experi/i.test(p.contrato) ? 'Experiência até ' + brCurto(maisDias(inicio, 44)) + ', prorrogável até ' + comSemana(maisDias(inicio, 89)) : '';
+  const aviso = faltam < 0 ? 'Essa data já passou: o registro fica atrasado no eSocial.' : faltam < 2 ? 'Em cima da hora: mande hoje para dar tempo de registrar.' : '';
+  return { registrarAte: comSemana(maisDias(inicio, -1)), experiencia, aviso };
+}
+
 export function textoDasFerias(p: PedidoDeFerias): string {
   return linhas('Férias: ' + p.empregado + ' a partir de ' + p.inicio, [
     ['Funcionário', p.empregado], ['Início', p.inicio], ['Dias', p.dias], ['Adiantar metade do 13º', p.adiantar13 ? 'Sim' : 'Não'], ['Observações', p.observacoes],
@@ -178,12 +226,12 @@ export function passoDaSolicitacao(situacao: ac.SituacaoDoChamado): { passo: num
 }
 
 /** O pedido do cliente (as mensagens dele, na ordem) e as respostas do escritório, sem o formato de conversa. */
-export function partesDaSolicitacao(c: Pick<ac.ChamadoDoCliente, 'mensagens'>): { pedido: string; complementos: string[]; respostas: { texto: string; em: string }[] } {
+export function partesDaSolicitacao(c: Pick<ac.ChamadoDoCliente, 'mensagens'>): { pedido: string; complementos: string[]; respostas: { texto: string; em: string; autor: string }[] } {
   const doCliente = c.mensagens.filter(m => m.de === 'cliente');
   return {
     pedido: doCliente[0]?.texto ?? '',
     complementos: doCliente.slice(1).map(m => m.texto),
-    respostas: c.mensagens.filter(m => m.de === 'escritorio').map(m => ({ texto: m.texto, em: m.em })),
+    respostas: c.mensagens.filter(m => m.de === 'escritorio').map(m => ({ texto: m.texto, em: m.em, autor: m.autor && m.autor !== 'Escritório' ? m.autor : '' })),
   };
 }
 
@@ -201,4 +249,252 @@ export function nomeDaPessoa(nome: string): string {
   const miudas = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
   return nome.trim().toLowerCase().split(/\s+/).filter(Boolean)
     .map((p, i) => (i > 0 && miudas.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
+}
+
+/** A linha que a solicitação ganha quando o cliente anexa arquivos nela (12/11/2026): "Enviei os arquivos: rg.pdf, cpf.pdf". */
+export function textoDosAnexos(nomes: readonly string[]): string {
+  const lista = nomes.map(n => n.trim()).filter(Boolean);
+  return (lista.length === 1 ? 'Enviei o arquivo: ' : 'Enviei os arquivos: ') + lista.join(', ') + '.';
+}
+
+// ---------- o painel das guias do mês (12/11/2026: "quero melhora nessa aba também") ----------
+
+/** Uma marca na linha do tempo do mês: a guia (pelo vencimento) ou a entrega do escritório (a agenda). */
+/** rotulo: o texto inteiro (a dica); curto: o que cabe na etiqueta do dia no calendário (DAS, FGTS, o nome da entrega) */
+export interface MarcaDoMes { dia: number; tipo: 'guia' | 'paga' | 'entrega'; tom: 'vencida' | 'hoje' | 'aberta' | 'feita'; rotulo: string; curto: string; /** o nome inteiro (a lista da agenda) */ nome: string; /** a guia e a paga */ valor?: number }
+
+export interface PainelDasGuias {
+  aPagar: { valor: number; guias: number };
+  vencidas: { valor: number; guias: number };
+  pagas: { valor: number; guias: number };
+  /** o calendário do mês: os dias, o dia da semana do dia 1 (0 = domingo), o dia de hoje (só no mês de hoje) e as marcas */
+  linha: { dias: number; primeiroDia: number; hoje: number | null; marcas: MarcaDoMes[] };
+}
+
+const centavosDe = (n: number) => Math.round(n * 100) / 100;
+const diaDe = (br: string) => Number(br.slice(0, 2)) || 0;
+
+/** Os números do mês das guias e o calendário do mês (as guias, as pagas e as entregas do escritório). */
+export function painelDasGuias(guias: readonly ac.GuiaDoCliente[], pagas: readonly { nome: string; valor: number; pagoEm: string }[],
+  agenda: readonly ac.ItemDaAgenda[], mes: string, hoje: Date, rotulo: (g: ac.GuiaDoCliente) => string): PainelDasGuias {
+  const soma = (xs: readonly { valor: number }[]) => centavosDe(xs.reduce((t, x) => t + x.valor, 0));
+  const vencidas = guias.filter(g => g.situacao === 'vencida');
+  const aPagar = soma(guias), pago = soma(pagas);
+  const vVencidas = soma(vencidas);
+  const ano = Number(mes.slice(0, 4)), m = Number(mes.slice(5, 7));
+  const ehHoje = hoje.getFullYear() === ano && hoje.getMonth() + 1 === m;
+  const marcas: MarcaDoMes[] = [
+    ...guias.map(g => ({ dia: diaDe(g.vencimento), tipo: 'guia' as const, tom: (g.situacao === 'vencida' ? 'vencida' : g.situacao === 'vence hoje' ? 'hoje' : 'aberta') as MarcaDoMes['tom'], rotulo: rotulo(g) + ' · ' + g.vencimento.slice(0, 5), curto: g.tipo === 'outra' ? 'Guia' : g.tipo, nome: rotulo(g), valor: g.valor })),
+    ...pagas.map(p => ({ dia: diaDe(p.pagoEm), tipo: 'paga' as const, tom: 'feita' as const, rotulo: p.nome + ' · pago em ' + p.pagoEm.slice(0, 5), curto: p.nome, nome: p.nome, valor: p.valor })),
+    ...agenda.filter(i => i.vence.startsWith(mes)).map(i => ({ dia: Number(i.vence.slice(8, 10)) || 0, tipo: 'entrega' as const, tom: (i.situacao === 'feito' ? 'feita' : 'aberta') as MarcaDoMes['tom'], rotulo: i.nome + ' · ' + i.vence.slice(8, 10) + '/' + i.vence.slice(5, 7), curto: i.nome.replace(/\s*\(.*\)$/, ''), nome: i.nome })),
+  ].filter(x => x.dia >= 1).sort((a, b) => a.dia - b.dia || a.tipo.localeCompare(b.tipo));
+  return {
+    aPagar: { valor: aPagar, guias: guias.length },
+    vencidas: { valor: vVencidas, guias: vencidas.length },
+    pagas: { valor: pago, guias: pagas.length },
+    linha: { dias: new Date(ano, m, 0).getDate(), primeiroDia: new Date(ano, m - 1, 1).getDay(), hoje: ehHoje ? hoje.getDate() : null, marcas },
+  };
+}
+
+// ---------- a troca de empresa (12/11/2026: "uma troca de perfil para pessoas que tenham mais de uma empresa") ----------
+
+/** Uma empresa que a pessoa já abriu neste aparelho: o link (o token), o nome e o documento, e quando abriu por último. */
+export interface PerfilGuardado { token: string; nome: string; documento: string; logo?: string; usadoEm: string }
+
+/** quantas empresas o aparelho guarda (as mais usadas ficam) */
+export const MAIS_PERFIS = 12;
+
+/** A lista guardada com a empresa aberta agora: ela entra (ou atualiza) no alto; o resto pela última vez que abriu. */
+export function perfisComEste(lista: readonly PerfilGuardado[], atual: PerfilGuardado): PerfilGuardado[] {
+  const outros = lista.filter(p => p && typeof p.token === 'string' && p.token && p.token !== atual.token && typeof p.nome === 'string');
+  return [atual, ...outros.sort((a, b) => String(b.usadoEm).localeCompare(String(a.usadoEm)))].slice(0, MAIS_PERFIS);
+}
+
+/**
+ * A empresa para abrir quando o site abre sem link (13/11/2026: o app instalado na tela inicial abre pela raiz): a última
+ * aberta neste aparelho; sem nenhuma, '' (fica o aviso para usar o link do escritório).
+ */
+export function ultimaEmpresa(lista: readonly PerfilGuardado[]): string {
+  const validos = lista.filter(p => p && typeof p.token === 'string' && p.token && p.usadoEm);
+  return [...validos].sort((a, b) => String(b.usadoEm).localeCompare(String(a.usadoEm)))[0]?.token ?? '';
+}
+
+/**
+ * As abas da barra de baixo do celular (13/11/2026: "cara de app no celular"): a Visão geral, as Guias, os Documentos (se a
+ * área tem) e as Solicitações; o resto fica no "Mais", que abre o menu inteiro.
+ */
+export function abasDoCelular<T extends string>(abas: readonly T[]): T[] {
+  const fixas = ['inicio', 'guias', 'documentos', 'chamados'] as const;
+  return fixas.filter(f => abas.includes(f as T)) as T[];
+}
+
+/** Há quanto tempo a empresa abriu ("há 7 anos", "há 5 meses", "este mês"), pela data 'aaaa-mm-dd'. */
+export function tempoDeEmpresa(abertura: string, hoje: Date): string {
+  const m = /^(\d{4})-(\d{2})/.exec(abertura);
+  if (!m) return '';
+  const meses = (hoje.getFullYear() - Number(m[1])) * 12 + (hoje.getMonth() + 1 - Number(m[2]));
+  if (meses < 1) return 'este mês';
+  if (meses < 12) return 'há ' + meses + (meses === 1 ? ' mês' : ' meses');
+  const anos = Math.floor(meses / 12);
+  return 'há ' + anos + (anos === 1 ? ' ano' : ' anos');
+}
+
+/** Os dados cadastrais num texto só, um por linha, para colar num formulário ou num e-mail. */
+export function dadosParaCopiar(f: { razaoSocial: string; nomeFantasia?: string; cnpj: string; inscricaoEstadual?: string; inscricaoMunicipal?: string; regime?: string; cnae?: string; endereco?: string }): string {
+  return [
+    ['Razão social', f.razaoSocial], ['Nome fantasia', f.nomeFantasia], ['CNPJ', f.cnpj], ['Inscrição estadual', f.inscricaoEstadual],
+    ['Inscrição municipal', f.inscricaoMunicipal], ['Regime', f.regime], ['Atividade principal', f.cnae], ['Endereço', f.endereco],
+  ].filter(([, v]) => v).map(([r, v]) => r + ': ' + v).join('\n');
+}
+
+/**
+ * O token da área num link colado (13/11/2026: abrir outra empresa pela troca): aceita o link inteiro
+ * (https://…/cliente/<token>/guias) ou só o token; devolve '' se não parece um.
+ */
+export function tokenDoLink(texto: string): string {
+  const t = texto.trim();
+  const doLink = /\/cliente\/([^/?#\s]+)/.exec(t)?.[1];
+  const token = doLink ? decodeURIComponent(doLink) : t;
+  return /^[A-Za-z0-9_-]{6,}$/.test(token) ? token : '';
+}
+
+/** "hoje", "ontem" ou "dd/mm", pela data ISO (a última vez que a empresa foi aberta). */
+export function diaRelativo(iso: string, hoje: Date): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const dia = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dias = Math.round((dia(hoje) - dia(d)) / 86_400_000);
+  if (dias === 0) return 'hoje';
+  if (dias === 1) return 'ontem';
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/** O selo do regime (13/11/2026: "simples nacional verde"): o Simples e o MEI em verde; os outros, neutros. */
+export function seloDoRegime(regime: string): string {
+  return /simples|mei\b|microempreendedor/i.test(regime) ? 'badge badge-ok' : 'badge badge-neutral';
+}
+
+/** As iniciais do nome para o quadradinho da empresa sem logo ("Personaly Company Ltda" → "PC"). */
+export function iniciaisDaEmpresa(nome: string): string {
+  const palavras = nome.replace(/\b(ltda|me|epp|eireli|s\/?a|sa|do|da|de|dos|das|e)\b\.?/gi, ' ').trim().split(/\s+/).filter(Boolean);
+  return ((palavras[0]?.[0] ?? '') + (palavras[1]?.[0] ?? '')).toUpperCase() || '?';
+}
+
+// ------------------------------------------------------------------- o calendário da janela de férias (13/11/2026)
+const brLongo = (d: Date) => brCurto(d) + '/' + d.getFullYear();
+const mesmoDia = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/** A primeira data boa para começar as férias: a segunda-feira com pelo menos 30 dias de aviso ('dd/mm/aaaa'). */
+export function primeiraDataDasFerias(hoje: Date): string {
+  let d = maisDias(hoje, 30);
+  while (d.getDay() !== 1) d = maisDias(d, 1);
+  return brLongo(d);
+}
+
+/** Um dia no calendário das férias: o que ele é para o pedido (o pagamento, as férias, a volta) e se dá para escolher. */
+export interface DiaDasFerias {
+  br: string; dia: number; doMes: boolean; passou: boolean; hoje: boolean;
+  ferias: boolean; inicio: boolean; fim: boolean; volta: boolean; pagamento: boolean;
+  /** sexta e sábado: as férias não podem começar nos dois dias antes da folga do domingo */
+  evitar: boolean;
+}
+
+/** O mês ('aaaa-mm') do calendário das férias, em semanas inteiras de domingo a sábado, com o pedido marcado. */
+export function mesDasFerias(mes: string, p: Pick<PedidoDeFerias, 'inicio' | 'dias'>, hoje: Date, previaAte = ''): DiaDasFerias[] {
+  const ano = Number(mes.slice(0, 4)), m0 = Number(mes.slice(5, 7)) - 1;
+  const primeiro = new Date(ano, m0, 1, 12), ultimo = new Date(ano, m0 + 1, 0, 12);
+  const comeco = maisDias(primeiro, -primeiro.getDay()), semanas = Math.ceil((primeiro.getDay() + ultimo.getDate()) / 7);
+  const inicio = deBr(p.inicio);
+  const dias = Number(/\d+/.exec(p.dias)?.[0] ?? 30);
+  // a prévia enquanto escolhe o último dia (o mouse em cima de um dia depois do começo)
+  const previa = deBr(previaAte);
+  const fim = inicio ? (previa && meioDia(previa) > meioDia(inicio) ? previa : maisDias(inicio, dias - 1)) : null, volta = fim ? maisDias(fim, 1) : null;
+  let pagar = inicio ? maisDias(inicio, -2) : null;
+  while (pagar && (pagar.getDay() === 0 || pagar.getDay() === 6)) pagar = maisDias(pagar, -1);
+  return Array.from({ length: semanas * 7 }, (_, k) => {
+    const d = maisDias(comeco, k);
+    return {
+      br: brLongo(d), dia: d.getDate(), doMes: d.getMonth() === m0, passou: meioDia(d) < meioDia(hoje), hoje: mesmoDia(d, hoje),
+      ferias: !!inicio && !!fim && meioDia(d) >= meioDia(inicio) && meioDia(d) <= meioDia(fim),
+      inicio: !!inicio && mesmoDia(d, inicio), fim: !!fim && mesmoDia(d, fim), volta: !!volta && mesmoDia(d, volta), pagamento: !!pagar && mesmoDia(d, pagar),
+      evitar: d.getDay() === 5 || d.getDay() === 6,
+    };
+  });
+}
+
+/** Os dias como o pedido guarda: o do botão pronto (30, 15, 10) ou "N dias corridos" quando marcado no calendário. */
+export function textoDosDias(n: number): string {
+  return n === 30 ? '30 dias' : n === 15 ? '15 dias (primeira parte)' : n === 10 ? '10 dias (uma parte)' : n + ' dias corridos';
+}
+
+/**
+ * Marcar no calendário, como numa reserva de hotel (13/11/2026: "coloca para poder marcar no calendário para selecionar os
+ * dias, tipo de um hotel"): o primeiro toque escolhe o começo (e mantém os dias, para a conta já aparecer); o segundo, o
+ * último dia, e os dias saem da conta. Tocar antes do começo (ou nele) recomeça dali.
+ */
+export function marcarNoCalendario(p: Pick<PedidoDeFerias, 'inicio' | 'dias'>, clicado: string, fase: 'inicio' | 'fim'): { inicio: string; dias: string; fase: 'inicio' | 'fim' } {
+  const ini = deBr(p.inicio), c = deBr(clicado);
+  if (!c) return { inicio: p.inicio, dias: p.dias, fase };
+  if (fase === 'inicio' || !ini || meioDia(c) <= meioDia(ini)) return { inicio: clicado, dias: p.dias, fase: 'fim' };
+  return { inicio: p.inicio, dias: textoDosDias(Math.round((meioDia(c) - meioDia(ini)) / DIA) + 1), fase: 'inicio' };
+}
+
+// ---------- Guias e obrigações refeita (13/11/2026: "refaça esses 3") ----------
+
+/** Um pedaço da linha de resumo embaixo do título das Guias: [antes] <b>valor</b> [depois]; o tom pinta o valor. */
+export interface TrechoDoResumo { antes?: string; valor: string; depois?: string; tom?: 'perigo' }
+
+/**
+ * A linha de resumo das Guias (13/11/2026: no lugar dos três cartões grandes do alto): quanto há a pagar no mês e em
+ * quantas guias, as vencidas (o valor) e o próximo vencimento. Sem nada a pagar, diz isso (e quantas foram pagas).
+ * Os valores já chegam formatados (R$).
+ */
+export function resumoDasGuias(r: {
+  nomeDoMes: string; aPagar: { valor: string; guias: number }; vencidas: { valor: string; guias: number };
+  proxima: { data: string; nome: string; faltam: string } | null; pagas: number;
+}): TrechoDoResumo[] {
+  const qtas = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
+  if (!r.aPagar.guias) {
+    return [{ valor: 'Nada a pagar', depois: 'em ' + r.nomeDoMes }, ...(r.pagas ? [{ valor: qtas(r.pagas, 'guia paga', 'guias pagas'), depois: 'no mês' }] : [])];
+  }
+  return [
+    { valor: r.aPagar.valor, depois: 'a pagar em ' + r.nomeDoMes + ' (' + qtas(r.aPagar.guias, 'guia', 'guias') + ')' },
+    ...(r.vencidas.guias ? [{ valor: qtas(r.vencidas.guias, 'vencida', 'vencidas'), depois: '(' + r.vencidas.valor + ')', tom: 'perigo' as const }] : []),
+    ...(r.proxima ? [{ antes: 'próximo vencimento', valor: r.proxima.data, depois: '(' + r.proxima.nome + ', ' + (r.proxima.faltam || 'hoje') + ')' }] : []),
+  ];
+}
+
+/**
+ * A aba que o clique num dia da agenda abre (13/11/2026): a das guias a pagar se o dia tem uma; senão a das pagas se o dia
+ * tem uma paga; senão fica a aba de agora (o dia só tem entregas do escritório).
+ */
+export function abaDoDia<A extends string>(dia: number, diasAPagar: readonly number[], diasPagos: readonly number[], atual: A, aPagar: A, pagas: A): A {
+  if (diasAPagar.includes(dia)) return aPagar;
+  if (diasPagos.includes(dia)) return pagas;
+  return atual;
+}
+
+/**
+ * A linha menor de cada guia a pagar (13/11/2026, revisão: "A pagar" se repetia em todas as linhas da aba A pagar e a
+ * vencida dizia "Vencida · venceu em"): a palavra em cor só quando a guia pede atenção (Vencida, Vence hoje) e o
+ * vencimento numa frase só. `dias` é quantos dias faltam (negativo: já venceu; null: data que não deu para ler).
+ */
+export function vencimentoDaGuia(situacao: string, vencimento: string, dias: number | null): { palavra: string; texto: string } {
+  const data = vencimento.slice(0, 5);
+  const plural = (n: number) => n + (n === 1 ? ' dia' : ' dias');
+  if (!/^\d\d\/\d\d$/.test(data)) return situacao === 'vencida' ? { palavra: 'Vencida', texto: '' } : situacao === 'vence hoje' ? { palavra: 'Vence hoje', texto: '' } : { palavra: '', texto: 'A pagar' };
+  if (situacao === 'vencida') return { palavra: 'Vencida', texto: 'em ' + data + (dias != null && dias < 0 ? ', há ' + plural(-dias) : '') };
+  if (situacao === 'vence hoje') return { palavra: 'Vence hoje', texto: '' };
+  if (dias === 1) return { palavra: '', texto: 'Vence amanhã, ' + data };
+  return { palavra: '', texto: 'Vence em ' + data + (dias != null && dias > 1 ? ', daqui a ' + plural(dias) : '') };
+}
+
+/**
+ * A legenda do calendário das Guias (13/11/2026, revisão): só as cores que aparecem no mês, na ordem fixa (a legenda
+ * mostrava "a pagar" num mês só com a vencida, e o ponto de "vence hoje" ficava sem legenda). `classe` é a do ponto.
+ */
+export function legendaDoCalendario(marcas: readonly Pick<MarcaDoMes, 'tipo' | 'tom'>[]): { classe: string; rotulo: string }[] {
+  const tem = new Set(marcas.map(m => m.tipo === 'entrega' ? 'entrega-aberta' : m.tipo + '-' + m.tom));
+  return ([['guia-aberta', 'a pagar'], ['guia-hoje', 'vence hoje'], ['guia-vencida', 'vencida'], ['paga-feita', 'paga'], ['entrega-aberta', 'do escritório']] as const)
+    .filter(([c]) => tem.has(c)).map(([classe, rotulo]) => ({ classe, rotulo }));
 }

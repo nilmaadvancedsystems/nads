@@ -2,7 +2,7 @@
 // extrato é lido no navegador e o .xls é gerado na hora. Etapa ainda travada volta para a última liberada.
 import { extrator } from '@nads/core';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
-import { ocrDoArquivo } from '../../comum/ocr';
+import { ocrQueAvisa } from '../../comum/ocr';
 import { Navigate, Outlet, useParams, type RouteObject } from 'react-router';
 import { NaEspera, pedaco } from '../../comum/pedaco';
 import { BASE } from './casca/caminho';
@@ -17,7 +17,7 @@ const Conferencia = pedaco(() => import('./telas/conferencia/Conferencia'), 'Con
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 // o extrato escaneado (PDF sem texto ou foto) passa pelo OCR do navegador (Vitor, 13/10/2026)
-extrator.definirOcr(ocrDoArquivo);
+extrator.definirOcr(ocrQueAvisa);
 
 function AppConversor() {
   const { etapa = '' } = useParams();

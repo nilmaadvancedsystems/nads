@@ -1,31 +1,30 @@
-// ViewModel da Visão geral da Área do Cliente (Vitor, 16/10/2026). "Melhora mais" de 17/10/2026 ("procura na net exemplos
-// de portal de cliente"), no padrão dos portais das contabilidades (Assembly, TaxDome, a "Visão do Cliente" do Omie):
-// o veredito com o que precisamos do cliente (dados/visaoGeral.ts), as guias do momento com o resumo do pagamento (quanto,
-// até quando e como), a atividade recente e o envio rápido. Os quatro números saíram: o veredito diz a situação, o resumo
-// do pagamento diz quanto, e cada um leva à ação no lugar dele.
+// ViewModel da Visão geral da Área do Cliente (Vitor, 16/10/2026). Refeita em 13/11/2026 ("refaça esses 3"; "muita
+// informação"): a saudação com a linha do resumo do mês, o que precisa do cliente (dados/visaoGeral.ts, cada item com UMA
+// ação), as próximas guias a pagar (só as poucas que vêm; a agenda inteira fica nas Guias) e o enviar documento.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"): o resumo com dois fatos, cada
+// pendência numa linha e cada guia com o nome, "Vence 19/11", o valor e UM botão (Baixar); ver e copiar no menu "⋯".
 import { areaCliente as ac, formatos } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { useRetorno, type ItemMenu } from '@nads/ui';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
-import { chaveDoMes } from '../dados/regras';
-import { atividadeRecente, guiasDoMomento, pendenciasDoCliente, quandoFoi, vereditoDoMes, type AcaoDaPendencia } from '../dados/visaoGeral';
+import { useVisualizar } from './useVisualizar';
+import { linhaDoResumo, pendenciasDoCliente, proximasGuias, quandoFoi, rotuloDoTotal, type AcaoDaPendencia } from '../dados/visaoGeral';
 import type { DaCasca } from './useAreaCliente';
 
-/** 'dd/mm/aaaa' → 'aaaa-mm' */
-const mesDaData = (br: string) => br.slice(6, 10) + '-' + br.slice(3, 5);
+/** quantas próximas guias a Visão geral mostra (13/11/2026: "ver todas" leva às Guias) */
+const PROXIMAS = 4;
 
 export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirEnvio: () => void) {
   const { toast } = useRetorno();
   const navegar = useNavigate();
   const [baixando, setBaixando] = useState('');
-  const guias = guiasDoMomento(area.guias, hoje);
-  const mes = chaveDoMes(hoje);
   const pendencias = pendenciasDoCliente(area, hoje);
-  const veredito = vereditoDoMes(pendencias, guias);
-  const aVencer = guias.filter(g => g.situacao !== 'vencida');
-  const pagasDoMes = area.secoes.pagas ? area.pagas.filter(p => mesDaData(p.pagoEm) === mes) : [];
+
+  // a pré-visualização da guia (12/11/2026: "quero que a pessoa tenha uma pré-visualização")
+  const vista = useVisualizar();
+  const verGuia = (id: string) => vista.ver(id, () => repoAreaCliente.baixarGuia(token, id));
 
   async function baixar(id: string) {
     setBaixando(id);
@@ -51,38 +50,35 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirE
     }
   }
 
-  // em dias até o vencimento (negativo: já venceu)
-  const diasAte = (g: ac.GuiaDoCliente) => {
-    const v = ac.dataDoVencimento(g.vencimento);
-    if (!v) return 0;
-    return Math.round((new Date(v.getFullYear(), v.getMonth(), v.getDate()).getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime()) / 86_400_000);
-  };
-  const faltam = (g: ac.GuiaDoCliente) => { const d = diasAte(g); return d > 0 ? 'em ' + d + (d === 1 ? ' dia' : ' dias') : ''; };
-  const proxima = aVencer[0] ?? null;
+  const hora = new Date().getHours();
   const atualizado = area.resumo?.atualizadoEm ? quandoFoi(area.resumo.atualizadoEm, hoje) : '';
 
+  // (16/11/2026, "muita informação") as próximas guias como nas Guias: o nome, "Vence 19/11", o valor e UM botão, o
+  // Baixar (sem o PDF, o Copiar código; sem os dois, nada); o resto (ver a guia, copiar o código) no menu "⋯"
+  const prox = proximasGuias(area.guias, hoje, PROXIMAS);
+  const proximas = prox.itens.map(p => {
+    const id = p.guia.id, codigo = area.codigos[id] ?? '', nome = ac.ROTULO_DA_GUIA[p.guia.tipo];
+    const copiarCodigo = () => copiar(codigo, 'Código');
+    const principal = p.guia.temPdf ? { rotulo: 'Baixar', icone: 'download' as const, acao: () => void baixar(id) }
+      : codigo ? { rotulo: 'Copiar código', icone: 'copiar' as const, acao: copiarCodigo } : null;
+    const mais: ItemMenu[] = [
+      ...(p.guia.temPdf ? [{ rotulo: 'Ver a guia', icone: 'olho' as const, desabilitado: vista.abrindo === id, onClick: () => verGuia(id) }] : []),
+      ...(p.guia.temPdf && codigo ? [{ rotulo: 'Copiar o código de barras', icone: 'copiar' as const, onClick: copiarCodigo }] : []),
+    ];
+    return { id, nome, quando: p.quando, valor: formatos.reais(p.guia.valor), principal, mais };
+  });
+
   return {
-    // a sobrelinha do veredito: o mês e quando o escritório atualizou ("Outubro de 2026 · atualizado hoje, 07:30")
-    sobre: formatos.capital(hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })) + (atualizado ? ' · atualizado ' + (/^\d/.test(atualizado) ? 'em ' : '') + atualizado : ''),
-    veredito, pendencias, agir,
-    // as pagas do mês (as mesmas do "Já pago no mês")
-    guias, pagas: pagasDoMes,
-    // o resumo do pagamento: só quando tem guia por vencer (a vencida já está no veredito)
-    resumo: aVencer.length ? {
-      aPagar: aVencer.reduce((s, g) => s + g.valor, 0), quantas: aVencer.length,
-      proximo: proxima ? proxima.vencimento.slice(0, 5) : '', faltam: proxima ? faltam(proxima) : '',
-      pago: area.secoes.pagas ? { valor: pagasDoMes.reduce((s, p) => s + p.valor, 0), quantas: pagasDoMes.length } : undefined,
-    } : null,
-    // o Baixar carmim só quando o veredito não tem botão carmim (tudo em dia): a próxima guia a pagar
-    destaque: pendencias.length === 0 ? proxima?.id ?? '' : '',
-    temCodigo: guias.some(g => !!area.codigos[g.id]),
-    faltam,
-    atividade: atividadeRecente(area, new Date()).map(a => ({ ...a, quando: quandoFoi(a.em, hoje) })),
-    baixarComprovante: async (id: string) => {
-      const pdf = await repoAreaCliente.baixarComprovante(token, id);
-      if (pdf) baixarArquivo(pdf.nome, pdf.arquivo); else toast('O comprovante ainda não chegou.');
-    },
-    codigos: area.codigos,
-    baixando, baixar, pedirGuiaNova, irPara, copiarCodigo: (c: string) => copiar(c, 'Código'),
+    saudacao: hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite',
+    // a linha embaixo da saudação, dois fatos no máximo ("4 pendências · atualizado hoje, 07:30")
+    resumo: linhaDoResumo(pendencias.length, atualizado),
+    pendencias, agir,
+    /** o "tudo em dia" (13/11/2026, revisão: sem "a próxima guia vence em...": as próximas guias estão logo embaixo) */
+    emDia: 'Nada pendente com você.',
+    proximas,
+    totalDasProximas: prox.quantas ? formatos.reais(prox.total) : '',
+    rotuloDoTotal: rotuloDoTotal(prox.quantas, proximas.length),
+    verTodas: () => irPara('guias'),
+    vista, baixando,
   };
 }

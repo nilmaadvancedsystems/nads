@@ -292,6 +292,44 @@ async function gravarNoRelatorio(db, o) {
   });
 }
 
+/**
+ * A data da entrega do impresso no Relatório (13/11/2026: "quando a entrega for realizada, na tabela do fiscal onde foi
+ * marcado envio como impresso [...] preencher a data basedo nisso"): a linha com Entregue = Impresso e sem data recebe o
+ * dia (o de Brasília) em que a entrega foi confirmada na rota ou recebida pelo link. Data escrita à mão, ou o Entregue
+ * trocado, ficam. Devolve a linha nova ou null (nada a mudar).
+ */
+function linhaComADataDaEntrega(atual, dia, agora) {
+  if (!atual || typeof atual !== 'object' || atual.entregue !== 'impresso' || String(atual.data || '').trim() || !dia) return null;
+  return Object.assign({}, atual, { data: dia, atualizadoEm: agora, atualizadoPor: 'robô (entrega do impresso confirmada)' });
+}
+
+/**
+ * A entrega confirmada (o ouvinte do comprovante-email.js, o mesmo que já lê as entregas confirmadas: nenhuma leitura de
+ * entrega a mais) que veio do impresso do Fiscal: o registro do envio (solicitacoesEmail, tipo envioFiscal, via impresso,
+ * com o entregaId; vale também quando a guia já estava na rota) diz a competência e o cliente, e a linha do Relatório
+ * ganha a data. Devolve as linhas preenchidas (['2026-10_58']).
+ */
+async function dataDaEntregaDoImpresso(db, entrega) {
+  if (!entrega || !entrega.id || entrega.status !== 'confirmada' || !entrega.confirmadoEm) return [];
+  const quando = new Date(entrega.confirmadoEm);
+  if (isNaN(quando.getTime())) return [];
+  const dia = diaEmBrasilia(quando);
+  const regs = (await db.collection('solicitacoesEmail').where('entregaId', '==', entrega.id).limit(10).get()).docs.map(d => d.data())
+    .filter(r => r && r.tipo === 'envioFiscal' && r.via === 'impresso' && /^\d{4}-\d{2}$/.test(String(r.competencia || '')) && /^\d+$/.test(String(r.codigo || '')));
+  const feitas = [];
+  for (const chave of new Set(regs.map(r => r.competencia + '_' + Number(r.codigo)))) {
+    const ref = db.collection('controleTributos').doc(chave);
+    const mudou = await db.runTransaction(async tx => {
+      const s = await tx.get(ref);
+      const linha = linhaComADataDaEntrega(s.exists ? s.data() : null, dia, new Date().toISOString());
+      if (linha) tx.set(ref, linha);
+      return !!linha;
+    });
+    if (mudou) feitas.push(chave);
+  }
+  return feitas;
+}
+
 // 2. a leitura
 async function lerLote(db, ref, lote, log) {
   if (!(await quemPode(db, lote.criadoPorUid))) throw new Error('só o Fiscal e o administrador sobem lote de guias');
@@ -382,6 +420,8 @@ async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, gru
 // 6. o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias no Drive, o registro (a aba "Enviados", via 'econtador') e o
 // Relatório com o valor de cada coluna, a data do disparo e Entregue = eContador; sem e-mail e sem entrega na rota
 // e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o mesmo, com via e Entregue = 'scireport'
+// e o WhatsApp (12/11/2026, ticket 1ORUBY: "Inserir tipo de envio 'Whastapp'"): o mesmo, com via e Entregue = 'zap'; quem manda
+// é a pessoa, pela tela (o wa.me com a mensagem do modelo e as guias baixadas para anexar)
 async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via = 'econtador' }) {
   let doc = null;
   ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
@@ -405,7 +445,7 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
       .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
   }
   try {
-    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
+    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : via === 'zap' ? 'WhatsApp' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
   } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
   return resultado;
 }
@@ -444,7 +484,7 @@ async function dispararLote(db, ref, lote, deps) {
     // disparar de novo (depois de corrigir o e-mail de quem deu erro) não manda outra vez para quem já recebeu
     if (lote.resultados && lote.resultados[chave] && lote.resultados[chave].status === 'enviado') { enviados++; continue; }
     const { codigo, competencia } = itens[0].vai;
-    const via = ['impresso', 'econtador', 'scireport'].includes(vias[String(codigo)]) ? vias[String(codigo)] : 'email';
+    const via = ['impresso', 'econtador', 'scireport', 'zap'].includes(vias[String(codigo)]) ? vias[String(codigo)] : 'email';
     const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
       if (via !== 'email') {
@@ -537,6 +577,6 @@ module.exports = {
   iniciarLoteFiscal,
   // puras, pro teste
   colunaDaGuia, colunaDoIcmsDoSimples, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
-  diaIso, entregaDoImpresso, idsDosAnexos, jaNaRota,
+  diaIso, entregaDoImpresso, idsDosAnexos, jaNaRota, linhaComADataDaEntrega, dataDaEntregaDoImpresso,
   MODELO_PADRAO, COLUNAS, COLECAO,
 };

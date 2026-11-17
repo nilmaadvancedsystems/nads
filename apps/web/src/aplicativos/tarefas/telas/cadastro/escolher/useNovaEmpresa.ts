@@ -62,7 +62,8 @@ export function useNovaEmpresa(fechar: () => void) {
     const problemas = [
       !n ? 'Falta o nome.' : '',
       cod != null && lista.some(e => e.codigo === cod) ? 'Já tem empresa com o código ' + cod + '.' : '',
-      n && lista.some(e => formatos.slug(e.nome) === formatos.slug(n)) ? 'Já tem empresa com esse nome.' : '',
+      // o nome da lista e a razão social trocada no Cadastro › Empresa (13/11/2026)
+      n && lista.some(e => formatos.slug(e.nome) === formatos.slug(n) || formatos.slug(empresas.nomeParaMostrar(e)) === formatos.slug(n)) ? 'Já tem empresa com esse nome.' : '',
       !regime ? 'Escolha o regime.' : '',
     ].filter(Boolean);
     setErros(problemas);

@@ -9,7 +9,7 @@
 // Funções puras, testadas em visaoGeral.test.ts.
 import { areaCliente as ac, formatos } from '@nads/core';
 import type { EstadoDaArea } from './areaCliente';
-import { chaveDoMes, situacaoDoCertificado } from './regras';
+import { chaveDoMes, dataBr, situacaoDoCertificado } from './regras';
 
 /** 'dd/mm/aaaa' → 'aaaa-mm' */
 const mesDaData = (br: string) => br.slice(6, 10) + '-' + br.slice(3, 5);
@@ -47,6 +47,12 @@ export interface Pendencia {
   tom: Tom;
   titulo: string;
   texto: string;
+  /**
+   * (16/11/2026: o dono apresentou a área e ouviu "muita informação") o pedaço curto que vai na mesma linha do título, na
+   * Visão geral: o valor da guia, o assunto da resposta, o prazo do pedido; vazio quando o título já diz tudo. O `texto`
+   * longo fica para quem quiser a explicação (o título do item, ao passar o mouse).
+   */
+  detalhe: string;
   /** o rótulo do botão */
   rotulo: string;
   acao: AcaoDaPendencia;
@@ -67,9 +73,10 @@ export function pendenciasDoCliente(e: Pick<EstadoDaArea, 'guias' | 'chamados' |
     const venceHoje = ate.toDateString() === hoje.toDateString();
     const falta = t.refazer ? 'O escritório pediu para rever ' + (t.refazer === 1 ? '1 resposta' : t.refazer + ' respostas')
       : t.faltam < t.total ? 'Faltam ' + t.faltam + ' de ' + t.total + ' respostas' : (t.total === 1 ? '1 pergunta' : t.total + ' perguntas');
+    const prazo = venceHoje ? 'hoje' : String(ate.getDate()).padStart(2, '0') + '/' + String(ate.getMonth() + 1).padStart(2, '0');
     lista.push({
       id: 't-' + t.codigo, origem: 'ticket', tom: venceHoje ? 'bad' : 'warn', titulo: 'O escritório pediu: ' + t.assunto,
-      texto: falta + '. Responda até ' + (venceHoje ? 'hoje' : String(ate.getDate()).padStart(2, '0') + '/' + String(ate.getMonth() + 1).padStart(2, '0')) + '.',
+      texto: falta + '. Responda até ' + prazo + '.', detalhe: 'até ' + prazo,
       rotulo: t.faltam < t.total || t.refazer ? 'Continuar' : 'Responder', acao: { tipo: 'abrir-ticket', codigo: t.codigo },
     });
   }
@@ -78,27 +85,29 @@ export function pendenciasDoCliente(e: Pick<EstadoDaArea, 'guias' | 'chamados' |
     if (g.situacao === 'vencida') {
       lista.push({
         id: 'g-' + g.id, origem: 'guia', tom: 'bad', titulo: nomeDaGuia(g) + ' venceu em ' + g.vencimento.slice(0, 5),
-        texto: formatos.reais(g.valor) + '. Se ainda não pagou, peça uma guia nova: a vencida não passa no banco.',
+        texto: formatos.reais(g.valor) + '. Se ainda não pagou, peça uma guia nova: a vencida não passa no banco.', detalhe: formatos.reais(g.valor),
         rotulo: 'Pedir guia nova', acao: { tipo: 'pedir-guia', titulo: tituloDaGuiaNova(g) },
       });
     } else if (g.situacao === 'vence hoje') {
       lista.push({
-        id: 'g-' + g.id, origem: 'guia', tom: 'warn', titulo: nomeDaGuia(g) + ' vence hoje', texto: formatos.reais(g.valor) + ', competência ' + comp + '.',
+        id: 'g-' + g.id, origem: 'guia', tom: 'warn', titulo: nomeDaGuia(g) + ' vence hoje', texto: formatos.reais(g.valor) + ', competência ' + comp + '.', detalhe: formatos.reais(g.valor),
         rotulo: 'Baixar guia', acao: g.temPdf ? { tipo: 'baixar-guia', guia: g.id } : { tipo: 'ir', aba: 'guias' },
       });
     }
   }
   for (const c of e.chamados) {
     // o assunto por extenso (12/11/2026: o título sozinho, "12", não dizia nada)
-    if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id, origem: 'chamado', tom: 'warn', titulo: 'O escritório respondeu', texto: 'Sua solicitação "' + c.titulo + '" tem resposta.', rotulo: 'Ver resposta', acao: { tipo: 'ver-chamado', chamado: c.id } });
+    if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id, origem: 'chamado', tom: 'warn', titulo: 'O escritório respondeu', texto: 'Sua solicitação "' + c.titulo + '" tem resposta.', detalhe: c.titulo, rotulo: 'Ver resposta', acao: { tipo: 'ver-chamado', chamado: c.id } });
   }
   if (e.certificado) {
     const s = situacaoDoCertificado(e.certificado, hoje);
-    if (s.tom !== 'ok') lista.push({ id: 'cert', origem: 'certificado', tom: s.tom, titulo: 'Certificado digital ' + (s.tom === 'bad' ? 'vencido' : 'perto de vencer'), texto: s.texto, rotulo: 'Pedir renovação', acao: { tipo: 'pedir-renovacao' } });
+    // (16/11/2026, "muita informação") a data no título, numa linha só: "Certificado digital vence em 11/12"
+    const quando = (s.tom === 'bad' ? 'venceu em ' : 'vence em ') + dataBr(e.certificado.validoAte).slice(0, 5);
+    if (s.tom !== 'ok') lista.push({ id: 'cert', origem: 'certificado', tom: s.tom, titulo: 'Certificado digital ' + quando, texto: s.texto, detalhe: '', rotulo: 'Pedir renovação', acao: { tipo: 'pedir-renovacao' } });
   }
   for (const a of e.avisos) {
     if (!a.ir) continue;
-    lista.push({ id: 'a-' + a.id, origem: 'aviso', tom: 'warn', titulo: a.titulo, texto: a.texto, rotulo: a.ir === 'documentos' ? 'Enviar agora' : 'Abrir', acao: a.ir === 'documentos' ? { tipo: 'enviar' } : { tipo: 'ir', aba: a.ir } });
+    lista.push({ id: 'a-' + a.id, origem: 'aviso', tom: 'warn', titulo: a.titulo, texto: a.texto, detalhe: '', rotulo: a.ir === 'documentos' ? 'Enviar agora' : 'Abrir', acao: a.ir === 'documentos' ? { tipo: 'enviar' } : { tipo: 'ir', aba: a.ir } });
   }
   // estável: dentro do mesmo tom, a ordem acima (guias, respostas, certificado, recados)
   return lista.map((p, i) => [p, i] as const).sort(([a, i], [b, j]) => PESO[a.tom] - PESO[b.tom] || i - j).map(([p]) => p);
@@ -171,4 +180,80 @@ export function quandoFoi(iso: string, hoje: Date): string {
   if (dias === 0) return 'hoje, ' + hora;
   if (dias === 1) return 'ontem, ' + hora;
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+// ---------- a Visão geral refeita (13/11/2026: "refaça esses 3"): a linha do resumo e as próximas guias ----------
+
+/**
+ * A linha embaixo da saudação, como nas Solicitações: "4 pendências · atualizado hoje, 07:30".
+ * (13/11/2026, revisão: sem pendência a linha não diz "nada pendente": o cartão logo embaixo já diz "Tudo em dia".)
+ * (16/11/2026: "muita informação": no máximo dois fatos; saiu o mês, que não muda nada para o cliente.)
+ */
+export function linhaDoResumo(pendencias: number, atualizado: string): string {
+  const conta = pendencias === 0 ? [] : [pendencias === 1 ? '1 pendência' : pendencias + ' pendências'];
+  return formatos.capital([...conta, ...(atualizado ? ['atualizado ' + (/^\d/.test(atualizado) ? 'em ' : '') + atualizado] : [])].join(' · '));
+}
+
+/**
+ * O rótulo do total das próximas guias. (13/11/2026, revisão: a lista mostra só as primeiras; quando há mais, o rótulo
+ * diz quantas ficaram fora, para a soma não parecer errada.)
+ */
+export function rotuloDoTotal(quantas: number, mostradas: number): string {
+  if (quantas <= 1) return 'Total a pagar';
+  const fora = quantas - mostradas;
+  return 'Total das ' + quantas + ' guias' + (fora > 0 ? ' (mais ' + fora + ' em Ver todas)' : '');
+}
+
+/** (16/11/2026, "muita informação") só a frase curta da data, como nas Guias: sem o dia da semana e sem o "em 3 dias". */
+export interface ProximaGuia { guia: ac.GuiaDoCliente; /** 'Vence 19/11' */ quando: string }
+
+/**
+ * As próximas guias a pagar da Visão geral: só as "a vencer" (a vencida e a que vence hoje já estão no "Precisa de você";
+ * 13/11/2026: a lista repetia a agenda e fazia a página rolar), da mais próxima à mais distante, até `limite`; com quantas
+ * são e o total de todas.
+ */
+export function proximasGuias(guias: readonly ac.GuiaDoCliente[], hoje: Date, limite = 4): { itens: ProximaGuia[]; quantas: number; total: number } {
+  const todas = guiasDoMomento([...guias], hoje).filter(g => g.situacao === 'a vencer')
+    .map(g => ({ g, v: ac.dataDoVencimento(g.vencimento) }))
+    .filter((x): x is { g: ac.GuiaDoCliente; v: Date } => !!x.v)
+    .sort((a, b) => a.v.getTime() - b.v.getTime());
+  const itens = todas.slice(0, limite).map(({ g }) => ({ guia: g, quando: 'Vence ' + g.vencimento.slice(0, 5) }));
+  return { itens, quantas: todas.length, total: todas.reduce((s, x) => s + x.g.valor, 0) };
+}
+
+// ---------- os próximos vencimentos da Visão geral (12/11/2026, o painel do mês: o mesmo extrato das Guias) ----------
+
+export interface ItemDoProximo { chave: string; tipo: 'guia' | 'entrega'; tom: 'vencida' | 'hoje' | 'aberta'; nome: string; situacao: string; valor: number | null; guia?: string }
+export interface DiaDoProximo { data: string; dia: number; semana: string; hoje: boolean; atrasado: boolean; itens: ItemDoProximo[] }
+
+const SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const isoDe = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+/**
+ * Os próximos vencimentos: as guias do momento (a vencida no dia dela, marcada como atrasada) e as entregas do escritório
+ * ainda a fazer nos próximos `dias`, agrupadas por data, da mais antiga à mais nova; até `limite` datas.
+ */
+export function proximosDoCliente(guias: readonly ac.GuiaDoCliente[], agenda: readonly ac.AgendaDoMes[], hoje: Date, rotulo: (g: ac.GuiaDoCliente) => string, dias = 30, limite = 5): DiaDoProximo[] {
+  const hojeIso = isoDe(hoje);
+  const ate = isoDe(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias));
+  const porData = new Map<string, ItemDoProximo[]>();
+  const por = (data: string, item: ItemDoProximo) => porData.set(data, [...(porData.get(data) ?? []), item]);
+  for (const g of guiasDoMomento([...guias], hoje)) {
+    const v = ac.dataDoVencimento(g.vencimento);
+    if (!v) continue;
+    por(isoDe(v), {
+      chave: 'g-' + g.id, tipo: 'guia', guia: g.id, nome: rotulo(g), valor: g.valor,
+      tom: g.situacao === 'vencida' ? 'vencida' : g.situacao === 'vence hoje' ? 'hoje' : 'aberta',
+      situacao: g.situacao === 'vencida' ? 'Vencida' : g.situacao === 'vence hoje' ? 'Vence hoje' : 'A pagar',
+    });
+  }
+  for (const m of agenda) for (const i of m.itens) {
+    if (i.situacao !== 'a fazer' || i.vence < hojeIso || i.vence > ate) continue;
+    por(i.vence, { chave: 'e-' + m.mes + '-' + i.id, tipo: 'entrega', tom: i.vence === hojeIso ? 'hoje' : 'aberta', nome: i.nome, situacao: 'O escritório entrega', valor: null });
+  }
+  return [...porData.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, limite).map(([data, itens]) => {
+    const d = new Date(Number(data.slice(0, 4)), Number(data.slice(5, 7)) - 1, Number(data.slice(8, 10)));
+    return { data, dia: d.getDate(), semana: SEMANA[d.getDay()], hoje: data === hojeIso, atrasado: data < hojeIso,
+      itens: [...itens.filter(x => x.tipo === 'guia'), ...itens.filter(x => x.tipo === 'entrega')] };
+  });
 }

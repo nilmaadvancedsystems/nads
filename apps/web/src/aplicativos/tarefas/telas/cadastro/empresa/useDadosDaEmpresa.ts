@@ -2,12 +2,15 @@
 // (Vitor, 30/09/2026: a regra fica no Cadastro): decide a aba Prestados na Importação e os serviços prestados
 // na Conferência. Grava na hora, com o registro no histórico.
 import { empresas, tarefas } from '@nads/core';
-import { regimeNoEntregas } from '../../../dados/fonte';
-import { useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
+import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
+import { useOperador } from '../../../casca/operador';
+import { empresasNovas, regimeNoEntregas } from '../../../dados/fonte';
+import { useAcesso, useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
 import { useCadastroAberto } from '../useCadastroAberto';
 
 export function useDadosDaEmpresa(rota: string) {
   const c = useCadastroAberto(rota);
+  const operador = useOperador().operador;
   useRegimesDoEntregas();
   const codigo = c.empresa?.codigo ?? null;
   const doEntregas = regimeNoEntregas(codigo);
@@ -17,6 +20,32 @@ export function useDadosDaEmpresa(rota: string) {
   const regimeQueVale = (c.cadastro.regime as string | undefined) || padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '';
   const planilhaDoFiscal = empresas.parametrosFiscaisDaPlanilha(codigo);
   const fiscal = empresas.parametrosFiscaisQueValem(codigo, c.cadastro.fiscal);
+  // quem cuida da empresa no Fiscal e no Contábil (17/11/2026: trocar aqui, pelo Dados da empresa): o escolhido no
+  // cadastro; no Fiscal, sem escolha, o da planilha do Checklist Folha (como em Empresas por responsável)
+  const ativos = useAcesso().equipe().lista;
+  const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const daPlanilhaBruto = empresas.clienteDoDp(codigo)?.responsavel || '';
+  const daPlanilha = daPlanilhaBruto ? ativos.find(p => p.ativo && igual(p.nome, daPlanilhaBruto))?.nome || daPlanilhaBruto.charAt(0) + daPlanilhaBruto.slice(1).toLowerCase() : '';
+  const podeTrocarResponsavel = !!operador?.admin;
+  const responsaveis = empresas.cadastro.DEPARTAMENTOS_DO_RESPONSAVEL.map(d => {
+    const opcoes = empresas.cadastro.quemPodeSerResponsavel(ativos, d.id);
+    const escolhido = c.cadastro.responsaveis?.[d.id] || '';
+    const valeNaEquipe = !!escolhido && opcoes.some(n => igual(n, escolhido) || igual(n.split('.')[0], escolhido));
+    const doFiscalDaPlanilha = d.id === 'fiscal' && !escolhido ? daPlanilha : '';
+    const t = c.cadastro.transferencias?.[d.id];
+    return {
+      dep: d.id, rotulo: d.rotulo, opcoes,
+      /** quem cuida hoje ('' = ninguém) */
+      atual: valeNaEquipe ? escolhido : doFiscalDaPlanilha,
+      /** de onde veio: o escolhido no nads, a planilha do Fiscal ou ninguém; fora = o escolhido saiu da equipe */
+      origem: valeNaEquipe ? 'cadastro' as const : doFiscalDaPlanilha ? 'planilha' as const : escolhido ? 'fora' as const : 'nenhum' as const,
+      foraDaEquipe: !valeNaEquipe ? escolhido : '',
+      /** no Fiscal, o da planilha (o que volta a valer se tirar o escolhido) */
+      daPlanilha: d.id === 'fiscal' ? daPlanilha : '',
+      /** a transferência pedida (a troca daqui passa por cima dela) */
+      transferencia: t ? { de: t.de, para: t.para, faltam: empresas.cadastro.faltamAceitar(t) } : null,
+    };
+  });
   function definirFiscal<K extends keyof empresas.cadastro.ParametrosDoFiscal>(campo: K, valor: NonNullable<empresas.cadastro.ParametrosDoFiscal[K]>) {
     if (c.carregando) return;
     // o mesmo valor da planilha (o texto vazio, sem nada na planilha) volta a seguir a planilha
@@ -39,6 +68,39 @@ export function useDadosDaEmpresa(rota: string) {
       if (novo !== c.cadastro) c.salvar(novo);
     },
     carregando: c.carregando,
+    /**
+     * a razão social (13/11/2026: trocar pelo próprio sistema): a trocada no nads; sem ela, a da Receita (pelo Entregas)
+     * ou o nome da lista. A chave da empresa continua o nome da lista: trocar não tira nada dela.
+     */
+    razaoSocial: c.cadastro.razaoSocial?.atual || identificacao.dados?.receita?.razaoSocial || c.empresa?.nome || '',
+    /** quem trocou, quando e as anteriores (sem = nunca foi trocada no nads) */
+    trocaDaRazao: c.cadastro.razaoSocial || null,
+    /** a da Receita, quando é outra (para trocar com um clique) */
+    razaoDaReceita: (() => {
+      const daReceita = empresas.cadastro.razaoSocialLimpa(identificacao.dados?.receita?.razaoSocial || '');
+      return daReceita && daReceita !== empresas.cadastro.razaoSocialDoCadastro(c.cadastro, c.empresa?.nome) ? daReceita : '';
+    })(),
+    /** só o nível Diretor (e o Dono) troca a razão social; o admin sem esse nível, não (13/11/2026: "só diretor") */
+    podeTrocarRazao: podeTrocarRazaoSocial(operador),
+    /** troca a razão social; devolve o erro (null = trocou ou não mudou) */
+    trocarRazaoSocial(nova: string): string | null {
+      if (c.carregando || !podeTrocarRazaoSocial(operador)) return 'Só o diretor troca a razão social.';
+      const outras = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()].map(e => ({ codigo: e.codigo, nome: e.nome, razaoSocial: empresas.nomeParaMostrar(e) }));
+      const r = empresas.cadastro.trocarRazaoSocial(c.cadastro, nova, outras, c.por, new Date());
+      if ('erro' in r) return r.erro;
+      if (r !== c.cadastro) c.salvar(r);
+      return null;
+    },
+    /** quem cuida da empresa no Fiscal e no Contábil */
+    responsaveis,
+    /** só o Diretor (o admin) troca, como em Empresas por responsável */
+    podeTrocarResponsavel,
+    /** troca direto, sem pedir o aceite; a transferência pedida no departamento cai (fica no histórico) */
+    trocarResponsavel(dep: empresas.cadastro.DepartamentoDoResponsavel, nome: string) {
+      if (c.carregando || !podeTrocarResponsavel) return;
+      const novo = empresas.cadastro.trocarResponsavelDireto(c.cadastro, dep, nome, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     /** o regime (13/10/2026): o escolhido no cadastro (null = vale o da lista do escritório) e o da lista */
     regime: (c.cadastro.regime as empresas.cadastro.Regime | undefined) ?? null,
     /** sem escolher no nads: o do Entregas (o enquadramento; sem ele, a Receita) ou o da lista do escritório */

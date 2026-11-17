@@ -42,6 +42,8 @@ import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
 import { SeletorDoPeriodo } from './partes/SeletorDoPeriodo';
 import { publicarOndeEsta } from '../suporte/contextoDoSuporte';
+import { JanelaDaCobranca } from '../../casca/JanelaDaCobranca';
+import { JanelaDoEmailPrincipal } from '../../casca/JanelaDoEmailPrincipal';
 
 // as etapas cuja ferramenta (o Extrator) já tem a linha do período: a Importação, com o seletor que troca, e o Cheque especial
 const COM_A_LINHA_DO_PERIODO = new Set(['cheque-especial']);
@@ -304,7 +306,7 @@ export function Executor() {
       <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída' + (vm.tudoPronto ? ' · a empresa está concluída' : '')}>
         <div className="btn-row">
           <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>{vm.tudoPronto ? 'Reabrir nesta etapa' : 'Editar'}</button>
-          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>{vm.tudoPronto ? 'Voltar ao resumo' : 'Ir para a etapa da vez'}</button>
+          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>{vm.tudoPronto ? 'Ver o resumo' : 'Ir para a etapa da vez'}</button>
         </div>
       </Alerta>
     </div>
@@ -319,7 +321,7 @@ export function Executor() {
 
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" lateral={semLateral ? 'nenhuma' : undefined} topoDireita={topo} acimaDoCabecalho={avisos}
-      empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
+      empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.nomeNaTela, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""
       onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : () => {}} onInicio={vm.sair} onAplicativos={casca.inicio}
@@ -327,14 +329,19 @@ export function Executor() {
       peDaGaveta={peDaGaveta(casca, () => setFeedbacks(true))}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {conjunto.aberta && <JanelaEmConjunto vm={conjunto} />}
+      {/* a cobrança de quem delegou, por cima de tudo até responder (16/11/2026; só no modo desenvolvedor) */}
+      <JanelaDaCobranca />
+      {/* o e-mail principal de quem ainda entra pelo nome (16/11/2026; só no modo desenvolvedor) */}
+      <JanelaDoEmailPrincipal />
+      {/* o fim: o Voltar às empresas no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+      {!vm.carregando && (vm.minhasFeitas || !vm.etapa) && (
+        <button type="button" className="btn btn-ghost executor-fim-voltar" onClick={vm.sair}><Icone nome="chevronLeft" />Voltar às empresas</button>
+      )}
       {vm.carregando ? null : vm.minhasFeitas ? (
         <div className="executor-fim" ref={fim}>
           <Icone nome="checkCircle" />
           <h2>Suas etapas em {vm.rotuloCompetencia} estão feitas</h2>
           <p className="hint">As outras etapas desta empresa estão com quem delegou. Para revisar, abra uma das suas ao lado.</p>
-          <div className="executor-fim-botoes">
-            <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
-          </div>
         </div>
       ) : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
@@ -347,7 +354,6 @@ export function Executor() {
           <div className="executor-fim-botoes">
             {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Cancelar função</button>}
             <button type="button" className="btn btn-outline" onClick={vm.revisar}><Icone nome="repeat" />Revisar</button>
-            <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
           </div>
         </div>
       ) : (

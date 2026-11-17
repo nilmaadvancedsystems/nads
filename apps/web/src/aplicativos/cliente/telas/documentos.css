@@ -1,0 +1,12 @@
+/* Central de documentos com menos informação (16/11/2026: o dono apresentou a área e ouviu "muita informação"). A
+   estrutura é a mesma (as pastas em cartões, a lista por mês); só a tela de Documentos usa (prefixo cli-doc-). Os
+   seletores pesam mais que as regras do cliente.css para a linha da lista, porque a ordem de carga dos CSS não é
+   garantida. */
+
+/* numa pasta escolhida o selo da pasta sai da linha (repetia a mesma pasta em toda linha): a coluna dele some */
+@media (min-width:768px){
+  .cli-app .cli-biblioteca-lista.cli-doc-sem-pasta .cli-biblioteca-item{grid-template-columns:22px 34px minmax(0,1fr) 56px 84px;}
+}
+
+/* a linha sem a linha de baixo (o detalhe que só repetia o nome) fica da mesma altura das outras, o nome no meio */
+.cli-app .cli-biblioteca-lista .cli-biblioteca-item .cli-biblioteca-txt{min-height:48px;justify-content:center;}

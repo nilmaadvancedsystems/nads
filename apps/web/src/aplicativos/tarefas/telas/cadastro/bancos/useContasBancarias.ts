@@ -115,7 +115,7 @@ export function useContasBancarias(rota: string) {
     hoje: c.hoje,
 
     salvarConta: (id: string | null, d: empresas.cadastro.DadosDaConta) =>
-      aplicar(cad.salvarConta(c.cadastro, id, d, c.partida, c.por, new Date()), id ? 'Conta alterada.' : cad.nomeDoBanco(d.marca) + ' incluído.'),
+      aplicar(cad.salvarConta(c.cadastro, id, d, c.partida, c.por, new Date(), { exigeContaContabil: true }), id ? 'Conta alterada.' : cad.nomeDoBanco(d.marca) + ' incluído.'),
     encerrar: (id: string, ate: string) =>
       aplicar(cad.encerrarConta(c.cadastro, id, ate, c.partida, c.por, new Date()), 'Conta encerrada em ' + rotuloCompetencia(ate) + '.'),
     reabrir: (id: string) => aplicar(cad.reabrirConta(c.cadastro, id, c.partida, c.por, new Date()), 'Conta reaberta.'),

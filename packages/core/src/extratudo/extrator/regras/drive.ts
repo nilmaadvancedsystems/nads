@@ -4,7 +4,7 @@
 // quando dá, do banco e da conta certos. Um só bom → achou; senão a pessoa escolhe entre os candidatos.
 import { nomeNorm } from '../../../formatos';
 import type { ArquivoAchado, BuscaNoDrive, ItemDrive } from '../../creditor/regras/drive';
-import { falaDaCompetencia } from '../../creditor/regras/drive';
+import { falaDaCompetencia, filhosDoMapa } from '../../creditor/regras/drive';
 import { nomeDeOutroDocumento } from './preVerificacao';
 
 const EXTENSOES = /\.(pdf|ofx|xlsx?|csv|txt)$/i;
@@ -48,10 +48,20 @@ function mesDaPasta(pastas: readonly string[], ano: string): string | null {
 /** A conta que se procura: o nome e a marca do banco, e o número da conta (se tiver). */
 export interface ContaProcurada { nome: string; marca?: string; conta?: string }
 
+/** O que vale para o arquivo em qualquer busca (o nome sem o "(1)", o texto normalizado, as pastas e se fica de fora). */
+const INFO_DO_ARQUIVO = new WeakMap<ItemDrive, { raiz: string; nome: string; texto: string; pastas: string[]; caminhoENome: string; fora: boolean }>();
+
+/** O mapa tem a pasta EXTRATOS do arquivamento? (uma vez por mapa: cada busca passava o nome de todos os arquivos; 16/11/2026) */
+const PASTA_DE_EXTRATOS = new WeakMap<readonly ItemDrive[], boolean>();
+function temPastaDeExtratosNoMapa(itens: readonly ItemDrive[]): boolean {
+  let tem = PASTA_DE_EXTRATOS.get(itens);
+  if (tem === undefined) { tem = itens.some(it => it.t === 'd' && nomeNorm(it.n) === 'extratos'); PASTA_DE_EXTRATOS.set(itens, tem); }
+  return tem;
+}
+
 export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: string | null, competencia: string, conta: ContaProcurada): BuscaNoDrive {
   if (!raizDoCliente) return { situacao: 'sem-cliente', arquivo: null, candidatos: [] };
-  const filhos = new Map<string, ItemDrive[]>();
-  for (const it of itens) filhos.set(it.p, [...(filhos.get(it.p) || []), it]);
+  const filhos = filhosDoMapa(itens);
   const banco = [conta.nome, conta.marca].filter((v): v is string => !!v && v !== 'banco').map(v => nomeNorm(v.replace(/-/g, ' ')))
     .filter(v => v && v !== 'banco');
   // o banco da conta pelos apelidos (a marca, ou o nome que bate com um banco conhecido)
@@ -60,33 +70,43 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
   const outros = Object.entries(APELIDOS).filter(([id]) => id !== meu).flatMap(([, a]) => a);
   const digitos = (conta.conta || '').replace(/\D/g, '');
 
-  const temPastaDeExtratos = itens.some(it => it.t === 'd' && nomeNorm(it.n) === 'extratos');
+  const temPastaDeExtratos = temPastaDeExtratosNoMapa(itens);
   type Nota = ArquivoAchado & { nota: number; grupo: string; copia: boolean; pdf: boolean };
   const achados: Nota[] = [];
   const andar = (pasta: string, caminho: string[]) => {
     for (const it of filhos.get(pasta) || []) {
       if (it.t === 'd') { andar(it.i, [...caminho, it.n]); continue; }
       if (it.t !== 'f' || !EXTENSOES.test(it.n)) continue;
-      const nome = semNumeroDaCopia(it.n);
-      const texto = nomeNorm([...caminho, nome].join(' '));
-      if (/cred ?liquid|razao|balancete/.test(texto)) continue; // não é extrato
-      // a rotina de arquivamento guarda extrato, comprovante e aplicação em pastas separadas
-      // (CONTÁBIL/EXTRATOS/AAAA/MM/{BANCÁRIOS|COMPROVANTES|APLICAÇÕES}): comprovante não é extrato
-      const pastas = caminho.map(nomeNorm);
-      if (pastas.some(p => p === 'comprovantes' || p === 'aplicacoes') || /^comprovante/.test(nomeNorm(it.n))) continue;
-      // a fatura, a aplicação e os outros que têm o tipo no nome do arquivo (Vitor, 10/11/2026): nem baixa
-      if (nomeDeOutroDocumento(nome)) continue;
-      // o extrato trocado pelo que veio do e-mail ou do computador (Vitor, 06/11/2026) fica em SUBSTITUÍDOS: não conta mais
-      if (pastas.includes(PASTA_DOS_SUBSTITUIDOS)) continue;
-      // só o lugar dos extratos (Vitor, 19/10/2026, na 450: o agosto "achou" o extrato do EMPRÉSTIMO, em OPERAÇÕES DE
-      // CRÉDITO, pelo "08-2028" do nome; o olhinho abria ele e o PDF importado nem subia, porque o mês "já estava lá"): com a
-      // pasta EXTRATOS do arquivamento, só dentro dela; e as pastas de outra coisa ficam sempre de fora
-      if (temPastaDeExtratos && !pastas.includes('extratos')) continue;
-      if (pastas.some(p => FORA_DOS_EXTRATOS.test(p))) continue;
+      // o que não depende do mês nem do banco, uma vez por arquivo do mapa (16/11/2026: cada busca normalizava o nome e o caminho
+      // de todos os arquivos de novo, e o Pedir documentos fazia dezenas de buscas)
+      let inf = INFO_DO_ARQUIVO.get(it);
+      if (!inf || inf.raiz !== raizDoCliente) {
+        const nome = semNumeroDaCopia(it.n);
+        const texto = nomeNorm([...caminho, nome].join(' '));
+        const pastas = caminho.map(nomeNorm);
+        const fora =
+          /cred ?liquid|razao|balancete/.test(texto) // não é extrato
+          // a rotina de arquivamento guarda extrato, comprovante e aplicação em pastas separadas
+          // (CONTÁBIL/EXTRATOS/AAAA/MM/{BANCÁRIOS|COMPROVANTES|APLICAÇÕES}): comprovante não é extrato
+          || pastas.some(p => p === 'comprovantes' || p === 'aplicacoes') || /^comprovante/.test(nomeNorm(it.n))
+          // a fatura, a aplicação e os outros que têm o tipo no nome do arquivo (Vitor, 10/11/2026): nem baixa
+          || nomeDeOutroDocumento(nome)
+          // o extrato trocado pelo que veio do e-mail ou do computador (Vitor, 06/11/2026) fica em SUBSTITUÍDOS: não conta mais
+          || pastas.includes(PASTA_DOS_SUBSTITUIDOS)
+          // só o lugar dos extratos (Vitor, 19/10/2026, na 450: o agosto "achou" o extrato do EMPRÉSTIMO, em OPERAÇÕES DE
+          // CRÉDITO, pelo "08-2028" do nome; o olhinho abria ele e o PDF importado nem subia, porque o mês "já estava lá"): com a
+          // pasta EXTRATOS do arquivamento, só dentro dela; e as pastas de outra coisa ficam sempre de fora
+          || (temPastaDeExtratos && !pastas.includes('extratos'))
+          || pastas.some(p => FORA_DOS_EXTRATOS.test(p));
+        inf = { raiz: raizDoCliente, nome, texto, pastas, caminhoENome: [...caminho, nome].join(' '), fora };
+        INFO_DO_ARQUIVO.set(it, inf);
+      }
+      if (inf.fora) continue;
+      const { nome, texto, pastas } = inf;
       // de outro banco (com o banco da conta conhecido): não é este extrato
       if (meu && !meus.some(a => temPalavra(texto, a)) && outros.some(a => temPalavra(texto, a))) continue;
       const pelaPasta = mesDaPasta(pastas, competencia.slice(0, 4));
-      const daCompetencia = pelaPasta ? pelaPasta === competencia.slice(5, 7) : falaDaCompetencia([...caminho, nome].join(' '), competencia);
+      const daCompetencia = pelaPasta ? pelaPasta === competencia.slice(5, 7) : falaDaCompetencia(inf.caminhoENome, competencia);
       // o arquivo só deste mês vale mais que o de um período que passa por ele (Vitor, 10/11/2026, na 581: o "03-2026.pdf" e o
       // "10-2025 A 03-2026.pdf" empatavam e o março não vinha)
       const umMesSo = daCompetencia && (nome.match(/\d{2}[-._ ]\d{4}/g) || []).length === 1;
@@ -127,4 +147,69 @@ export function mensagemDaBuscaDoExtrato(b: BuscaNoDrive, mes: string): string {
     case 'varios': return 'Achei mais de um extrato de ' + mes + ': escolha qual usar.';
     case 'achou': return 'Achei ' + (b.arquivo?.caminho || '') + '.';
   }
+}
+
+/**
+ * Os arquivos do mês na pasta da empresa no Drive, para a pessoa escolher o extrato (Vitor, 17/11/2026: "lança a opção selecionar
+ * no Drive, onde abre uma popup no mês do contábil da empresa e o usuário seleciona o arquivo"). Sem os filtros da busca sozinha
+ * (é a pessoa quem escolhe): todo arquivo cuja pasta é do mês ("2026 › 09") ou que fala do mês no nome. Os da pasta EXTRATOS
+ * vêm primeiro; depois pelo caminho.
+ */
+export function arquivosDoMesNoDrive(itens: readonly ItemDrive[], raizDoCliente: string | null, competencia: string): ArquivoAchado[] {
+  if (!raizDoCliente) return [];
+  const filhos = filhosDoMapa(itens);
+  const ano = competencia.slice(0, 4), mm = competencia.slice(5, 7);
+  const out: (ArquivoAchado & { extratos: boolean })[] = [];
+  const andar = (pasta: string, caminho: string[]) => {
+    for (const it of filhos.get(pasta) || []) {
+      if (it.t === 'd') { andar(it.i, [...caminho, it.n]); continue; }
+      if (it.t !== 'f' || !EXTENSOES.test(it.n)) continue;
+      const pastas = caminho.map(nomeNorm);
+      const pelaPasta = mesDaPasta(pastas, ano);
+      const doMes = pelaPasta ? pelaPasta === mm : falaDaCompetencia([...caminho, it.n].join(' '), competencia);
+      if (!doMes) continue;
+      out.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: /cred ?liquid/.test(nomeNorm(it.n)), daCompetencia: true,
+        extratos: pastas.includes('extratos') });
+    }
+  };
+  andar(raizDoCliente, []);
+  return out.sort((a, b) => Number(b.extratos) - Number(a.extratos) || a.caminho.localeCompare(b.caminho, 'pt-BR'))
+    .map(({ extratos: _e, ...a }) => a);
+}
+
+/**
+ * O navegador de pastas do "Selecionar no Drive" (Vitor, 17/11/2026: "quero sistemas de pastas e diretórios, tudo bonitinho"):
+ * a pasta onde ele abre — a do mês dentro de EXTRATOS (EXTRATOS › 2026 › 09), ou a mais funda que existir nesse caminho, ou a
+ * pasta da empresa.
+ */
+export function pastaInicialDoMes(itens: readonly ItemDrive[], raizDoCliente: string | null, competencia: string): string | null {
+  if (!raizDoCliente) return null;
+  const filhos = filhosDoMapa(itens);
+  const pastasDe = (id: string) => (filhos.get(id) || []).filter(it => it.t === 'd');
+  // a EXTRATOS mais perto da raiz (CONTÁBIL › EXTRATOS)
+  let extratos: string | null = null;
+  const fila: string[] = [raizDoCliente];
+  for (let n = 0; fila.length && n < 400 && !extratos; n++) {
+    const id = fila.shift() as string;
+    for (const p of pastasDe(id)) { if (nomeNorm(p.n) === 'extratos') { extratos = p.i; break; } fila.push(p.i); }
+  }
+  if (!extratos) return raizDoCliente;
+  const ano = pastasDe(extratos).find(p => nomeNorm(p.n) === competencia.slice(0, 4));
+  if (!ano) return extratos;
+  const mes = pastasDe(ano.i).find(p => mesDaPasta([nomeNorm(p.n)], competencia.slice(0, 4)) === competencia.slice(5, 7) || nomeNorm(p.n) === competencia.slice(5, 7));
+  return mes ? mes.i : ano.i;
+}
+
+/** O que está numa pasta do mapa, as pastas primeiro e depois os arquivos, cada grupo em ordem alfabética. */
+export function conteudoDaPasta(itens: readonly ItemDrive[], pasta: string): ItemDrive[] {
+  return [...(filhosDoMapa(itens).get(pasta) || [])].sort((a, b) => Number(b.t === 'd') - Number(a.t === 'd') || a.n.localeCompare(b.n, 'pt-BR', { numeric: true }));
+}
+
+/** O caminho da raiz da empresa até a pasta (para as migalhas do navegador). */
+export function caminhoAtePasta(itens: readonly ItemDrive[], raizDoCliente: string, pasta: string): ItemDrive[] {
+  const porId = new Map(itens.map(it => [it.i, it]));
+  const out: ItemDrive[] = [];
+  let atual = porId.get(pasta);
+  for (let n = 0; atual && atual.i !== raizDoCliente && n < 50; n++) { out.unshift(atual); atual = porId.get(atual.p); }
+  return out;
 }

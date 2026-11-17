@@ -3,7 +3,7 @@
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cleanInlineStyles } from 'animejs';
-import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
+import { animar, digitarTitulo, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped } from './logos';
@@ -16,7 +16,8 @@ import { useJanela } from './janela';
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
 /** foraDaEtapa: a seção some quando o aplicativo está inteiro dentro de uma etapa (ex.: a Importação da Conferência, que foi para a primeira etapa) */
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' | 'laranja'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP) */ marca?: 'fgts' }
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' | 'laranja'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP) */ marca?: 'fgts';
+  /** o número ao lado do nome (as Tarefas do Início novo: quantas em cada lista; 13/11/2026) */ contador?: string }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
 /** ponto: o pontinho vermelho de "falta configurar" ao lado do nome (Vitor, 08/10/2026); o texto vai na dica */
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string;
@@ -70,6 +71,8 @@ export function Casca(p: {
   secoes: SecaoCasca[];
   paginas: PaginaCasca[];
   titulo: string;
+  /** o título é a saudação do Início novo (13/11/2026): maior, digitado letra a letra e na mesma linha da fileira de ações */
+  saudacao?: boolean;
   /** uma linha embaixo do título (cinza) */
   descricao?: string;
   acoes?: ReactNode;
@@ -175,7 +178,8 @@ export function Casca(p: {
   const titulo = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => {
     const el = titulo.current;
-    return el ? revelarTitulo(el) ?? undefined : undefined;
+    return el ? (p.saudacao ? digitarTitulo(el) : revelarTitulo(el)) ?? undefined : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.titulo]);
   // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
   const versaoNova = useVersaoNova(p.versao || '');
@@ -211,7 +215,7 @@ export function Casca(p: {
   const principal = (
     <main className="main">
       {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
-      <header className="topbar" hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
+      <header className={'topbar' + (p.saudacao ? ' topbar-saudacao' : '')} hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
           <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
           {p.descricao && <p className="page-desc">{p.descricao}</p>}
@@ -346,6 +350,7 @@ export function Casca(p: {
                     aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} title={s.rotulo} onClick={() => p.onSecao(s.id)}>
                     {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{(s.caixa === 'marcada' || s.caixa === 'laranja') && <Icone nome="check" />}</span> : s.marca === 'fgts' ? <span className="subnav-marca" aria-hidden="true"><LogoFgts cor /></span> : <Icone nome={s.icone} />}
                     <span>{s.rotulo}</span>
+                    {s.contador && <span className="subnav-count">{s.contador}</span>}
                   </button>
                 </span>
               );

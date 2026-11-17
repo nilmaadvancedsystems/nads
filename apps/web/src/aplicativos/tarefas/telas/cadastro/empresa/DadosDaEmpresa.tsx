@@ -1,6 +1,7 @@
 // Cadastro › a empresa, no estilo das configurações do Notion (Vitor, 14/10/2026: "adicionando na parte de empresa os
 // dados dela, e melhorando a parametrização no estilo do Notion; parametrizações por setor"). Três telas:
 //   - DadosDaEmpresa (Empresa): a identificação e a situação na Receita (o que o Entregas já tem), o contato e os sócios;
+//     a razão social, que só o diretor troca (13/11/2026);
 //   - ParametrosContabeis (Contábil › Parâmetros): os cartões, a liquidação de cobrança e a nota de honorário;
 //   - ParametrosFiscais (Fiscal › Parâmetros): o regime tributário, se presta serviços e os parâmetros da planilha do
 //     Fiscal (29/10/2026: segmento, monofásico, ICMS-ST, antecipação, DIFAL, retenções, benefício, parcelamento…).
@@ -12,6 +13,53 @@ import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
 const dataBr = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : iso; };
 const Valor = ({ v }: { v: string }) => <span className={'cfg-valor' + (v ? '' : ' vazio')}>{v || '—'}</span>;
+
+/**
+ * A razão social (13/11/2026: "poder trocar a razão social pelo próprio sistema"): só o diretor troca aqui. A troca
+ * é só o nome que aparece e que a busca acha; os dados da empresa continuam presos ao nome de sempre (nada se perde).
+ */
+function LinhaDaRazaoSocial({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+  const t = vm.trocaDaRazao;
+  const abrir = (v: string) => { setTexto(v); setErro(null); setEditando(true); };
+  const salvar = () => { const e = vm.trocarRazaoSocial(texto); setErro(e); if (!e) setEditando(false); };
+  const descricao = t
+    ? <>Trocada por {t.por} em {dataBr(t.em.slice(0, 10))}{t.anteriores[0] ? <> · antes: {t.anteriores[0].nome}</> : null}</>
+    : vm.razaoDaReceita && vm.podeTrocarRazao ? <>Na Receita: {vm.razaoDaReceita}</> : undefined;
+  if (editando) {
+    return (
+      <ConfigLinha titulo="Razão social" descricao="Os extratos, a conferência, as rotinas e as senhas continuam com a empresa." aviso={erro || undefined}>
+        <span className="cfg-razao">
+          <input type="text" aria-label="Razão social nova" value={texto} maxLength={empresas.cadastro.MAX_RAZAO_SOCIAL} autoFocus
+            onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') setEditando(false); }} />
+          <button type="button" className="btn btn-primary" onClick={salvar}>Salvar</button>
+          <button type="button" className="btn" onClick={() => setEditando(false)}>Cancelar</button>
+        </span>
+      </ConfigLinha>
+    );
+  }
+  return (
+    <ConfigLinha titulo="Razão social" descricao={descricao}>
+      <span className="cfg-razao">
+        <Valor v={vm.razaoSocial} />
+        {vm.podeTrocarRazao && vm.razaoDaReceita && !t && <button type="button" className="btn btn-sm" onClick={() => abrir(vm.razaoDaReceita)}>Usar a da Receita</button>}
+        {vm.podeTrocarRazao && <BotaoIcone icone="lapis" pequeno titulo="Trocar a razão social" onClick={() => abrir(vm.razaoSocial)} />}
+      </span>
+    </ConfigLinha>
+  );
+}
+
+/** A linha de baixo do responsável: de onde ele veio e a transferência pedida, se houver. */
+function descricaoDoResponsavel(x: ReturnType<typeof useDadosDaEmpresa>['responsaveis'][number]): string | undefined {
+  const partes = [
+    x.origem === 'planilha' ? 'Da planilha do Checklist Folha' : '',
+    x.origem === 'fora' ? x.foraDaEquipe + ' não está mais na equipe' : '',
+    x.transferencia ? 'Transferência pedida para ' + x.transferencia.para + (x.transferencia.faltam.length ? ' (falta o aceite de ' + x.transferencia.faltam.join(' e ') + ')' : '') : '',
+  ].filter(Boolean);
+  return partes.length ? partes.join(' · ') : undefined;
+}
 
 /** Empresa: os dados dela, o contato e os sócios. */
 export function DadosDaEmpresa({ rota }: { rota: string }) {
@@ -39,11 +87,26 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
     <>
       <ConfigSecao titulo="Identificação">
         <ConfigLinha titulo="CNPJ"><Valor v={vm.cnpj ? empresas.cadastro.cnpjFormatado(vm.cnpj) : ''} /></ConfigLinha>
-        <ConfigLinha titulo="Razão social"><Valor v={r?.razaoSocial || vm.empresa?.nome || ''} /></ConfigLinha>
+        <LinhaDaRazaoSocial vm={vm} />
         <ConfigLinha titulo="Nome fantasia"><Valor v={d?.nomeFantasia || ''} /></ConfigLinha>
         <ConfigLinha titulo="Código no Alterdata"><Valor v={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : ''} /></ConfigLinha>
         <ConfigLinha titulo="Inscrição estadual"><Valor v={d?.inscricaoEstadual || ''} /></ConfigLinha>
         <ConfigLinha titulo="Endereço"><Valor v={[r?.endereco || d?.endereco, !r?.endereco ? d?.cidade : ''].filter(Boolean).join(' · ')} /></ConfigLinha>
+      </ConfigSecao>
+      {/* quem cuida da empresa (17/11/2026: "a função de eu alterar o responsável fiscal e contábil aqui"): o Diretor troca
+          direto, sem pedir o aceite; a transferência pedida no departamento cai */}
+      <ConfigSecao titulo="Responsáveis">
+        {vm.responsaveis.map(x => (
+          <ConfigLinha key={x.dep} titulo={x.rotulo} descricao={descricaoDoResponsavel(x)}>
+            {vm.podeTrocarResponsavel
+              ? <MenuSuspenso rotulo={x.atual || 'Escolher'} className="btn btn-ghost" titulo={'Responsável no ' + x.rotulo} direita largura={220}
+                  itens={[
+                    ...x.opcoes.map(n => ({ rotulo: n, marcado: x.origem === 'cadastro' && x.atual === n, onClick: () => vm.trocarResponsavel(x.dep, n) })),
+                    ...(x.origem === 'cadastro' || x.origem === 'fora' ? ['separador' as const, { rotulo: x.daPlanilha ? 'Voltar ao da planilha (' + x.daPlanilha + ')' : 'Sem responsável', onClick: () => vm.trocarResponsavel(x.dep, '') }] : []),
+                  ]} />
+              : <Valor v={x.atual} />}
+          </ConfigLinha>
+        ))}
       </ConfigSecao>
 
       <ConfigSecao titulo="Na Receita" acao={r?.conferidoEm ? <span className="hint">conferido em {dataBr(r.conferidoEm.slice(0, 10))}</span> : undefined}>

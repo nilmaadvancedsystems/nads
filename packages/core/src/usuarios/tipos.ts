@@ -18,13 +18,22 @@ export type Papel = 'staff' | 'admin' | 'contabil' | 'fiscal' | 'dp' | 'office_b
 
 /** usuarios/{uid} como está gravado (campos do Entregas + os novos, todos opcionais na leitura). */
 export interface DocUsuario {
+  /** o nome de usuário: é o login de quem entra pelo nome (único na equipe) */
   nome?: string;
+  /** o sobrenome (Vitor, 12/11/2026: "pede nome e sobrenome no cadastro"); as contas antigas não têm até alguém completar */
+  sobrenome?: string;
   email?: string;
+  /** quando a pessoa confirmou o e-mail principal, que é o login dela (ISO; 16/11/2026, a janela do e-mail principal) */
+  emailPrincipalEm?: string;
   roles?: string[];
   /** legado: papel único, antes de existir `roles` */
   role?: string;
   criadoEm?: string;
   fotoPerfil?: string;
+  /** o aniversário ('aaaa-mm-dd', 'mm-dd' ou 'dd/mm'): a saudação do Início novo (13/11/2026; as datas o Vitor manda depois) */
+  aniversario?: string;
+  /** os apelidos, que a saudação do Início usa no lugar do nome às vezes (16/11/2026: "Apelidos da equipe por usuário") */
+  apelidos?: string[];
   departamento?: string;
   nivel?: string;
   /** false = desativado (o Entregas já lê este campo na Tarefas e nos robôs) */
@@ -42,7 +51,11 @@ export interface OndeNoNads { codigo: number | null; empresa: string; etapa: str
 export interface Usuario {
   uid: string;
   nome: string;
+  /** '' nas contas antigas, até completar */
+  sobrenome?: string;
   email: string;
+  /** quando confirmou o e-mail principal (ISO), ou null: a janela do e-mail principal pede até confirmar */
+  emailPrincipalEm?: string | null;
   departamento: Departamento | null;
   nivel: Nivel | null;
   /** todos os papéis (os do departamento/nível + os dados à mão, como office_boy) */

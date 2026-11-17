@@ -25,6 +25,8 @@ export function RateioDeFrete() {
     <section className="fc">
       {vm.vendo && <VerANota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo fc-topo">
+        {/* o Voltar no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+        {!doCte && <button type="button" className="btn btn-ghost" onClick={vm.voltarAsNotas}><Icone nome="chevronLeft" width={16} height={16} />Voltar aos CT-e do SIEG</button>}
         {doCte && (
           <>
             <EmpresaDaBarra vm={vm} id="rateio-empresas" />
@@ -32,9 +34,7 @@ export function RateioDeFrete() {
           </>
         )}
         <span className="tarefas-barra-espaco" />
-        {doCte
-          ? <button type="button" className="btn btn-ghost" onClick={vm.digitar}><Icone nome="lapis" width={16} height={16} />Sem XML? Digite os valores</button>
-          : <button type="button" className="btn btn-ghost" onClick={vm.voltarAsNotas}><Icone nome="caminhao" width={16} height={16} />Voltar aos CT-e do SIEG</button>}
+        {doCte && <button type="button" className="btn btn-ghost" onClick={vm.digitar}><Icone nome="lapis" width={16} height={16} />Sem XML? Digite os valores</button>}
       </div>
       {vm.exemplos && doCte && <p className="hint fc-exemplo">Dados de exemplo: o CT-e T701 leva a NF-e T502, com os números da planilha.</p>}
 

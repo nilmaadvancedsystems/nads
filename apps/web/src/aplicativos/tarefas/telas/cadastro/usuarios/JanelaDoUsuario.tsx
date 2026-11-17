@@ -50,7 +50,20 @@ function EmailDaConta({ vm, p }: { vm: VmUsuarios; p: usuarios.Usuario }) {
   );
 }
 
-const DICA_FINANCEIRO = 'Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
+/** Excluir usuário (16/11/2026): só aparece para o Diretor e o Dono, numa conta inativa; sem registro, o botão; com registro, o porquê. */
+function ExcluirConta({ vm, p }: { vm: VmUsuarios; p: usuarios.Usuario }) {
+  const s = vm.exclusao(p);
+  if (s.tipo === 'nada') return null;
+  if (s.tipo === 'conferindo') return <Linha rotulo="Excluir conta" dica="Conferindo se a pessoa tem registro no sistema…"><span className="btn-spinner" aria-hidden="true" /></Linha>;
+  if (s.tipo === 'nao-pode') return <Linha rotulo="Excluir conta" dica={s.motivo} />;
+  return (
+    <Linha rotulo="Excluir conta" dica="Não tem nenhum registro no sistema. A exclusão não tem volta.">
+      <BotaoAcao className="btn btn-danger" carregando={vm.excluindo} textoCarregando="Excluindo…" onClick={() => void vm.excluir(p)}><Icone nome="lixeira" />Excluir</BotaoAcao>
+    </Linha>
+  );
+}
+
+const DICA_FINANCEIRO ='Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
 const SempreLigado = () => <span className="badge badge-neutral">Sempre ligado</span>;
 const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
 
@@ -72,7 +85,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
     <JanelaLateral rotulo={p.nome} topicos={topicos} topico={topico} mudar={setTopico} fechar={vm.fechar} resumo={(
       <div className="usuario-quem">
         <Foto foto={p.fotoPerfil} iniciais={p.iniciais} />
-        <b>{p.nome}</b>
+        <b>{p.completo}</b>
         <span className="fraco">{p.email}</span>
         <span className={'badge ' + (p.online ? 'badge-ok' : 'badge-neutral')}>{!p.ativo ? 'Inativo' : p.online ? 'Online' : 'Ativo'}</span>
         {p.ativo && !p.online && <span className="fraco">{p.presenca}</span>}
@@ -135,6 +148,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
             <Linha rotulo="Conta ativa">
               <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />
             </Linha>
+            <ExcluirConta vm={vm} p={p} />
           </Cartao>
           {vm.admin && (
             <Cartao titulo="Senha">
@@ -217,8 +231,11 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       )}
       {topico === 'dados' && (
         <Cartao titulo="Dados">
-          <Linha rotulo="Nome">
-            <input className="usuario-campo" type="text" aria-label="Nome" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria Souza" autoComplete="off" autoFocus />
+          <Linha rotulo="Nome" dica="É o login: a pessoa entra com ele. Não pode repetir o de outra pessoa.">
+            <input className="usuario-campo" type="text" aria-label="Nome" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria" autoComplete="off" autoFocus />
+          </Linha>
+          <Linha rotulo="Sobrenome">
+            <input className="usuario-campo" type="text" aria-label="Sobrenome" value={vm.sobrenome} onChange={ev => vm.setSobrenome(ev.target.value)} placeholder="Ex.: Souza" autoComplete="off" />
           </Linha>
           <Linha rotulo="Senha" dica="Pelo menos 6 caracteres.">
             <input className="usuario-campo" type="password" aria-label="Senha" value={vm.senha} onChange={ev => vm.setSenha(ev.target.value)} autoComplete="new-password"

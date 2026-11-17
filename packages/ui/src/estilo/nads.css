@@ -114,6 +114,7 @@ a{color:var(--accent);}
 .seletor-mes-atual{min-width:190px;justify-content:flex-start;}
 .seletor-mes-atual span{flex:1;text-align:left;font-weight:600;}
 .seletor-mes-pop{top:calc(100% + 4px);left:36px;width:260px;}
+.seletor-mes-pop.direita{left:auto;right:0;}
 .seletor-mes-ano{display:flex;align-items:center;justify-content:space-between;padding:0 0 8px;margin-bottom:8px;border-bottom:1px solid var(--border);}
 .seletor-mes-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
 .seletor-mes-item{appearance:none;border:1px solid transparent;background:none;color:var(--ink);border-radius:6px;min-height:36px;font-size:var(--fs-14);cursor:pointer;}
@@ -149,8 +150,10 @@ a{color:var(--accent);}
 .emp-reg{font-size:var(--fs-12);color:var(--ink-muted);margin-top:1px;}
 
 /* ---------------------------------- app shell: cabeçalho + abas ---------------------------------- */
-#app{display:none;min-height:100vh;}
-#app.on{display:block;}
+#app{display:none;min-height:100vh;min-height:100dvh;}
+/* a página numa coluna que ocupa a tela toda: com pouco conteúdo, o rodapé fica no pé da tela, sem o vão enorme embaixo dele
+   (Vitor, 13/11/2026: "olha o tamanho desse footer, pelo amor de deus, deixa ele em uma altura fixa, em todo o nads") */
+#app.on{display:flex;flex-direction:column;}
 .gh-header{background:var(--header-bg);border-bottom:1px solid var(--border);position:relative;z-index:25;}
 /* tamanhos do cabeçalho do GitHub (AppHeader): 16px em volta, 64px de altura, o local em 14px, as abas com 48px */
 .gh-header-top{display:flex;align-items:center;gap:12px;padding:16px 16px 8px;min-height:56px;}
@@ -497,6 +500,7 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 .step-pill:hover:not(:disabled):not([aria-current="true"]){background:var(--hover-bg);}
 .step-pill[aria-current="true"]{background:var(--surface);border-color:var(--border-strong);font-weight:600;}
 .step-pill:disabled{opacity:.5;cursor:not-allowed;}
+.step-pill .logo-img{width:14px;height:14px;flex:none;}
 
 /* ---------------------------------- Dialog / Toast ---------------------------------- */
 /* com uma janela aberta, a página de trás não rola nem mostra a barra de rolagem (Vitor, 05/10/2026: "remove esse scroll
@@ -1323,6 +1327,10 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .iniciar-lista{display:flex;flex-direction:column;max-height:320px;overflow:auto;}
 /* a lista de um menu com busca (o cliente da comissão, 12/11/2026): a busca fica parada em cima e só a lista rola, baixa, para o menu caber colado no botão */
 .menu-busca-lista{display:flex;flex-direction:column;max-height:min(260px,40vh);overflow:auto;}
+/* no menu flutuante baixo (pouco espaço embaixo do botão), a lista encolhe e a busca continua à vista */
+.menu-pop.flutuante:has(> .menu-busca-lista){display:flex;flex-direction:column;}
+.menu-pop.flutuante > .busca-curta{flex:none;}
+.menu-pop.flutuante > .menu-busca-lista{flex:1 1 auto;min-height:0;}
 .iniciar-item .num{width:36px;flex:none;text-align:right;}
 .iniciar-item{align-items:center;gap:10px;flex:none;}
 .iniciar-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1416,6 +1424,41 @@ tr.linha-atual > td{background:var(--hover-bg);}
 /* a barrinha do resultado, por cima da tela */
 .imp-aviso{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:60;width:max-content;max-width:calc(100vw - 32px);}
 .imp-aviso:empty{display:none;}
+/* o cartão da importação (16/11/2026: "para um feedback visual melhor"): o andamento (a barra, o que está fazendo, cada arquivo)
+   e, no fim, o resultado com os avisos um por linha (antes, uma linha só cortada em 70vw) */
+.imp-cartao{width:min(460px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px;padding:12px 14px;border-radius:8px;
+  background:var(--surface);border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.18);animation:imp-cartao-entra .18s ease-out;}
+@keyframes imp-cartao-entra{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.imp-cartao-topo{display:flex;align-items:center;gap:10px;min-width:0;}
+.imp-cartao-topo b{flex:1;min-width:0;font-size:var(--fs-14);overflow-wrap:anywhere;}
+.imp-cartao-topo > svg{width:18px;height:18px;flex:none;color:var(--success);}
+.imp-cartao-topo .btn-spinner{flex:none;}
+.imp-cartao-fim.erro .imp-cartao-topo > svg{color:var(--danger);}
+.imp-cartao-fim.aviso .imp-cartao-topo > svg{color:var(--warn);}
+.imp-cartao-fim.info .imp-cartao-topo > svg{color:var(--ink-muted);}
+.imp-cartao-fim.erro{border-color:var(--danger);}
+.imp-cartao-fim.so-titulo{gap:0;}
+.imp-cartao-fechar{border:none;background:none;color:var(--ink-muted);cursor:pointer;font-size:var(--fs-18);line-height:1;padding:2px 6px;border-radius:4px;flex:none;}
+.imp-cartao-fechar:hover{background:var(--hover-bg);}
+.imp-cartao-barra{height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+.imp-cartao-barra i{display:block;height:100%;border-radius:999px;background:var(--accent);transition:width .3s ease;}
+.imp-cartao-agora{margin:0;font-size:var(--fs-13);color:var(--ink-muted);}
+.imp-cartao-textos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:var(--fs-13);color:var(--ink-muted);}
+.imp-cartao-textos li.aviso{color:var(--ink);}
+.imp-cartao-textos li.aviso::before{content:"! ";color:var(--warn);font-weight:700;}
+.imp-cartao-arquivos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto;}
+.imp-cartao-arquivos li{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:8px;align-items:start;font-size:var(--fs-13);}
+.imp-cartao-arquivos li > svg,.imp-cartao-arquivos li > .btn-spinner{width:14px;height:14px;margin-top:2px;}
+.imp-cartao-arquivos li > svg{color:var(--ink-muted);}
+.imp-cartao-arquivos li.ok > svg{color:var(--success);}
+.imp-cartao-arquivos li.aviso > svg{color:var(--warn);}
+.imp-cartao-arquivos li.erro > svg{color:var(--danger);}
+.imp-cartao-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+.imp-cartao-detalhe{grid-column:2;color:var(--ink-muted);font-size:var(--fs-12);}
+.imp-cartao-arquivos li.erro .imp-cartao-detalhe{color:var(--danger);}
+.imp-cartao-arquivos li.esperando{opacity:.6;}
+/* com o aviso do topo aberto (o "Tudo certo!" do banco Ok), o cartão da importação desce para baixo dele em vez de ficar por cima */
+:root:has(.aviso-regiao) .imp-aviso:not(.aviso-regiao){margin-top:52px;transition:margin-top .2s ease;}
 .imp-aviso-barra{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:6px;background:var(--surface);border:1px solid var(--border);
   box-shadow:var(--shadow-lg);font-size:var(--fs-14);}
 .imp-aviso-barra > svg{width:16px;height:16px;color:var(--success);flex:none;}
@@ -1648,14 +1691,29 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-robo-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-12);font-weight:600;font-variant-numeric:tabular-nums;}
 .imp-robo-barra{height:4px;border-radius:2px;background:var(--surface-3);overflow:hidden;}
 .imp-robo-barra > span{display:block;height:100%;background:var(--success);}
+/* o robô do Fiscal embaixo da caixa da Importação (16/11/2026): a barra e o que ele está fazendo, numa linha */
+.imp-robo-fiscal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--ink-muted);}
+.imp-robo-fiscal > span{flex:1 1 200px;min-width:0;}
+.imp-robo-diag{flex:1 0 100%;}
+/* a tela travada enquanto o robô puxa do Alterdata (17/11/2026): nada responde ao clique; a barra continua à mostra */
+.imp-robo-bloqueio{position:fixed;inset:0;z-index:60;cursor:progress;background:transparent;}
+.imp-robo-fiscal .imp-robo-barra{flex:1 1 200px;}
+/* o botão só com a marca do Alterdata (17/11/2026) */
+.btn-icone-alterdata{padding-inline:12px;min-width:44px;justify-content:center;gap:6px;}
+.imp-robo-diag pre{max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;background:var(--surface-2);padding:8px;border-radius:6px;}
 .imp-robo-atencao{display:flex;flex-direction:column;gap:4px;padding:0 12px 12px 56px;font-size:var(--fs-12);line-height:18px;}
 .imp-robo-atencao > span{display:flex;align-items:flex-start;gap:6px;}
 .imp-robo-atencao svg{width:14px;height:14px;flex:none;margin-top:2px;}
 @media (max-width:599px){.imp-robo-meses,.imp-robo-atencao{padding-left:12px;}}
 
 /* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a logo oficial (o tigre) */
-.rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
-  font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);}
+.rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:nowrap;padding:0 16px;border-top:1px solid var(--border);
+  font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);
+  /* altura fixa e sempre no pé (o #app é uma coluna da altura da tela) */
+  height:40px;flex:none;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rodape > span{overflow:hidden;text-overflow:ellipsis;}
+/* a barra lateral ocupa a tela menos o cabeçalho e o rodapé: o rodapé fica à vista, sem rolar 40px a mais */
+#app:has(> .rodape) .subnav{min-height:calc(100vh - var(--hdr-h,113px) - 40px);min-height:calc(100dvh - var(--hdr-h,113px) - 40px);}
 /* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
 @media print{.rodape{display:none;}}
 
@@ -2650,6 +2708,9 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses .popover{text-align:left;}
 /* só o ícone, do tamanho dos outros: as opções abrem ao clicar */
 .imp-meses .imp-mes-menu{width:28px;height:28px;padding:0;}
+/* o extrato arrastado até a célula do mês (16/11/2026): a célula toda recebe, e a moldura do soltar fica dentro dela */
+.imp-meses .imp-mes-soltar{display:flex;align-items:center;justify-content:center;height:41px;}
+.imp-meses .imp-mes-soltar.sobre::after{content:'Solte aqui';inset:2px;border-radius:6px;font-size:var(--fs-12);}
 .imp-meses .imp-mes-menu .menu-seta{display:none;}
 .imp-meses .imp-mes-sem{min-width:56px;}
 /* na janela, o de apagar é todo vermelho (Vitor, 02/10/2026: "Excluir, botão todo vermelho") */
@@ -3166,6 +3227,27 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   --btn-bg:light-dark(#F6F8FA, #21262D); --btn-hover:light-dark(#F3F4F6, #30363D); --btn-border:light-dark(#D0D7DE, #F0F6FC1A);
   --header-bg:light-dark(#F6F8FA, #010409); --drawer-bg:light-dark(#FFFFFF, #010409); --input-bg:light-dark(#FFFFFF, #0D1117); --overlay-bg:light-dark(#FFFFFF, #161B22); --hover-bg:light-dark(#D0D7DE52, #B1BAC41F);
 }
+/* a faixa do modo desenvolvedor na Área do Cliente e na Central dos robôs abertas pelo nads (13/11/2026, rotasDoModoDev.tsx):
+   no canto, por cima das telas deles, com o caminho de volta ao módulo Desenvolvedor */
+.faixa-modo-dev{position:sticky;top:0;z-index:9000;display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;
+  padding:6px 16px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;font-size:var(--fs-13);}
+.faixa-modo-dev-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.faixa-modo-dev-txt small{color:#FFFFFFCC;font-size:var(--fs-12);}
+.faixa-modo-dev .btn{flex:none;background:#FFFFFF;color:#0550AE;border-color:transparent;}
+@media (max-width:640px){.faixa-modo-dev-txt small{display:none;}}
+/* o módulo Desenvolvedor da Tarefas (13/11/2026): a Área do Cliente de uma empresa e a Central dos robôs */
+.outros-sites{display:flex;flex-direction:column;gap:16px;max-width:760px;}
+.outros-sites .card{margin:0;}
+.outros-sites .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.outros-sites .card-head h3{display:inline-flex;align-items:center;gap:8px;}
+.outros-sites-texto{margin:0 0 12px;}
+.outros-sites-lista{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:6px;}
+.outros-sites-lista li+li{border-top:1px solid var(--border-muted);}
+.outros-sites-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:none;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.outros-sites-item:hover{background:var(--hover-bg);}
+.outros-sites-item svg{color:var(--ink-muted);flex:none;}
+.outros-sites-codigo{min-width:44px;color:var(--ink-muted);font-size:var(--fs-12);}
+.outros-sites-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* O SIEG na etapa do Fiscal (06/10/2026): as notas do mês e a sequência das saídas, dentro do checklist */
 .sieg-painel{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:var(--fs-13);}
 .sieg-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -3609,6 +3691,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .feedback-abre .feedback-mini{width:96px;height:60px;cursor:pointer;}
 .feedback-txt-curto{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .feedback-janela .pessoal-topo{gap:10px;}
+/* a quem a solicitação foi delegada (16/11/2026) e o menu sem ninguém com a função de desenvolvedor */
+.feedback-delegada{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--fs-13);}
+.feedback-sem-dev{margin:0;padding:10px 12px;max-width:280px;}
 .feedback-amplia{padding:0;cursor:zoom-in;}
 /* a prioridade do feedback (19/10/2026): na janela de enviar, embaixo do texto; nos Feedbacks, o filtro e a ordem em cima */
 .feedback-prioridade{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -4278,6 +4363,9 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 /* um sócio por linha: o nome, o CPF e o ✕ */
 .cfg-socio{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;padding:6px 0;}
 .cfg-socio input{min-width:0;}
+/* a razão social (13/11/2026): o valor com o lápis; trocando, o campo com Salvar e Cancelar */
+.cfg-razao{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.cfg-razao input{width:min(420px,100%);min-width:0;}
 @media (max-width:760px){.cad-janela-conteudo{padding:14px 12px;}.cfg-socio{grid-template-columns:minmax(0,1fr) 120px auto;}}
 /* no celular, a linha que só mostra um valor (o CNPJ, o porte…) fica com o nome e o valor lado a lado */
 @media (max-width:640px){
@@ -4288,6 +4376,13 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
    Receita, as propriedades em linhas (ícone e nome à esquerda, o valor sem caixa até passar o mouse) e o rodapé com
    "Cadastrar outra" */
 .modal.registro-novo{max-width:560px;display:flex;flex-direction:column;}
+/* toda janela cabe na tela (13/11/2026, "Tela bugada": a janela mais alta que a tela cortava o topo, sem como chegar nele):
+   o título e o rodapé ficam, só o miolo rola; a janela simples rola inteira. O mesmo da janela dos Serviços (0.0.627), para todas */
+.modal{max-height:calc(100dvh - 32px);}
+.modal:not(.registro-novo){overflow-y:auto;}
+.modal.registro-novo > .registro-topo,.modal.registro-novo > .registro-pe{flex:none;}
+.modal.registro-novo > .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
+.modal.registro-novo > .registro-corpo > *{flex-shrink:0;}
 .registro-topo{display:flex;align-items:center;gap:8px;padding:12px 14px 0 18px;}
 .registro-caminho{flex:1;display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-12);color:var(--ink-muted);}
 .registro-caminho svg{width:14px;height:14px;}
@@ -5003,6 +5098,14 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-botoes .pedir-app .logo-img,.ac-botoes .pedir-app svg{width:16px;height:16px;}
 .ac-bloco{margin-top:16px;}
 .ac-bloco-corpo{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:12px 16px 16px;}
+/* a logo da empresa na Área do Cliente (12/11/2026): a prévia, o texto e o Enviar/Trocar/Tirar */
+.ac-logo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;width:100%;margin-top:6px;padding-top:12px;border-top:1px solid var(--border);}
+.ac-logo-previa{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:3px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#64748b;overflow:hidden;}
+.ac-logo-previa img{width:100%;height:100%;object-fit:contain;}
+.ac-logo-txt{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0;}
+.ac-logo-acoes{display:flex;gap:8px;}
+.ac-logo-acoes label.btn{cursor:pointer;}
+.ac-logo-acoes label.btn.disabled{opacity:.55;pointer-events:none;}
 .ac-endereco{display:flex;align-items:center;gap:8px;max-width:100%;margin:0;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);font-size:12px;overflow-wrap:anywhere;}
 .ac-endereco svg{flex:none;width:16px;height:16px;}
 .ac-endereco-curto{display:inline-block;margin-left:8px;font-size:11px;color:var(--ink-muted);}
@@ -5984,6 +6087,26 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela col.fr-c-sit{width:36px;}
 .fr-tabela col.fr-c-ret{width:52px;}
 .fr-retif .toggle-txt{display:none;}
+/* a janela da retificação (16/11/2026; flutuante desde 17/11/2026): o + Retificação em cima, a referência e a lixeira */
+.fr-ret-abrir .fr-qtd{margin-left:2px;}
+.modal.fr-ret-janela{max-width:min(1320px,96vw);width:100%;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;}
+.fr-ret-cabeca{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px 10px 16px;border-bottom:1px solid var(--border);}
+.modal .fr-ret-cabeca h3{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;}
+.fr-ret-janela .fr-ret-novo{padding:10px 16px;border-bottom:1px solid var(--border);}
+.fr-ret-janela .fr-ret-rola{flex:1 1 auto;min-height:0;max-height:none;}
+.fr-ret-janela .fr-tabela{min-width:1000px;}
+.fr-ret-janela .dp-vazio{padding:24px 16px;}
+.fr-ret-janela .modal-actions{align-items:center;}
+.fr-ret-dica{margin-right:auto;font-size:var(--fs-12);}
+.fr-tabela tr.fr-ret-destaque td{background:var(--accent-soft);}
+.fr-ret-novo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fr-ret-novo input{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm,6px);background:var(--surface);color:var(--ink);font-size:var(--fs-12);}
+.fr-ret-novo .fr-ret-empresa{width:240px;max-width:100%;}
+.fr-ret-novo .fr-ret-ref{width:84px;}
+.fr-tabela col.fr-c-ref{width:78px;}
+.fr-tabela col.fr-c-tirar{width:40px;}
+.fr-ret-tirar{width:26px;height:26px;color:var(--ink-muted);}
+.fr-ret-tirar:hover{color:var(--danger,#c0392b);}
 /* a REINF, nas mesmas linhas */
 .fr-tabela.fr-reinf{min-width:1190px;}
 .fr-tabela col.fr-c-ate{width:112px;}
@@ -6496,6 +6619,39 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .suporte-progresso li.feita{color:var(--ink);}
 .suporte-botao-qtd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--ink);border:1px solid var(--border);font-size:var(--fs-11);font-weight:700;line-height:1;}
 .suporte-botao-qtd.testar{background:var(--success);border-color:var(--success);color:#fff;}
+/* A conversa do feedback (16/11/2026): o admin pergunta na janela do feedback; quem mandou responde na janela grande, que
+   depois fica no ticket do balão. Os balões são os do suporte (.suporte-msg), com o nome e a hora em cima. */
+.suporte-botao-qtd.responder{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+.conversa{display:flex;flex-direction:column;gap:10px;min-height:0;}
+.conversa-lista{display:flex;flex-direction:column;gap:10px;max-height:320px;overflow:auto;padding:12px;border:1px solid var(--border-muted);border-radius:var(--radius);background:var(--surface-2);}
+.conversa-grande{flex:1;}
+.conversa-grande .conversa-lista{flex:1;max-height:none;min-height:160px;}
+.conversa-item{display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
+.conversa-item.minha{align-items:flex-end;}
+.conversa-quem{font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);padding:0 4px;}
+.conversa-msg{max-width:min(85%,620px);white-space:pre-wrap;overflow-wrap:anywhere;}
+.conversa-vazia,.conversa-fechada{margin:0;}
+.conversa-envio{display:flex;flex-direction:column;gap:8px;}
+.conversa-envio textarea{width:100%;resize:vertical;min-height:0;}
+.conversa-envio-linha{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.conversa-envio-linha .hint{margin:0;}
+.conversa-erro{margin:0;}
+/* a janela grande de quem mandou: o que mandou em cima, a conversa ocupando o resto */
+.conversa-janela{--janela-l:min(860px,94vw);--janela-a:min(720px,88vh);flex-direction:column;}
+.conversa-janela .pessoal-topo{gap:10px;}
+.conversa-janela .pessoal-topo h2{margin:0;font-size:var(--fs-18);}
+.conversa-janela-corpo{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:16px 24px 20px;overflow:auto;}
+.conversa-contexto .feedback-txt{max-height:140px;overflow:auto;}
+/* no ticket do balão: a última mensagem; faltando responder, na cor de destaque */
+.suporte-conversa{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-conversa.esperando{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.suporte-conversa-quem{font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
+.suporte-conversa-texto{overflow-wrap:anywhere;}
+.suporte-conversa .suporte-capsulas{justify-content:flex-start;margin-top:4px;}
+@media (max-width:640px){
+  .conversa-janela-corpo{padding:12px 16px 16px;}
+  .conversa-janela .pessoal-topo .btn-ghost{display:none;}
+}
 
 /* o popup de delegar (Vitor, 10/11/2026: "um grid proporcional e alinhado"): colunas iguais; a caixinha, o código e o nome sempre nos mesmos lugares */
 .delegar-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px;max-height:42vh;overflow:auto;}
@@ -6506,6 +6662,13 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .delegar-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Carteira (12/11/2026): o salário, as finanças e as comissões de cada pessoa */
+/* a janela dos Serviços das Comissões (13/11/2026, Vitor: "não to conseguindo mexer"): cabe na tela, o título e o Gravar
+   fixos e só o miolo rola (uma barra de rolagem; as tabelas dentro não rolam sozinhas) */
+.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);}
+.cart-servicos-janela .registro-topo,.cart-servicos-janela .registro-pe{flex:none;}
+.cart-servicos-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
+.cart-servicos-janela .registro-corpo > *{flex-shrink:0;}
+.cart-servicos-janela .table-wrap{max-height:none;overflow:visible;}
 .cart-em-breve{max-width:520px;margin:48px auto;text-align:center;gap:10px;display:flex;flex-direction:column;align-items:center;}
 .cart-em-breve-icone{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border);color:var(--accent);}
 .cart-em-breve-icone svg{width:26px;height:26px;}
@@ -6708,3 +6871,458 @@ td.fs-fat-sem{color:var(--ink-faint);}
   .bloco-escolha{min-width:78px;padding:8px 6px 6px;font-size:12px;}
   .bloco-escolha-icone{width:32px;height:32px;}
 }
+/* o campo de escolha (CampoEscolha, 12/11/2026): parece o campo de texto, com a seta; a lista no menu flutuante do nads, por
+   cima das janelas */
+.popover-wrap:has(> .campo-escolha){display:block;width:100%;}
+.campo-escolha{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:32px;padding:5px 10px 5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);box-shadow:var(--shadow-inset);color:var(--ink);font:inherit;font-size:var(--fs-14);line-height:20px;text-align:left;cursor:pointer;}
+.campo-escolha:focus-visible,.campo-escolha[aria-expanded="true"]{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.campo-escolha.vazio .campo-escolha-txt{color:var(--ink-muted);}
+.campo-escolha-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.campo-escolha .menu-seta{flex:none;width:16px;height:16px;color:var(--ink-muted);}
+.popover.menu-pop.flutuante{z-index:1300;}
+
+/* o Calendário do mês (CalendarioDoMes; 13/11/2026, o Início novo): hoje na cor da marca, o escolhido com o contorno, a bolinha nos dias marcados */
+/* o Calendário do mês (13/11/2026, redesenhado: quadradinhos do GitHub, sem animação) */
+.cal-mes{display:flex;flex-direction:column;gap:8px;}
+.cal-mes-topo{display:flex;align-items:center;gap:2px;}
+.cal-mes-topo b{flex:1;font-size:var(--fs-14);font-weight:600;}
+.cal-mes-ano{font-weight:400;color:var(--ink-muted);}
+.cal-mes-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-mes-sem{font-size:var(--fs-12);color:var(--ink-muted);text-align:center;padding:2px 0 4px;}
+.cal-mes-sem.hoje{color:var(--accent-ink);font-weight:600;}
+.cal-mes-dia{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:36px;padding:0;
+  border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);font:inherit;font-size:var(--fs-13);
+  font-variant-numeric:tabular-nums;cursor:pointer;}
+.cal-mes-dia:hover:not(:disabled):not(.hoje){border-color:var(--border-strong);}
+.cal-mes-dia:disabled{cursor:default;}
+.cal-mes-dia.passou{color:var(--ink-muted);}
+.cal-mes-dia.fora{color:var(--ink-faint);opacity:.4;cursor:default;}
+.cal-mes-dia.marcado{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;}
+.cal-mes-dia.hoje{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700;}
+.cal-mes-dia.escolhido{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.cal-mes-dia.hoje.escolhido{box-shadow:inset 0 0 0 2px var(--on-accent);}
+.cal-mes-num{line-height:1;}
+.cal-mes-pontos{display:flex;gap:2px;height:4px;}
+.cal-mes-pontos i{width:4px;height:4px;border-radius:50%;background:var(--accent);}
+.cal-mes-dia.hoje .cal-mes-pontos i{background:var(--on-accent);}
+/* os feriados no calendário (15/11/2026): o número em vermelho; o ponto facultativo e o meio expediente em laranja */
+.cal-mes-dia.feriado:not(.hoje){color:var(--danger);font-weight:600;}
+.cal-mes-dia.feriado.facultativo:not(.hoje),.cal-mes-dia.feriado.meio-expediente:not(.hoje){color:var(--warn);}
+.cal-mes-dia.feriado.passou:not(.hoje){opacity:.6;}
+/* a lista dos feriados do mês, embaixo do calendário do Início */
+.ini-feriados{list-style:none;margin:10px 0 0;padding:10px 0 0;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px;}
+.ini-feriado{display:flex;align-items:baseline;gap:8px;font-size:var(--fs-13);min-width:0;}
+.ini-feriado.passou{opacity:.55;}
+.ini-feriado-dia{flex:none;width:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--danger);}
+.ini-feriado.facultativo .ini-feriado-dia,.ini-feriado.meio-expediente .ini-feriado-dia{color:var(--warn);}
+.ini-feriado-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-feriado .hint{margin-left:auto;flex:none;white-space:nowrap;}
+
+/* o Início novo (13/11/2026, só no modo desenvolvedor): só a disposição; as peças são as do catálogo */
+.ini-topo{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:1;min-width:0;}
+/* a saudação do Início novo (Vitor, 13/11/2026: "As saudações deixa ela maior, com uma animação de digitação alinhado com o resto
+   dos elementos"): maior, e ela e a fileira (Buscar, ⚡, botões, Nova tarefa) numa linha só, centradas na altura; a fileira
+   ocupa o resto da linha e não quebra (no celular, quebra como antes) */
+.topbar-saudacao{flex-wrap:nowrap;align-items:center;}
+.topbar-saudacao > div:first-child{flex:none;}
+.topbar-saudacao .page-title{font-size:var(--fs-24);font-weight:600;line-height:32px;white-space:nowrap;}
+.topbar-saudacao .page-title.digitando::after{content:'';display:inline-block;width:2px;height:1em;margin-left:2px;vertical-align:-.12em;background:currentColor;}
+.topbar-saudacao #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
+.topbar-saudacao .ini-topo{flex-wrap:nowrap;}
+/* em todas as abas do Início, com ou sem a saudação, a fileira é uma linha só: os filtros da lista (começo), a busca, o ⚡, os
+   planilha e os botões, o principal por último (Vitor, 13/11/2026: "todos esses elementos em uma linha so? no inicio todo, em todas as paginas") */
+.topbar:has(.ini-topo){flex-wrap:nowrap;align-items:center;}
+.topbar:has(.ini-topo) #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
+/* a saudação comprida (as piadas do feriado; 15/11/2026) termina em "…" quando não cabe, em vez de cortar a letra no meio */
+.topbar:has(.ini-topo) > div:has(> .page-title){min-width:0;flex:0 1 auto;}
+/* e a fileira não encolhe por baixo do título (passava por cima dele): quem cede é o título */
+.topbar:has(.ini-topo) > #topbarActions{flex:1 0 auto;}
+.topbar:has(.ini-topo) .page-title{overflow:hidden;text-overflow:ellipsis;}
+.ini-topo{flex-wrap:nowrap;}
+.ini-topo-lugar{display:contents;}
+/* o código e o nome da empresa em negrito, em todo o Início novo: o Painel, as listas, a busca e a janela da tarefa (Vitor,
+   13/11/2026: "Coloca em negrito o nome das empresas, codigo e nome, em todo o inicio") */
+.ini-empresa{font-weight:600;}
+/* a janela da tarefa do Início novo (13/11/2026): o botão só com o ícone, quadrado na altura dos outros; a lixeira toda vermelha
+   ("botao da lixeira todo vermelho"); e as datas numa caixa leve, lado a lado ("Melhora o visual da box") */
+.btn.btn-so-icone{padding-left:0;padding-right:0;width:32px;justify-content:center;flex:none;}
+.btn.btn-so-icone svg{margin:0;}
+.btn.btn-lixeira{background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
+.btn.btn-lixeira svg{color:#FFFFFF;}
+.btn.btn-lixeira:hover:not(:disabled){background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;filter:brightness(1.1);}
+.tdl-datas{margin:8px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px 16px;padding:12px 14px;
+  background:var(--hover-bg);border:1px solid var(--border-muted);border-radius:8px;}
+.tdl-data{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.tdl-data dt{display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:var(--fs-12);}
+.tdl-data dt svg{width:14px;height:14px;flex:none;}
+.tdl-data dd{margin:0;font-size:var(--fs-13);font-weight:500;color:var(--ink);overflow-wrap:anywhere;}
+.tdl-data dd .fraco{display:block;font-weight:400;font-size:var(--fs-12);}
+/* o prazo da tarefa (13/11/2026: "De a opcao 'Colocar prazo'... o sistema faz uma animacao, que aparece data e hora"): a chave e,
+   ligada, a data (calendário), o Hoje e o Amanhã e a hora (lista) entrando com a curva da casa */
+/* a chave, a data e a hora numa linha só (13/11/2026: "coloca tudo na mesma linha, se possivel"); quebra só sem espaço */
+.tdl-prazo{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0;}
+.tdl-prazo-escolhas{gap:6px;}
+.tdl-prazo-escolhas{display:flex;align-items:center;gap:6px;flex-wrap:wrap;animation:prazoAbre .36s cubic-bezier(.23,1,.32,1) both;}
+.tdl-prazo-escolhas > *{animation:prazoPeca .42s cubic-bezier(.23,1,.32,1) both;}
+.tdl-prazo-escolhas > :nth-child(2){animation-delay:.04s;}
+@keyframes prazoAbre{from{opacity:0;}to{opacity:1;}}
+@keyframes prazoPeca{from{opacity:0;transform:translateY(-6px) scale(.97);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion: reduce){.tdl-prazo-escolhas,.tdl-prazo-escolhas > *{animation:none;}}
+/* a data e a hora nos campos do navegador (13/11/2026: "a data e a hora pode ser input normal") */
+.tdl-prazo-escolhas input[type=date]{width:136px;padding-left:8px !important;padding-right:6px !important;}
+.tdl-prazo-escolhas input[type=time]{width:92px;padding-left:8px;padding-right:6px;}
+/* a data com o mesmo desenho dos outros campos (o navegador desenhava o dele) */
+.tdl-prazo-escolhas input[type=date]{border:1px solid var(--border);background:var(--input-bg);color:var(--ink);border-radius:6px;padding:5px 12px;
+  min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);color-scheme:light dark;}
+.tdl-prazo-escolhas input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.tdl-prazo-escolhas.sem-animacao,.tdl-prazo-escolhas.sem-animacao > *{animation:none;}
+/* as caixinhas Delegar e Colocar prazo, ao lado do valor, sem o negrito do "Já estava fazendo" */
+.registro-props .tdl-ja-fazendo{font-weight:400;font-size:var(--fs-13);color:var(--ink-muted);white-space:nowrap;}
+/* o Voltar no canto superior esquerdo da janela, antes do título */
+.pedir-titulo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
+.executor-fim-voltar{margin:16px 0 0 16px;align-self:flex-start;}
+.registro-topo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
+/* os clientes em cápsula na janela da tarefa (13/11/2026: "Clientes, coloca em capsula") */
+.tdl-janela-nova .tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.tdl-janela-nova .tdl-clientes .btn{min-height:28px;padding:2px 10px 2px 8px;border-radius:999px;font-size:var(--fs-13);gap:6px;}
+.tdl-janela-nova .tdl-clientes .btn svg{width:14px;height:14px;}
+.tdl-janela-nova .tdl-clientes .popover-wrap > .btn{width:28px;padding:0;justify-content:center;}
+.tdl-janela-nova .tdl-clientes > span{display:inline-flex;align-items:center;min-height:26px;padding:2px 10px;border:1px solid var(--border);border-radius:999px;font-size:var(--fs-13);}
+/* o ícone da pessoa no Para quem, do tamanho da foto */
+.tdl-janela-nova .pessoa-escolhida > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+/* a cobrança (o sino; 13/11/2026): quem faz vê em amarelo, com a resposta; quem cobrou, a espera e a resposta */
+.tdl-cobranca{display:flex;flex-direction:column;gap:6px;margin:0 0 4px;padding:10px 12px;border:1px solid var(--border-muted);border-radius:8px;
+  background:var(--hover-bg);font-size:var(--fs-13);color:var(--ink-muted);}
+p.tdl-cobranca{flex-direction:row;align-items:center;}
+.tdl-cobranca svg{width:16px;height:16px;flex:none;}
+.tdl-cobranca.cobrada{border-color:var(--warn);background:var(--warn-soft);color:var(--ink);}
+.tdl-cobranca.cobrada .tdl-cobranca-topo svg{color:var(--warn);}
+.tdl-cobranca.respondida{border-color:var(--success);background:var(--success-soft);color:var(--ink);}
+.tdl-cobranca-topo{display:flex;align-items:center;gap:6px;margin:0;}
+.tdl-cobranca-topo .fraco{margin-left:auto;font-size:var(--fs-12);}
+.tdl-cobranca-texto{margin:0;white-space:pre-line;overflow-wrap:anywhere;}
+.tdl-cobranca textarea{width:100%;resize:vertical;}
+.tdl-cobranca-acoes{display:flex;justify-content:flex-end;}
+/* a cobrança discreta dentro da tarefa (a novidade 'cobranca-notificada', 16/11/2026: o destaque é a janela grande): só as
+   linhas do andamento, sem a caixa amarela */
+.tdl-cobranca-linhas{display:flex;flex-direction:column;gap:2px;margin:0 0 4px;font-size:var(--fs-12);color:var(--ink-muted);}
+.tdl-cobranca-linhas p{display:flex;align-items:flex-start;gap:6px;margin:0;overflow-wrap:anywhere;}
+.tdl-cobranca-linhas svg{width:13px;height:13px;flex:none;margin-top:2px;}
+/* a janela da cobrança (Vitor, 16/11/2026: "tome a tela inicial toda… faça uma bela popup"): por cima de tudo, mais larga
+   que a janela comum, o sino grande no alto e a mensagem de quem cobrou em destaque; não fecha até responder */
+.modal-overlay.cobranca-fundo{z-index:90;}
+.modal.cobranca-janela{max-width:560px;border-top:4px solid var(--warn);max-height:calc(100vh - 32px);overflow:auto;}
+.cobranca-topo{display:flex;align-items:center;gap:14px;padding:22px 24px 6px;}
+.cobranca-topo h2{margin:0 0 2px;font-size:var(--fs-18);font-weight:600;}
+.cobranca-sino{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;flex:none;background:var(--warn-soft);color:var(--warn);}
+.cobranca-sino svg{width:22px;height:22px;}
+.cobranca-corpo{display:flex;flex-direction:column;gap:12px;padding:12px 24px 22px;}
+.cobranca-tarefa{display:flex;flex-direction:column;gap:2px;}
+.cobranca-mensagem{margin:0;padding:12px 14px;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;background:var(--warn-soft);color:var(--ink);
+  font-size:var(--fs-14);white-space:pre-line;overflow-wrap:anywhere;}
+.modal .cobranca-adiado{display:flex;align-items:flex-start;gap:6px;margin:0;padding:0;font-size:var(--fs-12);}
+.cobranca-corpo textarea{width:100%;resize:vertical;}
+.cobranca-acoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.cobranca-tempo{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border-muted);}
+/* o sino nas listas: quem faz vê que foi cobrado; quem delegou, o botão de cobrar */
+.ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
+.ini-sino svg{width:14px;height:14px;flex:none;}
+.ini-pessoa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+/* o campo de reais (CampoReais, 13/11/2026): o R$ fixo dentro da caixa, à esquerda; o número alinhado à direita */
+.campo-reais{display:flex;align-items:center;width:100%;max-width:240px;border:1px solid var(--border);background:var(--input-bg);border-radius:6px;
+  box-shadow:var(--shadow-inset);min-height:32px;padding-left:10px;}
+.campo-reais:focus-within{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.campo-reais-cifrao{color:var(--ink-muted);font-size:var(--fs-14);flex:none;}
+.campo-reais input[type="text"]{border:0 !important;background:transparent !important;box-shadow:none !important;min-height:30px;text-align:right;font-variant-numeric:tabular-nums;}
+.campo-reais.desabilitado{opacity:.6;}
+/* o cliente do insumo: o menu do Cadastro (ou o nome do avulso) e a caixinha Avulso embaixo, com respiro (13/11/2026) */
+.insumo-cliente{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;}
+.insumo-cliente > input{width:100%;}
+/* o botão de cobrar, leve (Vitor, 13/11/2026: "Melhora isso"): só o sino, sem caixa, apagado; acende em amarelo ao passar o mouse */
+.icon-btn.ini-sino-cobrar{width:24px;height:24px;border-color:transparent;background:transparent;color:var(--ink-faint);flex:none;}
+.icon-btn.ini-sino-cobrar svg{width:15px;height:15px;}
+.icon-btn.ini-sino-cobrar:hover:not(:disabled),.icon-btn.ini-sino-cobrar:focus-visible{background:var(--warn-soft);color:var(--warn);}
+tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{color:var(--ink-muted);}
+/* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
+   (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
+   progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */
+.ini-cronometro{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+.ini-cronometro svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+@keyframes cronometroPisca{0%,100%{opacity:1;}50%{opacity:.25;}}
+.ini-cronometro.andando svg{color:var(--accent);animation:cronometroPisca 1.6s ease-in-out infinite !important;}
+@media (prefers-reduced-motion: reduce){.ini-cronometro.andando svg{animation:none !important;}}
+.ini-topo .btn,.ini-topo .popover-wrap{flex:none;}
+@media (max-width:900px){
+  .topbar-saudacao,.topbar-saudacao #topbarActions,.topbar-saudacao .ini-topo,
+  .topbar:has(.ini-topo),.topbar:has(.ini-topo) #topbarActions,.ini-topo{flex-wrap:wrap !important;}
+  .topbar-saudacao .page-title{white-space:normal;}
+}
+.ini-topo > .hint{margin:0;}
+.ini-busca{flex:0 1 240px;min-width:150px;display:flex;align-items:center;gap:6px;}
+.ini-busca .busca-curta{width:100%;margin-bottom:0;}
+.ini-busca-ligados{display:inline-flex;align-items:center;gap:4px;flex:none;}
+.ini-busca-pop{top:calc(100% + 4px);left:auto;right:0;width:min(440px,calc(100vw - 32px));max-height:min(480px,70vh);overflow:auto;}
+.ini-busca-pop .chip-row{margin:0;padding:0 8px 6px;gap:8px;flex-wrap:wrap;}
+/* as pílulas com o ícone: 6px entre o ícone e o texto, o ícone no meio, todas da mesma altura ("tá torto") */
+.ini-busca-pop .chip-f{display:inline-flex;align-items:center;gap:6px;height:28px;}
+.ini-busca-pop .chip-f svg{flex:none;}
+/* o Cliente (MenuSuspenso numa pílula): o ícone de 14px e a seta pequena, como as outras (16/11/2026: "Front end bugado") */
+.ini-busca-pop .popover-wrap > .chip-f > svg{width:14px;height:14px;}
+.ini-busca-pop .popover-wrap > .chip-f > .menu-seta{width:12px;height:12px;margin-left:-2px;color:var(--ink-muted);}
+.ini-busca-vazio{padding:4px 8px;margin:0;}
+.ini-novo > .imp-abas{margin-bottom:16px;}
+.ini-painel{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.6fr);gap:28px;align-items:start;}
+@media (max-width:720px){.ini-painel{grid-template-columns:1fr;}}
+.ini-coluna{display:flex;flex-direction:column;gap:28px;min-width:0;}
+.ini-coluna > .card{margin-bottom:0;}
+.ini-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ini-linha{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;border-bottom:1px solid var(--border);}
+.ini-linha:last-child{border-bottom:none;}
+.ini-linha-texto{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-linha-texto .hint{white-space:nowrap;}
+.ini-fotos{display:inline-flex;}
+.ini-fotos .pessoa-foto + .pessoa-foto{margin-left:-6px;}
+.ini-abrir{border:none;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-abrir:hover{text-decoration:underline;}
+.ini-comentario .popover-texto{white-space:normal;}
+.ini-lista > .tarefas-barra-topo{margin-bottom:12px;}
+.ini-grupo{padding-bottom:0;}
+.ini-grupo .table-wrap{margin:0 -16px;border:none;border-radius:0;}
+.ini-tr{cursor:pointer;}
+.ini-marca{width:36px;}
+.ini-pessoa{display:inline-flex;align-items:center;gap:6px;}
+.ini-notificacoes{display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,1.5fr);gap:16px;align-items:start;}
+@media (max-width:860px){.ini-notificacoes{grid-template-columns:1fr;}}
+.ini-notificacoes > .card{margin-bottom:0;}
+.ini-comunicado .popover-texto{white-space:normal;}
+.ini-comunicado.ativo{background:var(--accent-soft);}
+.ini-detalhe-topo{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.ini-detalhe-topo h2{flex:1;margin:0;font-size:var(--fs-20, 20px);}
+.ini-detalhe-acoes{display:inline-flex;gap:8px;}
+.ini-detalhe-texto{white-space:pre-wrap;margin:12px 0 0;}
+.field .ini-detalhe-texto{margin:0;padding:0;overflow-wrap:anywhere;}
+.ini-prazo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ini-prazo .chip-row{margin:0;}
+.ini-delegar{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.modal.registro-novo.ini-tarefa{max-width:min(980px,calc(100vw - 32px));}
+.ini-tarefa-corpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;min-height:0;flex:1 1 auto;overflow:hidden;}
+@media (max-width:760px){.ini-tarefa-corpo{grid-template-columns:1fr;overflow-y:auto;}.ini-tarefa-esquerda,.ini-tarefa-direita{overflow:visible !important;}}
+.ini-tarefa-esquerda{display:flex;flex-direction:column;gap:10px;padding:14px 18px;border-right:1px solid var(--border);min-height:0;overflow-y:auto;}
+.ini-tarefa-esquerda > *,.ini-tarefa-rola > *{flex-shrink:0;}
+.ini-tarefa-sub{font-size:var(--fs-14);font-weight:600;margin:6px 0 0;}
+.ini-tarefa-direita{display:flex;flex-direction:column;gap:10px;padding:14px 18px;min-height:0;overflow:hidden;background:var(--surface-2);}
+.ini-tarefa-direita > .steps,.ini-escrever{flex:none;}
+.ini-tarefa-rola{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
+.ini-escrever{display:flex;align-items:flex-end;gap:8px;}
+.ini-escrever textarea{flex:1;}
+/* as colunas iguais em todos os grupos (cada grupo é uma tabela) */
+.ini-tabela{table-layout:fixed;width:100%;}
+.ini-tabela td:nth-child(2),.ini-tabela td:nth-child(6){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-tabela th:nth-child(1){width:44px;}
+.ini-tabela th:nth-child(3){width:110px;}
+.ini-tabela th:nth-child(4){width:150px;}
+.ini-tabela th:nth-child(5){width:110px;}
+.ini-tabela th:nth-child(6){width:26%;}
+.ini-tabela th:nth-child(7){width:150px;}
+.ini-linha > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.ini-marca .subnav-caixa{width:18px;height:18px;cursor:pointer;background:none;padding:0;}
+.ini-marca button.subnav-caixa:hover{border-color:var(--success);}
+.ini-marca .subnav-caixa svg{width:12px;height:12px;}
+/* a tarefa nova do Início novo: o passo do cliente, o cliente escolhido no alto e os anexos curtos (o clipe e o link) */
+.ini-passo-titulo{font-size:var(--fs-18);font-weight:600;margin:4px 0 6px;}
+.ini-qual-cliente{gap:12px;}
+.ini-qual-menu{align-self:flex-start;min-width:280px;justify-content:space-between;}
+.ini-avulso{display:flex;align-items:center;gap:8px;}
+/* o cliente dos documentos: o menu e o Avulso um embaixo do outro, com respiro (13/11/2026: "Escolher cliente e cliente avulso, ta grudado") */
+.registro-props .ini-qual-cliente{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
+/* Enviar e Requerer: os dois do mesmo tamanho, na largura toda (13/11/2026: "resolve esses dois botoes, ta feio") */
+.ini-qual-cliente > .steps{display:grid;grid-template-columns:1fr 1fr;width:100%;}
+.ini-qual-cliente > .steps .step-pill{justify-content:center;text-align:center;}
+.ini-avulso input{flex:1;}
+.ini-sem-cliente{align-self:flex-start;}
+.ini-cliente-escolhido{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
+.ini-cliente-escolhido > svg{width:16px;height:16px;flex:none;}
+.ini-cliente-escolhido > span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.ini-anexos{display:flex;flex-direction:column;gap:6px;}
+.ini-anexos-botoes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+/* o campo do link (15/11/2026: "melhora a questao dos links"): uma linha só dele, a caixa com o ícone, o × e o Fixar dentro */
+.ini-link-campo{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--input-bg);border-radius:8px;
+  box-shadow:var(--shadow-inset);min-height:38px;padding:3px 4px 3px 10px;animation:ini-link-entra .16s ease-out;}
+.ini-link-campo:focus-within{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.ini-link-campo > svg{width:15px;height:15px;flex:none;color:var(--ink-muted);}
+.ini-link-campo input{flex:1;min-width:0;border:0 !important;background:transparent !important;box-shadow:none !important;outline:none;min-height:28px;padding:0 2px;}
+.ini-link-campo .btn{flex:none;}
+.ini-link-campo .ini-link-fixar{min-height:30px;height:30px;padding:0 14px;}
+@keyframes ini-link-entra{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+/* o Baixar tudo (.zip) de quem recebe os documentos (16/11/2026) */
+.ini-anexos-tudo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ini-anexos-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.ini-anexos-lista li{display:flex;align-items:center;gap:8px;min-height:30px;font-size:var(--fs-13);}
+.ini-anexos-lista li > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+.ini-anexos-lista li > a,.ini-anexos-lista li > .ini-abrir{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-anexos-lista li > .hint{margin-left:auto;white-space:nowrap;}
+/* os prints colados nos Detalhes (16/11/2026): as miniaturas embaixo do campo, cada uma com o × no canto */
+.ini-prints{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+.ini-prints li{position:relative;}
+.ini-prints img{display:block;height:72px;max-width:180px;object-fit:cover;border:1px solid var(--border);border-radius:8px;}
+.ini-prints .icon-btn{position:absolute;top:2px;right:2px;background:var(--surface);}
+/* as solicitações de reunião (as Notificações do Início novo) */
+.ini-solicitacao{margin-bottom:0;display:flex;flex-direction:column;gap:6px;}
+.ini-solicitacao-topo{display:flex;align-items:center;gap:8px;justify-content:space-between;}
+.ini-solicitacao > *{margin:0;}
+.ini-solicitacao{padding:12px 14px;}
+.ini-solicitacao-decidir{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.ini-solicitacao-decidir input{flex:1;min-width:180px;}
+
+/* o Administrativo (13/11/2026, protótipo do modo desenvolvedor): a entrada de clientes; só a disposição */
+.adm-lista > .tarefas-barra-topo,.adm-entrada > .tarefas-barra-topo{margin-bottom:12px;}
+.adm-tabela{padding:0;}
+.adm-tabela .table-wrap{border:none;}
+.adm-titulo{font-size:var(--fs-16);}
+.adm-entrada > .steps{margin-bottom:16px;}
+.adm-colunas{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start;}
+@media (max-width:980px){.adm-colunas{grid-template-columns:1fr;}}
+.adm-principal,.adm-lado{display:flex;flex-direction:column;gap:16px;min-width:0;}
+.adm-principal > .card,.adm-lado > .card{margin-bottom:0;}
+.adm-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.adm-cartao .registro-prop input[type="text"]{width:100%;max-width:420px;}
+.adm-cartao textarea{width:100%;}
+.adm-socios input[type="text"]{width:100%;}
+.adm-socios td.num input{max-width:90px;text-align:right;}
+.adm-itens td:first-child input{width:100%;}
+.adm-itens td.num input{max-width:130px;text-align:right;}
+.adm-mais{margin:6px 0 4px;}
+.adm-requisitos{display:flex;flex-direction:column;gap:6px;}
+.adm-requisito{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:36px;}
+.adm-requisito .steps{margin:0;}
+.adm-pe{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.adm-pe > .hint{display:inline-flex;align-items:center;gap:6px;}
+.adm-resposta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.adm-resposta input{flex:1;min-width:220px;}
+.adm-doc{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
+.adm-doc:last-child{border-bottom:none;}
+.adm-doc-nome{min-width:0;}
+.adm-doc-nome .hint{display:inline-flex;align-items:center;gap:4px;overflow-wrap:anywhere;}
+.adm-doc-recebido{display:inline-flex;align-items:center;gap:6px;color:var(--success);}
+.adm-doc-recebido .hint{color:var(--ink-muted);}
+.adm-nota{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:var(--fs-14);}
+.adm-nota .num{font-size:var(--fs-24);}
+.adm-hist{margin:0 0 8px;font-size:var(--fs-13);}
+/* as reuniões e o Recebido (as Notificações do Início novo) */
+.ini-notificacoes > .ini-coluna{gap:16px;}
+.ini-reuniao-acoes{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.ini-reuniao-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.ini-reuniao-linha > input[type="text"],.ini-reuniao-linha > textarea{flex:1;min-width:200px;}
+.ini-reuniao-arquivo li{gap:8px;}
+.ini-reuniao-anexar{margin-left:auto;}
+.ini-reuniao-comentario{margin:4px 0;}
+.ini-reuniao-historico{margin-top:12px;}
+.ini-destino{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+/* o que pede confirmação, por cima do calendário do Painel (o Início novo): o calendário embaçado e o aviso em cima */
+.ini-calendario-caixa{position:relative;}
+.ini-calendario-embacado{filter:blur(2px);pointer-events:none;user-select:none;}
+.ini-calendario-aviso{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:8px;background:var(--fundo-janela);}
+.ini-calendario-cartao{display:flex;flex-direction:column;gap:6px;padding:16px;max-width:100%;width:340px;}
+.ini-calendario-texto{margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+/* os pedidos de reunião nas Solicitações (o Início novo): um cartão por pedido */
+.ini-solicitacao{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;padding:12px 14px;margin-bottom:8px;text-align:left;cursor:pointer;}
+.ini-solicitacao-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+
+/* Carteira › Minhas comissões (redesenhada em 15/11/2026): o cartão do total com a barra das partes e a lista em linhas */
+.cmc-resumo{display:grid;grid-template-columns:minmax(200px,auto) 1fr;gap:32px;align-items:center;padding:20px 24px;}
+.cmc-total{display:flex;flex-direction:column;gap:2px;}
+.cmc-rotulo{font-size:var(--fs-13);color:var(--ink-muted);}
+.cmc-valor{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.15;}
+.cmc-partes{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.cmc-barra{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--surface-3);}
+.cmc-barra i{display:block;min-width:6px;flex-basis:0;}
+.cmc-lancada{background:var(--warn);}
+.cmc-aprovada{background:var(--info);}
+.cmc-paga{background:var(--success);}
+.cmc-legenda{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.cmc-legenda li{display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:2px;align-items:center;min-width:0;}
+.cmc-legenda b{grid-column:2;font-size:var(--fs-16);}
+.cmc-legenda .cmc-rotulo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cmc-ponto{width:8px;height:8px;border-radius:50%;}
+.cmc-lista{padding:0;overflow:hidden;}
+.cmc-lista ul{list-style:none;margin:0;padding:0;}
+.cmc-lista li + li{border-top:1px solid var(--border);}
+.cmc-linha{display:grid;grid-template-columns:auto minmax(0,1fr) auto 120px;align-items:center;gap:16px;width:100%;padding:12px 16px;
+  background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.cmc-linha:hover{background:var(--surface-2);}
+.cmc-linha:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.cmc-data{display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;height:44px;border-radius:8px;
+  background:var(--surface-2);border:1px solid var(--border);line-height:1;}
+.cmc-data b{font-size:var(--fs-16);}
+.cmc-data span{font-size:var(--fs-11);color:var(--ink-muted);text-transform:uppercase;margin-top:3px;}
+.cmc-quem{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.cmc-quem > *{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cmc-quem .fraco{font-size:var(--fs-13);}
+.cmc-motivo{font-size:var(--fs-12);color:var(--danger);}
+.cmc-quem b .fraco{font-weight:400;}
+.cmc-linha.recusada .cmc-quanto{text-decoration:line-through;color:var(--ink-muted);font-weight:500;}
+.cmc-quanto{font-size:var(--fs-14);white-space:nowrap;}
+.cmc-situacao{display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:var(--fs-12);}
+@media (max-width:720px){
+  .cmc-resumo{grid-template-columns:1fr;gap:16px;padding:16px;}
+  .cmc-legenda{grid-template-columns:1fr;gap:8px;}
+  .cmc-legenda li{grid-template-columns:auto 1fr auto;}
+  .cmc-legenda b{grid-column:auto;}
+  .cmc-linha{grid-template-columns:auto minmax(0,1fr) auto;row-gap:6px;}
+  .cmc-situacao{grid-column:2 / -1;flex-direction:row;align-items:center;gap:8px;}
+}
+/* a janela do e-mail principal (16/11/2026): por cima de tudo, até da Minha conta (o ⚡ simula de lá); a tela de entrada
+   simulada cobre a tela inteira, com o Voltar no canto de cima à esquerda */
+.modal-overlay.email-principal-fundo{z-index:91;}
+/* o Sair da conta à esquerda, longe do Confirmar (a janela é obrigatória: é a única saída; 16/11/2026) */
+.email-principal-sair{margin-right:auto;}
+/* o fim da janela do e-mail pessoal: o certo que se desenha (o círculo, depois o traço) e o aviso do login por e-mail (16/11/2026) */
+.email-principal-pronto{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:28px 24px 8px;}
+.email-principal-pronto h3{border:0;padding:0;margin:4px 0 0;}
+.email-principal-pronto p{margin:0;max-width:360px;color:var(--ink-muted);}
+.email-principal-pronto p b{color:var(--ink);overflow-wrap:anywhere;}
+.email-principal-certo{width:64px;height:64px;stroke:var(--success);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+/* (desenhado por padrão; anda em qualquer nível de animação do nads, como a rodinha e o Interruptor: o Vitor pediu "uma animação
+   de certo"; só quem pede menos movimento no sistema vê o certo já pronto) */
+.email-principal-certo circle{stroke-dasharray:151;animation:email-certo-circulo .5s ease-out both !important;}
+.email-principal-certo path{stroke-dasharray:36;animation:email-certo-traco .3s ease-out .45s both !important;}
+@media (prefers-reduced-motion:reduce){.email-principal-certo circle,.email-principal-certo path{animation:none !important;}}
+@keyframes email-certo-circulo{from{stroke-dashoffset:151;}to{stroke-dashoffset:0;}}
+@keyframes email-certo-traco{from{stroke-dashoffset:36;}to{stroke-dashoffset:0;}}
+.entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
+.entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}
+/* o Contatudo (17/11/2026): a escolha da empresa e as ferramentas do Contábil soltas, só consulta */
+.contatudo{max-width:1400px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.contatudo-topo{display:flex;flex-direction:column;gap:4px;}
+.contatudo-topo-empresa{flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;}
+.contatudo-titulo{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;}
+.contatudo-titulo .page-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contatudo-periodo{display:flex;gap:8px;}
+.contatudo-empresas{max-width:640px;}
+.contatudo-lista{list-style:none;margin:8px 0 0;padding:0;max-height:60vh;overflow:auto;}
+.contatudo-empresa{display:flex;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--ink);cursor:pointer;}
+.contatudo-empresa:hover{background:var(--hover-bg);}
+.contatudo-cod{min-width:40px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.contatudo-ferramenta{min-height:60vh;}
+/* o navegador de pastas do Selecionar no Drive (17/11/2026): o Voltar à esquerda, as migalhas, as pastas e os arquivos */
+.drive-nav{width:min(720px,calc(100vw - 32px));max-width:720px;text-align:left;}
+.drive-nav-topo{display:flex;align-items:center;gap:10px;}
+.drive-nav-topo h3{flex:1 1 auto;min-width:0;margin:0;font-size:var(--fs-16,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-nav-caminho{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin:12px 0 8px;font-size:13px;}
+.drive-nav-passo{display:inline-flex;align-items:center;gap:2px;color:var(--ink-muted);}
+.drive-nav-migalha{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--ink-muted);padding:4px 6px;border-radius:6px;cursor:pointer;font:inherit;}
+.drive-nav-migalha:hover{background:var(--hover-bg);color:var(--ink);}
+.drive-nav-passo:last-child .drive-nav-migalha{color:var(--ink);font-weight:600;}
+.drive-nav-lista{display:flex;flex-direction:column;max-height:min(420px,60vh);overflow:auto;border:1px solid var(--border,var(--surface-3));border-radius:8px;}
+.drive-nav-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border:0;border-bottom:1px solid var(--border,var(--surface-3));background:transparent;color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
+.drive-nav-item:last-child{border-bottom:0;}
+.drive-nav-item:hover{background:var(--hover-bg);}
+.drive-nav-ico{display:inline-flex;width:28px;justify-content:center;flex:0 0 28px;}
+.drive-nav-ico.pasta{color:#f4b400;}
+.drive-nav-nome{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-nav-info{flex:0 0 auto;font-size:12px;color:var(--ink-muted);display:inline-flex;align-items:center;}
+.drive-nav-vazio{padding:16px;margin:0;}
+/* o robô puxando no ⬆ (17/11/2026): a barra e o × no lugar do botão; o Cancelar fica acima da camada que trava a tela */
+.imp-robo-mini{display:inline-flex;align-items:center;gap:6px;min-width:96px;}
+.imp-robo-mini .imp-robo-barra{flex:1 1 60px;min-width:60px;}
+.imp-robo-cancelar{position:relative;z-index:61;}

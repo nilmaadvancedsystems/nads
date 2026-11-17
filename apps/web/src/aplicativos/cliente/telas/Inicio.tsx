@@ -1,100 +1,102 @@
-// A Visão geral da Área do Cliente (Vitor, 16 e 17/10/2026). "Melhora mais" de 17/10/2026 ("procura na net exemplos de
-// portal de cliente"), no padrão dos portais de cliente das contabilidades (Assembly, TaxDome, a "Visão do Cliente" do
-// Omie), no visual D:
-//   1. o veredito no topo (CartaoDoVeredito): a frase da situação e o que precisamos do cliente, cada item com UMA ação;
-//   2. à esquerda, as guias do momento com o resumo do pagamento (quanto, até quando) e a dica de como pagar; embaixo, a
-//      atividade recente (o arquivo que chegou, a resposta do escritório, o que o escritório concluiu), quando tem;
-//   3. à direita, o envio rápido (soltar o arquivo ali mesmo) e o atendimento.
-// Os quatro números saíram (o veredito e o resumo do pagamento dizem o mesmo, cada um ao lado da ação); o card de avisos
-// virou o "O que precisamos de você". No celular a ordem é: veredito, guias, envio, atividade e atendimento.
-import { Icone, type NomeIcone } from '@nads/ui';
-import { CartaoDoVeredito, type ItemPendente } from '../partes/CartaoDoVeredito';
-import { LinhaDaAtividade } from '../partes/LinhaDaAtividade';
-import { LinhaDeGuia } from '../partes/LinhaDeGuia';
-import { LinhaDePaga } from '../partes/LinhaDePaga';
-import { ResumoDoPagamento } from '../partes/ResumoDoPagamento';
-import { Vazio } from '../partes/Vazio';
-import { tituloDaGuiaNova, type Pendencia } from '../dados/visaoGeral';
+// A Visão geral da Área do Cliente. Refeita em 13/11/2026 ("refaça esses 3"; a linguagem das Solicitações): a saudação
+// com uma linha de resumo do mês; o "Precisa de você" com o ponto da urgência, o texto e UM botão igual em todos (ou o
+// "tudo em dia" no mesmo cartão); embaixo, lado a lado e da mesma altura, as próximas guias numa lista curta e alinhada
+// (o clique abre ver, copiar o código e baixar; "Ver todas" leva às Guias) e o enviar documento.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"; o mesmo critério das outras telas):
+// o resumo com dois fatos; cada pendência numa linha só (o título, um detalhe curto e o botão); cada próxima guia com o
+// nome, "Vence 19/11", o valor e UM botão (Baixar), o ver e o copiar no "⋯"; o enviar mais baixo; os primeiros passos
+// discretos, só com o que falta.
+// Só desenha: o estado e as ações vêm de useInicio.ts.
+import './inicio.css';
+import { Icone, MenuSuspenso } from '@nads/ui';
+import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { Enviar } from './Enviar';
 import { useInicio } from './useInicio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import type { AreaCliente, DaCasca } from './useAreaCliente';
+import { PrimeirosPassos } from '../partes/PrimeirosPassos';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
-const ICONE_DA_PENDENCIA: Record<Pendencia['origem'], NomeIcone> = { guia: 'recibo', chamado: 'mensagem', certificado: 'escudo', aviso: 'sino', ticket: 'checklist' };
-
-export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato']; onWhatsapp?: () => void }) {
+export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato']; onWhatsapp?: () => void; primeiros: AreaCliente['primeiros'] }) {
   const abrirEnvio = useJanelaDeEnvio(props);
   const vm = useInicio(props, abrirEnvio);
-  const itens: ItemPendente[] = vm.pendencias.map(p => ({
-    id: p.id, tom: p.tom, icone: ICONE_DA_PENDENCIA[p.origem], titulo: p.titulo, texto: p.texto, rotulo: p.rotulo,
-    onAcao: () => vm.agir(p.acao), ocupado: p.acao.tipo === 'baixar-guia' && vm.baixando === p.acao.guia,
-  }));
-  const temGuias = vm.guias.length + vm.pagas.length > 0;
   return (
     <>
-      <CartaoDoVeredito sobre={vm.sobre} tom={vm.veredito.tom} titulo={vm.veredito.titulo} texto={vm.veredito.texto} itens={itens} />
+      <div className="cli-titulo cli-saudacao">
+        <div>
+          <MarcaDaTela /><h1 className="page-title">{vm.saudacao}</h1><AjudaDaTela />
+          <p className="cli-subtitulo">{vm.resumo}</p>
+        </div>
+      </div>
 
-      <div className="cli-duas cli-visao">
-        <div className="cli-coluna">
-          <section className="card cli-v-guias">
+      <div className="cli-vg">
+        {/* os primeiros passos (15/11/2026): some quando tudo está feito ou no "x" */}
+        {props.primeiros && <PrimeirosPassos lista={props.primeiros} irPara={props.irPara} enviar={abrirEnvio} />}
+        {/* o que precisa do cliente, o mais urgente primeiro (o ponto vermelho); ou o tudo em dia no mesmo cartão */}
+        {vm.pendencias.length ? (
+          <section className="card cli-vg-cartao cli-vg-precisa cli-precisa">
+            <div className="card-head"><h3>Precisa de você</h3></div>
+            <ul className="cli-vg-itens">
+              {vm.pendencias.map(p => (
+                <li key={p.id} className={'cli-vg-pend tom-' + p.tom}>
+                  <span className="cli-vg-ponto" aria-hidden="true" />
+                  {/* (16/11/2026, "muita informação") uma linha: o título e o detalhe curto; a explicação longa no title */}
+                  <span className="cli-vg-pend-txt" title={p.texto}><b>{p.titulo}</b>{p.detalhe && <span>{p.detalhe}</span>}</span>
+                  <button type="button" className="btn btn-sm cli-vg-acao" disabled={p.acao.tipo === 'baixar-guia' && vm.baixando === p.acao.guia} onClick={() => vm.agir(p.acao)}>{p.rotulo}</button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section className="card cli-vg-cartao cli-vg-precisa cli-tudo-em-dia">
+            <div className="card-head"><h3>Precisa de você</h3></div>
+            <p className="cli-vg-emdia"><span className="cli-vg-ponto" aria-hidden="true" /><span><b>Tudo em dia.</b> {vm.emDia}</span></p>
+          </section>
+        )}
+
+        <div className="cli-vg-baixo">
+          {/* as próximas guias a pagar (a vencida e a de hoje já estão no "Precisa de você") */}
+          <section className="card cli-vg-cartao cli-vg-proximos cli-inicio-proximos">
             <div className="card-head">
-              <h3>Guias a pagar</h3>
-              <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas<Icone nome="chevronRight" width={16} height={16} /></button>
+              <h3>Próximas guias</h3>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={vm.verTodas}>Ver todas<Icone nome="chevronRight" width={16} height={16} /></button>
             </div>
-            {temGuias ? (
+            {vm.proximas.length ? (
               <>
-                {vm.resumo && <ResumoDoPagamento {...vm.resumo} />}
-                {vm.guias.length > 0 && (
-                  <ul className="cli-lista">
-                    {vm.guias.map(g => (
-                      <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} faltam={vm.faltam(g)} destaque={g.id === vm.destaque} ocupado={vm.baixando === g.id}
-                        onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={x => vm.pedirGuiaNova(tituloDaGuiaNova(x))} />
-                    ))}
-                  </ul>
-                )}
-                {vm.resumo && (
-                  <p className="cli-como-pagar">
-                    <Icone nome="ajuda" width={16} height={16} />
-                    {vm.temCodigo ? 'Baixe o PDF ou copie o código de barras e pague no app do seu banco até o vencimento.' : 'Baixe o PDF e pague no app do seu banco até o vencimento.'}
-                  </p>
-                )}
-                {vm.pagas.length > 0 && (
-                  <>
-                    <p className="cli-grupo">Pagas</p>
-                    <ul className="cli-lista cli-pagas">
-                      {vm.pagas.map(p => <LinhaDePaga key={p.id} paga={p} onComprovante={id => void vm.baixarComprovante(id)} />)}
-                    </ul>
-                  </>
-                )}
+                {/* (16/11/2026, "muita informação") o nome, "Vence 19/11", o valor, UM botão e o "⋯" (ver, copiar o código) */}
+                <ul className="cli-vg-guias">
+                  {vm.proximas.map(g => (
+                    <li key={g.id} className="cli-vg-guia cli-extrato-linha">
+                      <span className="cli-vg-guia-txt"><b className="cli-vg-nome">{g.nome}</b><span className="cli-vg-quando">{g.quando}</span></span>
+                      <span className="cli-vg-valor">{g.valor}</span>
+                      <span className="cli-vg-guia-acoes">
+                        {g.principal ? (
+                          <button type="button" className="btn btn-sm cli-vg-baixar" disabled={vm.baixando === g.id} onClick={g.principal.acao} aria-label={g.principal.rotulo + ': ' + g.nome}>
+                            <Icone nome={g.principal.icone} width={15} height={15} /><span className="cli-vg-rotulo">{g.principal.rotulo}</span>
+                          </button>
+                        ) : <span className="cli-vg-ainda">Ainda não chegou</span>}
+                        {g.mais.length ? (
+                          <MenuSuspenso rotulo="" icone="mais" className="icon-btn cli-vg-mais" semSeta direita flutuante compacto dica="Mais ações" titulo={'Mais ações: ' + g.nome} itens={g.mais} />
+                        ) : <span className="cli-vg-vaga" aria-hidden="true" />}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="cli-vg-total"><span>{vm.rotuloDoTotal}</span><b>{vm.totalDasProximas}</b></p>
               </>
-            ) : <Vazio icone="checkCircle" titulo="Nada para pagar agora" texto="Quando o escritório gerar uma guia, ela aparece aqui." />}
+            ) : <p className="cli-vg-nada"><b>Nenhuma guia a pagar por enquanto</b><span>Quando o escritório mandar uma guia, ela aparece aqui.</span></p>}
           </section>
 
-        </div>
-
-        <div className="cli-coluna">
-          <section className="card cli-v-enviar">
-            <div className="card-head">
-              <h3>Enviar documento</h3>
-            </div>
+          {/* o enviar documento */}
+          <section className="card cli-vg-cartao cli-vg-enviar cli-v-enviar">
+            <div className="card-head"><h3>Enviar documento</h3></div>
             <Enviar {...props} />
           </section>
         </div>
       </div>
 
-      {/* a atividade recente na largura toda (12/11/2026: "estica essa aba de atividade recente"); o cartão do atendimento
-          saiu ("remove esse seu atendimento"): o contato fica em Fale com o escritório */}
-      {vm.atividade.length > 0 && (
-        <section className="card cli-v-atividade">
-          <div className="card-head"><h3>Atividade recente</h3></div>
-          <ul className="cli-lista cli-atividades">
-            {vm.atividade.map(a => (
-              <LinhaDaAtividade key={a.id} origem={a.origem} titulo={a.titulo} texto={a.texto} quando={a.quando}
-                onAbrir={a.chamado ? () => vm.irPara('chamados', { chamado: a.chamado }) : undefined} />
-            ))}
-          </ul>
-        </section>
-      )}
+      {vm.vista.aberto && <JanelaDoArquivo arquivo={vm.vista.aberto} onBaixar={vm.vista.baixar} onFechar={vm.vista.fechar} />}
     </>
   );
 }

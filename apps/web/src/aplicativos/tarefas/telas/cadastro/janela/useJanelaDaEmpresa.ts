@@ -35,6 +35,8 @@ export function useJanelaDaEmpresa(rota: string, aba: string, local?: { irPara: 
   const falta = (id: string) => itens.filter(i => i.aba === id && !i.tem).length;
   return {
     empresa,
+    /** o nome para mostrar: a razão social trocada no Cadastro › Empresa (13/11/2026), ou o nome */
+    nomeNaTela: empresas.nomeParaMostrar(empresa),
     regime,
     /** a empresa do Simples (ou ainda sem regime) tem o código de acesso; as outras, não (04/11/2026) */
     simples: temCodigoDoSimples(regime),

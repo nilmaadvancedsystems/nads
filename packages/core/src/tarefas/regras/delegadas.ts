@@ -5,6 +5,7 @@
 // Aqui só as regras (TypeScript puro): validar, ordenar, filtrar por aba, buscar, montar o histórico de cada mudança e ler
 // o documento do banco. A gravação é do repositório da Tarefas (dados/tarefasDelegadas*.ts).
 import { diaEmBrasilia, nomeNorm } from '../../formatos';
+import { feriadoDoDia } from './feriados';
 
 export type Prioridade = 'baixa' | 'normal' | 'alta' | 'urgente';
 export type Status = 'pendente' | 'andamento' | 'pausada' | 'cancelada' | 'concluida';
@@ -14,11 +15,23 @@ export interface Pessoa { uid: string; nome: string }
 /** O cliente vinculado (o código do ERP e o nome; o código pode faltar na empresa nova). */
 export interface ClienteVinculado { codigo: number | null; nome: string }
 /** Uma linha do parecer ou do histórico: quem (o nome), quando (ISO) e o texto. */
-export interface Nota { por: string; em: string; texto: string }
+export interface Nota {
+  por: string; em: string; texto: string;
+  /**
+   * o parecer que é a cobrança de quem delegou ou a resposta de quem faz (13/11/2026: "um icone de sino, nas tarefas delegadas,
+   * para meio que 'Cobrar' a tarefa"); sem o campo, é um parecer comum
+   */
+  tipo?: 'cobranca' | 'resposta' | 'adiamento';
+  /** o adiamento (16/11/2026: "Mais 5 minutos, + 10minutos… mas que tenha uma justificativa escrita"): quantos minutos; o texto é a justificativa */
+  minutos?: number;
+}
 /**
  * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
  * gzip = os pedaços estão em gzip (descomprime ao baixar; sem o campo, os bytes são o próprio arquivo).
  */
+/** Um link fixado na tarefa: o endereço, quem fixou e quando. */
+export interface LinkDaTarefa { url: string; por: string; em: string }
+
 export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
 /**
@@ -75,9 +88,13 @@ export interface TarefaDelegada {
   pareceres: Nota[];
   historico: Nota[];
   anexos: Anexo[];
+  /** os links fixados (o Início novo; 13/11/2026: "coloque o icone de link, para fixar o link") */
+  links?: LinkDaTarefa[];
   etapaDelegada?: EtapaDelegada;
-  /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir" */
-  tipo?: 'documentos';
+  /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir"; o envio (13/11/2026): quem recebe baixa e confirma o recebimento */
+  tipo?: TipoDaTarefa;
+  /** o requerer de documentos (13/11/2026): quem recebeu enviou para conferir, ou quem pediu contestou ('' = ainda não enviou) */
+  entrega?: Entrega;
   /** ISO de quando quem recebeu abriu a tarefa pela primeira vez (o Visualizado de quem delegou; 12/11/2026) */
   visualizadaEm?: string;
 }
@@ -94,9 +111,16 @@ export interface Rascunho {
   responsavel: Pessoa | null;
   /** só ao criar: a etapa que esta tarefa delega */
   etapaDelegada?: EtapaDelegada;
-  /** só ao criar: o pedido de documentos */
-  tipo?: 'documentos';
+  /** só ao criar: o pedido de documentos ou o envio */
+  tipo?: TipoDaTarefa;
+  /** o requerer de documentos: enviou para conferir, contestou ou voltou ao começo ('', no repasse) */
+  entrega?: Entrega;
 }
+
+/** Os documentos (13/11/2026): 'documentos' = requerer (quem recebe anexa e envia); 'envio' = quem delega manda os arquivos. */
+export type TipoDaTarefa = 'documentos' | 'envio';
+/** Onde está o requerer: '' (esperando os documentos), 'enviada' (para quem pediu conferir) ou 'contestada' (faltou algo). */
+export type Entrega = '' | 'enviada' | 'contestada';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // rótulos e limites
@@ -256,6 +280,21 @@ export function nomeDaImagemEncolhida(nome: string): string {
   return (ext ? nome.slice(0, -ext.length - 1) : nome) + '.webp';
 }
 
+const PRINT_COLADO = /^Print colado (\d+)\.[A-Za-z0-9]{1,10}$/;
+
+/** O anexo veio de um print colado nos Detalhes? (mostra a miniatura embaixo do campo) */
+export const ehPrintColado = (nome: string) => PRINT_COLADO.test(nome);
+
+/**
+ * O nome do print colado nos Detalhes (16/11/2026: "Coloca a opção de colar print, nos detalhes, para requerer os
+ * pagamentos"): "Print colado 3.png", o número seguinte ao maior que a tarefa já tem; a extensão pelo tipo da imagem.
+ */
+export function nomeDoPrintColado(nomesAtuais: readonly string[], tipo: string): string {
+  const maior = nomesAtuais.reduce((n, nome) => Math.max(n, Number(PRINT_COLADO.exec(nome)?.[1] || 0)), 0);
+  const ext = tipo === 'image/jpeg' ? 'jpg' : tipo === 'image/webp' ? 'webp' : tipo === 'image/bmp' ? 'bmp' : 'png';
+  return 'Print colado ' + (maior + 1) + '.' + ext;
+}
+
 /**
  * O que impede de anexar estes arquivos à tarefa ('' quando pode): vazio, maior que 10 MB, mais de 20 na tarefa ou a
  * tarefa passando de 30 MB somando os que já tem.
@@ -387,6 +426,9 @@ export function buscar<T extends Pick<TarefaDelegada, 'numero' | 'titulo' | 'des
 
 /** Quem pode mudar a tarefa: quem criou ou o responsável. */
 export const podeMudar = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel'>, uid: string): boolean => !!uid && (t.criadaPor.uid === uid || t.responsavel.uid === uid);
+/** Os Detalhes da tarefa concluída (a normal e a de documentos) não se editam mais, para ninguém, nem para quem criou
+ *  (Vitor, 16/11/2026: "Detalhes depois das tarefas e documentos concluidas não pode ser editadas"). */
+export const detalhesTravados = (t: Pick<TarefaDelegada, 'status'>): boolean => t.status === 'concluida';
 /** Quem pode excluir: quem criou (ou o admin). */
 export const podeExcluir = (t: Pick<TarefaDelegada, 'criadaPor'>, uid: string, admin = false): boolean => admin || (!!uid && t.criadaPor.uid === uid);
 
@@ -418,7 +460,8 @@ export function ultimoMovimento(t: Pick<TarefaDelegada, 'historico'>): Nota | nu
 // o expediente: a pausa sozinha no almoço e à noite (12/11/2026)
 // ---------------------------------------------------------------------------------------------------------------------
 // "a pessoa clica em Iniciar; o sistema pausa sozinho às 11:05 e despausa às 13:00; pausa de novo às 18:05 e despausa às
-// 07:00 do dia seguinte". O banco não muda: a tarefa segue Em andamento e a tela mostra Pausada nos intervalos; o tempo
+// 07:00 do dia seguinte". O horário de cada dia (13/11/2026): "Seg a quin: 07:00 as 11:05 13:00 ate 18:05 e sex 07:00 as 11:05 e
+// das 13:00 ate as 17:05"; "sabado e domingo nao funciona". O banco não muda: a tarefa segue Em andamento e a tela mostra Pausada nos intervalos; o tempo
 // trabalhado conta só o que caiu dentro do expediente. Os horários são os de Brasília (UTC−3, sem horário de verão desde
 // 2019), não os do computador.
 
@@ -426,6 +469,8 @@ const MIN = 60_000;
 const FUSO_DE_BRASILIA = -3 * 60;
 /** os trechos do dia em que a tarefa em andamento corre, em minutos desde a meia-noite: 07:00–11:05 e 13:00–18:05 */
 export const EXPEDIENTE: readonly { de: number; ate: number }[] = [{ de: 7 * 60, ate: 11 * 60 + 5 }, { de: 13 * 60, ate: 18 * 60 + 5 }];
+/** na sexta-feira a tarde acaba uma hora antes: 07:00–11:05 e 13:00–17:05 (Vitor, 13/11/2026: "sexta feira o cronometro das tarefas delegadas pausa as 17:05") */
+export const EXPEDIENTE_DE_SEXTA: readonly { de: number; ate: number }[] = [{ de: 7 * 60, ate: 11 * 60 + 5 }, { de: 13 * 60, ate: 17 * 60 + 5 }];
 
 const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 const msDe = (quando: Date | string) => (typeof quando === 'string' ? Date.parse(quando) : quando.getTime());
@@ -436,27 +481,52 @@ function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
   return { meiaNoite: meiaNoiteLocal - FUSO_DE_BRASILIA * MIN, minuto: Math.floor((local - meiaNoiteLocal) / MIN) };
 }
 
-/** Agora é intervalo (11:05–13:00 ou 18:05–07:00)? */
+/** O dia da semana (0 = domingo) do dia de Brasília que começa em "meiaNoite" (ms UTC). */
+const diaDaSemana = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).getUTCDay();
+
+/** O dia de Brasília que começa em "meiaNoite" (ms UTC), 'AAAA-MM-DD'. */
+const dataDoDia = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).toISOString().slice(0, 10);
+
+/**
+ * O expediente do dia de Brasília que começa em "meiaNoite" (ms UTC): de segunda a quinta até 18:05, na sexta até 17:05, e no
+ * sábado, no domingo e nos feriados nada (o cronômetro não anda). Os feriados são os do calendário de Taiobeiras (feriados.ts);
+ * o ponto facultativo e o meio expediente seguem como um dia comum (Vitor, 15/11/2026: "Só nos feriados").
+ */
+export function expedienteDoDia(meiaNoite: number): readonly { de: number; ate: number }[] {
+  const dia = diaDaSemana(meiaNoite);
+  if (dia === 0 || dia === 6 || feriadoDoDia(dataDoDia(meiaNoite))?.tipo === 'feriado') return [];
+  return dia === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
+}
+
+const DIAS_DA_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00; o sábado, o domingo e o feriado inteiros)? */
 export function noIntervalo(agora: Date | string): boolean {
   const ms = msDe(agora);
   if (!Number.isFinite(ms)) return false;
-  const { minuto } = noDiaDeBrasilia(ms);
-  return !EXPEDIENTE.some(e => minuto >= e.de && minuto < e.ate);
+  const { meiaNoite, minuto } = noDiaDeBrasilia(ms);
+  return !expedienteDoDia(meiaNoite).some(e => minuto >= e.de && minuto < e.ate);
 }
 
-/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela. */
+/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela (no fim de semana e no feriado, a do próximo dia útil). */
 export function proximaVirada(agora: Date | string): Date {
   const ms = msDe(agora);
   const { meiaNoite } = noDiaDeBrasilia(ms);
-  const viradas = [0, 1].flatMap(dia => EXPEDIENTE.flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  // até 15 dias à frente: pula o sábado, o domingo e os feriados, que não têm expediente
+  const viradas = Array.from({ length: 15 }, (_, i) => i).flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
   return new Date(viradas.find(v => v > ms) as number);
 }
 
-/** A hora em que o intervalo de agora acaba ('13:00' ou '07:00'); fora do intervalo, ''. */
+/**
+ * Quando o intervalo de agora acaba: '13:00' ou '07:00' (hoje ou amanhã); depois do fim de semana, com o dia ('segunda 07:00');
+ * fora do intervalo, ''.
+ */
 export function voltaDoIntervalo(agora: Date | string): string {
   if (!noIntervalo(agora)) return '';
-  const { minuto } = noDiaDeBrasilia(msDe(proximaVirada(agora)));
-  return hhmm(minuto);
+  const ms = msDe(agora);
+  const volta = noDiaDeBrasilia(msDe(proximaVirada(agora)));
+  const dias = Math.round((volta.meiaNoite - noDiaDeBrasilia(ms).meiaNoite) / (1440 * MIN));
+  return (dias > 1 ? DIAS_DA_SEMANA[diaDaSemana(volta.meiaNoite)] + ' ' : '') + hhmm(volta.minuto);
 }
 
 /** A situação da tarefa na tela agora: a em andamento aparece Pausada nos intervalos (automatica), e diz quando volta. */
@@ -477,12 +547,12 @@ export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | 
   return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
 }
 
-/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 não conta. */
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05; sábado, domingo e feriado, nada) não conta. */
 export function minutosDeExpediente(inicio: number, fim: number): number {
   if (!(fim > inicio)) return 0;
   let total = 0;
   for (let dia = noDiaDeBrasilia(inicio).meiaNoite; dia < fim; dia += 1440 * MIN) {
-    for (const e of EXPEDIENTE) total += Math.max(0, Math.min(fim, dia + e.ate * MIN) - Math.max(inicio, dia + e.de * MIN));
+    for (const e of expedienteDoDia(dia)) total += Math.max(0, Math.min(fim, dia + e.ate * MIN) - Math.max(inicio, dia + e.de * MIN));
   }
   return Math.round(total / MIN);
 }
@@ -528,11 +598,114 @@ export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico
 // confirma ("Anexei tudo, concluir"; às vezes são vários arquivos). "Visualizado: se a pessoa clicou e visualizou a
 // tarefa ou não": a primeira vez que quem recebeu abre a tarefa fica gravada.
 
-export const TITULO_DO_PEDIDO = 'Pedido de documentos';
-export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
+export const TITULO_DO_PEDIDO = 'Documentos delegados';
+/** É de documentos (o requerer ou o envio): a aba Documentos e a janela própria. */
+export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos' || t.tipo === 'envio';
+/** O requerer de documentos: quem recebe anexa e envia; quem pediu confirma ou contesta. */
+export const requerDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
+/** O envio de documentos: quem recebe baixa e confirma o recebimento. */
+export const enviaDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'envio';
+
+/**
+ * Quem recebe os documentos da tarefa (Vitor, 16/11/2026: "os documentos enviados para pessoa, dê a opção de quem recebeu, baixar
+ * tudo, e cair em .zip"): no envio, a pessoa para quem foram; no pedido, quem pediu (os anexos são de quem atendeu).
+ */
+export function recebeOsDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'responsavel' | 'criadaPor'>, uid: string): boolean {
+  if (!uid) return false;
+  if (t.tipo === 'envio') return t.responsavel.uid === uid;
+  if (t.tipo === 'documentos') return t.criadaPor.uid === uid;
+  return false;
+}
+
+/** O nome do .zip dos documentos: "Documentos - 389 LATORRES DISTRIBUIDORA LTDA.zip" (sem cliente, o título da tarefa). */
+export function nomeDoZipDosDocumentos(t: Pick<TarefaDelegada, 'titulo' | 'clientes'>): string {
+  const c = t.clientes[0];
+  const base = c ? 'Documentos - ' + (c.codigo != null ? c.codigo + ' ' : '') + c.nome : t.titulo || 'Documentos';
+  return base.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) + '.zip';
+}
+
+/** Os nomes dos arquivos dentro do .zip, sem repetir: o segundo "extrato.pdf" vira "extrato (2).pdf". */
+export function nomesSemRepetir(nomes: readonly string[]): string[] {
+  const usados = new Set<string>();
+  return nomes.map(n => {
+    const limpo = n.replace(/[\\/]+/g, '-').trim() || 'arquivo';
+    const m = /^(.*?)(\.[^.]*)?$/.exec(limpo) as RegExpExecArray;
+    let nome = limpo;
+    for (let k = 2; usados.has(nome.toLowerCase()); k++) nome = m[1] + ' (' + k + ')' + (m[2] || '');
+    usados.add(nome.toLowerCase());
+    return nome;
+  });
+}
+
+/**
+ * Delegar documentos no Início novo (Vitor, 13/11/2026: "a pergunta se o cara quer enviar ou requerer documentos / E qual
+ * cliente é"). Enviar: "para quem, uma ou mais pessoas", sem prazo nem prioridade; "a pessoa de lá consegue baixar, e ela
+ * deve confirmar o recebimento". Requerer: "só pode pedir PARA UMA PESSOA, ela deve colocar o prazo, sem hora definida,
+ * prioridade ela tem tbm"; quem recebe anexa e envia, quem pediu confirma ou contesta, e quem recebeu pode repassar.
+ */
+export type ModoDosDocumentos = 'enviar' | 'requerer';
+export const TITULO_DO_PEDIDO_NOVO = 'Pedido de documentos';
+export const TITULO_DO_ENVIO = 'Envio de documentos';
+
+/** O rascunho no modo escolhido: o título e o tipo do modo; sem a hora do prazo, e o envio sem prazo nem prioridade. */
+export function rascunhoDosDocumentos(r: Rascunho, modo: ModoDosDocumentos): Rascunho {
+  const base = { ...r, prazoHora: '', status: 'pendente' as const };
+  return modo === 'requerer' ? { ...base, titulo: TITULO_DO_PEDIDO_NOVO, tipo: 'documentos' } : { ...base, prazo: '', prioridade: 'normal', titulo: TITULO_DO_ENVIO, tipo: 'envio' };
+}
+
+/** O que falta para delegar os documentos (vazio = pode): o envio leva um arquivo ou um link; o requerer, uma pessoa só e o prazo. */
+export function problemaDosDocumentos(o: { modo: ModoDosDocumentos | null; clientes: number; pessoas: number; anexos: number; links: number; prazo?: string }): string {
+  if (!o.modo) return 'Escolha se vai enviar ou requerer os documentos.';
+  if (!o.clientes) return 'Escolha o cliente (ou um avulso).';
+  if (!o.pessoas) return 'Escolha para quem.';
+  if (o.modo === 'requerer' && o.pessoas > 1) return 'O requerer vai para uma pessoa só.';
+  if (o.modo === 'requerer' && !o.prazo) return 'Coloque o prazo.';
+  if (o.modo === 'enviar' && !o.anexos && !o.links) return 'Anexe os arquivos ou cole o link do que vai enviar.';
+  return '';
+}
+
+/** Os botões dos documentos, de quem está com a tarefa agora. */
+export type AcaoDosDocumentos = 'confirmarRecebimento' | 'enviarDocumentos' | 'repassar' | 'contestar' | 'confirmarTudo';
+
+/**
+ * O envio: quem recebe confirma o recebimento. O requerer: quem recebe envia os documentos (com algum arquivo ou link) ou
+ * repassa; enviado, quem pediu contesta ou confirma que veio tudo (e a tarefa conclui). Encerrada, nada.
+ */
+export function acoesDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | 'entrega' | 'criadaPor' | 'responsavel' | 'anexos' | 'links'>, uid: string): { id: AcaoDosDocumentos; rotulo: string }[] {
+  if (!uid || !emAberto(t)) return [];
+  const recebeu = t.responsavel.uid === uid, pediu = t.criadaPor.uid === uid;
+  if (enviaDocumentos(t)) return recebeu ? [{ id: 'confirmarRecebimento', rotulo: 'Confirmar recebimento' }] : [];
+  if (!requerDocumentos(t)) return [];
+  if (t.entrega === 'enviada') return pediu ? [{ id: 'contestar', rotulo: 'Contestar' }, { id: 'confirmarTudo', rotulo: 'Veio tudo, concluir' }] : [];
+  if (!recebeu || pediu) return [];
+  const temAlgo = t.anexos.length > 0 || (t.links?.length ?? 0) > 0;
+  return [{ id: 'repassar', rotulo: 'Repassar' }, ...(temAlgo ? [{ id: 'enviarDocumentos' as const, rotulo: 'Enviar os documentos' }] : [])];
+}
+
+/** Onde estão os documentos, em uma frase (o aviso no alto da tarefa). */
+export function situacaoDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | 'entrega' | 'visualizadaEm' | 'responsavel'> & Partial<Pick<TarefaDelegada, 'pareceres' | 'criadaPor'>>): string {
+  if (enviaDocumentos(t)) return t.status === 'concluida' ? t.responsavel.nome + ' confirmou o recebimento.' : t.visualizadaEm ? t.responsavel.nome + ' visualizou e ainda não confirmou o recebimento.' : t.responsavel.nome + ' ainda não visualizou.';
+  if (!requerDocumentos(t)) return '';
+  if (t.status === 'concluida') return 'Concluído: veio tudo.';
+  if (t.status === 'cancelada') return 'Cancelado.';
+  if (t.entrega === 'enviada') return t.responsavel.nome + ' enviou os documentos: falta conferir.';
+  if (t.entrega === 'contestada') {
+    // o motivo é o último comentário de quem pediu (a janela do Início novo não tem mais a conversa; 13/11/2026)
+    const motivo = [...(t.pareceres || [])].reverse().find(p => p.por === t.criadaPor?.nome)?.texto;
+    return 'Contestado' + (motivo ? ' ("' + motivo + '")' : '') + ': ' + t.responsavel.nome + ' precisa mandar o que faltou.';
+  }
+  return 'Esperando ' + t.responsavel.nome + ' anexar e enviar os documentos.';
+}
+
+/** De quanto em quanto tempo o sistema pede para confirmar o recebimento (Vitor: "de 10 em 10 min"). */
+export const LEMBRETE_DE_RECEBIMENTO_MS = 10 * 60_000;
+
+/** O envio que a pessoa já visualizou e ainda não confirmou: o sistema pede a confirmação. */
+export const lembraDeConfirmar = (t: Pick<TarefaDelegada, 'tipo' | 'status' | 'visualizadaEm' | 'responsavel' | 'criadaPor'>, uid: string): boolean =>
+  !!uid && enviaDocumentos(t) && emAberto(t) && !!t.visualizadaEm && t.responsavel.uid === uid && t.criadaPor.uid !== uid;
 
 /** O pedido de documentos com anexo e em aberto: quem recebeu já pode confirmar que anexou tudo. */
-export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => pedeDocumentos(t) && t.anexos.length > 0 && emAberto(t);
+export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => requerDocumentos(t) && t.anexos.length > 0 && emAberto(t);
 
 /** Os botões do pedido de documentos: o Concluir vira "Anexei tudo, concluir" quando já tem anexo. */
 export function acoesDaTarefa(t: Pick<TarefaDelegada, 'status' | 'tipo' | 'anexos'>, agora: Date | string): AcaoDaTarefa[] {
@@ -606,6 +779,12 @@ export function historicoDaMudanca(antes: TarefaDelegada, r: Rascunho, por: stri
     for (const c of entraram) linhas.push('Vinculou o cliente ' + nomeDoCliente(c));
   }
   if (r.responsavel && r.responsavel.uid !== antes.responsavel.uid) linhas.push('Delegou de ' + antes.responsavel.nome + ' para ' + r.responsavel.nome);
+  if (r.entrega !== undefined && r.entrega !== (antes.entrega ?? '')) {
+    if (r.entrega === 'enviada') linhas.push('Enviou os documentos para conferir');
+    if (r.entrega === 'contestada') linhas.push('Contestou os documentos');
+  }
+  if (r.status !== antes.status && r.status === 'concluida' && enviaDocumentos(antes)) linhas.push('Confirmou o recebimento');
+  if (r.status !== antes.status && r.status === 'concluida' && requerDocumentos(antes) && antes.entrega === 'enviada') linhas.push('Conferiu: veio tudo');
   if (r.status !== antes.status) linhas.push(linhaDoStatus(antes.status, r.status));
   if (r.prioridade !== antes.prioridade) linhas.push('Mudou a prioridade de ' + rotuloDaPrioridade(antes.prioridade) + ' para ' + rotuloDaPrioridade(r.prioridade));
   if (r.prazo !== antes.prazo || r.prazoHora !== antes.prazoHora) {
@@ -619,6 +798,178 @@ export function historicoDaMudanca(antes: TarefaDelegada, r: Rascunho, por: stri
 export const historicoDoAnexo = (acao: 'anexou' | 'tirou', nome: string, por: string, em: string): Nota =>
   ({ por, em, texto: (acao === 'anexou' ? 'Anexou o arquivo ' : 'Tirou o arquivo ') + nome });
 export const historicoDoParecer = (por: string, em: string): Nota => ({ por, em, texto: 'Escreveu um parecer' });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// cobrar (13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas, para meio que 'Cobrar' a tarefa e cobrar atualizacoes,
+// o usuario cobrado vai ter o botao, 'Responder cobranca'"). A cobrança e a resposta vão nos pareceres (o campo que o banco já
+// aceita), marcadas pelo tipo; a cobrança fica aberta até a resposta de quem faz.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** o texto da cobrança quando quem cobra não escreve nada */
+export const TEXTO_DA_COBRANCA = 'Como está esta tarefa? Me passa uma atualização, por favor.';
+
+/** A cobrança ainda sem resposta (a última cobrança depois da última resposta), ou null. */
+export function cobrancaAberta(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'resposta') return null;
+    if (p.tipo === 'cobranca') return p;
+  }
+  return null;
+}
+
+/** A última resposta a uma cobrança (para quem cobrou ver), se ela é a mais nova das duas; null sem resposta ou com cobrança nova. */
+export function ultimaResposta(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'cobranca') return null;
+    if (p.tipo === 'resposta') return p;
+  }
+  return null;
+}
+
+/** Quem delegou cobra: só a tarefa em aberto, delegada a outra pessoa, e sem outra cobrança esperando resposta. */
+export function podeCobrar(t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel' | 'status' | 'pareceres'>, uid: string): boolean {
+  return !!uid && t.criadaPor.uid === uid && t.responsavel.uid !== uid && emAberto(t) && !cobrancaAberta(t);
+}
+
+/** Quem faz a tarefa tem uma cobrança para responder. */
+export function deveResponderCobranca(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string): boolean {
+  return !!uid && t.responsavel.uid === uid && !!cobrancaAberta(t);
+}
+
+/** O que impede de cobrar ('' = pode). */
+export function problemaDaCobranca(t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel' | 'status' | 'pareceres'>, uid: string, texto = ''): string {
+  if (t.criadaPor.uid !== uid) return 'Só quem delegou a tarefa cobra.';
+  if (t.responsavel.uid === uid) return 'A tarefa está com você mesmo.';
+  if (!emAberto(t)) return 'A tarefa já foi encerrada.';
+  if (cobrancaAberta(t)) return 'Já tem uma cobrança esperando a resposta.';
+  if (limparTexto(texto).length > MAIOR_PARECER) return 'A cobrança passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** O que impede de responder ('' = pode). */
+export function problemaDaResposta(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, texto: string): string {
+  if (t.responsavel.uid !== uid) return 'Só quem faz a tarefa responde à cobrança.';
+  if (!cobrancaAberta(t)) return 'Não tem cobrança esperando resposta.';
+  const x = limparTexto(texto);
+  if (!x) return 'Escreva a resposta: como está a tarefa.';
+  if (x.length > MAIOR_PARECER) return 'A resposta passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** Uma cobrança que a pessoa recebeu (as Notificações do Início; 16/11/2026): a tarefa, quem cobrou, quando e se ainda espera a resposta. */
+export interface CobrancaRecebida { tarefa: TarefaDelegada; nota: Nota; aberta: boolean }
+
+/**
+ * As cobranças das tarefas que a pessoa faz, a mais nova primeiro (16/11/2026: "faça aparecer em notificações que houve uma
+ * cobrança"); aberta = a última cobrança da tarefa, ainda sem resposta.
+ */
+export function cobrancasRecebidas(lista: readonly TarefaDelegada[], uid: string): CobrancaRecebida[] {
+  if (!uid) return [];
+  return lista.filter(t => t.responsavel.uid === uid && t.criadaPor.uid !== uid).flatMap(t => {
+    const aberta = cobrancaAberta(t);
+    return t.pareceres.filter(p => p.tipo === 'cobranca').map(nota => ({ tarefa: t, nota, aberta: nota === aberta }));
+  }).sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// mais tempo para responder (16/11/2026: "assim que cobrar, não deixa o usuario sair enquanto nao responder a cobrança, faça
+// uma bela popup. Deixa com a opção 'Mais 5 minutos, + 10minutos'… E para quem cobrou aparece que o usuario pediu + 5 +10
+// minutos..., mas que tenha uma justificativa escrita"). O adiamento também vai nos pareceres (tipo 'adiamento', com os
+// minutos e a justificativa no texto): a cobrança continua aberta, e a janela volta quando o tempo acaba.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** as opções de mais tempo, em minutos */
+export const MINUTOS_DE_ADIAMENTO = [5, 10] as const;
+
+/** O último pedido de mais tempo depois da cobrança aberta, ou null. */
+export function adiamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'adiamento') return cobrancaAberta(t) ? p : null;
+    if (p.tipo === 'cobranca' || p.tipo === 'resposta') return null;
+  }
+  return null;
+}
+
+/** Até quando a cobrança aberta está adiada (ISO), ou '' (sem adiamento). */
+export function cobrancaAdiadaAte(t: Pick<TarefaDelegada, 'pareceres'>): string {
+  const a = adiamentoDaCobranca(t);
+  const em = a ? Date.parse(a.em) : NaN;
+  return a && Number.isFinite(em) ? new Date(em + (a.minutos || 0) * 60_000).toISOString() : '';
+}
+
+/** A janela da cobrança aparece para quem faz: cobrança aberta e sem mais tempo correndo. */
+export function deveMostrarCobranca(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, agora: Date): boolean {
+  if (!deveResponderCobranca(t, uid)) return false;
+  const ate = cobrancaAdiadaAte(t);
+  return !ate || Date.parse(ate) <= agora.getTime();
+}
+
+/** O que impede de pedir mais tempo ('' = pode). */
+export function problemaDoAdiamento(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, minutos: number, justificativa: string, agora = new Date()): string {
+  if (t.responsavel.uid !== uid) return 'Só quem faz a tarefa pede mais tempo.';
+  if (!cobrancaAberta(t)) return 'Não tem cobrança esperando resposta.';
+  if (!(MINUTOS_DE_ADIAMENTO as readonly number[]).includes(minutos)) return 'Escolha mais 5 ou mais 10 minutos.';
+  const ate = cobrancaAdiadaAte(t);
+  if (ate && Date.parse(ate) > agora.getTime()) return 'O tempo pedido ainda não acabou.';
+  const x = limparTexto(justificativa);
+  if (!x) return 'Escreva a justificativa: por que precisa de mais tempo.';
+  if (x.length > MAIOR_PARECER) return 'A justificativa passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** O pedido de mais tempo (a justificativa no texto). */
+export const notaDoAdiamento = (minutos: number, justificativa: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(justificativa), tipo: 'adiamento', minutos });
+export const historicoDoAdiamento = (por: string, em: string, minutos: number): Nota => ({ por, em, texto: 'Pediu mais ' + minutos + ' minutos para responder à cobrança' });
+
+/**
+ * O andamento da última cobrança, na ordem: a cobrança, os pedidos de mais tempo e a resposta (quem cobrou vê na tarefa;
+ * 16/11/2026). Vazio sem cobrança.
+ */
+export function andamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota[] {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    if (t.pareceres[i].tipo === 'cobranca') return t.pareceres.slice(i).filter(p => p.tipo === 'cobranca' || p.tipo === 'adiamento' || p.tipo === 'resposta');
+  }
+  return [];
+}
+
+/** O texto de um passo da cobrança para a tela ("Fulano pediu mais 10 minutos: …", "Fulano respondeu: …"). */
+export function textoDoPassoDaCobranca(n: Nota): string {
+  if (n.tipo === 'adiamento') return n.por + ' pediu mais ' + (n.minutos || 0) + ' minutos: ' + n.texto;
+  if (n.tipo === 'resposta') return n.por + ' respondeu: ' + n.texto;
+  return n.por + ' cobrou uma atualização: ' + n.texto;
+}
+
+/**
+ * O que quem cobrou recebe de volta (as Notificações do Início; 16/11/2026): os pedidos de mais tempo e as respostas das
+ * tarefas que a pessoa delegou, o mais novo primeiro.
+ */
+export function retornosDasCobrancas(lista: readonly TarefaDelegada[], uid: string): { tarefa: TarefaDelegada; nota: Nota }[] {
+  if (!uid) return [];
+  return lista.filter(t => t.criadaPor.uid === uid && t.responsavel.uid !== uid)
+    .flatMap(t => t.pareceres.filter(p => p.tipo === 'adiamento' || p.tipo === 'resposta').map(nota => ({ tarefa: t, nota })))
+    .sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
+/** O que aparece ao passar o mouse no Cobrada (quando = a data e a hora já escritas para a tela). */
+export const dicaDaCobranca = (n: Pick<Nota, 'por'>, quando: string) => n.por + ' cobrou uma atualização em ' + quando + '. Abra a tarefa e responda.';
+
+/** A cobrança (o texto escrito, ou o de sempre). */
+export const notaDaCobranca = (texto: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(texto) || TEXTO_DA_COBRANCA, tipo: 'cobranca' });
+/** A resposta de quem faz. */
+export const notaDaResposta = (texto: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(texto), tipo: 'resposta' });
+export const historicoDaCobranca = (por: string, em: string, quem: string): Nota => ({ por, em, texto: 'Cobrou uma atualização de ' + quem });
+export const historicoDaRespostaDaCobranca = (por: string, em: string): Nota => ({ por, em, texto: 'Respondeu à cobrança' });
+
+/** A tarefa com a cobrança (ou a resposta) e a linha do histórico (o repositório em memória e os testes). */
+export function comCobranca<T extends TarefaDelegada>(t: T, nota: Nota, linha: Nota): T {
+  return { ...t, pareceres: [...t.pareceres, nota], historico: noHistorico(t.historico, [linha]), atualizadaEm: nota.em };
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // criar e mudar
@@ -650,7 +1001,7 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     // a que nasce em andamento ("Já estava fazendo") já leva o Iniciou: o tempo trabalhado conta dali (12/11/2026)
     pareceres: [], historico: [...historicoDaCriacao(base, o.em), ...(r.status === 'andamento' ? [{ por: o.por.nome, em: o.em, texto: 'Iniciou a tarefa' }] : [])], anexos: [],
     ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
-    ...(r.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
+    ...(r.tipo === 'documentos' || r.tipo === 'envio' ? { tipo: r.tipo } : {}),
   };
 }
 
@@ -693,6 +1044,7 @@ export function mudar(antes: TarefaDelegada, r: Rascunho, por: Pessoa, em: strin
     ...antes, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), ...comOsClientes(r.clientes),
     prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, responsavel: r.responsavel || antes.responsavel,
     concluidaEm, atualizadaEm: em, historico: noHistorico(antes.historico, linhas),
+    ...(r.entrega !== undefined && r.entrega !== (antes.entrega ?? '') ? { entrega: r.entrega } : {}),
   };
 }
 
@@ -717,7 +1069,7 @@ export function mudancasDoRascunho(inicial: Rascunho, r: Rascunho): Partial<Rasc
 /** O rascunho da tarefa como está agora com as mudanças da pessoa por cima (o resto fica como está no banco). */
 export const comMudancas = (t: TarefaDelegada, m: Partial<Rascunho>): Rascunho => ({ ...rascunhoDe(t), ...m });
 
-const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'clientes', 'prioridade', 'prazo', 'prazoHora', 'status', 'responsavel', 'concluidaEm'] as const;
+const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'clientes', 'prioridade', 'prazo', 'prazoHora', 'status', 'responsavel', 'concluidaEm', 'entrega'] as const;
 export type CampoDaMudanca = typeof CAMPOS_DA_MUDANCA[number];
 
 /**
@@ -745,6 +1097,52 @@ export function comAnexos(t: TarefaDelegada, anexos: readonly Anexo[], por: stri
   return { ...t, anexos: [...t.anexos, ...anexos], historico: noHistorico(t.historico, anexos.map(a => historicoDoAnexo('anexou', a.nome, por, em))), atualizadaEm: em };
 }
 
+/** Até quantos links e o maior endereço. */
+export const MAIS_LINKS = 20;
+export const MAIOR_LINK_DA_TAREFA = 500;
+
+/** O que impede de fixar o link ('' quando pode): só http(s), sem repetir e até MAIS_LINKS. */
+export function problemaDoLink(url: string, atuais: readonly Pick<LinkDaTarefa, 'url'>[] = []): string {
+  const u = url.trim();
+  if (!u) return 'Cole o link.';
+  if (u.length > MAIOR_LINK_DA_TAREFA) return 'O link passou de ' + MAIOR_LINK_DA_TAREFA + ' caracteres.';
+  try { const x = new URL(u); if (x.protocol !== 'https:' && x.protocol !== 'http:') return 'O link precisa começar com https://'; } catch { return 'O link precisa começar com https://'; }
+  if (atuais.some(l => l.url === u)) return 'Este link já está na tarefa.';
+  if (atuais.length >= MAIS_LINKS) return 'Até ' + MAIS_LINKS + ' links por tarefa.';
+  return '';
+}
+
+/**
+ * O link como vai para a tarefa: o colado sem o https:// (www.site.com.br/x) ganha o https:// (15/11/2026: "melhora a questao dos
+ * links"); o resto fica como veio (o problemaDoLink diz se não serve).
+ */
+export function linkCompleto(texto: string): string {
+  const u = texto.trim();
+  if (!u || /^[a-z][a-z0-9+.-]*:/i.test(u) || /\s/.test(u) || !/^[^/]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(u)) return u;
+  return 'https://' + u.replace(/^\/+/, '');
+}
+
+/** O nome curto do link na lista: o site sem o www e o caminho (sem o https://, a consulta e a barra do fim). */
+export function rotuloDoLink(url: string): string {
+  try {
+    const x = new URL(url);
+    const caminho = decodeURIComponent(x.pathname).replace(/\/+$/, '');
+    return x.hostname.replace(/^www\./, '') + caminho;
+  } catch { return url; }
+}
+
+export const historicoDoLink = (acao: 'fixou' | 'tirou', url: string, por: string, em: string): Nota => ({ por, em, texto: (acao === 'fixou' ? 'Fixou o link ' : 'Tirou o link ') + url });
+
+export function comLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
+  const u = url.trim();
+  return { ...t, links: [...(t.links || []), { url: u, por, em }], historico: noHistorico(t.historico, [historicoDoLink('fixou', u, por, em)]), atualizadaEm: em };
+}
+
+export function semLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
+  if (!(t.links || []).some(l => l.url === url)) return t;
+  return { ...t, links: (t.links || []).filter(l => l.url !== url), historico: noHistorico(t.historico, [historicoDoLink('tirou', url, por, em)]), atualizadaEm: em };
+}
+
 export function semAnexo(t: TarefaDelegada, anexoId: string, por: string, em: string): TarefaDelegada {
   const a = t.anexos.find(x => x.id === anexoId);
   if (!a) return t;
@@ -761,7 +1159,13 @@ export const pessoasDaTarefa = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsav
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null);
 const lerPessoa = (v: unknown): Pessoa => { const p = obj(v); return { uid: texto(p?.uid), nome: texto(p?.nome) }; };
-const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x).map(x => ({ por: texto(x.por), em: texto(x.em), texto: texto(x.texto) })) : []);
+// o tipo da cobrança e da resposta vem junto (16/11/2026: "O cobrar atualizacoes tbm não ta funcionando": a leitura jogava o
+// tipo fora, a cobrança gravava no banco e voltava como parecer comum, sem o Cobrada nem o Responder cobrança)
+const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x)
+  .map(x => ({
+    por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' || x.tipo === 'adiamento' ? { tipo: x.tipo } : {}),
+    ...(x.tipo === 'adiamento' && Number.isInteger(x.minutos) && Number(x.minutos) > 0 && Number(x.minutos) <= 60 ? { minutos: Number(x.minutos) } : {}),
+  })) : []);
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {
@@ -791,8 +1195,10 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     pareceres: lerNotas(x.pareceres), historico: lerNotas(x.historico),
     anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
+    ...(Array.isArray(x.links) && x.links.length ? { links: x.links.map(obj).filter((l): l is Record<string, unknown> => !!l && !!texto(l.url)).map(l => ({ url: texto(l.url), por: texto(l.por), em: texto(l.em) })) } : {}),
     ...(etapaDelegada ? { etapaDelegada } : {}),
-    ...(x.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
+    ...(x.tipo === 'documentos' || x.tipo === 'envio' ? { tipo: x.tipo } : {}),
+    ...(x.entrega === 'enviada' || x.entrega === 'contestada' || x.entrega === '' ? { entrega: x.entrega } : {}),
     ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),
   };
 }

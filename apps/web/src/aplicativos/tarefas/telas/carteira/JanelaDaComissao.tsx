@@ -3,7 +3,7 @@
 // o serviço é um dos comissionados e a comissão sai sozinha, do valor do serviço × a % que o Financeiro definiu. Pelo
 // Financeiro (doFinanceiro): a pessoa e qualquer mês (a retroativa), já aprovada. Depois de decidida, só ver.
 import { carteira, formatos } from '@nads/core';
-import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela } from '@nads/ui';
+import { BotaoFechar, CampoData, CampoReais, Icone, MenuSuspenso, useJanela } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useJanelaDaComissao, type ClienteDaLista } from './useCarteiraDaPessoa';
@@ -65,7 +65,6 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
     document.addEventListener('keydown', tecla);
     return () => document.removeEventListener('keydown', tecla);
   });
-  const doServico = vm.servicos.find(s => s.nome === vm.servico);
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
@@ -75,7 +74,9 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo">
-          {travada && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
+          {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
+          {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
+          {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
           {doFinanceiro && <p className="registro-dica"><Icone nome="lampada" />Registrada pelo Financeiro, a comissão já entra aprovada e aparece na Carteira da pessoa.</p>}
           <div className="registro-props">
             {doFinanceiro && (
@@ -113,21 +114,28 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
             <Propriedade icone="checklist" rotulo="Serviço">
               {travada ? <span>{vm.servico || comissao?.descricao || '—'}</span> : (
                 <MenuSuspenso rotulo={vm.servico || 'Escolher o serviço'} className={ESCOLHA + (vm.servico ? '' : ' vazio')} titulo="O serviço comissionado" flutuante largura={320}
-                  itens={vm.servicos.map(s => ({ rotulo: s.nome + (s.percentual ? ' · ' + s.percentual.toLocaleString('pt-BR') + '%' : ' · sem %'), marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
+                  itens={vm.servicos.map(s => ({ rotulo: s.nome, marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
               )}
             </Propriedade>
-            <Propriedade icone="dinheiro" rotulo="Valor do serviço">
-              <input type="text" inputMode="decimal" value={vm.valorServico} disabled={travada} onChange={e => vm.setValorServico(e.target.value)} placeholder="Quanto o cliente pagou" aria-label="Valor do serviço" />
-            </Propriedade>
-            <Propriedade icone="check" rotulo="Comissão">
-              <span className="num"><b>{formatos.reais(vm.valor)}</b>{vm.percentual > 0 && <span className="fraco"> · {vm.percentual.toLocaleString('pt-BR')}% do serviço</span>}
-                {!travada && vm.servico && doServico && !doServico.percentual && <span className="fraco"> · o Financeiro ainda não definiu a %</span>}</span>
-            </Propriedade>
+            {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
+            {!(vm.oculta && comissao) && (
+              <Propriedade icone="dinheiro" rotulo="Valor do serviço">
+                {/* o R$ pronto e a máscara (Vitor, 13/11/2026: "deixa um cifrao ja pronto") */}
+                <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
+              </Propriedade>
+            )}
+            {/* só o valor, sem a porcentagem (Vitor, 13/11/2026: "oculte a porcentagem para o usuario"; "o valor da comissao aparece, menos a
+                porcentagem..., tira isso de financeiro ainda nao decidiu"); a escondida nem o valor (16/11/2026) */}
+            {vm.oculta ? (
+              <Propriedade icone="check" rotulo="Comissão"><span className="fraco">{comissao ? carteira.rotuloDaSituacao(comissao.situacao) : 'O sistema calcula'}</span></Propriedade>
+            ) : (
+              <Propriedade icone="check" rotulo="Comissão"><span className="num"><b>{formatos.reais(vm.valor)}</b></span></Propriedade>
+            )}
           </div>
           {erros.length > 0 && <ul className="registro-erros">{erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
         <footer className="registro-pe">
-          {comissao && !travada && <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.apagar()}><Icone nome="lixeira" />Apagar</button>}
+          {vm.podeApagar && <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.apagar()}><Icone nome="lixeira" />Apagar</button>}
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={fechar}>{travada ? 'Fechar' : 'Cancelar'}</button>
           {!travada && <button type="button" className="btn btn-primary" disabled={salvando} onClick={() => void vm.salvar()} title="Gravar (Ctrl+Enter)"><Icone nome="check" />{comissao ? 'Gravar' : 'Registrar'}</button>}

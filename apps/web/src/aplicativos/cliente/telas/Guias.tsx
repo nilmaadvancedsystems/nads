@@ -1,109 +1,115 @@
-// Guias e obrigações da Área do Cliente (Vitor, 16 e 17/10/2026: "melhora essa aba"), no layout da "Agenda de tributos e
-// obrigações" do protótipo com as peças do nads. Versão D: à esquerda (2/3), as guias a pagar e as pagas no mês em listas
-// de grade (as mesmas colunas da Visão geral: logo, nome, situação, valor e ações), com o baixar carmim só na vencida (ou
-// na mais urgente); à direita (1/3), o resumo do mês (o total a pagar, o total pago e o próximo vencimento) e os avisos
-// da contabilidade (os recados e o certificado digital); embaixo, o que o escritório entrega no mês. Com o banco
-// (17/10/2026) as guias pagas ainda não têm fonte: somem o card "Pagas no mês" e o "Total pago" do resumo. Polida de
-// 17/10/2026: sem recado nem certificado (sempre, com o banco), o card dos avisos some em vez de dizer "Nenhum aviso"; o
-// contador some no zero; o vazio diz o que importa ("Nada para pagar neste mês"). "Melhora mais" de 17/10/2026: o Baixar
-// com nome (carmim na próxima a pagar) e, na vencida, o "Pedir nova", que abre o chamado já com o assunto e o título.
-import { formatos } from '@nads/core';
+// Guias e obrigações da Área do Cliente (Vitor, 16 e 17/10/2026: "melhora essa aba"). Refeita em 13/11/2026 ("refaça
+// esses 3"; "muita informação", a mesma guia aparecia duas vezes), na linguagem da tela de Solicitações: o resumo do mês
+// numa linha embaixo do título (no lugar dos três cartões grandes); à esquerda, as guias do mês com abas (A pagar e
+// Pagas) dentro do cartão, cada uma com as ações em três casas fixas, e embaixo o que o escritório entrega no mês numa
+// lista simples alinhada; à direita, o calendário discreto (só os pontos; o clique no dia destaca o que vence nele) e os
+// avisos da contabilidade. No celular, uma coluna: as guias primeiro. Só desenha: o estado e as contas vêm de useGuias.ts.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"): saíram o cartão "O que o escritório
+// entrega" (trabalho interno do escritório) e os "Avisos da contabilidade" (já aparecem no "Precisa de você" da Visão
+// geral); o resumo ficou com dois fatos; cada guia com a data curta, o valor e um botão (o resto no "⋯"). Ficam a lista
+// (com as abas A pagar e Pagas) e, ao lado, o calendário.
+import './guias.css';
 import { Icone, SeletorMes } from '@nads/ui';
-import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
-import { LinhaDeGuia } from '../partes/LinhaDeGuia';
-import { LinhaDePaga } from '../partes/LinhaDePaga';
-import { Vazio } from '../partes/Vazio';
+import { useRef } from 'react';
+import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
+import { LinhaGuiaDoMes, LinhaPagaDoMes } from '../partes/LinhaGuiaDoMes';
 import { useGuias } from './useGuias';
 import type { DaCasca } from './useAreaCliente';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
+
+const SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export function Guias(props: DaCasca) {
   const vm = useGuias(props);
-  const temAvisos = vm.avisos.length > 0 || !!vm.certificado;
+  const raiz = useRef<HTMLDivElement>(null);
+  // o clique no dia destaca o que vence nele e, se estiver fora da vista, leva até lá
+  const escolherDia = (dia: number) => {
+    const soltar = vm.diaEscolhido === dia;
+    vm.escolherDia(dia);
+    if (!soltar) requestAnimationFrame(() => raiz.current?.querySelector<HTMLElement>('.cli-gu-lista [data-dia="' + dia + '"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+  };
+  // (16/11/2026) sobrou só o calendário ao lado: sem nada no mês, a lista ocupa a largura toda
+  const temLado = vm.calendario.mostra;
+  const naPagas = vm.aba === 'pagas';
   return (
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Guias e obrigações</h1>
+          <MarcaDaTela /><h1 className="page-title">Guias e obrigações</h1><AjudaDaTela />
+          {/* os números do mês numa linha (16/11/2026, "muita informação": no máximo dois fatos) */}
+          <p className="cli-subtitulo cli-gu-resumo cli-numeros-guias">
+            {vm.resumo.map((t, i) => (
+              <span key={i} className={'cli-gu-trecho' + (t.tom ? ' t-' + t.tom : '')}>{t.antes && t.antes + ' '}<b>{t.valor}</b>{t.depois && ' ' + t.depois}</span>
+            ))}
+          </p>
         </div>
         <SeletorMes valor={vm.mes} onMudar={vm.mudarMes} rotulo="Mês" max={vm.ultimo} />
       </div>
 
-      <div className="cli-duas cli-guias">
-        <div className="cli-coluna">
-          <section className="card">
-            <div className="card-head"><h3>A pagar</h3>{vm.guias.length > 0 && <span className="cli-conta">{vm.guias.length}</span>}</div>
-            {vm.guias.length ? (
-              <ul className="cli-lista">
-                {vm.guias.map(g => (
-                  <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} faltam={vm.faltam(g)} destaque={g.id === vm.urgente}
-                    ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova} />
+      <div ref={raiz} className={'cli-gu' + (temLado ? ' com-lado' : '')}>
+        <div className="cli-gu-col">
+          {/* as guias do mês, com as abas dentro do cartão (como em Solicitações) */}
+          <section className="card cli-gu-lista" data-tutorial="a-pagar">
+            <div className="cli-gu-barra">
+              <div className="cli-gu-abas" role="tablist" aria-label="Guias do mês">
+                {vm.abas.map(a => (
+                  <button key={a.id} type="button" role="tab" aria-selected={vm.aba === a.id} className={'cli-gu-aba' + (vm.aba === a.id ? ' ativa' : '')} onClick={() => vm.escolherAba(a.id)}>
+                    {a.rotulo}{a.n > 0 && <span className="cli-gu-conta">{a.n}</span>}
+                  </button>
                 ))}
-              </ul>
-            ) : <Vazio icone="checkCircle" titulo="Nada para pagar neste mês" />}
-          </section>
-
-          {vm.mostraPagas && (
-            <section className="card">
-              <div className="card-head"><h3>Pagas no mês</h3>{vm.pagas.length > 0 && <span className="cli-conta">{vm.pagas.length}</span>}</div>
-              {vm.pagas.length ? (
-                <ul className="cli-lista cli-pagas">
-                  {vm.pagas.map(p => <LinhaDePaga key={p.id} paga={p} ocupado={vm.baixando === p.id} onComprovante={id => void vm.comprovante(id)} />)}
-                </ul>
-              ) : <Vazio icone="recibo" titulo="Nada pago neste mês" />}
-            </section>
-          )}
-        </div>
-
-        <div className="cli-coluna">
-          <section className="card cli-resumo">
-            <div className="card-head"><h3>Resumo do mês</h3></div>
-            <dl>
-              <div><dt>Total a pagar</dt><dd className="cli-valor">{formatos.reais(vm.totalAPagar)}</dd></div>
-              {vm.mostraPagas && <div><dt>Total pago</dt><dd className="cli-valor">{formatos.reais(vm.totalPago)}</dd></div>}
-              <div>
-                <dt>Próximo vencimento</dt>
-                <dd>{vm.proxima ? <><b>{vm.proxima.vencimento.slice(0, 5)}</b> <span className="hint">{vm.faltam(vm.proxima) || 'hoje'}</span></> : <span className="hint">Nenhum</span>}</dd>
               </div>
-            </dl>
-          </section>
-
-          {temAvisos && (
-            <section className="card cli-avisos-card">
-              <div className="card-head"><h3>Avisos da contabilidade</h3></div>
-              <ul className="cli-lista">
-                {vm.avisos.map(a => (
-                  <li key={a.id} className="cli-linha cli-aviso-bloco">
-                    <span className="cli-aviso-ico" aria-hidden="true"><Icone nome="sino" width={16} height={16} /></span>
-                    <div className="cli-g-txt"><b>{a.titulo}</b><p className="hint cli-quebra">{a.texto}</p>
-                      {a.ir && <button type="button" className="btn btn-ghost cli-link" onClick={() => vm.irPara(a.ir!)}>{a.ir === 'documentos' ? 'Enviar agora' : 'Abrir'}<Icone nome="chevronRight" width={16} height={16} /></button>}
-                    </div>
-                  </li>
+              {!naPagas && vm.comPdf > 1 && (
+                <button type="button" className="cli-gu-todas" disabled={!!vm.juntando} onClick={vm.baixarTodas} title="Baixar as guias do mês num .zip">
+                  <Icone nome="download" width={15} height={15} />{vm.juntando || 'Baixar todas'}
+                </button>
+              )}
+            </div>
+            {naPagas ? (
+              vm.pagas.length ? (
+                <ul className="cli-gu-itens">
+                  {vm.pagas.map(x => <LinhaPagaDoMes key={x.paga.id} paga={x.paga} dia={x.dia} escolhida={x.escolhida} ocupado={vm.baixando === x.paga.id} onComprovante={id => void vm.comprovante(id)} />)}
+                </ul>
+              ) : <p className="cli-gu-vazio"><Icone nome="recibo" width={18} height={18} />{vm.vazio}</p>
+            ) : vm.guias.length ? (
+              <ul className="cli-gu-itens">
+                {vm.guias.map(x => (
+                  <LinhaGuiaDoMes key={x.guia.id} guia={x.guia} codigo={x.codigo} quando={x.quando} destaque={x.destaque} escolhida={x.escolhida} dia={x.dia}
+                    ocupado={vm.baixando === x.guia.id || vm.vista.abrindo === x.guia.id} onVer={vm.verGuia} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova} />
                 ))}
-                {vm.certificado && (
-                  <li className="cli-linha cli-aviso-bloco">
-                    <span className="cli-aviso-ico" aria-hidden="true"><Icone nome="escudo" width={16} height={16} /></span>
-                    <div className="cli-g-txt">
-                      <div className="cli-aviso-titulo">
-                        <b>Certificado digital {vm.certificado.tipo}</b>
-                        <span className={'badge ' + (vm.certificado.tom === 'bad' ? 'badge-bad' : vm.certificado.tom === 'ok' ? 'badge-ok' : 'badge-warn')}>{vm.certificado.tom === 'bad' ? 'Vencido' : vm.certificado.tom === 'ok' ? 'Em dia' : 'Vence logo'}</span>
-                      </div>
-                      <p className="hint cli-quebra">{vm.certificado.texto}</p>
-                      {vm.certificado.tom !== 'ok' && <button type="button" className="btn btn-ghost cli-link" onClick={() => vm.irPara('chamados')}>Pedir a renovação<Icone nome="chevronRight" width={16} height={16} /></button>}
-                    </div>
-                  </li>
-                )}
               </ul>
-            </section>
-          )}
+            ) : <p className="cli-gu-vazio"><Icone nome="checkCircle" width={18} height={18} />{vm.vazio}</p>}
+          </section>
         </div>
+
+        {temLado && (
+          <div className="cli-gu-col cli-gu-lado">
+            {/* o calendário do mês, discreto: hoje em carmim, os pontos na cor da situação; o clique destaca o dia */}
+            <section className="card cli-gu-agenda cli-agenda-mes">
+              <div className="cli-gu-cabeca"><h3>{vm.calendario.titulo}</h3></div>
+              <div className="cli-gu-semana" aria-hidden="true">{SEMANA.map((d, k) => <span key={k}>{d}</span>)}</div>
+              <div className="cli-gu-cal cli-calendario">
+                {vm.calendario.semanas.flat().map(d => d.vazio ? <span key={d.chave} /> : (
+                  <button key={d.chave} type="button" disabled={!d.pontos.length} title={d.titulo || undefined} aria-label={d.titulo || 'Dia ' + d.dia}
+                    aria-pressed={d.pontos.length ? d.escolhido : undefined} onClick={() => escolherDia(d.dia)}
+                    className={'cli-gu-dia' + (d.hoje ? ' hoje cli-cal-hoje' : '') + (d.passou ? ' passou' : '') + (d.escolhido ? ' escolhido' : '') + (d.pontos.length ? ' tem' : '')}>
+                    <span className="cli-gu-num">{d.dia}</span>
+                    <span className="cli-gu-pontos">{d.pontos.map((c, k) => <i key={k} className={c} />)}</span>
+                  </button>
+                ))}
+              </div>
+              {/* (13/11/2026, revisão) só as cores que aparecem no mês */}
+              <p className="cli-gu-legenda cli-legenda-cal" aria-hidden="true">
+                {vm.calendario.legenda.map(l => <span key={l.classe}><i className={l.classe} />{l.rotulo}</span>)}
+              </p>
+            </section>
+          </div>
+        )}
       </div>
 
-      {vm.agenda.length > 0 && (
-        <section className="card">
-          <div className="card-head"><h3>O que o escritório entrega no mês</h3></div>
-          <ul className="cli-lista cli-agenda">{vm.agenda.map(i => <LinhaDaAgenda key={i.id} item={i} />)}</ul>
-        </section>
-      )}
+      {/* a pré-visualização da guia (12/11/2026) */}
+      {vm.vista.aberto && <JanelaDoArquivo arquivo={vm.vista.aberto} onBaixar={vm.vista.baixar} onFechar={vm.vista.fechar}
+        onAnterior={vm.setas.anterior} onProximo={vm.setas.proximo} posicao={vm.setas.posicao} abrindo={!!vm.vista.abrindo} />}
     </>
   );
 }

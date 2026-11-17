@@ -1,6 +1,7 @@
 // De onde a Área do Cliente tira os dados (VITE_FONTE):
 //   "banco"    → o espelho do link no Firestore do Entregas (areaCliente.firestore.ts); o token "exemplo" continua com os
-//                dados de exemplo, para mostrar o site a quem pergunta sem abrir a empresa de ninguém;
+//                dados de exemplo, para mostrar o site a quem pergunta sem abrir a empresa de ninguém; e o link da empresa de
+//                teste (PERSONALY COMPANY, 13/11/2026) também mostra os dados de exemplo, sem nada ir ao banco;
 //   "exemplos" → só os dados de exemplo (areaCliente.memoria.ts), nada sai do navegador.
 import type { RepoAreaCliente } from './areaCliente';
 import { criarRepoAreaClienteFirestore } from './areaCliente.firestore';
@@ -17,11 +18,14 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     baixarDocumento: (token, id) => escolher(token).baixarDocumento(token, id),
     baixarComprovante: (token, id) => escolher(token).baixarComprovante(token, id),
     baixarDocumentoDp: (token, id) => escolher(token).baixarDocumentoDp(token, id),
+    notasDoMes: (token, codigo, mes) => escolher(token).notasDoMes(token, codigo, mes),
+    extratoDoMes: (token, codigo, mes) => escolher(token).extratoDoMes(token, codigo, mes),
+    pedirDanfe: (token, chave) => escolher(token).pedirDanfe(token, chave),
   };
 }
 
 const memoria = criarRepoAreaClienteMemoria();
 
 export const repoAreaCliente: RepoAreaCliente = import.meta.env.VITE_FONTE === 'banco'
-  ? (() => { const banco = criarRepoAreaClienteFirestore(); return porToken(t => (t === TOKEN_DE_EXEMPLO ? memoria : banco)); })()
+  ? (() => { const banco = criarRepoAreaClienteFirestore(undefined, { repo: memoria, token: TOKEN_DE_EXEMPLO }); return porToken(t => (t === TOKEN_DE_EXEMPLO ? memoria : banco)); })()
   : memoria;

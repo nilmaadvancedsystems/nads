@@ -49,4 +49,12 @@ export * as auditoriaItens from './auditoriaItens';
 export * as painel from './painel';
 // o delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): tarefas.delegadas.*
 export * as delegadas from './regras/delegadas';
+// o Início novo (13/11/2026): os grupos Hoje / Amanhã / Esta semana, o calendário, os comentários e as notificações
+export * as agenda from './regras/agenda';
+// os feriados e os pontos facultativos de Taiobeiras (o calendário do Início; 15/11/2026): tarefas.feriados.*
+export * as feriados from './regras/feriados';
+// a saudação do Início novo (13/11/2026): pelo turno, a segunda-feira, o aniversário e as frases personalizadas
+export * as saudacao from './regras/saudacao';
+// as reuniões das Notificações do Início novo (13/11/2026): o Sênior pede, o Diretor e o Dono aprovam e marcam direto
+export * as reunioes from './regras/reunioes';
 export * from './regras/historicosDoContabil';

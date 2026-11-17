@@ -21,6 +21,13 @@ export interface RepoCarteira {
   salvarComissao(c: carteira.ComissaoParaSalvar, id?: string): Promise<void>;
   /** os serviços comissionados e a % de cada um (o Financeiro define; sem nada gravado, os 9 do começo, sem a %) */
   servicos(): ListaAoVivo<carteira.ServicoComissionado>;
+  /**
+   * A comissão escondida (16/11/2026): se quem está registra as comissões dela sem ver o valor (a % própria fica num lugar do
+   * banco que nenhuma tela lê; o robô calcula). Só a marca, nunca a %.
+   */
+  minhaComissaoOculta(): { carregada: boolean; ligada: boolean };
+  /** quem está na Carteira */
+  meuUid(): string | null;
   apagarComissao(id: string): Promise<void>;
   salvarLancamento(l: carteira.LancamentoParaSalvar, id?: string): Promise<void>;
   apagarLancamento(id: string): Promise<void>;
@@ -45,8 +52,15 @@ export type QuemNaCarteira = () => { uid: string; nome: string } | null;
 const agora = () => new Date().toISOString();
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Nos exemplos: algumas comissões, lançamentos, um holerite e uma conta de salário paga, para quem está. */
-export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
+/** a % de mentira da comissão escondida nos exemplos (a de verdade só o robô lê) */
+const PERCENTUAL_DE_TESTE = 30;
+
+/**
+ * Nos exemplos: algumas comissões, lançamentos, um holerite e uma conta de salário paga, para quem está; com oculta, quem
+ * está registra a comissão escondida (o "robô" daqui calcula num instante, com uma % de mentira) e já tem duas: uma
+ * calculada e uma esperando.
+ */
+export function criarCarteiraMemoria(quem: QuemNaCarteira, oculta = false): RepoCarteira {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
@@ -62,12 +76,30 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
   });
   let servicos = carteira.servicosPadrao().map((s, i) => ({ ...s, percentual: i < 3 ? 10 : 0 }));
   const comissaoDe = (x: carteira.ComissaoParaSalvar) => ({ ...x, descricao: x.servico, valor: carteira.valorDaComissao(x.valorServico, x.percentual) });
+  // a escondida: sem o valor e sem a %; o "robô" calcula e tira o valor do serviço, como o da nuvem
+  const escondida = (x: Omit<carteira.Comissao, 'valor'> & { valor?: number }, calculo: carteira.CalculoDaComissao): carteira.Comissao => {
+    const { valorServico, ...resto } = x;
+    delete resto.percentual;
+    return calculo === 'feito'
+      ? { ...resto, valor: carteira.valorDaComissao(valorServico ?? 0, PERCENTUAL_DE_TESTE), oculta: true, calculo }
+      : { ...resto, valorServico, valor: 0, oculta: true, calculo };
+  };
+  const calcular = (id: string) => setTimeout(() => {
+    comissoes = comissoes.map(o => (o.id === id && o.calculo === 'fila' ? escondida(o, 'feito') : o));
+    mudou();
+  }, 1200);
   let comissoes: carteira.Comissao[] = [
     c('c1', eu().uid, eu().nome, mes, 'PADARIA EXEMPLO LTDA', 350, 'lancada'),
     c('c2', eu().uid, eu().nome, mes, 'MERCADO EXEMPLO', 520, 'aprovada'),
     c('c3', eu().uid, eu().nome, antes, 'TRANSPORTES EXEMPLO', 410, 'paga'),
     c('c4', 'uid-clara', 'Clara', mes, 'OFICINA EXEMPLO', 280, 'aprovada'),
     c('c5', 'uid-felipe', 'Felipe', mes, 'FARMÁCIA EXEMPLO', 190, 'lancada'),
+    // a recusada também (13/11/2026: "coloca dados testes para a carteira, por favor, todos os tipos")
+    c('c6', eu().uid, eu().nome, mes, 'OFICINA EXEMPLO', 240, 'recusada'),
+    ...(oculta ? [
+      escondida({ ...c('c7', eu().uid, eu().nome, mes, 'CONSTRUTORA EXEMPLO', 0, 'lancada'), valorServico: 900 }, 'feito'),
+      escondida({ ...c('c8', eu().uid, eu().nome, mes, 'PADARIA EXEMPLO LTDA', 0, 'lancada'), valorServico: 300 }, 'fila'),
+    ] : []),
   ];
   let lancamentos: carteira.Lancamento[] = [
     { id: 'l1', tipo: 'entrada', data: mes + '-05', descricao: 'Salário', categoria: 'Salário', valor: 3200 },
@@ -94,10 +126,17 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
     meusDocumentos: () => lista(documentos.filter(x => x.uid === eu().uid)),
     minhasContas: () => lista(contas.filter(x => x.funcionario?.uid === eu().uid)),
     async salvarComissao(x, id) {
-      if (id) trocar(id, o => ({ ...o, ...comissaoDe(x), competencia: o.competencia }));
+      if (x.oculta && !id) {
+        const nova = escondida({ ...x, descricao: x.servico, id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }, 'fila');
+        comissoes = [...comissoes, nova];
+        mudou();
+        calcular(nova.id);
+      } else if (id) trocar(id, o => ({ ...o, ...comissaoDe(x), competencia: o.competencia }));
       else { comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }]; mudou(); }
     },
     servicos: () => lista(servicos),
+    minhaComissaoOculta: () => ({ carregada: true, ligada: oculta }),
+    meuUid: () => eu().uid,
     async salvarServicos(l) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); mudou(); },
     async registrarComissaoDe(para, x) {
       comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: para.uid, nome: para.nome, situacao: 'aprovada', criadoEm: agora(), decididoPor: eu().nome, decididoEm: agora() }];

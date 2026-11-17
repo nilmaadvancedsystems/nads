@@ -4,6 +4,7 @@ export { EMPRESAS } from './lista';
 export * from './dp';
 export * from './fiscal';
 export * from './busca';
+export * from './razaoSocial';
 export * from './bancos';
 export * as cadastro from './cadastro';
 export * from './legislacaoDp';

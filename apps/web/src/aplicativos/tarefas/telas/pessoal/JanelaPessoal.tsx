@@ -5,6 +5,9 @@
 import { animacoesPedidas, BotaoFechar, CampoArquivo, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, MenuSuspenso, NIVEIS_DE_ANIMACAO, nivelDeAnimacao, SeletorTema, useIndicador, useJanela, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
 import { animate, cleanInlineStyles, spring, stagger, type JSAnimation } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useNovidade } from '../../../../comum/novidades';
+import { simularEmailPrincipal } from '../../casca/simulacaoDoEmailPrincipal';
+import { EntradaDeTeste } from '../entrar/EntradaDeTeste';
 
 // As animações (14/10/2026: "faça do clique ao perfil as configurações pessoais", com o animejs): a janela chega com mola e
 // a lateral em cascata; trocar de tópico desliza o conteúdo e as linhas chegam em cascata (os ícones de perfil saltam);
@@ -61,10 +64,15 @@ function EditarNome({ atual, salvar, rotulo = 'Nome' }: { atual: string; salvar:
 
 /**
  * O e-mail: o texto com o lápis ao lado; só o lápis abre a edição (Vitor, 12/11/2026: "coloca um ícone de lápis, não de
- * editar direto"). Salvou ou cancelou, volta ao texto.
+ * editar direto"). Pede a senha junto: depois da troca a Tarefas entra de novo com o e-mail novo, sem derrubar a pessoa.
  */
-function EditarEmail({ atual, salvar }: { atual: string; salvar: (n: string) => Promise<string | null> }) {
+function EditarEmail({ atual, salvar }: { atual: string; salvar: (email: string, senha: string) => Promise<string | null> }) {
   const [editando, setEditando] = useState(false);
+  const [email, setEmail] = useState(atual);
+  const [senha, setSenha] = useState('');
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const fechar = () => { setEditando(false); setEmail(atual); setSenha(''); setErro(''); };
   if (!editando) {
     return (
       <span className="pessoal-nome">
@@ -74,10 +82,20 @@ function EditarEmail({ atual, salvar }: { atual: string; salvar: (n: string) => 
     );
   }
   return (
-    <span className="pessoal-nome">
-      <EditarNome atual={atual} rotulo="E-mail" salvar={async n => { const e = await salvar(n); if (!e) setEditando(false); return e; }} />
-      <button type="button" className="btn btn-outline" onClick={() => setEditando(false)}>Cancelar</button>
-    </span>
+    <form className="pessoal-form" onSubmit={async ev => {
+      ev.preventDefault(); setSalvando(true);
+      const e = await salvar(email, senha);
+      setSalvando(false);
+      if (e) setErro(e); else fechar();
+    }}>
+      <input type="email" autoComplete="username" placeholder="E-mail novo" aria-label="E-mail novo" value={email} onChange={ev => { setEmail(ev.target.value); setErro(''); }} />
+      <input type="password" autoComplete="current-password" placeholder="Sua senha (a mesma de agora)" aria-label="Senha" value={senha} onChange={ev => { setSenha(ev.target.value); setErro(''); }} />
+      {erro && <p className="pessoal-erro">{erro}</p>}
+      <span className="pessoal-nome">
+        <button type="submit" className="btn btn-primary" disabled={salvando || !senha || email.trim() === atual}>{salvando ? <span className="btn-spinner" /> : null}Trocar</button>
+        <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
+      </span>
+    </form>
   );
 }
 
@@ -116,6 +134,24 @@ function TrocarSenha({ salvar }: { salvar: (atual: string, nova: string, confirm
   );
 }
 
+/** O ⚡ do e-mail principal (16/11/2026, a novidade 'email-principal'; só no modo desenvolvedor): a janela e a entrada por e-mail com uma conta de mentira */
+function DadosDeTesteDoEmailPrincipal() {
+  const ligada = useNovidade('email-principal');
+  if (!ligada) return null;
+  return (
+    <ConfigLinha titulo="E-mail pessoal" descricao="A janela obrigatória que pede o e-mail e a entrada pelo e-mail, como cada pessoa vai ver.">
+      <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={340} titulo="Modo desenvolvedor · nada é gravado"
+        itens={[
+          // (a conta que já tem e-mail de verdade não vê mais a janela: 16/11/2026, só quem entra pelo nome@nilma.local)
+          { rotulo: 'Janela: conta que entra pelo nome (@nilma.local)', icone: 'usuario', onClick: () => simularEmailPrincipal('so-nome') },
+          'separador',
+          { rotulo: 'Tela de entrada pelo e-mail', icone: 'logOut', onClick: () => simularEmailPrincipal('entrada') },
+        ]} />
+      <EntradaDeTeste />
+    </ConfigLinha>
+  );
+}
+
 function MinhaConta({ vm }: { vm: VmPessoal }) {
   const c = vm.conta;
   const arquivo = useRef<HTMLInputElement>(null);
@@ -127,7 +163,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         <div className="cfg-linha pessoal-foto-linha">
           <Foto foto={c.foto} iniciais={c.iniciais} grande />
           <div className="cfg-linha-texto">
-            <span className="cfg-linha-titulo">{c.nome}</span>
+            <span className="cfg-linha-titulo">{c.completo}</span>
           </div>
           <div className="cfg-linha-controle">
             <CampoArquivo semCaixa semFoco ref={arquivo} aceitar="image/*" onEscolher={f => { if (f) c.trocarFoto(f); }} />
@@ -148,14 +184,20 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         </div>
       </ConfigSecao>
       <ConfigSecao titulo="Conta">
-        <ConfigLinha titulo="Nome">
+        <ConfigLinha titulo="Nome" descricao={c.comLogin ? 'O seu nome de usuário: você entra com ele. Não pode repetir o de outra pessoa.' : undefined}>
           {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : <span className="cfg-valor">{c.nome}</span>}
         </ConfigLinha>
+        {c.comLogin && (
+          <ConfigLinha titulo="Sobrenome">
+            <EditarNome atual={c.sobrenome} rotulo="Sobrenome" salvar={c.trocarSobrenome} />
+          </ConfigLinha>
+        )}
         <ConfigLinha titulo="E-mail" descricao={c.comLogin ? 'O e-mail com que você entra. A senha continua a mesma.' : undefined}>
           {c.comLogin ? <EditarEmail atual={c.email} salvar={c.trocarEmail} /> : <span className="cfg-valor">{c.email || '—'}</span>}
         </ConfigLinha>
         <ConfigLinha titulo="Setor" descricao="Quem muda é um administrador."><span className="cfg-valor">{c.setor}</span></ConfigLinha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
+        <DadosDeTesteDoEmailPrincipal />
       </ConfigSecao>
       <ConfigSecao titulo="Preferências">
         <ConfigLinha titulo="Tema"><SeletorTema /></ConfigLinha>

@@ -28,6 +28,10 @@ export function useUsuariosDoNads() {
   useEffect(() => { const r = setInterval(() => setAgora(new Date()), 30 * 1000); return () => clearInterval(r); }, []);
   const equipe = repo.equipe();
   const sessoes = repo.sessoes();
+  // os registros de cada inativo aberto (16/11/2026, excluir usuário): onde a pessoa está gravada; procura ao abrir a janela
+  const [registros, setRegistros] = useState<Record<string, string[] | { semConferir: string[] }>>({});
+  const [excluindo, setExcluindo] = useState(false);
+  const podeExcluir = usuarios.podeExcluirUsuarios(operador);
   const q = busca.trim().toLowerCase();
 
   async function tentar(f: () => Promise<void>, ok: string) {
@@ -46,7 +50,9 @@ export function useUsuariosDoNads() {
     .map(p => ({
       ...p,
       cargo: p.departamento || p.nivel ? usuarios.rotuloDoCargo(p) : '',
-      iniciais: usuarios.iniciais(p.nome),
+      /** nome e sobrenome (12/11/2026); as contas antigas, só o nome até completar */
+      completo: usuarios.nomeCompleto(p),
+      iniciais: usuarios.iniciais(usuarios.nomeCompleto(p)),
       rotulosDosPapeis: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id)).map(x => x.rotulo),
       computadores: sessoes.filter(s => s.uid === p.uid),
       online: p.ativo && usuarios.estaOnline(p.vistoNoNads, agora),
@@ -60,6 +66,19 @@ export function useUsuariosDoNads() {
     }))
     // quem está online primeiro, depois os ativos, depois os inativos
     .sort((a, b) => Number(b.online) - Number(a.online) || Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome));
+
+  const aberta = janela?.tipo === 'pessoa' ? todas.find(p => p.uid === janela.uid) || null : null;
+  // ao abrir um inativo (e só para o Diretor e o Dono), procura os registros dele uma vez
+  const procurar = !!aberta && !aberta.ativo && podeExcluir && aberta.nivel !== 'dono' ? aberta : null;
+  useEffect(() => {
+    if (!procurar) return;
+    let vivo = true;
+    repo.registrosDe(procurar).then(
+      r => { if (vivo) setRegistros(x => ({ ...x, [procurar.uid]: usuarios.registrosDaBusca(r) })); },
+      () => { if (vivo) setRegistros(x => ({ ...x, [procurar.uid]: { semConferir: [] } })); });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- procura de novo só quando muda a pessoa
+  }, [procurar?.uid]);
 
   const linhas = todas
     .filter(p => filtro === 'todos' || (filtro === 'online' ? p.online : filtro === 'ativos' ? p.ativo : !p.ativo))
@@ -81,9 +100,13 @@ export function useUsuariosDoNads() {
       { titulo: 'Inativos', itens: linhas.filter(p => !p.ativo) },
     ].filter(g => g.itens.length),
     // as janelas: a da pessoa (os dados ao vivo) e a de criar o acesso
-    pessoa: janela?.tipo === 'pessoa' ? todas.find(p => p.uid === janela.uid) || null : null,
+    pessoa: aberta,
     novoAberto: janela?.tipo === 'novo',
-    abrirPessoa: (uid: string) => setJanela({ tipo: 'pessoa', uid }),
+    abrirPessoa: (uid: string) => {
+      // procura os registros de novo a cada vez que abre (alguém pode ter gravado o nome nesse meio-tempo)
+      setRegistros(x => { const n = { ...x }; delete n[uid]; return n; });
+      setJanela({ tipo: 'pessoa', uid });
+    },
     abrirNovo: () => setJanela({ tipo: 'novo' }),
     fechar: () => setJanela(null),
     departamentos: usuarios.DEPARTAMENTOS,
@@ -121,6 +144,28 @@ export function useUsuariosDoNads() {
       }
       await tentar(() => repo.ativar(p.uid, !p.ativo), p.nome + (p.ativo ? ' desativado.' : ' ativado.'));
     },
+    /**
+     * Excluir usuário (Vitor, 16/11/2026): só o Diretor e o Dono, só o inativo e só quem não tem registro no sistema. A tela
+     * mostra o Excluir (pode), o motivo (não pode) ou que ainda está conferindo.
+     */
+    exclusao: (p: usuarios.Usuario) => usuarios.situacaoDaExclusao(operador, p, registros[p.uid] ?? null),
+    excluindo,
+    async excluir(p: usuarios.Usuario) {
+      // confere de novo na hora (a lista pode ter mudado com a janela aberta)
+      if (usuarios.situacaoDaExclusao(operador, p, registros[p.uid] ?? null).tipo !== 'pode' || excluindo) return;
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Excluir ' + usuarios.nomeCompleto(p) + '?', texto: 'A conta some da equipe e não volta. Para a pessoa entrar de novo, só criando um acesso novo.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      setExcluindo(true);
+      try {
+        // a última conferência, logo antes de apagar
+        const deNovo = usuarios.registrosDaBusca(await repo.registrosDe(p));
+        if (!Array.isArray(deNovo) || deNovo.length) { setRegistros(x => ({ ...x, [p.uid]: deNovo })); toast('Não excluí ' + p.nome + ': veja o motivo na janela.'); return; }
+        await repo.excluir(p.uid);
+        setJanela(null);
+        toast(p.nome + ' excluído.');
+      } catch (err) { toast('Não consegui excluir: ' + (err as Error).message); } finally { setExcluindo(false); }
+    },
     /** o link de nova senha da pessoa (só o admin; vale 24 h e uma vez): a pessoa abre e escolhe a senha */
     linkDeSenha: (uid: string) => (linkDeSenha?.uid === uid ? linkDeSenha.link : ''),
     gerandoSenha,
@@ -143,6 +188,8 @@ export function useUsuariosDoNads() {
       const novo = email.trim().toLowerCase();
       if (!usuarios.ehEmailDeLogin(novo)) { toast('Escreva um e-mail válido (por exemplo, nome@nilma.local).'); return false; }
       if (novo === p.email.trim().toLowerCase()) return true;
+      // o próprio, em Minha conta: lá a Tarefas pede a senha e entra de novo com o e-mail novo (aqui a sessão cairia)
+      if (!!operador?.email && operador.email.trim().toLowerCase() === p.email.trim().toLowerCase()) { toast('O seu e-mail você troca em Minha conta (clique na sua foto): lá a Tarefas pede a senha e você continua dentro.'); return false; }
       if (equipe.lista.some(x => x.uid !== p.uid && x.email.trim().toLowerCase() === novo)) { toast('Esse e-mail já é o login de outra pessoa.'); return false; }
       let deu = false;
       await comLinha('email:' + p.uid, async () => {

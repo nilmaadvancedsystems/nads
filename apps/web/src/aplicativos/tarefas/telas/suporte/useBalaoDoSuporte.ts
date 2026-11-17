@@ -3,6 +3,8 @@
 // nas instruções, diretas. "Não resolveu" (ou "Outro"): o arquivo e uma frase vão para os Feedbacks, aba Bugs, e o robô do
 // PC do escritório investiga e escreve o report para o admin. As regras da conversa ficam no core (suporte). Enviado, vira um
 // ticket: fica no chat, com a barra de andamento, até ser resolvido (09/11/2026), vindo do banco, em qualquer navegador.
+// A conversa (16/11/2026): o admin perguntou num pedido (ou num feedback comum, que então entra aqui), a janela grande abre
+// sozinha uma vez por pergunta nova (este navegador lembra quantas mensagens já mostrou); fechada, fica no ticket do balão.
 import { suporte as s } from '@nads/core';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
@@ -29,6 +31,23 @@ function lerChat(): ChatGuardado | null {
     if (!g || !Array.isArray(g.escolhas) || g.enviado || Date.now() - g.comecou > DURA_MS) { localStorage.removeItem(CHAVE); return null; }
     return g;
   } catch { return null; }
+}
+
+// as conversas já mostradas na janela grande, neste navegador: id → quantas mensagens tinha quando abriu
+const CHAVE_VISTAS = 'nads-conversas-vistas';
+function lerVistas(): Record<string, number> {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(CHAVE_VISTAS) || '{}');
+    return v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, n]) => [k, Number(n) || 0])) : {};
+  } catch { return {}; }
+}
+
+/** A conversa aberta na janela grande: o pedido, o que a pessoa mandou e o resumo da conversa. */
+export interface ConversaAberta {
+  id: string; pedido: string; texto: string; quando: string; status: s.SituacaoDoTicket;
+  conversa: s.ResumoDaConversa | null;
+  /** a última é do suporte (falta responder) */
+  esperando: boolean;
 }
 
 /** junta os anexos novos aos que já estão (o mesmo nome e tamanho não entra duas vezes) */
@@ -137,18 +156,52 @@ export function useBalaoDoSuporte() {
     }
   }
 
-  const tickets = repo.meus()
-    .filter(f => f.tipo === 'bug' && s.ticketNoChat(f.status, f.resolvidoEm, agora))
+  const meus = repo.meus();
+  // os pedidos de bug e, desde 16/11/2026, os feedbacks comuns em que o suporte perguntou alguma coisa
+  const tickets = meus
+    .filter(f => (f.tipo === 'bug' || f.conversa) && s.ticketNoChat(f.status, f.resolvidoEm, agora))
     .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
     .map(f => {
       const n = s.progressoDoTicket(f.status);
       return {
         id: f.id, pedido: s.codigoDoPedido(f.id), status: f.status, fala: s.falaDoTicket(f.status), testando: f.status === 'testando',
-        resumo: s.lerMensagemDoBug(f.texto).comentario || f.caminho || 'Pedido ao suporte',
+        resumo: f.tipo === 'bug' ? s.lerMensagemDoBug(f.texto).comentario || f.caminho || 'Pedido ao suporte' : s.resumir(f.texto),
+        // a conversa no ticket: a última mensagem e se falta responder (abrir leva à janela grande)
+        conversa: f.conversa ? {
+          qtd: f.conversa.qtd, esperando: f.status !== 'feito' && s.situacaoDaConversa(f.conversa) === 'esperando',
+          quem: f.conversa.ultimaDe === 'admin' ? 'O suporte perguntou' : 'Você respondeu', texto: f.conversa.ultimoTexto,
+        } : null,
         etapas: s.ETAPAS_DO_TICKET.map((rotulo, i) => ({ rotulo, estado: i + 1 < n || n === 4 ? 'feita' : i + 1 === n ? 'atual' : '' })),
       };
     });
   const emAberto = tickets.filter(t => t.status !== 'feito');
+
+  // a janela grande da conversa: abre sozinha na pergunta nova que este navegador ainda não mostrou (uma de cada vez)
+  const [vistas, setVistas] = useState(lerVistas);
+  const [conversaAberta, setConversaAberta] = useState('');
+  const marcarVista = (id: string) => {
+    const qtd = meus.find(f => f.id === id)?.conversa?.qtd ?? 0;
+    setVistas(v => {
+      const novas = Object.fromEntries([...Object.entries(v).filter(([k]) => k !== id), [id, qtd]].slice(-200));
+      try { localStorage.setItem(CHAVE_VISTAS, JSON.stringify(novas)); } catch { /* abre de novo na próxima */ }
+      return novas;
+    });
+  };
+  const paraAbrir = s.conversaParaAbrir(meus, vistas);
+  useEffect(() => {
+    if (!paraAbrir || conversaAberta) return;
+    setConversaAberta(paraAbrir);
+    marcarVista(paraAbrir);
+  // a pergunta nova decide (marcarVista lê os meus do momento)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paraAbrir, conversaAberta]);
+  const daConversa = meus.find(f => f.id === conversaAberta);
+  const naJanela: ConversaAberta | null = daConversa ? {
+    id: daConversa.id, pedido: s.codigoDoPedido(daConversa.id), status: daConversa.status, conversa: daConversa.conversa,
+    texto: daConversa.tipo === 'bug' ? s.lerMensagemDoBug(daConversa.texto).comentario || daConversa.caminho || daConversa.texto : daConversa.texto,
+    quando: daConversa.criadoEm ? new Date(daConversa.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+    esperando: daConversa.status !== 'feito' && s.situacaoDaConversa(daConversa.conversa) === 'esperando',
+  } : null;
   // a conversa guiada aparece sem ticket, ao abrir outro, ou se já tem resposta dada
   const conversando = !tickets.length || abrindoOutro || escolhas.length > 0 || resolvido;
 
@@ -175,6 +228,13 @@ export function useBalaoDoSuporte() {
 
   return {
     tickets, conversando, emAberto: emAberto.length, paraTestar: emAberto.some(t => t.testando),
+    /** quantas conversas esperam a sua resposta (o botão do balão chama a atenção) */
+    paraResponder: s.esperandoMinhaResposta(meus),
+    /** a conversa na janela grande (null = fechada) */
+    conversaAberta: naJanela,
+    abrirConversa: (id: string) => { marcarVista(id); setConversaAberta(id); },
+    /** fecha a janela grande; a conversa continua no ticket do balão */
+    fecharConversa: () => { if (conversaAberta) marcarVista(conversaAberta); setConversaAberta(''); },
     abrirOutro: () => { recomecar(); lerBotoes(true); setAbrindoOutro(true); },
     voltarAosTickets: () => { recomecar(); setAbrindoOutro(false); },
     responderTeste: (id: string, funcionou: boolean) => { setErro(''); repo.responderTeste(id, funcionou).catch((e: Error) => setErro('Não consegui registrar: ' + e.message)); },

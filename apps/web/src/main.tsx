@@ -26,10 +26,17 @@ window.addEventListener('vite:preloadError', ev => {
 // trocar de tela: a barrinha do topo aparece já no clique, antes de a tela nova ocupar o navegador (todo navigate do app
 // passa por aqui; mudar só a busca da URL, como um filtro, não é trocar de tela)
 const navegarNoRoteador = roteador.navigate.bind(roteador);
+// a Área do Cliente troca de aba na hora, com tudo já carregado (13/11/2026: "ao trocar de tela roda a animação de
+// carregamento"): entre as abas da mesma empresa (/cliente/<token>/…) não mostra o N de vidro nem a barra
+const tokenDaArea = (caminho: string) => /^\/cliente\/([^/]+)/.exec(caminho)?.[1] ?? '';
 const eOutraTela = (para: unknown) => {
   if (typeof para === 'number') return true;
   const caminho = typeof para === 'string' ? para : (para as { pathname?: string } | null)?.pathname;
-  return !!caminho && new URL(caminho, location.href).pathname !== location.pathname;
+  if (!caminho) return false;
+  const destino = new URL(caminho, location.href).pathname;
+  const token = tokenDaArea(location.pathname);
+  if (token && token === tokenDaArea(destino)) return false;
+  return destino !== location.pathname;
 };
 roteador.navigate = ((para: unknown, opcoes?: unknown) => {
   const seguir = () => (navegarNoRoteador as (a: unknown, b?: unknown) => Promise<void>)(para, opcoes);

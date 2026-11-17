@@ -433,6 +433,33 @@ export function revelarTitulo(el: HTMLElement): (() => void) | null {
   return () => { a.revert(); partes.revert(); };
 }
 
+/** as saudações já digitadas nesta aba do navegador (trocou de aba do Início e voltou: ela já aparece inteira) */
+const jaDigitadas = new Set<string>();
+
+/**
+ * A saudação do Início novo digitada letra a letra, uma vez, ao abrir a tela (Vitor, 13/11/2026: "As saudações deixa ela
+ * maior, com uma animação de digitação"). É a exceção pedida por ele à regra "sem animação" (02/10/2026), só na saudação.
+ * Mexe só no texto do nó que o React criou (o React não perde a referência) e devolve o texto inteiro no fim; enquanto
+ * digita, a largura fica a da frase inteira (a fileira ao lado não anda) e o leitor de tela lê a frase toda.
+ */
+export function digitarTitulo(el: HTMLElement): (() => void) | null {
+  const no = el.firstChild;
+  const texto = el.textContent || '';
+  if (!no || no.nodeType !== Node.TEXT_NODE || el.childNodes.length !== 1 || !texto.trim() || jaDigitadas.has(texto)) return null;
+  if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+  jaDigitadas.add(texto);
+  const t = no as Text;
+  el.style.minWidth = el.getBoundingClientRect().width + 'px';
+  el.setAttribute('aria-label', texto);
+  el.classList.add('digitando');
+  let n = 0;
+  t.data = '';
+  const fim = () => { clearInterval(id); t.data = texto; el.style.minWidth = ''; el.removeAttribute('aria-label'); el.classList.remove('digitando'); };
+  const id = setInterval(() => { n++; t.data = texto.slice(0, n); if (n >= texto.length) fim(); }, 45);
+  // interrompida no meio (a tela saiu; o React de desenvolvimento monta duas vezes): a frase pode ser digitada de novo
+  return () => { if (n < texto.length) jaDigitadas.delete(texto); fim(); };
+}
+
 /**
  * animate do animejs, mas o nads não anima (semMovimento): a peça vai na hora para onde a animação terminaria.
  */

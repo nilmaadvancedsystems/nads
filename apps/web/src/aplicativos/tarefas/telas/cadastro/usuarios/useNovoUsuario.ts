@@ -15,6 +15,7 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
   const { toast } = useRetorno();
   const admin = !!useOperador().operador?.admin;
   const [nome, setNome] = useState('');
+  const [sobrenome, setSobrenome] = useState('');
   const [senha, setSenha] = useState('');
   const [departamento, setDepartamento] = useState<usuarios.Departamento | ''>('');
   const [nivel, setNivel] = useState<usuarios.Nivel | ''>('');
@@ -24,9 +25,9 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
   const [link, setLink] = useState('');
   const [gerandoLink, setGerandoLink] = useState(false);
 
-  const conta: usuarios.NovaConta = { nome, senha, departamento, nivel, extras };
+  const conta: usuarios.NovaConta = { nome, sobrenome, senha, departamento, nivel, extras };
   const emails = repo.equipe().lista.map(p => p.email);
-  const erros = usuarios.conferirNovaConta(conta, emails);
+  const erros = usuarios.conferirNovaConta(conta, emails, repo.equipe().lista.map(p => p.nome));
   const limpo = nome.trim().replace(/\s+/g, ' ');
   const papeis = usuarios.papeisDaContaNova(usuarios.ehDepartamento(departamento) ? departamento : null, usuarios.ehNivel(nivel) ? nivel : null, extras)
     .filter(p => p !== 'staff');
@@ -34,7 +35,7 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
   return {
     exemplos: repo.exemplos,
     admin,
-    nome, setNome, senha, setSenha, departamento, setDepartamento, nivel, setNivel,
+    nome, setNome, sobrenome, setSobrenome, senha, setSenha, departamento, setDepartamento, nivel, setNivel,
     login: limpo.length >= 2 ? usuarios.emailDoNome(limpo) : '',
     departamentos: usuarios.DEPARTAMENTOS,
     niveis: usuarios.NIVEIS_ESCOLHIVEIS,
@@ -43,7 +44,7 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
     /** os papéis que a conta vai ter (os do cargo + os marcados) */
     papeis: papeis.map(p => usuarios.PAPEIS.find(x => x.id === p)?.rotulo || p),
     erros: tentou ? erros : [],
-    iniciais: limpo ? usuarios.iniciais(limpo) : '?',
+    iniciais: limpo ? usuarios.iniciais(usuarios.nomeCompleto({ nome: limpo, sobrenome })) : '?',
     criando,
     /** o link de cadastro (15/10/2026): a pessoa abre, escolhe o nome e a senha e entra com o cargo e os papéis daqui */
     link, gerandoLink,

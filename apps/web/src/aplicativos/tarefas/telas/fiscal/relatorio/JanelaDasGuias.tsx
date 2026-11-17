@@ -6,8 +6,8 @@
 // de você, os clientes prontos e o Disparar), sem os já enviados. "Enviados": os e-mails que saíram na competência da
 // apuração (o registro do robô; fica mesmo depois que o lote some). "Modelo do e-mail": o assunto e o texto
 // (config/envioFiscal), como o do DP › Envios.
-import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
-import { useState } from 'react';
+import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
+import { useState, type ReactNode } from 'react';
 import type { GuiaDoLote, ViaDaGuia } from '../../../dados/loteFiscal';
 import { JanelaLateral } from '../../janela/JanelaLateral';
 import { efetivoDaGuia, useEnvioDeGuias, type VmEnvioDeGuias } from './useEnvioDeGuias';
@@ -26,8 +26,11 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
 // o que não é guia (escolhido como OUTRO: o relatório da Antecipação ICMS-ES que vai junto, 12/11/2026) aparece pelo nome do arquivo
 const naoEGuia = (a: GuiaDoLote) => a.escolha?.tipo === 'OUTRO';
 const tipoDaGuia = (a: GuiaDoLote) => naoEGuia(a) ? a.nome.replace(/\.[^.]+$/, '') : [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
-const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }];
-const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador', scireport: 'SCI Report' };
+const VIAS: { valor: ViaDaGuia; rotulo: string; icone?: ReactNode }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }, { valor: 'zap', rotulo: 'WhatsApp', icone: <LogoWhatsApp /> }];
+// o ícone do WhatsApp é a imagem que o Vitor mandou (12/11/2026, ticket 1ORUBY: "O icone"), em logos-bancos/whatsapp.png
+const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador', scireport: 'SCI Report', zap: 'WhatsApp' };
+/** o número do wa.me para ler: '5527999990000' -> '(27) 99999-0000' */
+const foneLegivel = (n: string) => { const d = n.replace(/^55/, ''); return '(' + d.slice(0, 2) + ') ' + d.slice(2, -4) + '-' + d.slice(-4); };
 
 /** escolher o cliente na lista do escritório, com a busca (o mesmo menu do lote do DP) */
 function MenuDeCliente({ vm, arquivo }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote }) {
@@ -81,9 +84,9 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
         <tbody>
           {grupos.flatMap(g => g.arquivos.map((a, k) => {
             const r = vm.noRelatorio(a);
-            const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : '';
+            const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : g.via === 'zap' && !g.whatsapp ? 'sem WhatsApp no Cadastro nem no Entregas' : '';
             const jaNaRota = g.resultado?.jaNaRota || [];
-            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.via === 'zap' ? 'WhatsApp ' + foneLegivel(g.whatsapp) : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (
@@ -92,6 +95,10 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
                     <td className="dp-cliente" rowSpan={g.arquivos.length}>
                       <span className="dp-cliente-nome" title={g.nome}>{g.nome || 'Cliente ' + g.codigo}</span>
                       {erro ? <span className="fgts-pedido-erro">{erro}</span> : <span className="fraco">{destino}</span>}
+                      {/* o WhatsApp (12/11/2026): a conversa com a mensagem do modelo e as guias baixadas para anexar */}
+                      {g.via === 'zap' && g.whatsapp && g.resultado?.status !== 'enviado' && (
+                        <button type="button" className="link-btn" title="Abre a conversa com a mensagem do Modelo do e-mail e baixa as guias para anexar" onClick={() => vm.abrirWhatsApp(g)}>Abrir no WhatsApp</button>
+                      )}
                     </td>
                     <td rowSpan={g.arquivos.length}>
                       {mexe ? <Segmentado valor={g.via} opcoes={VIAS} onMudar={v => void vm.mudarVia(g.codigo, v)} /> : <span className="fraco">{ROTULO_DA_VIA[g.via]}</span>}
@@ -133,7 +140,8 @@ function Enviados({ vm }: { vm: VmEnvioDeGuias }) {
             <li key={x.id} className="dp-lote-falta">
               <div className="dp-lote-falta-nome">
                 <b><span className="num fraco">{x.codigo}</span> {x.empresa || 'Cliente ' + x.codigo}</b>
-                <span className="fraco">{hora(x.enviadoEm)} · {x.via === 'impresso' ? 'impresso, na rota do Entregas' : x.via === 'econtador' ? 'pelo eContador' : x.via === 'scireport' ? 'pelo SCI Report' : 'para ' + (x.para.join(', ') || '—')}{x.por ? ' · por ' + x.por : ''}</span>
+                <span className="fraco">{hora(x.enviadoEm)} · {x.via === 'impresso' ? 'impresso, na rota do Entregas' : x.via === 'econtador' ? 'pelo eContador' : x.via === 'scireport' ? 'pelo SCI Report' : x.via === 'zap' ? 'pelo WhatsApp' : 'para ' + (x.para.join(', ') || '—')}{x.por ? ' · por ' + x.por : ''}
+                  {x.via === 'zap' && <>{' · '}<button type="button" className="link-btn" title="Abre a conversa do cliente com a mensagem do Modelo do e-mail" onClick={() => vm.abrirWhatsAppDoEnviado(x)}>Abrir no WhatsApp</button></>}</span>
                 {/* cada guia abre pelo id no Drive; os envios de antes do id, pelo nome na pasta do cliente */}
                 {(() => {
                   const gs = x.guiasDrive.length ? x.guiasDrive : x.guias.map(nome => ({ nome, id: '' }));
@@ -213,7 +221,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
         { id: 'enviados', rotulo: 'Enviados', icone: 'check', contador: vm.enviados.length },
         { id: 'modelo', rotulo: 'Modelo do e-mail', icone: 'envelope' },
       ]}
-      resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail, impresso, eContador ou SCI Report</span></div>}>
+      resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail, impresso, eContador, SCI Report ou WhatsApp</span></div>}>
       {topico === 'modelo' ? <Modelo vm={vm} /> : topico === 'enviados' ? <Enviados vm={vm} /> : (
         <>
           {vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (

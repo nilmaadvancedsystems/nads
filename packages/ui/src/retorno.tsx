@@ -11,6 +11,8 @@ import { useJanela } from './janela';
 
 export interface BotaoModal<T> {
   rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger';
+  /** uma classe a mais no botão (12/11/2026: o "Pedir desligamento" da Área do Cliente, em vermelho sem o fundo) */
+  classe?: string;
   /** roda no próprio clique, antes de fechar (ex.: abrir uma aba nova, que o navegador só deixa no clique) */
   aoClicar?: () => void;
 }
@@ -231,7 +233,7 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
         {o.corpo}
         <div className="modal-actions">
           {ordemDosBotoes(botoes).map((b, i) => (
-            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
+            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline') + (b.classe ? ' ' + b.classe : '')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
           ))}
         </div>
         {o.fecharEm && <div className="modal-ok-barra" />}

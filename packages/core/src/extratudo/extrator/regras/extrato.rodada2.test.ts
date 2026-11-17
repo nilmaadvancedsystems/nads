@@ -144,6 +144,9 @@ describe('o relatório de cobrança na pasta do extrato', () => {
   it('reconhece só o relatório de títulos', () => {
     expect(ehRelatorioDeTitulos('Relatório - Títulos por Período Sacado Nosso Número Vlr. Cobrado')).toBe(true);
     expect(ehRelatorioDeTitulos('Extrato conta corrente LIQUIDACAO COBRANCA Nosso Número 123')).toBe(false);
+    // o do Sicoob com o título em desenho (17/11/2026, na 292): pelas colunas
+    expect(ehRelatorioDeTitulos('Cedente: 640581 - FITO Tipo Consulta: Liquidação e baixa Sacado Nosso Número Seu Número Dt. Previsão Crédito Vencimento Valor (R$) Vlr. Mora Vlr. Desc. Dt. Liquid. Vlr. Cobrado')).toBe(true);
+    expect(ehRelatorioDeTitulos('Extrato Sicoob SALDO ANTERIOR 1.000,00 LIQ. COBRANÇA Sacado Nosso Número Vlr. Cobrado Dt. Liquid.')).toBe(false);
     expect(ehRelatorioDeTitulos('Relatório - Títulos por Período')).toBe(false);
     expect(ehRelatorioDeTitulos('Extrato conta corrente Saldo anterior 10,00 Relatório - Títulos por Período Sacado Nosso Número')).toBe(false);
   });

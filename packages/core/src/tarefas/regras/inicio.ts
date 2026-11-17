@@ -2,6 +2,7 @@
 // como avisos, ultima empresa que foi mexida e progresso dela"; "a parte de minhas empresas vai virar um dashboard de
 // progresso das empresas"): o mural de avisos do escritório (o admin e o diretor escrevem, todos leem) e o resumo do
 // progresso das empresas na competência.
+import type { Anexo } from './delegadas';
 import type { SituacaoGeral } from './execucao';
 
 /** Um aviso do mural do escritório. */
@@ -14,6 +15,135 @@ export interface AvisoDoEscritorio {
   em: string;
   /** fica em cima dos outros */
   fixado?: boolean;
+  // o comunicado das Notificações do Início novo (13/11/2026: "Reuniões, avisos vai ficar fixado nessa pagina, links de
+  // estudos da legislação, etc, comunicação de equipe em geral (sem chats)"); o aviso antigo não tem nada disso
+  /** o tipo (sem tipo, é um aviso) */
+  tipo?: TipoDeComunicado;
+  /** o título curto (sem título, a lista mostra o começo do texto) */
+  titulo?: string;
+  /** o link (o estudo da legislação, a sala da reunião): só http(s) */
+  link?: string;
+  /** o dia e a hora da reunião, 'aaaa-mm-ddThh:mm' */
+  quando?: string;
+  // (Vitor, 13/11/2026: "Avisos que o diretor/dono marca como 'Pedir confirmação' o usuario deve marcar 'Recebido'"; "O aviso tb
+  // pode ser lançado no mural para determinados colaboradores apenas (setor, usuarios)")
+  /** o login de quem escreveu (o aviso antigo só tem o nome) */
+  porUid?: string;
+  /** cada destinatário marca "Recebido" */
+  pedeConfirmacao?: boolean;
+  recebidos?: { uid: string; nome: string; em: string }[];
+  /** para quem é (sem isto, todos) */
+  para?: DestinoDoAviso;
+  /** o jeito do aviso (sem isto, o aviso normal) e, na norma da empresa, o PDF */
+  jeito?: JeitoDoAviso;
+  anexo?: Anexo;
+}
+
+/**
+ * O jeito do aviso (Vitor, 13/11/2026: "Clicou em aviso / Tipo: Norma da empresa (vo mandar o pdf) / Aviso de datas (Feriados,
+ * recessos) / Aviso normal / Avisos nao tem link"): a norma leva o PDF; nenhum aviso tem link.
+ */
+export type JeitoDoAviso = 'normal' | 'datas' | 'norma';
+export const JEITOS_DO_AVISO: readonly { valor: JeitoDoAviso; rotulo: string }[] = [
+  { valor: 'normal', rotulo: 'Aviso normal' },
+  { valor: 'datas', rotulo: 'Aviso de datas (feriados, recessos)' },
+  { valor: 'norma', rotulo: 'Norma da empresa' },
+];
+export const ehJeitoDoAviso = (v: unknown): v is JeitoDoAviso => JEITOS_DO_AVISO.some(x => x.valor === v);
+
+/** O nome do tipo na tela: o do jeito, no aviso que tem ("Norma da empresa"), senão o do tipo. */
+export function rotuloDoTipoDoAviso(a: Pick<AvisoDoEscritorio, 'tipo' | 'jeito'>): string {
+  if ((a.tipo || 'aviso') === 'aviso' && a.jeito && a.jeito !== 'normal') return JEITOS_DO_AVISO.find(x => x.valor === a.jeito)?.rotulo || 'Aviso';
+  return rotuloDoComunicado(a.tipo);
+}
+
+/** Para quem é o aviso: todos, os setores escolhidos ou as pessoas escolhidas. */
+export type DestinoDoAviso = { tipo: 'todos' } | { tipo: 'setor'; setores: string[] } | { tipo: 'pessoas'; pessoas: { uid: string; nome: string }[] };
+
+/** A pessoa vê o aviso? (todos; o setor dela; ela escolhida; ou foi ela que escreveu) */
+export function avisoParaMim(a: Pick<AvisoDoEscritorio, 'para' | 'porUid'>, eu: { uid: string; departamento?: string | null }): boolean {
+  const p = a.para;
+  if (!p || p.tipo === 'todos' || (a.porUid && a.porUid === eu.uid)) return true;
+  if (p.tipo === 'setor') return !!eu.departamento && p.setores.includes(eu.departamento);
+  return p.pessoas.some(x => x.uid === eu.uid);
+}
+
+/** A pessoa já marcou o Recebido? */
+export const recebeu = (a: Pick<AvisoDoEscritorio, 'recebidos'>, uid: string) => (a.recebidos || []).some(x => x.uid === uid);
+
+/** O aviso com o Recebido da pessoa (uma vez só). */
+export function comRecebido<T extends AvisoDoEscritorio>(a: T, quem: { uid: string; nome: string }, em: string): T {
+  if (recebeu(a, quem.uid)) return a;
+  return { ...a, recebidos: [...(a.recebidos || []), { uid: quem.uid, nome: quem.nome, em }] };
+}
+
+/** Quem devia marcar o Recebido e ainda não marcou (da equipe, os destinatários sem quem escreveu). */
+export function faltaReceber(a: AvisoDoEscritorio, equipe: readonly { uid: string; nome: string; departamento?: string | null }[]): { uid: string; nome: string }[] {
+  if (!a.pedeConfirmacao) return [];
+  return equipe.filter(p => p.uid !== a.porUid && avisoParaMim({ para: a.para }, p) && !recebeu(a, p.uid)).map(p => ({ uid: p.uid, nome: p.nome }));
+}
+
+/** O nome do destino na tela ("Todos", "Fiscal e DP", "Clara e Felipe"). */
+export function rotuloDoDestino(p: DestinoDoAviso | undefined, setores: readonly { id: string; rotulo: string }[] = []): string {
+  const junta = (l: string[]) => (l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || '');
+  if (!p || p.tipo === 'todos') return 'Todos';
+  if (p.tipo === 'setor') return junta(p.setores.map(s => setores.find(x => x.id === s)?.rotulo || s));
+  return junta(p.pessoas.map(x => x.nome));
+}
+
+/** Os tipos de comunicado da equipe, na ordem do menu. */
+export type TipoDeComunicado = 'aviso' | 'reuniao' | 'estudo' | 'geral';
+export const TIPOS_DE_COMUNICADO: readonly { valor: TipoDeComunicado; rotulo: string }[] = [
+  { valor: 'aviso', rotulo: 'Aviso' },
+  { valor: 'reuniao', rotulo: 'Reunião' },
+  { valor: 'estudo', rotulo: 'Estudo da legislação' },
+  { valor: 'geral', rotulo: 'Comunicado' },
+];
+export const ehTipoDeComunicado = (v: unknown): v is TipoDeComunicado => TIPOS_DE_COMUNICADO.some(x => x.valor === v);
+export const rotuloDoComunicado = (t: TipoDeComunicado | undefined): string => TIPOS_DE_COMUNICADO.find(x => x.valor === (t || 'aviso'))?.rotulo || 'Aviso';
+
+/** O maior título e o maior link (em caracteres). */
+export const MAIOR_TITULO_DO_COMUNICADO = 120;
+export const MAIOR_LINK = 500;
+
+/** O link é um endereço da internet (http ou https)? */
+export function linkValido(link: string): boolean {
+  if (!link) return false;
+  try { const u = new URL(link); return (u.protocol === 'https:' || u.protocol === 'http:') && link.length <= MAIOR_LINK; } catch { return false; }
+}
+
+/** O que vai além do texto num comunicado novo. */
+export interface ExtrasDoComunicado { tipo: TipoDeComunicado; titulo: string; link: string; quando: string; pedeConfirmacao?: boolean; para?: DestinoDoAviso; jeito?: JeitoDoAviso; comPdf?: boolean }
+
+/** O que impede de publicar o comunicado ('' quando pode): o texto, o título, o link e, na reunião, o dia e a hora. */
+export function problemaDoComunicado(texto: string, x: ExtrasDoComunicado): string {
+  if (x.titulo.trim().length > MAIOR_TITULO_DO_COMUNICADO) return 'O título passou de ' + MAIOR_TITULO_DO_COMUNICADO + ' caracteres.';
+  if (x.tipo !== 'aviso' && x.link.trim() && !linkValido(x.link.trim())) return 'O link precisa começar com https://';
+  if (x.tipo === 'aviso' && x.jeito === 'norma' && !x.comPdf) return 'Anexe o PDF da norma.';
+  if (x.tipo === 'estudo' && !x.link.trim()) return 'Ponha o link do estudo.';
+  if (x.tipo === 'reuniao' && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(x.quando)) return 'Escolha o dia e a hora da reunião.';
+  if (x.para?.tipo === 'setor' && !x.para.setores.length) return 'Escolha o setor.';
+  if (x.para?.tipo === 'pessoas' && !x.para.pessoas.length) return 'Escolha as pessoas.';
+  return problemaDoAviso(texto);
+}
+
+/** Os campos de um comunicado novo para gravar (só os que têm valor; o aviso simples fica como o antigo). */
+export function camposDoComunicado(x: ExtrasDoComunicado): Partial<Pick<AvisoDoEscritorio, 'tipo' | 'titulo' | 'link' | 'quando' | 'pedeConfirmacao' | 'para' | 'jeito'>> {
+  return {
+    ...(x.tipo !== 'aviso' ? { tipo: x.tipo } : {}),
+    ...(x.titulo.trim() ? { titulo: x.titulo.trim() } : {}),
+    // o aviso não tem link; o jeito só no aviso (o normal fica sem, como o antigo)
+    ...(x.tipo !== 'aviso' && x.link.trim() ? { link: x.link.trim() } : {}),
+    ...(x.tipo === 'aviso' && x.jeito && x.jeito !== 'normal' ? { jeito: x.jeito } : {}),
+    ...(x.tipo === 'reuniao' && x.quando ? { quando: x.quando } : {}),
+    ...(x.pedeConfirmacao ? { pedeConfirmacao: true } : {}),
+    ...(x.para && x.para.tipo !== 'todos' ? { para: x.para } : {}),
+  };
+}
+
+/** As reuniões que ainda vão acontecer ('aaaa-mm-ddThh:mm' de agora), a mais próxima primeiro. */
+export function proximasReunioes<T extends Pick<AvisoDoEscritorio, 'tipo' | 'quando'>>(lista: readonly T[], agora: string): T[] {
+  return lista.filter(a => a.tipo === 'reuniao' && !!a.quando && a.quando >= agora).sort((a, b) => a.quando!.localeCompare(b.quando!));
 }
 
 /** O maior aviso (em caracteres). */

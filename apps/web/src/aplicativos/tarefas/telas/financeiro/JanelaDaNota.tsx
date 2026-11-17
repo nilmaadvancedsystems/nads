@@ -31,6 +31,10 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="modal registro-novo nf-janela" role="dialog" aria-modal="true" aria-label="Nota fiscal">
         <header className="registro-topo">
+          {/* o Voltar no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+          {(vm.mandandoEmail || vm.cancelando) && (
+            <button type="button" className="btn btn-ghost registro-voltar" onClick={vm.mandandoEmail ? vm.fecharEmail : vm.fecharCancelamento}><Icone nome="chevronLeft" />Voltar</button>
+          )}
           <span className="registro-caminho"><Icone nome="recibo" />Notas fiscais<Icone nome="chevronRight" /><b>{n.numeroNfse ? 'NFS-e ' + n.numeroNfse : 'Nota sem número'}</b></span>
           <span className={'badge badge-' + vm.rotulo.tom}>{vm.andando && <span className="btn-spinner nf-roda" aria-hidden="true" />}{vm.rotulo.rotulo}</span>
           <BotaoFechar onClick={fechar} />
@@ -122,14 +126,12 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
           <span className="tarefas-barra-espaco" />
           {vm.mandandoEmail ? (
             <>
-              <button type="button" className="btn btn-outline" onClick={vm.fecharEmail}>Voltar</button>
               <BotaoAcao className="btn btn-primary" carregando={vm.pedindoEmail} textoCarregando="Pedindo…" disabled={!vm.paraEmail.trim()} onClick={() => void vm.enviarPorEmail()}>
                 <Icone nome="envelope" />Enviar
               </BotaoAcao>
             </>
           ) : vm.cancelando ? (
             <>
-              <button type="button" className="btn btn-outline" onClick={vm.fecharCancelamento}>Voltar</button>
               <BotaoAcao className="btn btn-danger" carregando={vm.enviando} textoCarregando="Pedindo…" disabled={!vm.podePedirCancelamento} onClick={() => void vm.pedirCancelamento()}>
                 Cancelar nota
               </BotaoAcao>

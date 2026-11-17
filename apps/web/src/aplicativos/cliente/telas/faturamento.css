@@ -1,0 +1,93 @@
+/* O Faturamento enxuto (16/11/2026: o dono apresentou a Área do Cliente e ouviu "tinha muita informação"). Dois
+   números no mês (lado a lado também no celular), o dia em foco do gráfico numa linha só no topo do cartão, o Banco com
+   uma linha por conta (o que saiu e o saldo), os Clientes sem as porcentagens e o ano com o gráfico e a tabela no mesmo
+   cartão. Só a tela de Faturamento usa (prefixo cli-fat-). Os seletores pesam mais que as regras do cliente.css que
+   tocam nas mesmas peças, porque a ordem de carga dos CSS não é garantida. */
+
+/* ---------- o mês ---------- */
+/* os dois números lado a lado (no celular, antes uma faixa que deslizava e cortava o segundo cartão) */
+.cli-app .cli-numeros.cli-fat-numeros{grid-template-columns:repeat(2,minmax(0,1fr));}
+@media (max-width:767px){
+  .cli-app .cli-numeros.cli-fat-numeros{overflow:visible;}
+  .cli-app .cli-numeros.cli-fat-numeros > .cli-numero{flex:1 1 0;min-width:0;}
+  .cli-app .cli-numeros.cli-fat-numeros .cli-numero-valor{font-size:19px;}
+}
+
+/* a venda por dia: o dia em foco na linha do título, no lugar do bloco de três linhas e do valor em cima da coluna */
+.cli-app .cli-fat-dias > .card-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;}
+.cli-app .cli-fat-foco{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-fat-foco b{font-size:16px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-fat-dias .cli-coluna-valor{display:none;}
+.cli-app .cli-fat-dias .cli-grafico{padding-top:6px;}
+
+/* ---------- o banco ---------- */
+/* uma linha por conta: a conta, o que saiu e o saldo */
+.cli-app .cli-fat-contas{margin-top:26px;padding-top:4px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-fat-conta{display:grid;grid-template-columns:minmax(0,1fr) 170px 170px;align-items:center;gap:16px;padding:11px 2px;border-top:1px solid var(--cli-fio);font-variant-numeric:tabular-nums;}
+.cli-app .cli-fat-conta > :nth-child(n+2){text-align:right;}
+.cli-app .cli-fat-conta-cabeca{padding:8px 2px 4px;border-top:0;font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-fat-rot-cel{display:none;}
+.cli-app .cli-fat-conta .cli-variacao{font-size:inherit;}
+@media (max-width:600px){
+  .cli-app .cli-fat-conta-cabeca{display:none;}
+  .cli-app .cli-fat-conta{grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;}
+  .cli-app .cli-fat-conta:nth-child(2){border-top:0;}
+  .cli-app .cli-fat-conta > .cli-mv-conta{grid-row:1 / span 2;}
+  .cli-app .cli-fat-conta > :nth-child(3){grid-column:2;grid-row:1;font-weight:600;}
+  .cli-app .cli-fat-conta > :nth-child(2){grid-column:2;grid-row:2;font-size:12.5px;}
+  .cli-app .cli-fat-rot-cel{display:inline;font-weight:400;color:var(--ink-muted);}
+}
+
+/* os lançamentos: a data, o histórico, a logo da conta e o valor, nas mesmas colunas no PC e no celular */
+.cli-app .cli-lc-lista.cli-fat-lc .cli-lc-linha{grid-template-columns:52px minmax(0,1fr) auto;}
+.cli-app .cli-lc-lista.cli-fat-lc.com-conta .cli-lc-linha{grid-template-columns:52px minmax(0,1fr) 20px 130px;}
+.cli-app .cli-lc-lista.cli-fat-lc .cli-lc-valor{grid-row:auto;grid-column:auto;min-width:0;font-variant-numeric:tabular-nums;}
+.cli-app .cli-lc-topo + .cli-fat-lc{margin-top:10px;}
+@media (max-width:600px){
+  .cli-app .cli-lc-lista.cli-fat-lc .cli-lc-linha{grid-template-columns:44px minmax(0,1fr) auto;gap:10px;}
+  .cli-app .cli-lc-lista.cli-fat-lc.com-conta .cli-lc-linha{grid-template-columns:40px minmax(0,1fr) 18px auto;gap:8px;}
+  .cli-app .cli-fat-lc .cli-fb-conta-logo{width:18px;height:18px;}
+}
+
+/* ---------- os clientes ---------- */
+/* como vendeu: a barra fina e os três valores numa faixa só */
+.cli-app .cli-fat-como .cli-partes{height:8px;margin-bottom:14px;}
+.cli-app .cli-fat-como-lista{display:flex;flex-wrap:wrap;gap:8px 36px;margin:0;padding:0;list-style:none;}
+.cli-app .cli-fat-como-lista li{display:inline-flex;align-items:baseline;gap:10px;}
+.cli-app .cli-fat-como-lista li > span{display:inline-flex;align-items:baseline;gap:6px;}
+.cli-app .cli-fat-como-lista b{font-variant-numeric:tabular-nums;white-space:nowrap;}
+@media (max-width:560px){
+  .cli-app .cli-fat-como-lista{flex-direction:column;gap:0;}
+  .cli-app .cli-fat-como-lista li{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--cli-fio);}
+  .cli-app .cli-fat-como-lista li:first-child{border-top:0;padding-top:0;}
+}
+/* os maiores clientes: o valor encostado à direita, sem a coluna da % */
+@container (min-width:640px){
+  .cli-app .cli-ranking.cli-fat-ranking li{grid-template-columns:minmax(0,260px) minmax(0,1fr) 140px;}
+}
+
+/* ---------- o ano ---------- */
+/* o limite: só a marca do sublimite embaixo da barra (o R$ 0 e o teto repetiam o "de R$ 4.800.000,00") */
+.cli-app .cli-fat-regua{display:block;min-height:16px;margin:6px 0 8px;}
+.cli-app .cli-fat-limite-nota{margin:4px 0 0;font-size:12.5px;}
+/* a tabela dos meses no mesmo cartão do gráfico, logo embaixo dele */
+.cli-app .cli-fat-tabela{width:100%;margin-top:20px;}
+.cli-app .cli-fat-tabela th:first-child,.cli-app .cli-fat-tabela td:first-child{padding-left:2px;}
+/* o total e a variação juntos à direita (antes, o total boiava no meio da linha) */
+.cli-app .cli-fat-tabela th.num{width:170px;}
+@media (max-width:600px){
+  .cli-app .cli-fat-tabela th.num{width:auto;}
+  .cli-app .cli-fat-tabela :is(th,td){padding-left:8px;padding-right:8px;}
+  .cli-app .cli-fat-tabela td.cli-seta{width:20px;padding-right:0;}
+  .cli-app .cli-fat-tabela .cli-badge-andamento{display:none;}
+}
+
+/* ---------- o relatório do dia (a janela das notas) ---------- */
+.cli-app .cli-fat-notas .cli-fat-nota-num{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;}
+.cli-app .cli-fat-notas .cli-fat-cancelada{margin-left:8px;}
+.cli-app .cli-fat-acoes{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;}
+.cli-app .cli-fat-acoes > .popover-wrap{display:flex;}
+.cli-app .cli-fat-acoes .icon-btn{color:var(--ink-muted);}
+.cli-app .cli-fat-acoes .icon-btn[aria-expanded="true"]{color:var(--ink);background:var(--cli-passa);}
+.cli-app .cli-fat-vaga{display:inline-block;width:78px;}
+.cli-app .cli-fat-vaga-menu{display:inline-block;width:32px;}

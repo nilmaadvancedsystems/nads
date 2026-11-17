@@ -19,6 +19,37 @@ function versaoDoSite(): Plugin {
   };
 }
 
+// A Área do Cliente instalável como app (13/11/2026: "cara de app no celular"): só no site do cliente, o manifesto e os
+// ícones com o N da Nilma (src/aplicativos/cliente/app). O app instalado abre pela /cliente, que vai para a última empresa
+// aberta no aparelho (useAreaCliente); a barra do celular e a tela inicial pegam a cor do fundo escuro.
+const PASTA_DO_APP = path.resolve(__dirname, 'src/aplicativos/cliente/app');
+const MANIFESTO_DO_CLIENTE = {
+  name: 'Área do Cliente — Nilma', short_name: 'Nilma', lang: 'pt-BR', start_url: '/cliente', scope: '/', display: 'standalone',
+  background_color: '#111114', theme_color: '#111114',
+  icons: [
+    { src: '/app/icone-192.png', sizes: '192x192', type: 'image/png' },
+    { src: '/app/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+  ],
+};
+function appDoCliente(): Plugin {
+  return {
+    name: 'nads-app-do-cliente',
+    apply: 'build',
+    transformIndexHtml: html => html.replace('</head>', [
+      '<link rel="manifest" href="/manifest.webmanifest" />',
+      '<meta name="theme-color" content="#111114" />',
+      '<link rel="apple-touch-icon" href="/app/icone-180.png" />',
+      '<meta name="apple-mobile-web-app-capable" content="yes" />',
+      '<meta name="apple-mobile-web-app-title" content="Nilma" />',
+      '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />',
+    ].join('\n    ') + '\n  </head>'),
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: JSON.stringify(MANIFESTO_DO_CLIENTE, null, 2) });
+      for (const nome of ['icone-180.png', 'icone-192.png', 'icone-512.png']) this.emitFile({ type: 'asset', fileName: 'app/' + nome, source: fs.readFileSync(path.join(PASTA_DO_APP, nome)) });
+    },
+  };
+}
+
 // O título da aba já no index.html de cada site (Vitor, 28/10/2026): antes, todos saíam com "Concilia aí — Nilma" e só
 // trocavam quando o app abria; sem aplicativo (o npm run dev com todos), só "Nilma".
 function tituloDoSite(): Plugin {
@@ -101,7 +132,7 @@ const BIBLIOTECAS = [
 export default defineConfig({
   // o banco do Entregas com cache local, sem dado velho na tela: todo onSnapshot passa pelo filtro (ver o arquivo)
   resolve: { alias: [{ find: /^firebase\/firestore$/, replacement: path.resolve(__dirname, 'src/aplicativos/tarefas/dados/ouvirSemDadoVelho.firestore.ts') }] },
-  plugins: [react(), versaoDoSite(), tituloDoSite(), ...(ROTAS_DO_SITE ? [rotasProprias()] : [arquivosDoOcr()])],
+  plugins: [react(), versaoDoSite(), tituloDoSite(), ...(process.env.VITE_APLICATIVO === 'cliente' ? [appDoCliente()] : []), ...(ROTAS_DO_SITE ? [rotasProprias()] : [arquivosDoOcr()])],
   build: { rolldownOptions: { treeshake: SEM_EFEITO_NO_CORE, output: { codeSplitting: { groups: BIBLIOTECAS } } } },
   base: '/',
   server: { port: 5178 },

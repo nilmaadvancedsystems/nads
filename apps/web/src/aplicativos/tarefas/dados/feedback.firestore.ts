@@ -1,15 +1,19 @@
 // Os feedbacks no banco do Entregas (coleção feedbacks; regra em firestore.rules): quem está no nads cria o seu (com o
 // uid dele, status 'novo' e a prioridade baixa/media/alta); só o admin lê todos e muda o status. A imagem vai no próprio
 // documento (JPEG comprimido, até ~900 KB), sem Storage. Quem mandou lê os seus (o aviso do Resolvendo; 26/10/2026).
-import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
-import { entregas } from '@nads/core';
+// A conversa (16/11/2026): cada mensagem em feedbacks/{id}/mensagens, ouvida só com a conversa aberta; o resumo (`conversa`)
+// vai no próprio feedback, no mesmo lote, e chega a quem já ouve o feedback (a lista do admin, os seus de quem mandou).
+import { Bytes, collection, doc, getDocs, increment, limit, onSnapshot, orderBy, query, where, setDoc as setDocBruto, updateDoc as updateDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
+import { entregas, suporte } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
-import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { ouvirInsistindo } from './ouvirInsistindo.firestore';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
+const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 type Quem = { uid: string; email: string; nome: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
@@ -100,6 +104,8 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
                   : [],
                 analise: (['pendente', 'analisando', 'pronta', 'erro'].includes(x.analise) ? x.analise : '') as Feedback['analise'],
                 relatorio: texto(x.relatorio),
+                delegacao: suporte.lerDelegacao(x.delegacao),
+                conversa: suporte.lerResumoDaConversa(x.conversa),
               };
             }),
           };
@@ -109,6 +115,43 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       return todos;
     },
     async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status, ...(status === 'feito' ? { resolvidoEm: new Date().toISOString() } : {}) }); },
+    // a quem foi delegada (16/11/2026): o mapa delegacao { uid, nome, por, em }; a regra deixa só o admin gravar
+    async delegar(id, d) {
+      try { await updateDoc(doc(db, 'feedbacks', id), { delegacao: { uid: d.uid, nome: d.nome, por: d.por, em: d.em } }); }
+      catch (e) {
+        if ((e as { code?: string } | null)?.code === 'permission-denied') throw new Error('o banco ainda não aceita a delegação (falta publicar a regra dos feedbacks).', { cause: e });
+        throw e;
+      }
+    },
+    // a conversa (16/11/2026): só a do feedback aberto (o admin, na janela dele; quem mandou, na janela grande da conversa).
+    // Negada, insiste (16/11/2026: com a regra fora do ar, a conversa aberta parou de ouvir e as perguntas gravadas depois
+    // não apareciam: "mandei e não aconteceu nada"); enquanto isso, fica com o que já tinha chegado
+    ouvirMensagens(id, aoMudar) {
+      let ultima: suporte.MensagemDoFeedback[] = [];
+      aoMudar({ carregadas: false, lista: [] });
+      return ouvirInsistindo(query(collection(db, 'feedbacks', id, 'mensagens'), limit(300)), s => {
+        ultima = suporte.emOrdem(s.docs.map(d => suporte.lerMensagem(d.id, d.data())).filter(m => m !== null));
+        aoMudar({ carregadas: true, lista: ultima });
+      }, () => aoMudar({ carregadas: true, lista: ultima }));
+    },
+    // a mensagem e o resumo no mesmo lote: a regra confere quem escreve (o admin, ou o dono depois que o admin perguntou) e
+    // que a contagem só sobe de um em um
+    async escrever(id, de, txt) {
+      const q = quem();
+      if (!q) throw new Error('entre com a conta do Entregas');
+      const f = todos?.lista.find(x => x.id === id) ?? meus?.lista.find(x => x.id === id);
+      if (f && !suporte.podeEscrever(de, f.status, f.conversa)) throw new Error('a conversa está fechada (o pedido já foi resolvido).');
+      const { mensagem, resumo } = suporte.mensagemNova(f?.conversa ?? null, de, q.nome || q.email, txt, new Date());
+      const ref = doc(db, 'feedbacks', id);
+      const lote = writeBatch(db);
+      lote.set(doc(collection(ref, 'mensagens')), { ...mensagem, uid: q.uid });
+      lote.update(ref, { 'conversa.qtd': increment(1), 'conversa.ultimaDe': resumo.ultimaDe, 'conversa.ultimaEm': resumo.ultimaEm, 'conversa.ultimoTexto': resumo.ultimoTexto });
+      try { await lote.commit(); }
+      catch (e) {
+        if ((e as { code?: string } | null)?.code === 'permission-denied') throw new Error('o banco ainda não aceita a conversa (falta publicar a regra dos feedbacks).', { cause: e });
+        throw e;
+      }
+    },
     // quem mandou responde o teste (a regra só deixa o dono, e só com o ticket em Testando)
     async responderTeste(id, funcionou) { await updateDoc(doc(db, 'feedbacks', id), funcionou ? { status: 'feito', resolvidoEm: new Date().toISOString() } : { status: 'resolvendo' }); },
     // os seus (Vitor, 26/10/2026: o aviso do Resolvendo): a regra deixa cada um ler os que mandou (uid); sem orderBy, para
@@ -120,7 +163,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
         const estes: { uid: string; lista: MeuFeedback[] } = { uid: q.uid, lista: [] };
         meus = estes;
         onSnapshot(query(collection(db, 'feedbacks'), where('uid', '==', q.uid), limit(200)), s => {
-          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm), tipo: x.tipo === 'bug' ? 'bug' as const : 'feedback' as const, caminho: texto(x.caminho), ...(x.resolvidoEm ? { resolvidoEm: texto(x.resolvidoEm) } : {}) }; });
+          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm), tipo: x.tipo === 'bug' ? 'bug' as const : 'feedback' as const, caminho: texto(x.caminho), conversa: suporte.lerResumoDaConversa(x.conversa), ...(x.resolvidoEm ? { resolvidoEm: texto(x.resolvidoEm) } : {}) }; });
           mudou();
         }, () => { estes.lista = []; mudou(); });
       }

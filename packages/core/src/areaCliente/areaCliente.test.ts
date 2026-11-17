@@ -5,7 +5,7 @@ import { ROTINA_FISCAL } from '../tarefas/rotinas/fiscal';
 import { execucaoNova } from '../tarefas/regras/execucao';
 import type { Execucao } from '../tarefas/tipos';
 import {
-  agendaDaExecucao, agendaDoMes, competenciaDoMesDeVencimento, chamadoDoCliente, erroDoEnvio, erroDoNovoChamado, guiaDoFgts, guiaPrecisaLiberar, guiasPorCompetencia, mimeDoEnvio, reciboDoEnvio,
+  agendaDaExecucao, agendaDoMes, autorDoEscritorio, competenciaDoMesDeVencimento, chamadoDoCliente, erroDoEnvio, erroDoNovoChamado, guiaDoFgts, guiaPrecisaLiberar, guiasPorCompetencia, mimeDoEnvio, reciboDoEnvio,
   situacaoDaGuia, tituloDoChamado, valorEmReais, vencimentoDaEtapaNoMes, VENCIMENTOS, type PedidoFgtsInterno,
 } from './index';
 
@@ -178,20 +178,28 @@ describe('os chamados', () => {
       { de: 'escritorio', texto: 'nota só nossa', em: '2026-10-10T10:05:00.000Z', autor: 'Clara Souza', interna: true },
     ],
   };
-  it('o autor do escritório vira "Escritório"; nenhum campo interno nem nota interna sai', () => {
+  it('do escritório sai só o primeiro nome de quem respondeu; nenhum campo interno nem nota interna sai', () => {
     const c = chamadoDoCliente(INTERNO);
     expect(c).toEqual({
       id: 'c1', tipo: 'ferias', titulo: 'Férias da Maria', situacao: 'respondido',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Posso marcar férias em dezembro?', em: '2026-10-10T09:00:00.000Z' },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Pode sim, mande a data.', em: '2026-10-10T10:00:00.000Z' },
+        { de: 'escritorio', autor: 'Clara', texto: 'Pode sim, mande a data.', em: '2026-10-10T10:00:00.000Z' },
       ],
     });
     semInternos(c);
     const texto = JSON.stringify(c);
-    expect(texto).not.toContain('Clara');
+    expect(texto).not.toContain('Souza');
     expect(texto).not.toContain('uid-');
     expect(texto).not.toContain('nota só nossa');
+  });
+  it('o nome de quem respondeu: o primeiro nome; sem nome ou com e-mail, "Escritório"', () => {
+    expect(autorDoEscritorio('ANA paula Lima')).toBe('Ana');
+    expect(autorDoEscritorio('  vitor ')).toBe('Vitor');
+    expect(autorDoEscritorio('')).toBe('Escritório');
+    expect(autorDoEscritorio(undefined)).toBe('Escritório');
+    expect(autorDoEscritorio('Escritório')).toBe('Escritório');
+    expect(autorDoEscritorio('fulano@nilma.com.br')).toBe('Escritório');
   });
   it('tipo e situação desconhecidos viram "outro" e "aberto"', () => {
     const c = chamadoDoCliente({ ...INTERNO, tipo: 'secreto', situacao: 'sei-la' });

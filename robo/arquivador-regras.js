@@ -328,7 +328,9 @@ function montarCadastro(linhas, pastas) {
     const doc = so(l.doc);
     const reg = regimeCanonico(l.regime);
     const outrosNomes = (l.outrosNomes || []).map(n => String(n).trim()).filter(Boolean);
-    porCod.set(codigo, { codigo, razao: String(l.razao || '').trim(), outrosNomes, fantasia: String(l.fantasia || '').trim(), doc, ie: so(l.ie), regime: reg === undefined ? undefined : reg, regimeTexto: l.regime || null, ativo: l.ativo !== false });
+    // nomesAnteriores: as razões de antes da troca no nads (13/11/2026); também estão em outrosNomes
+    const nomesAnteriores = (l.nomesAnteriores || []).map(n => String(n).trim()).filter(Boolean);
+    porCod.set(codigo, { codigo, razao: String(l.razao || '').trim(), outrosNomes, nomesAnteriores, fantasia: String(l.fantasia || '').trim(), doc, ie: so(l.ie), regime: reg === undefined ? undefined : reg, regimeTexto: l.regime || null, ativo: l.ativo !== false });
     for (const d of [doc].concat((l.outrosDocs || []).map(so))) {   // CPF e CNPJ do mesmo cliente (fontes diferentes)
       if (d.length === 14 || d.length === 11) add(porDoc, d, codigo);
       if (d.length === 14) add(porRaiz, d.slice(0, 8), codigo);
@@ -517,7 +519,8 @@ function clientesPeloNomeNoTexto(texto, cad) {
     if (c == null) continue;
     achados.set(c, String(c));
     // o apelido decide entre códigos com a MESMA razão social (ex.: FITO 292 × 294)
-    if (a.venceHomonimo) { const k = chaveNome(cad.porCod.get(c).razao); for (const o of [...achados.keys()]) if (o !== c && cad.porCod.get(o) && chaveNome(cad.porCod.get(o).razao) === k) achados.delete(o); }
+    // (13/11/2026) com a razão trocada no nads, o homônimo é o do nome de antes da troca também
+    if (a.venceHomonimo) { const cc = cad.porCod.get(c), ks = new Set([cc.razao].concat(cc.nomesAnteriores || []).map(chaveNome)); for (const o of [...achados.keys()]) if (o !== c && cad.porCod.get(o) && ks.has(chaveNome(cad.porCod.get(o).razao))) achados.delete(o); }
   }
   return [...achados.keys()];
 }
@@ -3769,7 +3772,7 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
     const ehDoCliente = n => [cli.razao].concat(cli.outrosNomes || []).filter(Boolean).some(r => chaveNome(nomeNormalizado(r)) === chaveNome(n) || chaveNome(r).startsWith(chaveNome(n)));
     const regraBoleto = REGRAS_PDF.find(x => x.tipo === 'BOLETO FORNECEDOR');
     const doBoleto = u && regraBoleto.re.test(u) ? beneficiariosDoBoleto(u).find(b => b.rotulo !== 'pagador' && !ehDoCliente(b.nome) && !(b.doc && clientesDoDoc(b.doc, cad).includes(c.cliente))) : null;
-    const palavrasDoCliente = new Set(textoDeNome(cli.razao || '').trim().split(' ').filter(w => w.length >= 4 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS)$/.test(w)));
+    const palavrasDoCliente = new Set([cli.razao || ''].concat(cli.nomesAnteriores || []).flatMap(n => textoDeNome(n).trim().split(' ')).filter(w => w.length >= 4 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS)$/.test(w)));
     const doNome = fornecedorDoNomeSemData(String(pg.base || '').split(' ').filter(w => !palavrasDoCliente.has(semAcento(w))).join(' '));
     pg = Object.assign({}, pg, { fornecedor: doBoleto ? doBoleto.nome : (doNome && /[A-Z]{3}/.test(doNome) ? doNome : null) });
     ev.push('sem data no nome: o mês pela pasta de origem; o fornecedor ' + (doBoleto ? 'pelo beneficiário do boleto' : 'pelo nome do arquivo') + ' (Vitor, 27/10/2026)');
@@ -3790,7 +3793,7 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   // ("OURO VERDE FRETE CTE86 FREEDOM"): a pasta do fornecedor fica sem eles ("OURO VERDE FRETE"), uma só para todos os fretes
   if (pg.fornecedor && c.semPasta) {
     const cli = cad.porCod.get(c.cliente) || {};
-    const doCli = new Set([cli.razao, cli.fantasia].filter(Boolean).flatMap(n => { const ws = norm(n).split(/[^A-Z0-9]+/).filter(Boolean); return ws.slice(0, 1).concat(ws.filter(w => w.length >= 4 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS|CONSULTORIA|INVESTIMENTOS)$/.test(w))); }));
+    const doCli = new Set([cli.razao, cli.fantasia].concat(cli.nomesAnteriores || []).filter(Boolean).flatMap(n => { const ws = norm(n).split(/[^A-Z0-9]+/).filter(Boolean); return ws.slice(0, 1).concat(ws.filter(w => w.length >= 4 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS|CONSULTORIA|INVESTIMENTOS)$/.test(w))); }));
     const limpo = String(pg.fornecedor).split(/\s+/).filter(w => !doCli.has(norm(w)) && !/^CT-?E\d+$/i.test(w)).join(' ').trim();
     if (limpo && /[A-Z]{3}/.test(limpo) && limpo !== pg.fornecedor) { ev.push('o fornecedor sem o nome do cliente e sem o número do CT-e: ' + limpo); pg = Object.assign({}, pg, { fornecedor: limpo }); }
   }
@@ -3866,7 +3869,8 @@ function clienteDoNomeDoConteiner(rel, cad) {
   for (const parte of partes) {
     const ws = ' ' + norm(String(parte).replace(/\.(zip|rar|7z)$/i, '')).split(/[^A-Z0-9]+/).filter(Boolean).join(' ') + ' ';
     for (const c of cad.porCod.values()) {
-      for (const n of [c.razao, c.fantasia].filter(Boolean)) {
+      // a razão de antes da troca no nads (13/11/2026) também: os zips antigos têm o nome velho
+      for (const n of [c.razao, c.fantasia].concat(c.nomesAnteriores || []).filter(Boolean)) {
         const p2 = norm(n).split(/[^A-Z0-9]+/).filter(Boolean).slice(0, 2);
         if (p2.length === 2 && !p2.some(w => PALAVRAS_DE_PASTA.has(w) || PALAVRAS_DE_MOVIMENTO.has(w) || /^(LTDA|ME|EPP|EIRELI|SA)$/.test(w)) && ws.includes(' ' + p2.join(' ') + ' ')) { duas.add(c.codigo); porqueDuas.push('"' + p2.join(' ') + '" em "' + parte + '"'); }
       }
@@ -3880,7 +3884,7 @@ function clienteDoNomeDoConteiner(rel, cad) {
     for (const w of norm(String(parte).replace(/\.(zip|rar|7z)$/i, '')).split(/[^A-Z0-9]+/)) {
       if (w.length < 2 || !/[A-Z]/.test(w) || PALAVRAS_DE_PASTA.has(w) || PALAVRAS_DE_MOVIMENTO.has(w)) continue;
       const cs = [];
-      for (const c of cad.porCod.values()) if ([c.razao, c.fantasia].filter(Boolean).some(n => norm(n).split(/[^A-Z0-9]+/).filter(Boolean)[0] === w)) cs.push(c.codigo);
+      for (const c of cad.porCod.values()) if ([c.razao, c.fantasia].concat(c.nomesAnteriores || []).filter(Boolean).some(n => norm(n).split(/[^A-Z0-9]+/).filter(Boolean)[0] === w)) cs.push(c.codigo);
       if (!cs.length) continue;
       cs.forEach(c => achados.add(c));
       porque.push('"' + w + '" em "' + parte + '"');

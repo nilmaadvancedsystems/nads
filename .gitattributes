@@ -2,3 +2,8 @@
 *.png binary
 *.xls binary
 *.xlsx binary
+# os scripts do Windows do robô do Alterdata no PC (16/11/2026): o cmd com LF erra os rótulos do goto
+robo/pc-alterdata/*.cmd text eol=crlf
+robo/pc-alterdata/*.vbs text eol=crlf
+robo/pc-alterdata/*.ps1 text eol=crlf
+robo/pc-alterdata/*.txt text eol=crlf

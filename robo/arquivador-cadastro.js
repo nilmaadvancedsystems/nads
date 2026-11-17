@@ -4,8 +4,10 @@
 //   - regime: o Cadastro do nads (coleção `cadastro`, campo regime) > o enquadramento do Entregas (`clientes`) > a planilha
 //     da rotina antiga (cadastro_empresas_unificado.xlsx, repositório claudio, SÓ LEITURA);
 //   - CNPJ/CPF: o Entregas (`clientes.documento`, o único lugar do banco com o documento) > a planilha;
-//   - razão social: o nome do Cadastro do nads (inteiro: "… E BEBIDAS LTDA - FILIAL") > o do Entregas (que veio cortado
-//     em 40 letras do Toriba) > a planilha.
+//   - razão social: a trocada no nads (Cadastro › Empresa, `cadastro.razaoSocial.atual`, 13/11/2026) > o nome do Cadastro do
+//     nads (inteiro: "… E BEBIDAS LTDA - FILIAL") > o do Entregas (que veio cortado em 40 letras do Toriba) > a planilha.
+//     Depois da troca, o nome do cadastro e as razões anteriores ficam como outras grafias (outrosNomes e nomesAnteriores):
+//     as pastas e os documentos antigos continuam com o nome velho.
 // A planilha antiga NUNCA é alterada; ela só entra para o código que o banco não tem.
 //
 // O que uma fonte diz diferente da outra (CNPJ do Entregas ≠ da planilha, código sem CNPJ, nomes iguais em códigos
@@ -19,10 +21,29 @@ const R = require('./arquivador-regras');
 const so = s => String(s == null ? '' : s).replace(/\D/g, '');
 // o Entregas perdeu o zero à esquerda de alguns CPF/CNPJ ("5108042680"): completa para 11 ou 14 dígitos
 const doc = s => { const d = so(s); return d.length === 10 ? '0' + d : d.length === 13 ? '0' + d : d; };
+const texto = v => (v == null ? '' : String(v).trim());
+
+/**
+ * A razão social trocada no nads (Cadastro › Empresa, 13/11/2026): `cadastro.razaoSocial` = { atual, em, por, anteriores:
+ * [{ nome, ate }] }. O `nome` do cadastro continua a chave (o slug é o id) e não muda; sem `atual`, a razão não foi trocada
+ * (como razaoSocialDoDocumento do core). Devolve { atual, antigos }: os antigos são o nome do cadastro e as anteriores.
+ */
+function razaoDoNads(n) {
+  const r = n && n.razaoSocial;
+  const atual = r && typeof r === 'object' ? texto(r.atual) : '';
+  if (!atual) return { atual: '', antigos: [] };
+  const anteriores = Array.isArray(r.anteriores) ? r.anteriores.map(a => texto(a && a.nome)) : [];
+  return { atual, antigos: [texto(n.nome)].concat(anteriores).filter(Boolean) };
+}
+/** Os nomes que não são a razão (nem repetidos entre si, pela chave do nome). */
+function semRepetir(nomes, razao) {
+  const vistos = new Set([R.chaveNome(razao)]);
+  return nomes.filter(n => { const k = n && R.chaveNome(n); if (!k || vistos.has(k)) return false; vistos.add(k); return true; });
+}
 
 /**
  * planilha: [{ codigo, razao, fantasia, doc, ie, regime }]; entregas: [{ codigoOrigem, nome, nomeFantasia, documento,
- * enquadramento, ativo, contasBancarias }]; nads: [{ codigo, nome, regime, bancos, socios }]. Devolve { linhas (para
+ * enquadramento, ativo, contasBancarias }]; nads: [{ codigo, nome, razaoSocial, regime, bancos, socios }]. Devolve { linhas (para
  * R.montarCadastro), divergencias }.
  *
  * As contas bancárias (Vitor, 28/10/2026: o cliente do extrato, do comprovante e da aplicação sai da conta, para separar matriz
@@ -46,14 +67,18 @@ function juntar({ planilha = [], entregas = [], nads = [] }) {
     if (docEn && docPl && docEn !== docPl && docEn.length === docPl.length) divergencias.push({ codigo, tipo: outraEmpresa ? 'CODIGO_DE_OUTRA_EMPRESA' : docEn.length === 14 ? 'CNPJ_DIFERENTE' : 'CPF_DIFERENTE', detalhe: 'Entregas ' + docEn + ' (' + ((x.en && x.en.nome) || '') + ') × planilha antiga ' + docPl + ' (' + ((x.pl && x.pl.razao) || '') + '): vale o do Entregas' });
     if (!principal) divergencias.push({ codigo, tipo: 'SEM_CNPJ', detalhe: 'nenhuma fonte tem o CNPJ/CPF de ' + ((x.na && x.na.nome) || (x.en && x.en.nome) || (x.pl && x.pl.razao) || codigo) });
     const regime = (x.na && x.na.regime) || (x.en && x.en.enquadramento) || (x.pl && x.pl.regime) || null;
-    const razao = (x.na && x.na.nome) || (x.en && x.en.nome) || (x.pl && x.pl.razao) || '';
+    const trocada = razaoDoNads(x.na);
+    const razao = trocada.atual || (x.na && x.na.nome) || (x.en && x.en.nome) || (x.pl && x.pl.razao) || '';
     linhas.push({
       codigo, razao, doc: principal, outrosDocs: docPl && docPl !== principal && !outraEmpresa && docPl.length !== principal.length ? [docPl] : [], regime,
       fantasia: (x.en && x.en.nomeFantasia) || (x.pl && x.pl.fantasia) || '',
       ie: x.pl ? x.pl.ie : '',
       // as outras grafias do nome (a do Entregas, cortada, e a da planilha) também casam com a pasta de origem
       // o nome da planilha só é "outra grafia" se for a mesma empresa (a planilha pode ter o código de outra: a 591)
-      outrosNomes: [x.en && x.en.nome, outraEmpresa ? null : x.pl && x.pl.razao].filter(n => n && R.chaveNome(n) !== R.chaveNome(razao)),
+      // a razão trocada no nads: o nome do cadastro e as anteriores também (as pastas "<código> - <nome velho>", os documentos antigos)
+      outrosNomes: semRepetir([x.en && x.en.nome, outraEmpresa ? null : x.pl && x.pl.razao].concat(trocada.antigos), razao),
+      // só os nomes de antes da troca no nads (a pista do nome da pasta de origem, que fora isso olha só a razão e a fantasia)
+      nomesAnteriores: semRepetir(trocada.antigos, razao),
       fonteRegime: x.na && x.na.regime ? 'nads' : x.en && x.en.enquadramento ? 'entregas' : x.pl && x.pl.regime ? 'planilha' : null,
       ativo: x.en ? x.en.ativo !== false : true,
       nomeEntregas: (x.en && x.en.nome) || '',
@@ -97,7 +122,7 @@ function lerPlanilha(arquivo) {
 async function atualizar(db, cacheArq) {
   const [cli, cad] = await Promise.all([
     db.collection('clientes').select('codigoOrigem', 'nome', 'nomeFantasia', 'documento', 'enquadramento', 'ativo', 'contasBancarias').get(),
-    db.collection('cadastro').select('codigo', 'nome', 'regime', 'bancos', 'socios').get(),
+    db.collection('cadastro').select('codigo', 'nome', 'razaoSocial', 'regime', 'bancos', 'socios').get(),
   ]);
   const dados = { em: new Date().toISOString(), entregas: cli.docs.map(d => d.data()), nads: cad.docs.map(d => d.data()) };
   fs.mkdirSync(path.dirname(cacheArq), { recursive: true });
@@ -111,7 +136,7 @@ function lerCache(cacheArq) { try { return JSON.parse(fs.readFileSync(cacheArq, 
 // inteiros a cada 30 min, ~1.250 leituras por hora o dia todo. O ouvinte lê tudo uma vez ao ligar e depois só o documento que
 // mudar; o cache (cadastro.json) é regravado a cada mudança, com os mesmos campos da leitura de antes.
 const CAMPOS_CLIENTES = ['codigoOrigem', 'nome', 'nomeFantasia', 'documento', 'enquadramento', 'ativo', 'contasBancarias'];
-const CAMPOS_CADASTRO = ['codigo', 'nome', 'regime', 'bancos', 'socios'];
+const CAMPOS_CADASTRO = ['codigo', 'nome', 'razaoSocial', 'regime', 'bancos', 'socios'];
 const soOsCampos = (d, campos) => Object.fromEntries(campos.filter(c => d && d[c] !== undefined).map(c => [c, d[c]]));
 const ouvindo = new Map();   // cacheArq → a promessa da primeira leitura completa
 
@@ -138,4 +163,4 @@ function ouvir(db, cacheArq, log) {
   return pronto;
 }
 
-module.exports = { juntar, lerPlanilha, atualizar, lerCache, ouvir, soOsCampos };
+module.exports = { juntar, lerPlanilha, atualizar, lerCache, ouvir, soOsCampos, CAMPOS_CADASTRO };

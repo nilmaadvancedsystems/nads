@@ -4,6 +4,7 @@
 // usava (a lista provisória de empresas/bancos.ts e os bancos adicionados na tela dele).
 import { nomeNorm } from '../../formatos';
 import { cnpjFormatado, documentoValido } from './receita';
+import { razaoSocialDoDocumento } from './razaoSocial';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
@@ -303,6 +304,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...fiscalDoDocumento(doc.fiscal), ...transferenciasDoDocumento(doc.transferencias),
     ...documentosFiscaisDoDocumento(doc.documentosFiscais),
     ...antecipacaoDoDocumento(doc.antecipacaoIcmsEs),
+    ...razaoSocialDoDocumento(doc.razaoSocial),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
       ? { nova: { regime: texto((doc.nova as Record<string, unknown>).regime), criadaEm: texto((doc.nova as Record<string, unknown>).criadaEm) } } : {}),
   };
@@ -332,6 +334,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.fiscal && Object.keys(c.fiscal).length ? { fiscal: c.fiscal } : {}),
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
+    ...(c.razaoSocial ? { razaoSocial: c.razaoSocial } : {}),
     ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
     ...(c.antecipacaoIcmsEs && (c.antecipacaoIcmsEs.aliquota != null || Object.keys(c.antecipacaoIcmsEs.situacoes || {}).length || Object.keys(c.antecipacaoIcmsEs.aliquotas || {}).length) ? { antecipacaoIcmsEs: c.antecipacaoIcmsEs } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
@@ -582,6 +585,25 @@ export function cancelarTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoR
   return registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + t.de + ' para ' + t.para);
 }
 
+/**
+ * O Diretor troca quem cuida da empresa direto, pelo Cadastro › Dados da empresa (Vitor, 17/11/2026: "a função de eu alterar o
+ * responsável fiscal e contábil aqui"): sem pedir o aceite, como o definirResponsavel; a transferência que estava pedida
+ * no departamento cai, porque a troca direta passa por cima dela. Fica no histórico. Vazio tira o responsável.
+ */
+export function trocarResponsavelDireto(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, nome: string, por: string, agora: Date): CadastroDaEmpresa {
+  const pedida = c.transferencias?.[dep];
+  const semPedido = pedida ? registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + pedida.de + ' para ' + pedida.para + ' (trocado direto)') : c;
+  return definirResponsavel(semPedido, dep, nome, por, agora);
+}
+
+/**
+ * Quem pode ser responsável num departamento: as pessoas ativas dele (ou com o papel dele), em ordem de nome. O mesmo
+ * filtro de Empresas por responsável.
+ */
+export function quemPodeSerResponsavel(equipe: readonly { nome: string; ativo: boolean; departamento: string | null; papeis: readonly string[] }[], dep: DepartamentoDoResponsavel): string[] {
+  return equipe.filter(p => p.ativo && (p.departamento === dep || p.papeis.includes(dep))).map(p => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 /** Falta o aceite de quem? (os nomes, emitente primeiro) */
 export function faltamAceitar(t: TransferenciaDeResponsavel): string[] {
   return [...(t.aceiteDe ? [] : [t.de]), ...(t.aceitePara ? [] : [t.para])];
@@ -688,24 +710,29 @@ export interface ResultadoCadastro {
  * Inclui (id = null) ou edita uma conta. Ao editar, o id NÃO muda (os arquivos do Extrator ficam presos a ele),
  * mesmo que a agência ou a conta sejam corrigidas. Se a empresa ainda não tinha bancos, começa pelo ponto de partida.
  */
-export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaConta, partida: readonly ContaBancaria[], por: string, agora: Date): ResultadoCadastro {
+/**
+ * (Vitor, 16/11/2026: "tirar a obrigatoriedade de banco e agência do registro do banco, obrigatório só a conta contábil"): a agência
+ * e a conta são opcionais; no formulário do Cadastro (exigeContaContabil), a conta contábil é obrigatória. Sem agência e conta, o id
+ * leva a conta contábil, para o mesmo banco poder ter mais de uma conta assim.
+ */
+export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaConta, partida: readonly ContaBancaria[], por: string, agora: Date, opcoes: { exigeContaContabil?: boolean } = {}): ResultadoCadastro {
   const marca = texto(d.marca);
   const agencia = texto(d.agencia);
   const conta = texto(d.conta);
   if (!marca) return { cadastro: c, erro: 'Escolha o banco.' };
+  if (opcoes.exigeContaContabil && !texto(d.contaContabil)) return { cadastro: c, erro: 'Informe a conta contábil.' };
   const bancos = c.bancos ?? [...partida];
   const antes = id ? bancos.find(b => b.id === id) : undefined;
   if (id && !antes) return { cadastro: c, erro: 'Essa conta não está mais no cadastro.' };
-  // a conta que já está sem número (veio do Extrator ou do ponto de partida) salva sem ele: a conta contábil, o tipo… (Vitor,
-  // 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta). A nova, ou a que tinha número, precisa dos dois.
-  const semNumero = !!antes && !texto(antes.agencia) && !texto(antes.conta) && !agencia && !conta;
-  if (!semNumero && (!agencia || !conta)) return { cadastro: c, erro: 'Preencha a agência e a conta.' };
+  // sem agência e sem conta (Vitor, 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta; 16/11/2026: opcionais)
+  const semNumero = !agencia && !conta;
   if (d.desde && !competencia(d.desde)) return { cadastro: c, erro: 'A competência de início está inválida.' };
-  const chave = idDaConta(marca, agencia, conta);
+  const contabil = texto(d.contaContabil).replace(/\D/g, '');
+  const chave = semNumero ? idDaConta(marca, '', '') + (contabil ? '-' + contabil : '') : idDaConta(marca, agencia, conta);
   const novoId = antes ? antes.id : chave;
-  const repetida = !semNumero && bancos.some(b => b.id !== antes?.id && (b.id === chave || idDaConta(b.marca, b.agencia || '', b.conta || '') === chave));
+  const repetida = bancos.some(b => b.id !== antes?.id && (b.id === chave || (!semNumero && idDaConta(b.marca, b.agencia || '', b.conta || '') === chave)));
   if (repetida) return { cadastro: c, erro: 'Essa conta já está cadastrada.' };
-  const nova: ContaBancaria = semNumero ? { id: novoId, marca, nome: antes?.nome || nomeDoBanco(marca) } : { id: novoId, marca, nome: nomeDoBanco(marca), agencia, conta };
+  const nova: ContaBancaria = { id: novoId, marca, nome: semNumero ? antes?.nome || nomeDoBanco(marca) : nomeDoBanco(marca), ...(agencia ? { agencia } : {}), ...(conta ? { conta } : {}) };
   if (d.tipo) nova.tipo = d.tipo;
   if (texto(d.apelido)) nova.apelido = texto(d.apelido);
   if (texto(d.contaContabil)) nova.contaContabil = texto(d.contaContabil);
@@ -788,7 +815,8 @@ export interface BancoParaConfirmar {
 
 /**
  * Grava os bancos marcados como o cadastro da empresa, cada um com a conta contábil (obrigatória; com o plano importado,
- * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a nova precisa de agência e conta.
+ * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a agência e a conta são opcionais
+ * (16/11/2026).
  * Com o plano vindo de um balancete, a conta que não está nele não trava (30/10/2026): o balancete só lista as contas com
  * saldo no mês, e o banco parado não aparece; fica o aviso leve da linha (avisoDaConta).
  */
@@ -802,11 +830,10 @@ export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoPara
     const antes = l.id ? partida.find(b => b.id === l.id) : undefined;
     const nome = antes?.nome || nomeDoBanco(marca);
     if (!marca) return { cadastro: c, erro: 'Escolha o banco.' };
-    if (!antes && (!agencia || !conta)) return { cadastro: c, erro: nome + ': preencha a agência e a conta.' };
     if (!contaContabil) return { cadastro: c, erro: nome + ': informe a conta contábil.' };
     const aviso = avisoDaConta(contaContabil, plano);
     if (aviso && !foraDoBalancete(contaContabil, plano)) return { cadastro: c, erro: nome + ': ' + aviso };
-    const id = antes ? antes.id : idDaConta(marca, agencia, conta);
+    const id = antes ? antes.id : agencia || conta ? idDaConta(marca, agencia, conta) : idDaConta(marca, '', '') + '-' + contaContabil.replace(/\D/g, '');
     if (bancos.some(b => b.id === id)) return { cadastro: c, erro: nome + ': essa conta está duas vezes na lista.' };
     const nova: ContaBancaria = { ...(antes || { id, marca, nome }), id, contaContabil };
     if (agencia) nova.agencia = agencia; else delete nova.agencia;

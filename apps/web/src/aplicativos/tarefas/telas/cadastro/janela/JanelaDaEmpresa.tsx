@@ -82,7 +82,7 @@ export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
   return (
     // data-volta-para: ao fechar, a janela encolhe de volta para a linha desta empresa na lista (mesmo aberta por link)
     <div className="cad-janela-fundo" data-volta-para={!local && vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}>
-      <div ref={janela} className="cad-janela" role="dialog" aria-modal="true" aria-label={'Cadastro de ' + vm.empresa.nome}>
+      <div ref={janela} className="cad-janela" role="dialog" aria-modal="true" aria-label={'Cadastro de ' + vm.nomeNaTela}>
         <header className="cad-janela-topo">
           {!local && (
             <button type="button" className="btn btn-ghost" onClick={fechar} title="Voltar para a lista de empresas">
@@ -91,7 +91,7 @@ export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
           )}
           <span className="cad-janela-empresa">
             <b className="num">{vm.empresa.codigo ?? '—'}</b>
-            <span className="cad-janela-nome">{vm.empresa.nome}</span>
+            <span className="cad-janela-nome">{vm.nomeNaTela}</span>
             {vm.regime && <span className="badge badge-neutral cad-regime">{vm.regime}</span>}
             {vm.resumo.cnpj && <span className="fraco num">{vm.resumo.cnpj}</span>}
           </span>

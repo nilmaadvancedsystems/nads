@@ -57,7 +57,10 @@ function textoDoComprovante(cliente, entregas, assinatura) {
   return { assunto, corpo };
 }
 
-function iniciarComprovantePorEmail({ db, log, correio }) {
+// aoConfirmar(entrega): chamado uma vez por entrega confirmada que este ouvinte vê (ligado ou não o comprovante), para
+// quem mais precisa saber da entrega feita sem ler as entregas de novo: a data do impresso no Relatório do Fiscal
+// (lote-fiscal.js, 13/11/2026).
+function iniciarComprovantePorEmail({ db, log, correio, aoConfirmar }) {
   const configRef = db.collection('config').doc('cobranca');
   let config = null, configEm = 0;
   async function lerConfig() {
@@ -75,6 +78,7 @@ function iniciarComprovantePorEmail({ db, log, correio }) {
   }
 
   const vistos = new Set();          // já tratados nesta execução (inclusive os sem e-mail)
+  const confirmadas = new Set();     // já passadas ao aoConfirmar (não zera com o ouvinte refeito)
   const esperando = new Map();       // clienteId -> { ids:Set, timer }
   async function mandar(clienteId, ids) {
     try {
@@ -120,9 +124,15 @@ function iniciarComprovantePorEmail({ db, log, correio }) {
       db.collection('entregas').where('confirmadoEm', '>=', new Date(Date.now() - JANELA_MS).toISOString()),
     async snap => {
       const agora = Date.now();
-      const novas = snap.docChanges().filter(ch => ch.type !== 'removed')
-        .map(ch => Object.assign({ id: ch.doc.id }, ch.doc.data()))
-        .filter(e => !vistos.has(e.id) && e.clienteId && precisaDeComprovante(e, agora));
+      const mudadas = snap.docChanges().filter(ch => ch.type !== 'removed').map(ch => Object.assign({ id: ch.doc.id }, ch.doc.data()));
+      if (aoConfirmar) {
+        if (confirmadas.size > 5000) confirmadas.clear();
+        mudadas.filter(e => e.status === 'confirmada' && !confirmadas.has(e.id)).forEach(e => {
+          confirmadas.add(e.id);
+          Promise.resolve().then(() => aoConfirmar(e)).catch(err => log('entrega confirmada: ' + err.message));
+        });
+      }
+      const novas = mudadas.filter(e => !vistos.has(e.id) && e.clienteId && precisaDeComprovante(e, agora));
       if (!novas.length) return;
       if ((await lerConfig()).comprovanteEmail !== true) return;   // desligado: não marca como visto, vale se ligar depois
       novas.forEach(e => { vistos.add(e.id); enfileirar(e); });

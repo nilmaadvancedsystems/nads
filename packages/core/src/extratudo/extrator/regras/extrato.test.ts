@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conferir } from './conferencia';
-import { anoDoTexto, ehConsultasDoBB, ehItauPorPeriodo, ehPagBank, extratoDoPdf, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, ehItauPorPeriodo, ehPagBank, extratoDoPdf, lancamentosDoPdf, mesesDoExtratoVazio, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -405,6 +405,22 @@ describe('o extrato sem movimento (Vitor, 13/10/2026)', () => {
     const inicio = 'Internet Banking BNB Extrato Consolidado Titular: EXEMPLO Mês: Outubro/2026 Data de Emissão: 09/11/2026 ';
     expect(mesesSemMovimento(inicio + conta(nao) + conta(nao))).toEqual(['2026-10']);
     expect(mesesSemMovimento(inicio + conta(nao) + conta('10 PIX RECEBIDO 5,00'))).toBeNull();
+  });
+  it('o extrato da conta sem lançamento e sem a frase também é sem movimento (16/11/2026: "Em todos os bancos possiveis")', () => {
+    // como o do BB: o título da conta, o período e só os saldos
+    const bb = 'Extrato de Conta Corrente Cliente: EMPRESA EXEMPLO LTDA Agência: 1234-5 Conta: 67890-1 Período: 01 a 30/09/2026 Lançamentos Dia Documento Valor Lote Histórico 31/08/2026 0,00 (+) Saldo Anterior 30/09/2026 0,00 (+) S A L D O';
+    expect(mesesDoExtratoVazio(bb)).toEqual(['2026-09']);
+    expect(mesesDoExtratoVazio('Extrato mensal Conta 1-2 Período: 01/03/2026 a 30/04/2026 Saldo anterior 150,00 Saldo final 150,00')).toEqual(['2026-03', '2026-04']);
+    // sem o mês escrito, [] (vale o mês para onde foi mandado)
+    expect(mesesDoExtratoVazio('Extrato de conta corrente Saldo anterior 0,00 Saldo final 0,00')).toEqual([]);
+    // não é o extrato da conta (comprovante, fatura, texto qualquer): continua não entrando
+    expect(mesesDoExtratoVazio('Comprovante de pagamento 10/09/2026 Valor 50,00')).toBeNull();
+    expect(mesesDoExtratoVazio('Resumo da fatura do cartão Vencimento 10/09/2026 Saldo anterior 0,00')).toBeNull();
+    // muitas datas: é um extrato com lançamentos que a leitura não pegou, não um sem movimento
+    const cheio = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0') + '/09/2026 PIX RECEBIDO 10,00').join(' ');
+    expect(mesesDoExtratoVazio('Extrato de conta corrente Saldo anterior 0,00 ' + cheio)).toBeNull();
+    // a frase continua valendo antes
+    expect(mesesSemMovimento(bb)).toBeNull();
   });
 });
 

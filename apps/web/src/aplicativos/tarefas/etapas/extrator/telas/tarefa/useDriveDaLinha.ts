@@ -22,8 +22,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const { drive, acesso } = useDrive();
   const [login, setLogin] = useState({ aberto: false, usuario: '', senha: '', entrando: false, erro: '' });
   const [pendente, setPendente] = useState<Linha | null>(null);
-  const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[] } | null>(null);
+  // mes: o mês da grade em que entra (o Selecionar no Drive de um mês, 17/11/2026); sem ele, a competência da tela
+  const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[]; mes?: string; titulo?: string } | null>(null);
   const [buscando, setBuscando] = useState<string | null>(null);
+  // o navegador de pastas do Selecionar no Drive (17/11/2026: "quero sistemas de pastas e diretórios, tudo bonitinho")
+  const [navegador, setNavegador] = useState<{ linha: Linha; mes: string; itens: readonly creditor.ItemDrive[]; raiz: string; pasta: string } | null>(null);
   // "Cancelar" a busca de vários meses: para antes do próximo mês
   const cancelado = useRef(false);
   const [cancelando, setCancelando] = useState(false);
@@ -166,11 +169,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const doMes = (r: { arquivo: creditor.ArquivoAchado | null; candidatos: creditor.ArquivoAchado[] }) =>
     r.arquivo ? [r.arquivo, ...r.candidatos.filter(c => c.id !== r.arquivo?.id && c.daCompetencia)] : [];
 
-  async function usar(linha: Linha, a: creditor.ArquivoAchado, outros: creditor.ArquivoAchado[] = []) {
+  async function usar(linha: Linha, a: creditor.ArquivoAchado, outros: creditor.ArquivoAchado[] = [], mes?: string) {
     setEscolha(null);
     vm.marcarLendo(linha.id);
     try {
-      await trazer(linha, [a, ...outros]);
+      await trazer(linha, [a, ...outros], mes);
     } catch (e) {
       vm.marcarLendo(null);
       vm.avisarErro('O extrato não veio do Drive', mensagemDeErro(e));
@@ -203,6 +206,30 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
       if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo, doMes(r).slice(1));
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
+    } catch (e) {
+      vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
+    } finally {
+      setBuscando(null);
+    }
+  }
+
+  /**
+   * Selecionar no Drive (Vitor, 17/11/2026: "abre uma popup no mês do contábil da empresa e o usuário seleciona o arquivo"): a
+   * janela de escolha com os arquivos do mês na pasta da empresa; o escolhido entra no extrato daquele mês.
+   */
+  async function selecionar(linha: Linha, mes: string) {
+    if (!acesso.entrou) {
+      if (drive.loginDeFora) { vm.avisarErro('Entre no Entregas', 'O Drive usa o mesmo login do Entregas.'); return; }
+      depois.current = () => { void selecionar(linha, mes); };
+      setLogin(l => ({ ...l, aberto: true, erro: '' }));
+      return;
+    }
+    setBuscando(linha.id);
+    try {
+      const pasta = await drive.pastaDoCliente(codigo);
+      if (!pasta) { vm.avisarErro('Selecionar no Drive', 'Não achei a pasta da empresa no Drive.'); return; }
+      // abre na pasta do mês (EXTRATOS › 2026 › 09) e a pessoa anda pelas pastas
+      setNavegador({ linha, mes, itens: pasta.itens, raiz: pasta.raiz, pasta: x.pastaInicialDoMes(pasta.itens, pasta.raiz, mes) || pasta.raiz });
     } catch (e) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
     } finally {
@@ -287,13 +314,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * certo, então ele sobe e o do Drive vai para a pasta SUBSTITUÍDOS (o robô move; nada é apagado). Só nos meses em que a
    * pessoa importou (meses; sem eles, todos os do arquivo) e quando o do Drive é um só; mais de um, ou só candidato, não vai.
    */
-  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[]) {
+  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[], soOsMeses = false) {
     if (!drive.enviarAoDrive || !fs.length) return;
     // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
     // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
     if (!acesso.entrou) {
       if (drive.loginDeFora || drive.exemplos) return;
-      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses); };
+      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses, soOsMeses); };
       setLogin(l => ({ ...l, aberto: true, erro: '' }));
       return;
     }
@@ -305,11 +332,15 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       for (const f of fs) {
         const bytes = new Uint8Array(await f.arrayBuffer());
         const lido = await x.lerArquivo(f.name, bytes.slice(), 'banco');
-        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026)
+        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026); o que não diz o mês, no mês para onde foi mandado
+        // (16/11/2026: "mesmo se for sem movimento, deve ser arquivado!")
         const ext = (/\.[a-z0-9]+$/i.exec(f.name)?.[0] || '.pdf').toLowerCase();
-        const pedacos = lido.semMovimento?.length === 1 ? [{ mes: lido.semMovimento[0], nome: x.nomeDoExtratoDoMes(linha.nome, lido.semMovimento[0], ext), bytes }]
+        const mesSemMov = lido.semMovimento?.length === 1 ? lido.semMovimento[0] : lido.semMovimento && meses?.length === 1 ? meses[0] : null;
+        const pedacos = mesSemMov ? [{ mes: mesSemMov, nome: x.nomeDoExtratoDoMes(linha.nome, mesSemMov, ext), bytes }]
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
+          // só os meses escolhidos (o Enviar vários meses, com o mês escolhido no extrato de vários meses)
+          if (soOsMeses && meses && !meses.includes(p.mes)) continue;
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
           // já tem o extrato DESTE mês no Drive: não manda de novo. (Vitor, 19/10/2026: "não está sendo armazenado" — o mês
           // sem arquivo devolve como candidatos os extratos dos OUTROS meses, e o envio era pulado em toda empresa que já
@@ -360,10 +391,21 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // erro, ou mais de 15 minutos sem aparecer no mapa, desiste (fica o check, como antes)
   const chavesSubindo = Object.keys(subindo).join(',');
   const { ligarMesAoDrive } = vm;
+  // uma conferência por vez, e o robô relê a pasta da empresa no máximo uma vez por minuto (Vitor, 16/11/2026, na 429: "tem algo
+  // rodando que travou minha aplicação" — a cada 10 s começava outra conferência sem a anterior acabar, cada uma pedindo ao robô
+  // para reler a pasta inteira, até 90 s, e baixando o mapa todo de novo: com o extrato que não aparece no mapa, eram umas 9 de
+  // uma vez, por até 15 minutos)
+  const conferindo = useRef(false);
+  const releuOMapaEm = useRef(0);
   useEffect(() => {
     if (!chavesSubindo || !drive.situacaoDosEnvios || !acesso.entrou) return;
     let vivo = true;
     async function conferir() {
+      if (conferindo.current) return;
+      conferindo.current = true;
+      try { await conferirAgora(); } finally { conferindo.current = false; }
+    }
+    async function conferirAgora() {
       const lista = Object.entries(subindo);
       const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
       const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto');
@@ -374,7 +416,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const arquivados: string[] = [];
       if (prontos.length) {
         const antes = await drive.pastaDoCliente(codigo);
-        if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
+        if (antes?.raiz && drive.atualizarMapaDoCliente && Date.now() - releuOMapaEm.current > 60e3) {
+          releuOMapaEm.current = Date.now();
+          await drive.atualizarMapaDoCliente(antes.raiz);
+        }
         const pasta = await drive.pastaDoCliente(codigo);
         for (const [k] of prontos) {
           const [banco, mes] = k.split('|');
@@ -418,13 +463,35 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     cancelando,
     cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
-    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[]) => { void subirAoDrive(linha, fs, cliente, meses); },
+    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[], soOsMeses = false) => { void subirAoDrive(linha, fs, cliente, meses, soOsMeses); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */
     pedirLogin: (f: () => void) => { depois.current = f; setLogin(l => ({ ...l, aberto: true, erro: '' })); },
     escolha,
-    usar: (a: creditor.ArquivoAchado) => { if (escolha) void usar(escolha.linha, a); },
+    usar: (a: creditor.ArquivoAchado) => { if (escolha) void usar(escolha.linha, a, [], escolha.mes); },
+    selecionar: (linha: Linha, mes: string) => { void selecionar(linha, mes); },
+    /** o navegador de pastas aberto: o título, o caminho (as migalhas), o que tem na pasta */
+    navegador: navegador ? {
+      titulo: navegador.linha.nome + ' · ' + navegador.mes.slice(5) + '/' + navegador.mes.slice(0, 4),
+      naRaiz: navegador.pasta === navegador.raiz,
+      caminho: x.caminhoAtePasta(navegador.itens, navegador.raiz, navegador.pasta),
+      conteudo: x.conteudoDaPasta(navegador.itens, navegador.pasta),
+    } : null,
+    abrirPasta: (id: string) => setNavegador(n => (n ? { ...n, pasta: id } : n)),
+    voltarPasta: () => setNavegador(n => {
+      if (!n || n.pasta === n.raiz) return n;
+      const atual = n.itens.find(it => it.i === n.pasta);
+      return { ...n, pasta: atual?.p || n.raiz };
+    }),
+    escolherNoDrive: (it: creditor.ItemDrive) => {
+      const n = navegador;
+      if (!n) return;
+      setNavegador(null);
+      const caminho = [...x.caminhoAtePasta(n.itens, n.raiz, n.pasta).map(p => p.n), it.n].join(' › ');
+      void usar(n.linha, { id: it.i, nome: it.n, caminho, modificado: it.m, credliquidacao: false, daCompetencia: true }, [], n.mes);
+    },
+    fecharNavegador: () => setNavegador(null),
     fecharEscolha: () => setEscolha(null),
     /** o link temporário para ver o arquivo do Drive (não guardar) */
     link: (arquivo: { id: string; nome: string }) => drive.link(arquivo.id, arquivo.nome),

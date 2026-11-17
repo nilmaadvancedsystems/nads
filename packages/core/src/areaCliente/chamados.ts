@@ -6,7 +6,8 @@ export type SituacaoDoChamado = 'aberto' | 'em andamento' | 'respondido' | 'conc
 
 export interface MensagemDoChamado {
   de: 'cliente' | 'escritorio';
-  /** "Você" ou "Escritório": o nome de quem do escritório respondeu nunca sai */
+  /** "Você", ou o primeiro nome de quem do escritório respondeu (12/11/2026: "quero o nome do usuário que mandou"); sem
+   *  nome, "Escritório" */
   autor: string;
   texto: string;
   /** ISO */
@@ -48,7 +49,17 @@ const SITUACOES = new Set<string>(['aberto', 'em andamento', 'respondido', 'conc
 
 export const MAIOR_TEXTO_DO_CHAMADO = 4000;
 
-/** O chamado que o cliente vê: lista branca; o autor do escritório vira "Escritório"; nota interna não sai. */
+/**
+ * O nome de quem do escritório respondeu, como o cliente vê: só o primeiro nome (12/11/2026: "quero o nome do usuário que
+ * mandou"; antes, sempre "Escritório"). Sem nome, ou com um e-mail no lugar do nome, fica "Escritório".
+ */
+export function autorDoEscritorio(autor?: string): string {
+  const primeiro = (autor ?? '').trim().split(/\s+/)[0] ?? '';
+  if (!primeiro || primeiro.includes('@') || /^escrit[oó]rio$/i.test(primeiro)) return 'Escritório';
+  return primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
+}
+
+/** O chamado que o cliente vê: lista branca; do escritório, só o primeiro nome de quem respondeu; nota interna não sai. */
 export function chamadoDoCliente(c: ChamadoInterno): ChamadoDoCliente {
   return {
     id: c.id,
@@ -57,7 +68,7 @@ export function chamadoDoCliente(c: ChamadoInterno): ChamadoDoCliente {
     situacao: (SITUACOES.has(c.situacao) ? c.situacao : 'aberto') as SituacaoDoChamado,
     mensagens: c.mensagens.filter(m => !m.interna).map(m => {
       const doCliente = m.de === 'cliente';
-      return { de: doCliente ? 'cliente' as const : 'escritorio' as const, autor: doCliente ? 'Você' : 'Escritório', texto: m.texto, em: m.em };
+      return { de: doCliente ? 'cliente' as const : 'escritorio' as const, autor: doCliente ? 'Você' : autorDoEscritorio(m.autor), texto: m.texto, em: m.em };
     }),
   };
 }

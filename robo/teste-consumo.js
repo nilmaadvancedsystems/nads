@@ -276,6 +276,32 @@ const dormir = ms => new Promise(r => setTimeout(r, ms));
     igual('arquivo novo: lê o mês e grava', [leituras, gravacoes, docs['c1_' + comp].pasta.extrato], [2, 3, ['a1', 'a2']]);
   }
 
+  // a memória do mapa do Drive em disco (13/11/2026): o robô que reinicia não relê o que já gravou
+  {
+    const os = require('os'), path = require('path');
+    const arq = path.join(os.tmpdir(), 'nads-teste-mapa-memoria-' + process.pid + '.json');
+    di.usarArquivoDaMemoria(arq);
+    let leituras = 0; const docs = {};
+    const novoDb = () => ({ collection: () => ({ doc: id => ({
+      get: async () => { leituras++; return { exists: !!docs[id], data: () => docs[id] }; },
+      set: async p => { docs[id] = Object.assign({}, docs[id], p, { pasta: Object.assign({}, (docs[id] || {}).pasta, p.pasta) }); },
+    }) }) });
+    const hoje = new Date(); const comp = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    const achados = new Map([[comp + '|extrato', [{ id: 'm1', nome: 'x.pdf' }]]]);
+    const db1 = novoDb();
+    await di.marcarPeloIndice(db1, { id: 'c9', nome: 'C' }, achados, () => {}, false);
+    di.salvarMemoria(db1);
+    const antes = leituras;
+    const db2 = novoDb();   // o robô reiniciou: outro processo, a memória vem do disco
+    await di.marcarPeloIndice(db2, { id: 'c9', nome: 'C' }, achados, () => {}, false);
+    igual('depois de reiniciar, a memória do disco evita a leitura', leituras - antes, 0);
+    di.esquecerMemoria(db2);
+    await di.marcarPeloIndice(db2, { id: 'c9', nome: 'C' }, achados, () => {}, false);
+    igual('a releitura da madrugada zera e confere de novo', leituras - antes, 1);
+    di.usarArquivoDaMemoria(null);
+    try { fs.unlinkSync(arq); } catch (e) { /* segue */ }
+  }
+
   // os clientes ativos sem o arquivo do vigia: a leitura vale 10 min no processo
   const cache = require('./clientes-cache');
   if (!cache.lerDoArquivo()) {

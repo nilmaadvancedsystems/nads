@@ -113,7 +113,7 @@ export function MinhasEmpresas() {
             </tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(l => (
-                <tr key={l.chave} data-linha={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nome}
+                <tr key={l.chave} data-linha={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nomeNaTela}
                   onClick={() => vm.abrirEmpresa(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrirEmpresa(l.rota); }}>
                   <td className="num">
                     {/* a situação em cor: laranja parada, amarelo em andamento, cinza não iniciada, verde concluída */}
@@ -122,7 +122,7 @@ export function MinhasEmpresas() {
                       <span className="codigo-num">{l.codigo ?? '—'}</span>
                     </span>
                   </td>
-                  <td>{l.nome}</td>
+                  <td>{l.nomeNaTela}</td>
                   <td className="num" title={l.concluidas + ' de ' + l.total + ' etapas'}>
                     <span className="progresso-linha">
                       <span className="tarefas-barra"><span className={l.situacao === 'parada' ? 'parada' : undefined} style={{ width: l.porcentagem + '%' }} /></span>

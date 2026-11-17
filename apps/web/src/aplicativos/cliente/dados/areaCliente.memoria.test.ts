@@ -15,7 +15,7 @@ describe('a Área do Cliente como o cliente real vê (exemplo-real)', () => {
   it('tem só o que o banco tem: sem pessoal, documentos, pagas, ficha, linha digitável, avisos nem telefone', () => {
     const e = areaComoNoBanco(HOJE);
     expect(e.secoes).toEqual(SECOES_DO_BANCO);
-    expect(e).toMatchObject({ valido: true, exemplos: true, documentos: [], pessoal: null, documentosDp: [], pagas: [], avisos: [], codigos: {}, ficha: null, certificado: null, atendimento: null });
+    expect(e).toMatchObject({ valido: true, exemplos: true, documentos: [], pessoal: null, documentosDp: [], faturamento: null, pagas: [], avisos: [], codigos: {}, ficha: null, certificado: null, atendimento: null });
     expect(e.resumo?.escritorio).toEqual({ whatsapp: '(31) 99999-0000', email: 'atendimento@nilma.example' });
     expect(e.resumo?.empresas[0].cnpj).toBe('00.000.000/0001-91');
     expect(e.guias.map(g => g.situacao)).toEqual(['vencida']);

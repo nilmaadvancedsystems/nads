@@ -15,9 +15,13 @@ import { addDoc as addDocBruto, collection, doc, getDocs, limit, onSnapshot, ord
 import { bancoDoEntregas, contaDoEntregas } from '../../tarefas/dados/entregas.firestore';
 import type { ClienteDaTela, DocsDaCentral, FilaDaTela, PedidoDaTela, RepoCentral } from './central';
 import { travarPedido } from '../../../comum/disjuntorDeGravacao';
+import { guardarPedido } from '../../../comum/modoDesenvolvedor';
 
-// o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos
-const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
+// o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos. E o modo
+// desenvolvedor (13/11/2026: a Central aberta dentro da Tarefas, no módulo Desenvolvedor): nenhum comando sai (rodar,
+// pausar, mexer na fila); só o 'assistir', que não muda nada (só liga o espelho do log da aba Registros)
+const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
+const addDocSoDeOlhar = travarPedido(addDocBruto) as typeof addDocBruto;
 
 const QUANTAS_ATIVIDADES = 150;
 const QUANTOS_COMANDOS = 40;
@@ -73,7 +77,7 @@ export function criarCentralFirestore(): RepoCentral {
     const conta = contaDoEntregas();
     const quem = { uid: conta?.uid || '', nome: p.porNome || conta?.email.split('@')[0] || '' };
     const d = r.montarComando(p, quem);
-    const ref = await addDoc(collection(db, 'robosComandos'), d);
+    const ref = await (p.acao === 'assistir' ? addDocSoDeOlhar : addDoc)(collection(db, 'robosComandos'), d);
     return ref.id;
   }
 

@@ -26,9 +26,11 @@ export interface EscolhaDaGuia extends EscolhaDoArquivo { coluna?: string }
 // sem e-mail e sem entrega (a guia vai para o portal do cliente pelo eContador)
 // e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): como o eContador, as guias no Drive e o Relatório com
 // Entregue = SCI Report, sem e-mail e sem entrega
-export type ViaDaGuia = 'email' | 'impresso' | 'econtador' | 'scireport';
+// e o WhatsApp (12/11/2026, ticket 1ORUBY: "Inserir tipo de envio 'Whastapp'"): o robô faz como no SCI Report (o Drive e o
+// Relatório com Entregue = WhatsApp, o 'zap' de lá); a mensagem a pessoa manda pela tela, no wa.me do cliente
+export type ViaDaGuia = 'email' | 'impresso' | 'econtador' | 'scireport' | 'zap';
 /** a via guardada no banco ('' ou outra coisa = Gmail) */
-export const viaDaGuia = (v: unknown): ViaDaGuia => (v === 'impresso' || v === 'econtador' || v === 'scireport' ? v : 'email');
+export const viaDaGuia = (v: unknown): ViaDaGuia => (v === 'impresso' || v === 'econtador' || v === 'scireport' || v === 'zap' ? v : 'email');
 export interface GuiaDoLote extends Omit<ArquivoDoLote, 'leitura' | 'escolha'> { leitura: LeituraDaGuia | null; escolha: EscolhaDaGuia | null }
 export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** as colunas que o robô preencheu no Relatório (as que estavam em branco); valores: o valor das guias por coluna */

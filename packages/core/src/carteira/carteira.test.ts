@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContaAPagar } from '../financeiro/contasPagar';
 import {
-  conferirComissao, conferirLancamento, conferirServicos, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
+  comValorParaAPessoa, conferirComissao, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
   resumoParaPagar, salarioDoMes, totaisDasComissoes, ultimosMeses, type Comissao, type DocumentoDaCarteira, type Lancamento,
 } from '.';
 
@@ -77,5 +77,28 @@ describe('Carteira', () => {
     const ps = pagamentosDaCarteira([conta('1', 'v', '2026-10-05', true), conta('2', 'v', '2026-11-05', false), conta('3', 'outro', '2026-11-05', true), conta('4', null, '2026-11-05', true)], 'v');
     expect(ps.map(p => [p.id, p.rotulo, p.pago, p.comprovantes.map(c => c.nome)])).toEqual([['2', 'Salário · NOV', false, []], ['1', 'Salário · NOV', true, ['pix.pdf']]]);
     expect([recebidoNoMes(ps, '2026-10'), recebidoNoMes(ps, '2026-11')]).toEqual([{ recebido: 2990, aReceber: 0 }, { recebido: 0, aReceber: 3000 }]);
+  });
+});
+
+describe('a comissão escondida (16/11/2026)', () => {
+  const base = { id: 'x', uid: 'v', nome: 'Pessoa A', competencia: '2026-12', data: '2026-11-16', cliente: 'CLIENTE', descricao: 'Abertura de MEI', situacao: 'lancada' as const, criadoEm: '' };
+  const visivel = { ...base, id: 'a', valor: 15 };
+  const naFila = { ...base, id: 'b', valor: 0, oculta: true, calculo: 'fila' as const };
+  const feita = { ...base, id: 'c', valor: 40, oculta: true, calculo: 'feito' as const };
+  it('a % é só a do serviço', () => {
+    const servicos = [{ id: 'a', nome: 'Abertura de MEI', percentual: 10 }];
+    expect([percentualDoServico(servicos, 'Abertura de MEI'), percentualDoServico(servicos, 'Outro')]).toEqual([10, 0]);
+  });
+  it('registra sem a % e sem o aviso do Financeiro', () => {
+    const c = { competencia: '2026-12', data: '2026-11-16', cliente: 'CLIENTE', clienteCodigo: null, porte: 'MEI' as const, servico: 'Abertura de MEI', valorServico: 150, percentual: 0 };
+    expect(conferirComissao(c)).toEqual(['O Financeiro ainda não definiu a % de Abertura de MEI.']);
+    expect(conferirComissao({ ...c, oculta: true })).toEqual([]);
+  });
+  it('a pessoa não vê o valor da escondida, nem no total', () => {
+    expect(comValorParaAPessoa([visivel, naFila, feita]).map(c => c.id)).toEqual(['a']);
+  });
+  it('sem o cálculo do robô, fica fora do Aprovar tudo', () => {
+    expect([esperandoCalculo(visivel), esperandoCalculo(naFila), esperandoCalculo(feita)]).toEqual([false, true, false]);
+    expect(resumoParaPagar([visivel, naFila, feita])[0].ids.lancadas).toEqual(['a', 'c']);
   });
 });

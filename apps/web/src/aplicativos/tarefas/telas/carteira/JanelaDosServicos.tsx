@@ -1,5 +1,6 @@
 // Os serviços comissionados (Vitor, 12/11/2026: "no financeiro, pode adicionar mais serviços e definir qual a porcentagem de
 // cada serviço"): a lista que aparece na janela de registrar a comissão e a % de cada um. Começa com os 9 do Vitor, sem a %.
+// A % própria por pessoa saiu daqui (16/11/2026): fica num lugar do banco que nenhuma tela lê (a comissão escondida).
 import { BotaoFechar, BotaoIcone, Icone, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { useJanelaDosServicos } from './useCarteiraDaPessoa';
@@ -10,7 +11,7 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
   useJanela(janela, fechar);
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Serviços comissionados">
+      <div ref={janela} className="modal registro-novo cart-servicos-janela" role="dialog" aria-modal="true" aria-label="Serviços comissionados">
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="dinheiro" />Comissões da equipe<Icone nome="chevronRight" /><b>Serviços comissionados</b></span>
           <BotaoFechar onClick={fechar} />

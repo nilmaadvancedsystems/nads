@@ -1,9 +1,11 @@
 // ViewModel da página de uma empresa na Tarefas (os insights dela): na competência escolhida, a situação,
 // quantas etapas, a etapa atual, quem mexeu por último e cada etapa com quem fez, quando e o motivo de
 // parar; o histórico dos últimos meses; e o que o Extrator tem guardado dela. Daqui, o botão abre o executor.
-import { empresas, extrator, tarefas as t } from '@nads/core';
+import { demo, empresas, extrator, tarefas as t } from '@nads/core';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../comum/novidades';
 import { extratorDaEmpresa } from '../../dados/fonte';
 import { useRegimesDoEntregas, useRepo, useVersaoDoRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor, competenciasDaTela } from '../../casca/navegacao';
@@ -34,6 +36,8 @@ export function useEmpresa(rota: string) {
   const [params, setParams] = useSearchParams();
   const op = useOperador().operador as Operador;
   const { dep: depDaTela, comDep, lista } = useDepartamentoDaTela();
+  const emLote = useNovidade('em-lote-na-empresa');
+  const [dev] = useModoDesenvolvedor();
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
@@ -91,6 +95,9 @@ export function useEmpresa(rota: string) {
     };
   });
 
+  const abrirNoExecutor = (r: string, competenciaOuPeriodo: string) => navegar(comDep(caminhoDoExecutor(r, competenciaOuPeriodo)));
+  const rotaDemo = empresas.rotaDaEmpresa(demo.EMPRESA_DEMO);
+
   const extratos = (arquivos || []).slice().sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)).map(a => ({
     id: a.id, lado: a.lado === 'banco' ? 'Extrato' : 'Sistema', nome: a.nome, qtd: a.lancamentos.length,
     periodo: extrator.rotuloPeriodo(extrator.periodo(a.lancamentos)), quando: t.quandoFoi(a.importadoEm, agora), quandoCompleto: dataHora(a.importadoEm),
@@ -110,7 +117,23 @@ export function useEmpresa(rota: string) {
     etapas, historico,
     extratos, carregandoExtratos: arquivos === null,
     acao: ACAO[situacao],
-    abrirExecutor: () => navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
+    abrirExecutor: () => abrirNoExecutor(empresas.rotaDaEmpresa(empresa), competencia),
+    /** o Em Lote no seletor de competência, como o da Importação (novidade, só no modo desenvolvedor) */
+    emLote, dev,
+    /** o seletor com o Em Lote: um mês troca a competência da tela; vários (De/Até) abrem o executor nesses meses juntos */
+    trocarCompetenciaOuPeriodo: (c: string) => {
+      if (t.competenciasDoPeriodo(c).length > 1) abrirNoExecutor(empresas.rotaDaEmpresa(empresa), c);
+      else setParams(p => { const n = new URLSearchParams(p); n.set('competencia', c); return n; });
+    },
+    /** o ⚡ Dados de teste: a empresa de teste (9999), que não grava no banco */
+    teste: {
+      ehDeTeste: demo.ehEmpresaDemo(empresa.nome),
+      abrirVisaoGeral: () => navegar(comDep(caminhoDaEmpresa(rotaDemo, competencia))),
+      /** o Em lote dos meses de exemplo dela (07 e 08/2026, os da Importação de teste) */
+      iniciarEmLote: () => abrirNoExecutor(rotaDemo, t.rotaDoPeriodo('2026-07', '2026-08')),
+      /** os três últimos meses da lista, como o De/Até já vem escolhido */
+      iniciarTresMeses: () => abrirNoExecutor(rotaDemo, t.rotaDoPeriodo(competencias[Math.min(2, competencias.length - 1)], competencias[0])),
+    },
     abrirCompetencia: (c: string) => navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c))),
     voltar: () => navegar(lista + 'competencia=' + competencia),
   };

@@ -110,8 +110,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const recebida = idDelegada ? listaDelegadas.tarefas.find(x => x.id === idDelegada && !!x.etapaDelegada && !x.etapaDelegada.conjunto && x.responsavel.uid === euNaDelegacao && x.status !== 'cancelada') : undefined;
   const etapaDelegada = recebida ? rotina.etapas.find(e => e.id === recebida.etapaDelegada?.etapa) || null : null;
   const carregando = !carregada || ((!!idDelegada || soAsMinhas) && !listaDelegadas.carregadas);
+  // o Em lote da empresa (Vitor, 17/11/2026: "Em lote, definido uma vez, fica permanente, o usuario pode cancelar clicando em
+  // cancelar funcao, mas ao atualizar continua la"): o período fica guardado na empresa (no banco, pelo código) até o Cancelar
+  // função; abrir a empresa em qualquer mês fora dele leva de volta ao lote
+  const [loteAtivo, setLoteAtivo] = useGuardado<string | null>(empresa?.codigo != null ? 'lote-ativo|' + dep + '|' + empresa.codigo : null, null);
+  useEffect(() => {
+    if (!dev && varios && carregada && empresa && loteAtivo !== periodo) setLoteAtivo(periodo);
+  });
   // um mês só, mas que faz parte de um período prometido: o executor leva para o período
-  const periodoDoMes = !varios && carregada && ex?.periodo && ex.periodo !== periodo && t.competenciasDoPeriodo(ex.periodo).length > 1 ? ex.periodo : null;
+  const periodoDoMes = !varios && carregada && ex?.periodo && ex.periodo !== periodo && t.competenciasDoPeriodo(ex.periodo).length > 1 ? ex.periodo
+    : !varios && carregada && loteAtivo && loteAtivo !== periodo && t.competenciasDoPeriodo(loteAtivo).length > 1 ? loteAtivo : null;
   const concluido = varios && carregada && t.periodoConcluido(meses.map(c => exDe[c] || null), rotina);
 
   // abriu o período: grava a promessa em cada mês dele (uma vez)
@@ -317,6 +325,18 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); }
   }
 
+  // o link que abre numa etapa (16/11/2026: "generate a new link with the cheque especial app" → "Etapa de uma empresa"):
+  // ?etapa=cheque-especial abre a etapa quando a empresa carrega, com as mesmas regras do clique no checklist (a etapa que
+  // ainda não pode, porque falta a de antes, fica na da vez)
+  const etapaDaUrl = paramsDaUrl.get('etapa');
+  const abriuDaUrl = useRef(false);
+  useEffect(() => {
+    if (abriuDaUrl.current || !etapaDaUrl || carregando || !etapa) return;
+    abriuDaUrl.current = true;
+    if (etapaDaUrl !== etapa.id && rotina.etapas.some(e => e.id === etapaDaUrl)) abrirEtapa(etapaDaUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapaDaUrl, carregando, etapa?.id]);
+
   const ultimo = meses[meses.length - 1] || competencia;
   const voltar = () => navegar(lista + 'competencia=' + ultimo);
   const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);
@@ -441,6 +461,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     bancosDaEmpresa,
     departamento: rotina.departamento,
     grupos, abrirGrupo,
+    /** o nome para mostrar: a razão social trocada no Cadastro › Empresa (13/11/2026), ou o nome */
+    nomeNaTela: empresa ? empresas.nomeParaMostrar(empresa) : '',
     empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),
     carregando: !carregada,
     etapas: rotina.etapas.map((e, i) => {
@@ -615,6 +637,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         const p = t.definirPeriodo(exDe[c], null, op.nome, new Date());
         repo.gravar(p.execucao, p.evento, exDe[c]);
       }
+      setLoteAtivo(null);
       toast('Em lote cancelado: ' + t.rotuloDoPeriodo(meses) + '.');
       navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo)));
     },
@@ -634,6 +657,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           repo.gravar(p.execucao, p.evento, exDe[m]);
         }
       }
+      // o Em lote da empresa segue o período novo (um mês só: sai do Em lote)
+      setLoteAtivo(t.competenciasDoPeriodo(c).length > 1 ? c : null);
       navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)));
     },
     /**

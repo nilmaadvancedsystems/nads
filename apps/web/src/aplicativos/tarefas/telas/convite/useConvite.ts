@@ -11,6 +11,7 @@ export function useConvite(codigo: string) {
   const [convite, setConvite] = useState<ConviteDoNads | null | undefined>(undefined);
   const [erroAoLer, setErroAoLer] = useState('');
   const [nome, setNome] = useState('');
+  const [sobrenome, setSobrenome] = useState('');
   const [senha, setSenha] = useState('');
   const [repetir, setRepetir] = useState('');
   const [tentou, setTentou] = useState(false);
@@ -30,6 +31,7 @@ export function useConvite(codigo: string) {
   const limpo = nome.trim().replace(/\s+/g, ' ');
   const faltas: string[] = [];
   if (convite?.tipo === 'novo' && limpo.length < 2) faltas.push('Escreva o seu nome.');
+  if (convite?.tipo === 'novo' && sobrenome.trim().replace(/[^\p{L}]/gu, '').length < 2) faltas.push('Escreva o seu sobrenome.');
   if (senha.length < usuarios.SENHA_MINIMA) faltas.push('A senha precisa de pelo menos ' + usuarios.SENHA_MINIMA + ' caracteres.');
   else if (senha !== repetir) faltas.push('As duas senhas não são iguais.');
   const cargo = convite
@@ -47,7 +49,7 @@ export function useConvite(codigo: string) {
     tipo: convite?.tipo || 'novo',
     paraQuem: convite?.nome || '',
     cargo,
-    nome, setNome, senha, setSenha, repetir, setRepetir,
+    nome, setNome, sobrenome, setSobrenome, senha, setSenha, repetir, setRepetir,
     login: limpo.length >= 2 ? semDominio(usuarios.emailDoNome(limpo)) : '',
     faltas: tentou ? faltas : [],
     erro, enviando, pronto,
@@ -57,7 +59,7 @@ export function useConvite(codigo: string) {
       if (!convite || faltas.length || enviando) return;
       setEnviando(true);
       try {
-        if (convite.tipo === 'novo') setPronto({ login: semDominio(await aceitarCadastro(convite, limpo, senha)) });
+        if (convite.tipo === 'novo') setPronto({ login: semDominio(await aceitarCadastro(convite, limpo, sobrenome.trim().replace(/\s+/g, ' '), senha)) });
         else { await trocarSenhaPeloConvite(convite, senha); setPronto({ login: convite.nome }); }
       } catch (e) {
         setErro((e as Error).message || String(e));

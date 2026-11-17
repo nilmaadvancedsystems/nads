@@ -16,7 +16,7 @@ export {
   empresaNova, normalizarEmpresa, lancamentosDe, periodo, rotuloPeriodo, competencias, jaTemNoPeriodo, soNovos,
   importar, excluirArquivo, excluirMesesDoArquivo, bytesNoBanco, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, releituraPerderiaMes, releituraPioraOSaldo, tirarSobreposicaoDosExtratos, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
 } from './regras/importacao';
-export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
+export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, MAIOR_ARQUIVO_PARA_IMPORTAR, abasDaPlanilha, lerArquivo, problemaDoArquivoParaImportar } from './arquivos/leitura';
 export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';
@@ -32,7 +32,7 @@ export { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial,
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { chequeEspecialDoBanco, lancamentosDoChequeEspecial, type ChequeEspecialDoBanco } from './regras/chequeEspecial';
 export { lancamentosParaOSistema, lancamentosDoQueFaltaNoRazao, type PendenteDoBanco, type SugestaoDeLancamento } from './regras/lancamentosParaOSistema';
-export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
+export { acharExtratoNoDrive, arquivosDoMesNoDrive, caminhoAtePasta, conteudoDaPasta, mensagemDaBuscaDoExtrato, pastaInicialDoMes, type ContaProcurada } from './regras/drive';
 export { bancoDoTexto, deOutroBanco, preVerificarExtrato, type NaoEExtrato, type OutroDocumento } from './regras/preVerificacao';
 export { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes, type ComprovanteNoDrive } from './regras/comprovantes';
 export { linhaDoRecebido, type ExtratoRecebido, type LinhaParaRecebido } from './regras/recebidos';

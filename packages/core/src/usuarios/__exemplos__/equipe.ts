@@ -18,4 +18,4 @@ const PESSOAS: readonly [string, Departamento, Nivel][] = [
 const CRIACAO = new Date('2026-09-22T12:00:00.000Z');
 
 export const EQUIPE_EXEMPLO: readonly Usuario[] = PESSOAS.map(([nome, departamento, nivel], i) =>
-  lerUsuario('exemplo-' + (i + 1), docDaContaNova({ nome, senha: 'x', departamento, nivel }, CRIACAO)));
+  lerUsuario('exemplo-' + (i + 1), docDaContaNova({ nome, sobrenome: '', senha: 'x', departamento, nivel }, CRIACAO)));

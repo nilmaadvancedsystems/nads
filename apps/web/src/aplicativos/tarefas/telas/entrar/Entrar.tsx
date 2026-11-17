@@ -26,8 +26,9 @@ export function Entrar({ sessao, titulo = 'Entrar na Tarefas' }: { sessao: Sessa
             <h1 className="auth-title">{titulo}</h1>
             <form className="auth-box" onSubmit={e => { e.preventDefault(); void vm.entrar(); }}>
               <div className="field">
-                <label htmlFor="fLogin">Nome ou e-mail</label>
-                <input id="fLogin" type="text" autoComplete="username" autoFocus value={vm.login} onChange={e => vm.setLogin(e.target.value)} />
+                <label htmlFor="fLogin">{vm.porEmail ? 'E-mail' : 'Nome ou e-mail'}</label>
+                <input id="fLogin" type="text" inputMode={vm.porEmail ? 'email' : undefined} autoComplete="username" autoFocus placeholder={vm.porEmail ? 'seu e-mail principal' : undefined}
+                  value={vm.login} onChange={e => vm.setLogin(e.target.value)} />
               </div>
               <div className="field" style={{ marginTop: 12 }}>
                 <label htmlFor="fSenha">Senha</label>
@@ -38,7 +39,10 @@ export function Entrar({ sessao, titulo = 'Entrar na Tarefas' }: { sessao: Sessa
                 {vm.entrando ? 'Entrando…' : 'Entrar'}
               </button>
             </form>
-            <p className="auth-foot">Use o mesmo nome e a mesma senha do Entregas.<br />Versão do sistema: {VERSAO_SISTEMA}</p>
+            <p className="auth-foot">
+              {vm.porEmail ? <>Entre com o seu e-mail principal e a senha de sempre.<br />Ainda não deu o seu e-mail? Entre com o nome; o nads pede o e-mail em seguida.</> : 'Use o mesmo nome e a mesma senha do Entregas.'}
+              <br />Versão do sistema: {VERSAO_SISTEMA}
+            </p>
           </>
         )}
       </div>
