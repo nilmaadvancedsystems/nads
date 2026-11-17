@@ -21,7 +21,7 @@ export interface RepoWhatsapp {
 const SEGUNDO = 1000;
 
 export function criarWhatsappMemoria(): RepoWhatsapp {
-  let w: r.WhatsappDoRobo = { ...r.WHATSAPP_DESLIGADO, situacao: 'desconectado', motivo: 'ainda não conectado: peça o QR code', teste: ['553891383638'] };
+  let w: r.WhatsappDoRobo = { ...r.WHATSAPP_DESLIGADO, situacao: 'desconectado', motivo: 'ainda não conectado: peça o QR code', teste: ['553899197340', '553891383638'] };
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudar = (parcial: Partial<r.WhatsappDoRobo>) => {
