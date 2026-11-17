@@ -110,15 +110,38 @@ export function textoDoPedido(p: PedidoDeExtratos, prazo: string): string {
   ].join('\n');
 }
 
-/** A mensagem do WhatsApp que já vem escrita (a pessoa muda à vontade). */
-export function textoDoWhatsApp(p: PedidoDeExtratos, prazo: string): string {
+/** o WhatsApp do escritório, para onde o cliente responde (o chip do robô ninguém lê) */
+export const WHATSAPP_PARA_RESPONDER = '(38) 9138-3638';
+
+/**
+ * A mensagem do WhatsApp que já vem escrita (a pessoa muda à vontade), no estilo do Acessórias (17/11/2026): o nome do
+ * escritório e o assunto em negrito, a empresa e a competência, um documento por linha, o prazo e para onde responder.
+ * 'robo': vai pelo WhatsApp do robô, com a solicitação em PDF anexada; 'link': a pessoa manda do WhatsApp dela (wa.me),
+ * sem o PDF.
+ */
+export function textoDoWhatsApp(p: PedidoDeExtratos, prazo: string, como: 'robo' | 'link' = 'link'): string {
   return [
-    'Olá! Aqui é da Nilma Contabilidade.',
-    'Mandamos por e-mail a relação de documentos para o fechamento de ' + competenciasPorExtenso(p.competencias) + ' da ' + p.cliente + ':',
-    ...p.documentos.map(d => '• ' + nomeComCompetencias(d, p)),
-    ...(prazo ? ['Prazo: até ' + prazo + '.'] : []),
-    'Pode responder o e-mail com os arquivos. Obrigado!',
+    '*Nilma Contabilidade*',
+    '_Solicitação de documentos_',
+    '',
+    'Olá! Tudo bem?',
+    'Para o fechamento de *' + competenciasPorExtenso(p.competencias) + '* da *' + p.cliente + '*, precisamos dos documentos abaixo:',
+    '',
+    ...p.documentos.map(d => '📄 ' + nomeComCompetencias(d, p)),
+    ...(prazo ? ['', '📅 *Prazo:* até ' + prazo] : []),
+    '',
+    como === 'robo'
+      ? 'Segue em anexo a solicitação em PDF. Pode mandar os arquivos respondendo o e-mail ou pelo WhatsApp do escritório, ' + WHATSAPP_PARA_RESPONDER + '.'
+      : 'Mandamos a mesma relação por e-mail. Pode mandar os arquivos respondendo o e-mail ou por aqui mesmo.',
+    '',
+    como === 'robo' ? '_Mensagem automática do sistema da Nilma Contabilidade._' : 'Obrigado!',
   ].join('\n');
+}
+
+/** O nome do PDF da solicitação: "Solicitação de documentos - PADARIA BOA - agosto-2026.pdf". */
+export function nomeDoPdfDoPedido(p: PedidoDeExtratos): string {
+  const limpo = (t: string) => t.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return limpo('Solicitação de documentos - ' + p.cliente + ' - ' + competenciasPorExtenso(p.competencias).replace(/\//g, '-')).slice(0, 110) + '.pdf';
 }
 
 /** Guarda o pedido no histórico da empresa (o mais novo primeiro) e na auditoria. */

@@ -125,7 +125,12 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
                   Mandar também pelo WhatsApp{p.whatsapp.telefone ? ' · ' + p.whatsapp.telefone : ''}
                 </label>
                 {!p.whatsapp.ok && p.contato.dados && <span className="hint">Sem telefone de WhatsApp no cadastro do Entregas.</span>}
-                {p.whatsapp.ok && <span className="hint">{p.whatsapp.peloRobo ? 'O robô manda pelo WhatsApp do escritório.' : 'Abre o WhatsApp com a mensagem pronta; você aperta Enviar.'}</span>}
+                {p.whatsapp.ok && (
+                  <span className="hint">
+                    {p.whatsapp.peloRobo ? 'O robô manda pelo WhatsApp, com a solicitação em PDF anexada. ' : 'Abre o WhatsApp com a mensagem pronta; você aperta Enviar.'}
+                    {p.whatsapp.peloRobo && <button type="button" className="btn btn-ghost" onClick={p.whatsapp.verPdf}>Ver o PDF</button>}
+                  </span>
+                )}
                 {p.whatsapp.ligado && (
                   <>
                     <textarea className="pedir-whats" rows={8} value={p.whatsapp.texto} onChange={e => p.whatsapp.escrever(e.target.value)} aria-label="Mensagem do WhatsApp" />
@@ -141,7 +146,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
               {p.resumo.de && <span><b>De</b> {p.resumo.de}</span>}
               <span><b>Para</b> {p.resumo.para.join(', ')}</span>
               <span><b>{p.resumo.documentos}</b> {p.resumo.documentos === 1 ? 'documento' : 'documentos'} · {p.resumo.meses.join(', ')}</span>
-              {p.whatsapp.ligado && <span className="pedir-resumo-whats"><span className="pedir-app"><LogoWhatsApp /></span>também pelo WhatsApp</span>}
+              {p.whatsapp.ligado && <span className="pedir-resumo-whats"><span className="pedir-app"><LogoWhatsApp /></span>também pelo WhatsApp{p.whatsapp.peloRobo ? ', com o PDF' : ''}</span>}
             </div>
             <p className="pedir-assunto">
               <span className="hint">Assunto</span><span className="pedir-assunto-texto">{p.assunto}</span>
@@ -210,6 +215,7 @@ export function JanelaHistoricoDePedidos({ p }: { p: P }) {
                       const s = p.historico.situacoes[r.whatsapp.solicitacao]?.status;
                       return <span className={'badge ' + (s ? COR[s] : 'badge-neutral')} title={p.historico.situacoes[r.whatsapp.solicitacao]?.erro}>{s ? STATUS[s] : '…'}</span>;
                     })() : <span className="badge badge-neutral">Aberto no WhatsApp</span>}
+                    {r.whatsapp.solicitacao && p.historico.entrega(r.whatsapp.solicitacao) && <span className="hint">{p.historico.entrega(r.whatsapp.solicitacao)}</span>}
                   </span>
                 )}
                 {r.prazo && <span className="hint">Prazo: até {r.prazo}</span>}

@@ -9,6 +9,9 @@ type Solto = Record<string, unknown>;
 const R = roboImportado as {
   LIBERADO_PARA_CLIENTES: boolean; NUMEROS_DE_TESTE: string[]; LIMITE_POR_HORA: number; LIMITE_POR_DIA: number; INTERVALO_MIN_MS: number; INTERVALO_MAX_MS: number;
   numeroDoWhatsApp(t: unknown): string; numeroFormatado(n: string): string; variantesDoNumero(n: string): string[];
+  motivoDoAnexo(a: Solto | null): string;
+  marcasDaEntrega(r: Solto, status: unknown, agoraIso: string): Solto | null;
+  rastreioQueConta(r: Record<string, Solto>, agora: number): Record<string, Solto>;
   motivoParaNaoMandar(p: Solto, cliente: Solto | null, o?: { liberado?: boolean; teste?: string[] }): string;
   motivoDoFreio(enviados: number[], agora: number): string;
   esperaAntesDeMandar(ultimo: number, agora: number, sorteio: number): number;
@@ -75,6 +78,39 @@ describe('o número', () => {
     expect(R.numeroDoWhatsApp('+55 38 9138-3638')).toBe(ESCRITORIO);
     expect(R.numeroDoWhatsApp('999')).toBe('');
     expect(R.numeroFormatado(ESCRITORIO)).toBe('(38) 9138-3638');
+  });
+});
+
+describe('o PDF e os tiques (17/11/2026)', () => {
+  it('a trava aceita o celular do teste com o 9 da frente', () => {
+    expect(R.motivoParaNaoMandar({ para: '(38) 99919-7340', texto: 'oi' }, null)).toBe('');
+  });
+
+  it('só vai anexo em PDF, e não vazio', () => {
+    expect(R.motivoDoAnexo(null)).toBe('');
+    expect(R.motivoDoAnexo({ mime: 'application/pdf', buffer: new Uint8Array([1]) })).toBe('');
+    expect(R.motivoDoAnexo({ mime: 'image/png', buffer: new Uint8Array([1]) })).toMatch(/PDF/);
+    expect(R.motivoDoAnexo({ mime: 'application/pdf', buffer: new Uint8Array() })).toMatch(/vazio/);
+  });
+
+  it('entregue (3) e lido (4) viram a hora no pedido, uma vez só', () => {
+    const t = '2026-11-17T17:00:00.000Z';
+    expect(R.marcasDaEntrega({}, 2, t)).toBeNull();
+    expect(R.marcasDaEntrega({}, 3, t)).toEqual({ entregueEm: t });
+    expect(R.marcasDaEntrega({ entregueEm: 'antes' }, 3, t)).toBeNull();
+    expect(R.marcasDaEntrega({ entregueEm: 'antes' }, 4, t)).toEqual({ lidoEm: t });
+    // lido sem ter visto o entregue: marca os dois
+    expect(R.marcasDaEntrega({}, 5, t)).toEqual({ entregueEm: t, lidoEm: t });
+  });
+
+  it('o rastreio esquece o que já foi lido e o que passou de 7 dias', () => {
+    const r = R.rastreioQueConta({
+      novo: { caminho: 'solicitacoesEmail/a', em: AGORA - MIN },
+      lido: { caminho: 'solicitacoesEmail/b', em: AGORA - MIN, lidoEm: 'x' },
+      velho: { caminho: 'solicitacoesEmail/c', em: AGORA - 8 * 864e5 },
+      torto: { em: AGORA },
+    }, AGORA);
+    expect(Object.keys(r)).toEqual(['novo']);
   });
 });
 

@@ -61,7 +61,7 @@ function motivoParaNaoMandar(p, cliente, { liberado = LIBERADO_PARA_CLIENTES, te
   const msg = texto(p && p.texto).trim();
   if (!msg) return 'mensagem vazia';
   if (msg.length > MAX_LETRAS) return 'mensagem longa demais (' + msg.length + ' letras; o máximo é ' + MAX_LETRAS + ')';
-  if (teste.includes(para)) return '';
+  if (teste.some(t => variantesDoNumero(t).includes(para))) return '';
   if (!liberado) return 'o WhatsApp do robô ainda não foi liberado para clientes: por enquanto só sai para os números de teste';
   if (!cliente) return 'cliente não encontrado';
   if (numeroDoWhatsApp(cliente.telefone) !== para) return numeroFormatado(para) + ' não é o telefone do cadastro deste cliente';
@@ -88,6 +88,40 @@ function esperaAntesDeMandar(ultimo, agora, sorteio) {
   if (!ultimo) return 0;
   const intervalo = INTERVALO_MIN_MS + Math.round((INTERVALO_MAX_MS - INTERVALO_MIN_MS) * Math.min(1, Math.max(0, sorteio)));
   return Math.max(0, ultimo + intervalo - agora);
+}
+
+/** O anexo que pode ir pelo WhatsApp (17/11/2026): por enquanto só o PDF da solicitação. '' = pode. */
+function motivoDoAnexo(anexo) {
+  if (!anexo) return '';
+  if (anexo.mime !== 'application/pdf') return 'pelo WhatsApp só vai anexo em PDF';
+  if (!anexo.buffer || !anexo.buffer.length) return 'o PDF chegou vazio';
+  return '';
+}
+
+// Os tiques do WhatsApp (17/11/2026): o status da mensagem que a Baileys avisa (3 = entregue no celular, 4 = lida,
+// 5 = ouvida) vira entregueEm / lidoEm no próprio pedido da fila, para o nads mostrar no histórico.
+const ENTREGUE = 3;
+const LIDO = 4;
+/** quanto tempo o robô ainda espera o tique de uma mensagem mandada */
+const RASTREIO_MS = 7 * 864e5;
+
+/** O que gravar no pedido com este status (null = nada novo). `r`: o que já foi marcado ({ entregueEm, lidoEm }). */
+function marcasDaEntrega(r, status, agoraIso) {
+  const s = Number(status);
+  if (!Number.isFinite(s) || s < ENTREGUE) return null;
+  const novo = {};
+  if (!r.entregueEm) novo.entregueEm = agoraIso;
+  if (s >= LIDO && !r.lidoEm) novo.lidoEm = agoraIso;
+  return Object.keys(novo).length ? novo : null;
+}
+
+/** Só as mensagens dos últimos 7 dias e ainda não lidas continuam esperando o tique. */
+function rastreioQueConta(rastreio, agora) {
+  const fica = {};
+  for (const [id, r] of Object.entries(rastreio || {})) {
+    if (r && typeof r.caminho === 'string' && !r.lidoEm && agora - (Number(r.em) || 0) < RASTREIO_MS) fica[id] = r;
+  }
+  return fica;
 }
 
 const SITUACOES = ['desligado', 'desconectado', 'aguardando-qr', 'conectando', 'conectado'];
@@ -118,5 +152,5 @@ function podeComandar(usuario) {
 
 module.exports = {
   LIBERADO_PARA_CLIENTES, NUMEROS_DE_TESTE, LIMITE_POR_HORA, LIMITE_POR_DIA, INTERVALO_MIN_MS, INTERVALO_MAX_MS, MAX_LETRAS, SITUACOES,
-  numeroDoWhatsApp, jidDe, variantesDoNumero, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
+  numeroDoWhatsApp, jidDe, variantesDoNumero, motivoDoAnexo, marcasDaEntrega, rastreioQueConta, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
 };
