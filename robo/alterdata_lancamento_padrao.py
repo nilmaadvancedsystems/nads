@@ -889,6 +889,8 @@ def exportar(h, principal):
 # (TcxGridFilterPopup) o UI Automation vê. A contagem: seleciona tudo e copia (Ctrl+C) — as linhas copiadas são as notas filtradas.
 FUNIL_CFOP = (729, 367)
 LINHA_1 = (300, 390)
+# a caixinha de selecionar tudo no título da grade (nas duas gravações o Vitor clicou ali antes do Editar: 61,361 e 82,363)
+SELECIONAR_TUDO = (72, 362)
 
 
 def no_form(h, x, y):
@@ -949,10 +951,28 @@ def copiar_selecao(h):
     clique('a primeira nota da grade')
     mouse.click(coords=(px, py))
     time.sleep(.5)
-    keyboard.send_keys('^a')
-    time.sleep(.6)
+    # selecionar tudo: a caixinha do título da grade (como o Vitor fez); o Ctrl+A sozinho só deixava a nota clicada (17/11/2026)
+    sx, sy = no_form(h, *SELECIONAR_TUDO)
+    clique('selecionar todas as notas')
+    mouse.click(coords=(sx, sy))
+    time.sleep(.8)
     keyboard.send_keys('^c')
     time.sleep(1)
+    texto = ler_area()
+    if len([l for l in texto.splitlines() if l.strip()]) <= 1:
+        # a caixinha não pegou: a primeira nota e Ctrl+A
+        mouse.click(coords=(px, py))
+        time.sleep(.4)
+        keyboard.send_keys('^a')
+        time.sleep(.6)
+        keyboard.send_keys('^c')
+        time.sleep(1)
+        texto = ler_area()
+    return texto
+
+
+def ler_area():
+    import win32clipboard
     texto = ''
     for _ in range(5):
         try:
