@@ -207,25 +207,31 @@ try:
     cod.click_input()
     cod.type_keys(str(int(CODIGO)), pause=0.02)
     cod.type_keys('{ENTER}', pause=0.05)
-    # a pergunta "Deseja selecionar as filiais desta empresa?" (janela Confirmação com Sim/Não): sempre Não
-    def pergunta_das_filiais():
-        r = []
-        for w in janelas('TMessageForm'):
-            botoes = [(b.window_text() or '').replace('&', '') for b in filhos(w)]
-            if w.window_text() == 'Confirmação' and 'Sim' in botoes and ('Não' in botoes or 'Nao' in botoes):
-                r.append(w)
-        return r
-    conf = esperar(pergunta_das_filiais, 8)
-    if conf:
-        nao = [b for b in filhos(conf[0]) if (b.window_text() or '').replace('&', '') in ('Não', 'Nao')]
+    # a pergunta "Deseja selecionar as filiais desta empresa?" (a Confirmação, o Vitor clicou em Não): toda pergunta do Contábil
+    # com "Não" leva Não; mensagem sem "Não" (empresa inexistente) para o roteiro. Só as janelas do Contábil (o Fiscal aberto
+    # no mesmo PC tem as mesmas classes).
+    def mensagens_do_contabil():
+        return [w for w in so_contabil(janelas('TMessageForm'))] + [w for w in so_contabil(janelas('#32770')) if 'salvar' not in (w.window_text() or '').lower()]
+    calmo = 0
+    limite = time.time() + 10
+    while time.time() < limite:
+        ms = mensagens_do_contabil()
+        if not ms:
+            calmo += 1
+            if calmo >= 4:
+                break
+            time.sleep(.4)
+            continue
+        calmo = 0
+        m = ms[0]
+        texto = ' '.join((c.window_text() or '').strip() for c in filhos(m) if (c.window_text() or '').strip())
+        diag('ao escolher a empresa: ' + m.class_name() + ' "' + (m.window_text() or '') + '": ' + texto[:200])
+        nao = [x for x in filhos(m) if (x.window_text() or '').replace('&', '').strip() in ('Não', 'Nao')]
         if not nao:
-            falhar('não achei o "Não" da pergunta das filiais')
-        clique('"Não" para as filiais')
+            falhar('o Alterdata mostrou uma mensagem ao escolher a empresa ' + CODIGO + ': ' + texto[:200])
+        clique('"Não" (' + (m.window_text() or 'pergunta') + ')')
         nao[0].click_input()
-        time.sleep(.5)
-    outros = [w for w in janelas('TMessageForm')]
-    if outros:
-        falhar('o Alterdata mostrou uma mensagem ao escolher a empresa ' + CODIGO + ' (empresa inexistente?)')
+        time.sleep(.6)
 
     # ── as opções do balancete ficam como estão (o Vitor não mexeu); só o Visualizar, para não ir à impressora de papel
     for t in ('Analítico', 'Sintético'):
