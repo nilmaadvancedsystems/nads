@@ -515,7 +515,34 @@ function atualizarAgora(maquina, motivo) {
   if (!fs.existsSync(dados)) throw new Error('Não achei a pasta de dados do robô (' + dados + ').');
   // o conteúdo é só um texto para quem olhar a pasta; o atualizador lê a existência do arquivo
   fs.writeFileSync(path.join(dados, 'atualizar-urgente'), 'pedido pela Central dos robôs: ' + String(motivo).slice(0, 120) + '\n');
-  return 'Pedido entregue ao atualizador: ele traz o código novo na próxima volta da tarefa, com o reinício educado.';
+  // e dispara a tarefa do atualizador aqui mesmo (17/11/2026: o pedido ficava esperando alguém rodar o schtasks do PC do
+  // escritório, e o servidor ficou 6 dias no código de 11/11)
+  dispararAtualizador('pedido pela Central');
+  return 'Pedido entregue ao atualizador: ele traz o código novo agora, com o reinício educado.';
+}
+
+// ---------- o servidor se atualiza sozinho (17/11/2026) ----------
+// A cada 10 min, olha o ramo desenvolvimento no GitHub; se chegou commit novo, roda a tarefa do atualizador
+// (nads-atualizar-robo, a mesma do schtasks), que decide se e quando reiniciar: só se mudou algo que o robô usa, no máximo 1
+// vez a cada 30 min, esperando o trabalho do meio terminar ([urgente] passa na frente). Nada de reiniciar daqui.
+const GIT_DO_SERVIDOR = ['D:\\Programas\\Git\\cmd\\git.exe'].find(p => { try { return fs.existsSync(p); } catch (e) { return false; } }) || 'git';
+let ultimoDisparo = 0;
+function dispararAtualizador(porque) {
+  if (Date.now() - ultimoDisparo < 5 * 60 * 1000) return;
+  ultimoDisparo = Date.now();
+  require('child_process').execFile('schtasks', ['/run', '/tn', 'nads-atualizar-robo'], { windowsHide: true, timeout: 60 * 1000 }, (err, out, errs) => {
+    const log = (st && st.log) || console.log;
+    log('central: atualizador (' + porque + '): ' + (err ? 'não rodou: ' + String(errs || err.message).trim().slice(0, 200) : String(out || '').trim().slice(0, 200)));
+  });
+}
+function olharGitHub() {
+  const raiz = path.dirname(__dirname);
+  const git = args => new Promise(resolve => require('child_process').execFile(GIT_DO_SERVIDOR, ['-c', 'safe.directory=*', '-C', raiz, ...args], { windowsHide: true, timeout: 120 * 1000 }, (err, out) => resolve(err ? null : String(out || '').trim())));
+  return (async () => {
+    if (await git(['fetch', '-q', 'origin', 'desenvolvimento']) === null) return;
+    const mudou = await git(['diff', '--name-only', 'HEAD', 'origin/desenvolvimento', '--', 'robo', 'packages/core/src/robos']);
+    if (mudou) dispararAtualizador('código novo do robô no GitHub');
+  })();
 }
 
 // ---------- a central ----------
@@ -791,6 +818,10 @@ function iniciarCentral(o) {
       void conferirHorarios().catch(err => logUmaVez('agenda', 'erro no horário -', mensagemDe(err)));
     }, AGENDA_A_CADA_MS));
     st.timers.push(setInterval(() => { try { st.espelho.tique(); } catch (e) { /* segue */ } }, 5000));
+    if (maquina === 'servidor' && process.platform === 'win32') {
+      st.timers.push(setInterval(() => { void olharGitHub().catch(() => {}); }, 10 * 60 * 1000));
+      setTimeout(() => { void olharGitHub().catch(() => {}); }, 2 * 60 * 1000).unref();
+    }
     st.timers.push(setTimeout(() => { void limparHistorico(); }, 3 * 60 * 1000));
     st.timers.push(setInterval(() => { void limparHistorico(); }, 12 * 36e5));
     for (const t of st.timers) if (t && typeof t.unref === 'function') t.unref();

@@ -11,6 +11,7 @@ import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
 import { pedidoAproveitavel } from './razaoDoRobo.regras';
+import { statusDoPedido } from './notasDoFiscal.firestore';
 
 // a trava do modo desenvolvedor: com o modo ligado, só ver — o pedido não sai
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
@@ -101,7 +102,7 @@ async function pedirDeVerdade(codigo: number, empresa: string, competencia: stri
   }), Date.now(), !novoDeProposito);
   if (achado) return { id: achado, reaproveitado: true };
   const ref = await addDocGuardado(collection(db, 'pedidosAlterdata'), {
-    status: 'pendente', tipo: 'mensal', codigo, empresa: empresa.slice(0, 200), competencia,
+    status: statusDoPedido(), tipo: 'mensal', codigo, empresa: empresa.slice(0, 200), competencia,
     criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
   });
   return { id: ref.id, reaproveitado: false };

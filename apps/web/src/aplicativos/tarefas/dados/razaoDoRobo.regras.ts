@@ -9,7 +9,7 @@ export interface PedidoParaAproveitar { id: string; status: string; criadoEm: st
 /** O pedido que já atende o mês: o pendente/trabalhando mais antigo (o robô atende na ordem); sem ele, o pronto e lido há menos
  *  de 30 min. `aceitaPronto` falso (o usuário pediu de novo de propósito) só reaproveita o que ainda está andando. */
 export function pedidoAproveitavel(lista: readonly PedidoParaAproveitar[], agoraMs: number, aceitaPronto = true): string | null {
-  const andando = lista.filter(p => p.status === 'pendente' || p.status === 'trabalhando').sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+  const andando = lista.filter(p => p.status === 'pendente' || p.status === 'pendentePc' || p.status === 'trabalhando').sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
   if (andando.length) return andando[0].id;
   if (!aceitaPronto) return null;
   const pronto = lista

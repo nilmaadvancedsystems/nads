@@ -5,7 +5,7 @@ import { empresas, tarefas } from '@nads/core';
 import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { empresasNovas, regimeNoEntregas } from '../../../dados/fonte';
-import { useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
+import { useAcesso, useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
 import { useCadastroAberto } from '../useCadastroAberto';
 
 export function useDadosDaEmpresa(rota: string) {
@@ -20,6 +20,32 @@ export function useDadosDaEmpresa(rota: string) {
   const regimeQueVale = (c.cadastro.regime as string | undefined) || padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '';
   const planilhaDoFiscal = empresas.parametrosFiscaisDaPlanilha(codigo);
   const fiscal = empresas.parametrosFiscaisQueValem(codigo, c.cadastro.fiscal);
+  // quem cuida da empresa no Fiscal e no Contábil (17/11/2026: trocar aqui, pelo Dados da empresa): o escolhido no
+  // cadastro; no Fiscal, sem escolha, o da planilha do Checklist Folha (como em Empresas por responsável)
+  const ativos = useAcesso().equipe().lista;
+  const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const daPlanilhaBruto = empresas.clienteDoDp(codigo)?.responsavel || '';
+  const daPlanilha = daPlanilhaBruto ? ativos.find(p => p.ativo && igual(p.nome, daPlanilhaBruto))?.nome || daPlanilhaBruto.charAt(0) + daPlanilhaBruto.slice(1).toLowerCase() : '';
+  const podeTrocarResponsavel = !!operador?.admin;
+  const responsaveis = empresas.cadastro.DEPARTAMENTOS_DO_RESPONSAVEL.map(d => {
+    const opcoes = empresas.cadastro.quemPodeSerResponsavel(ativos, d.id);
+    const escolhido = c.cadastro.responsaveis?.[d.id] || '';
+    const valeNaEquipe = !!escolhido && opcoes.some(n => igual(n, escolhido) || igual(n.split('.')[0], escolhido));
+    const doFiscalDaPlanilha = d.id === 'fiscal' && !escolhido ? daPlanilha : '';
+    const t = c.cadastro.transferencias?.[d.id];
+    return {
+      dep: d.id, rotulo: d.rotulo, opcoes,
+      /** quem cuida hoje ('' = ninguém) */
+      atual: valeNaEquipe ? escolhido : doFiscalDaPlanilha,
+      /** de onde veio: o escolhido no nads, a planilha do Fiscal ou ninguém; fora = o escolhido saiu da equipe */
+      origem: valeNaEquipe ? 'cadastro' as const : doFiscalDaPlanilha ? 'planilha' as const : escolhido ? 'fora' as const : 'nenhum' as const,
+      foraDaEquipe: !valeNaEquipe ? escolhido : '',
+      /** no Fiscal, o da planilha (o que volta a valer se tirar o escolhido) */
+      daPlanilha: d.id === 'fiscal' ? daPlanilha : '',
+      /** a transferência pedida (a troca daqui passa por cima dela) */
+      transferencia: t ? { de: t.de, para: t.para, faltam: empresas.cadastro.faltamAceitar(t) } : null,
+    };
+  });
   function definirFiscal<K extends keyof empresas.cadastro.ParametrosDoFiscal>(campo: K, valor: NonNullable<empresas.cadastro.ParametrosDoFiscal[K]>) {
     if (c.carregando) return;
     // o mesmo valor da planilha (o texto vazio, sem nada na planilha) volta a seguir a planilha
@@ -64,6 +90,16 @@ export function useDadosDaEmpresa(rota: string) {
       if ('erro' in r) return r.erro;
       if (r !== c.cadastro) c.salvar(r);
       return null;
+    },
+    /** quem cuida da empresa no Fiscal e no Contábil */
+    responsaveis,
+    /** só o Diretor (o admin) troca, como em Empresas por responsável */
+    podeTrocarResponsavel,
+    /** troca direto, sem pedir o aceite; a transferência pedida no departamento cai (fica no histórico) */
+    trocarResponsavel(dep: empresas.cadastro.DepartamentoDoResponsavel, nome: string) {
+      if (c.carregando || !podeTrocarResponsavel) return;
+      const novo = empresas.cadastro.trocarResponsavelDireto(c.cadastro, dep, nome, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
     },
     /** o regime (13/10/2026): o escolhido no cadastro (null = vale o da lista do escritório) e o da lista */
     regime: (c.cadastro.regime as empresas.cadastro.Regime | undefined) ?? null,

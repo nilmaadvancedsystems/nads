@@ -84,6 +84,19 @@ export function verifEstado(e: Empresa, p: Periodo, conta: string): EstadoVerifi
   return (e.verifConta || {})[verifChave(p, conta)] || null;
 }
 
+/**
+ * A revisão de uma linha de contas somadas (ex.: 70002 + 70006): a da primeira conta que tiver. O Verificar grava em cada conta
+ * conferida, e a conta fora do plano analítico (a 70002 da 292, fora do balancete) não entra nele; a linha olhava só a primeira
+ * do grupo e o Ok da 70006 não aparecia (Vitor, 17/11/2026: "ta dando ok e nao ta checkando").
+ */
+export function verifEstadoDoGrupo(e: Empresa, p: Periodo, contas: readonly string[]): EstadoVerificacao | null {
+  for (const c of contas) {
+    const x = verifEstado(e, p, c);
+    if (x) return x;
+  }
+  return null;
+}
+
 // ---------- situação ----------
 export type Situacao =
   | { tipo: 'ok' }
@@ -181,7 +194,7 @@ export function linhasDoSaldo(e: Empresa, grupos: Record<string, GrupoNatureza>,
     });
     const situacao = situacaoDaConta({
       somaNotas, saldo,
-      revisao: verifEstado(e, p, comp.contas[0]),
+      revisao: verifEstadoDoGrupo(e, p, comp.contas),
       conferidoManual,
       podeConferir: podeConferir(e, comp.contas, comp.naturezas.map(k => grupos[k].desc || k)),
     });
@@ -221,7 +234,7 @@ export function quaisMarcarSozinho(e: Empresa, grupos: Record<string, GrupoNatur
     if (servicoDaConta(e, comp.contas, p)) {
       // conferida em Serviços: marca quando a conta está Ok lá
       if (!comp.contas.every(x => contasOkEmServicos.has(x))) continue;
-    } else if (Math.abs(diferencaDaConta(somaNotas, saldo)) >= TOLERANCIA && verifEstado(e, p, comp.contas[0]) !== 'ok') continue;
+    } else if (Math.abs(diferencaDaConta(somaNotas, saldo)) >= TOLERANCIA && verifEstadoDoGrupo(e, p, comp.contas) !== 'ok') continue;
     for (const k of comp.naturezas) {
       const mk = pk + '||' + k;
       if (e.confMarcados.indexOf(mk) > -1 || e.confAutoRecusados.indexOf(mk) > -1) continue;

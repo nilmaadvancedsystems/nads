@@ -238,6 +238,8 @@ export function useVerificarConta() {
   const relatorios = d.multi ? d.grupo.map(a => relatorio(a.codigo, a.nome)) : [d.conta ? relatorio(d.conta.codigo, d.conta.nome) : relatorio('', '')];
 
   return {
+    /** para o botão Vitor do relatório da conta (17/11/2026): a empresa e os meses do período que está sendo conferido */
+    empresaDoRobo: { codigo: s.codigo, nome: s.nome, meses: mesesDoFiltro(s.filtro) },
     semPlano: !d.contasPlano.length,
     contaTexto: d.rotulo,
     conta: d.conta,
@@ -313,3 +315,13 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
   };
 }
 
+/** Os meses (aaaa-mm) do período conferido: os marcados ou, sem eles, os de dataDe a dataAte (dd/mm/aaaa). */
+function mesesDoFiltro(f: c.FiltroMovimento): string[] {
+  if (f.meses.length) return [...f.meses].sort();
+  const mes = (d: string) => (/^\d{2}\/\d{2}\/\d{4}$/.test(d) ? d.slice(6) + '-' + d.slice(3, 5) : '');
+  const de = mes(f.dataDe), ate = mes(f.dataAte);
+  if (!de || !ate || ate < de) return [];
+  const r: string[] = [];
+  for (let [a, m] = de.split('-').map(Number); a * 100 + m <= Number(ate.replace('-', '')) && r.length < 24; m === 12 ? (a++, m = 1) : m++) r.push(a + '-' + String(m).padStart(2, '0'));
+  return r;
+}

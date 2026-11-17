@@ -18,6 +18,10 @@ import { ParametrosDaEtapa } from '../ponte';
 import { useEmpresaDaConferencia } from './useEmpresaDaConferencia';
 
 function Tela({ pagina }: { pagina: string }) {
+  const e = useEtapaAberta();
+  // o balancete com o botão Vitor (17/11/2026, Vitor: "coloca o botao vitor no balancete da conferencia fiscal"): o robô do PC
+  // dele puxa o balancete do período da Tarefa; as notas seguem sem o período (como sempre foram aqui)
+  if (pagina === 'importacao/balancete') return <Importacao key={pagina} tipo="balancete" meses={e.meses} codigo={e.codigo} />;
   if (pagina.startsWith('importacao/')) return <Importacao key={pagina} tipo={pagina.split('/')[1] as c.PaginaImportacao} />;
   switch (pagina) {
     case 'cadastro/configuracoes': return <Configuracoes />;

@@ -26,9 +26,11 @@ import { dataBR } from './texto';
  * saldo impresso, em todo banco: cada extrato guarda quantos saldos fecharam e quais não (10/11/2026); 19 = o quadro "Saldos por
  * Período" do fim do Santander fora (cada dia virava uma saída do tamanho do saldo; 16/11/2026, na 429); 20 = a data centrada na
  * linha de duas alturas volta para a linha do valor (o lançamento ficava com o dia anterior; 16/11/2026); 21 = o ano cortado na
- * virada da página do BB ("16/01/202" e o "6" na página seguinte): o lançamento ficava com o dia anterior (16/11/2026).
+ * virada da página do BB ("16/01/202" e o "6" na página seguinte): o lançamento ficava com o dia anterior (16/11/2026); 22 = o
+ * relatório de títulos do Sicoob (liquidação e baixa) com o título em desenho, reconhecido pelas colunas, não é extrato (entrou
+ * como o extrato de 09/2026 da 292; 17/11/2026).
  */
-export const VERSAO_DO_LEITOR = 21;
+export const VERSAO_DO_LEITOR = 22;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };

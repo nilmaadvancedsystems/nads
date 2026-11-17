@@ -6,6 +6,7 @@
 // e exporta a planilha; ela volta em pedaços (pedidosAlterdata/{id}/partes/fiscal-nnn) e o resumo em arquivos.fiscal.
 // O pedido só gera um relatório (não muda dado nenhum): sai também no modo desenvolvedor, como o balancete da Conferência
 // saía (14/10/2026); a importação que vem depois, no modo desenvolvedor, continua só na tela.
+import { robos } from '@nads/core';
 import { getAuth } from 'firebase/auth';
 import { addDoc as addDocBruto, collection, doc, getDocs, onSnapshot, query, updateDoc, where, type Firestore } from 'firebase/firestore';
 import { travarPedido } from '../../../comum/disjuntorDeGravacao';
@@ -15,6 +16,19 @@ import { appDoEntregas } from './driveDasFerramentas.firestore';
 const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
 
 export type RelatorioDoFiscal = 'entradas' | 'saidas' | 'tomados' | 'prestados';
+
+/**
+ * A fila do pedido (17/11/2026): quem tem o robô no PC pede na fila só dele ('pendentePc'), que o servidor ainda no robô antigo
+ * não enxerga (pegava e respondia "tipo desconhecido"); os outros, na de sempre.
+ */
+export function statusDoPedido(): 'pendente' | 'pendentePc' {
+  return roboDePcDoUsuario() ? 'pendentePc' : 'pendente';
+}
+
+/** O robô do Alterdata no PC da pessoa logada (core/robos/robosDePc: só o dono vê o botão do Fiscal), ou null. */
+export function roboDePcDoUsuario(): { maquina: string; rotulo: string } | null {
+  return robos.roboDePcDaConta(getAuth(appDoEntregas()).currentUser?.uid);
+}
 
 export interface PedidoDoFiscal {
   id: string;
@@ -69,7 +83,7 @@ export async function pedirNotasDoFiscal(o: { codigo: number; empresa: string; r
   const u = getAuth(appDoEntregas()).currentUser;
   if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
   const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
-    status: 'pendente', tipo: 'fiscal', relatorio: o.relatorio, codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
+    status: statusDoPedido(), tipo: 'fiscal', relatorio: o.relatorio, codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
     criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
   });
   return r.id;
@@ -91,4 +105,82 @@ export async function planilhaDoFiscal(p: PedidoDoFiscal): Promise<File> {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new File([bytes], p.arquivo.nome, { type: 'application/vnd.ms-excel' });
+}
+
+// ---------- o razão de uma conta do Contábil (17/11/2026, o caminho que o Vitor gravou: Consultas › Lançamentos, a empresa, a
+// conta, o período, Imprimir › Exportar para excel) ----------
+// {status: 'pendente', tipo: 'razaoConta', codigo, empresa, conta, competencia, ate, criadoEm, criadoPor, criadoPorUid}: o robô
+// do PC do dono puxa e a planilha volta em partes/fiscal-nnn, como a do Fiscal. Na Importação, entra na linha "Razão" do banco.
+export interface PedidoDoRazaoDaConta extends PedidoDoFiscal { conta: string }
+
+export function ouvirRazoesDaConta(codigo: number, chegou: (l: PedidoDoRazaoDaConta[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'razaoConta')),
+      s => chegou(s.docs.map(x => ({ ...doBanco(x.id, x.data()), conta: texto(x.data().conta) })).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirRazaoDaConta(o: { codigo: number; empresa: string; conta: string; competencia: string; ate: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: statusDoPedido(), tipo: 'razaoConta', codigo: o.codigo, empresa: o.empresa.slice(0, 200), conta: o.conta.slice(0, 30), competencia: o.competencia, ate: o.ate,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
+}
+
+// ---------- o Balancete Dinâmico do período (17/11/2026, o caminho que o Vitor gravou: Consultas › Balancete Dinâmico, a empresa,
+// o período inteiro numa consulta, Saldo por mês, Ocultar contas sem movimento, Exportar › Gravar › Salvar) ----------
+// {status, tipo: 'balanceteDinamico', codigo, empresa, competencia, ate, criadoEm, criadoPor, criadoPorUid}: a planilha volta em
+// partes/fiscal-nnn e entra como o balancete dinâmico da Tarefa.
+export function ouvirDinamicos(codigo: number, chegou: (l: PedidoDoFiscal[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'balanceteDinamico')),
+      s => chegou(s.docs.map(x => doBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirDinamico(o: { codigo: number; empresa: string; competencia: string; ate: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: statusDoPedido(), tipo: 'balanceteDinamico', codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
+}
+
+// o Balancete (Livros e Relatórios) do período, com o Salvar da visualização (17/11/2026, o caminho que o Vitor gravou): o mesmo
+// balancete normal que a Conferência importa; por enquanto só no modo desenvolvedor, na Importação, com o robô do PC do Vitor
+export function ouvirBalancetesDoPeriodo(codigo: number, chegou: (l: PedidoDoFiscal[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'balancetePeriodo')),
+      s => chegou(s.docs.map(x => doBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirBalancetePeriodo(o: { codigo: number; empresa: string; competencia: string; ate: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: statusDoPedido(), tipo: 'balancetePeriodo', codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
 }
