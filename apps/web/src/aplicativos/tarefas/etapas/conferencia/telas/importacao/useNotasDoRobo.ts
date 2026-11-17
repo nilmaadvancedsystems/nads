@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { cancelarPedidoDoFiscal, ouvirPedidosDoFiscal, pedirNotasDoFiscal, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal, type RelatorioDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
 
-const ANDANDO = ['pendente', 'trabalhando'];
+const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 // os pedidos que esta aba do navegador fez ou viu andando, e os já importados: fora do componente (17/11/2026: a pessoa trocou de
 // aba da Importação no meio, a planilha chegou com a tela desmontada e não entrou; voltando à aba, entra)
 const VISTOS = new Set<string>();
@@ -75,7 +75,7 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const bloqueia = (!!atual && atual.status === 'trabalhando') || lendo;
   // fora do modo desenvolvedor, o erro sem o detalhe da tela (o tamanho, as janelas, o caminho da foto)
   const erroLimpo = (t: string) => (dev ? t : t.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '').trim());
-  const situacao = !atual ? '' : atual.status === 'pendente' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || 'O robô está no Alterdata Fiscal')
+  const situacao = !atual ? '' : atual.status === 'pendente' || atual.status === 'pendentePc' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || 'O robô está no Alterdata Fiscal')
     : atual.status === 'erro' ? 'O robô não conseguiu puxar do Alterdata: ' + (erroLimpo(atual.erro) || 'sem detalhe') : '';
   return {
     disponivel, pedindo, andando, lendo, bloqueia, dev, rotulo: doPc?.rotulo || '', pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',

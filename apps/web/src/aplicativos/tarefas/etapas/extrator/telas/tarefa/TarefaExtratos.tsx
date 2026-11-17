@@ -40,6 +40,8 @@ import { useNovidade } from '../../../../../../comum/novidades';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
 import { BlocoDoRobo } from './BlocoDoRobo';
+import { MarcaAlterdata } from '../../../conferencia/telas/importacao/partes/MarcaAlterdata';
+import { ComRoboDoRazao, MenuDeImportar, type RoboDoImportar } from './BotaoVitorDoRazao';
 import { useRazaoDoRobo } from './useRazaoDoRobo';
 import { ROBO_NAS_ETAPAS, roboNasEtapas, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
@@ -52,9 +54,11 @@ const DICA_SEM_EXTRATO = 'Suba antes o extrato do mês';
 
 /** Botão só de ícone de um lado (extrato ou razão): importar → check verde → (mouse em cima) × para excluir.
  *  semExtrato = o motivo de não poder importar ainda (o botão fica ofuscado, com essa dica); o check e o excluir seguem. */
-function BotaoLado({ lado, titulo, aceitar, travado, semExtrato, onArquivos, onExcluir }: {
+function BotaoLado({ lado, titulo, aceitar, travado, semExtrato, onArquivos, onExcluir, robo }: {
   lado: Lado; titulo: string; aceitar: string; travado: boolean; semExtrato?: string;
   onArquivos: (fs: File[]) => void; onExcluir: () => void;
+  /** o robô do PC do dono (o botão Vitor): o ⬆ vira o menu com "Importar do computador" e o robô (17/11/2026) */
+  robo?: RoboDoImportar;
 }) {
   const id = useId();
   if (lado.lendo) return <span className="icon-btn icon-btn-sm imp-btn" title="Importando…"><span className="btn-spinner" /></span>;
@@ -74,6 +78,7 @@ function BotaoLado({ lado, titulo, aceitar, travado, semExtrato, onArquivos, onE
       </button>
     );
   }
+  if (robo) return <MenuDeImportar titulo={titulo.toLowerCase()} aceitar={aceitar} travado={travado} onArquivos={onArquivos} robo={robo} />;
   return (
     <>
       <label htmlFor={id} className={'icon-btn icon-btn-sm imp-btn' + (travado ? ' is-locked' : '')} title={'Importar ' + titulo.toLowerCase()} aria-label={'Importar ' + titulo.toLowerCase()}>
@@ -464,9 +469,11 @@ function RemoverTodos({ titulo, travado, onRemover }: { titulo: string; travado:
  * o razão do período inteiro, de uma vez); o sistema vê de que mês é cada lançamento, e os meses que não vieram ficam
  * vazios embaixo, para importar um a um.
  */
-function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemover, semExtrato }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean; onRemover?: () => void;
+function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemover, semExtrato, robo }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean; onRemover?: () => void;
   /** o motivo de não poder importar (algum mês que falta ainda não tem o extrato): o importar fica ofuscado; remover segue */
-  semExtrato?: string }) {
+  semExtrato?: string;
+  /** o robô do PC do dono (o botão Vitor) no menu do ⬆ (17/11/2026) */
+  robo?: RoboDoImportar }) {
   const id = useId();
   const arquivo = useRef<HTMLInputElement>(null);
   // algum mês já tem (Vitor, 02/10/2026): o ícone abre as opções — importar os restantes ou remover todos
@@ -479,6 +486,11 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemo
               <button type="button" className="popover-item" role="menuitem" disabled={!!semExtrato} title={semExtrato} onClick={() => { fechar(); arquivo.current?.click(); }}>
                 <Icone nome="upload" /><span className="popover-texto">Importar os restantes do computador</span>
               </button>
+              {robo && (
+                <button type="button" className="popover-item" role="menuitem" disabled={robo.andando} title={robo.titulo} onClick={() => { fechar(); robo.pedir(); }}>
+                  <MarcaAlterdata /><span className="popover-texto">{robo.rotulo}</span>
+                </button>
+              )}
               <hr className="popover-sep" />
               <button type="button" className="popover-item perigo" role="menuitem" onClick={() => { fechar(); onRemover(); }}>
                 <Icone nome="x" /><span className="popover-texto">Remover todos</span>
@@ -490,6 +502,7 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemo
       </>
     );
   }
+  if (robo && !semExtrato) return <MenuDeImportar titulo={titulo} aceitar={aceitar} travado={travado} onArquivos={onArquivos} robo={robo} grande />;
   // sem o extrato de algum mês que falta: o botão ofuscado, com o motivo (o rótulo teria pointer-events: none)
   if (semExtrato && !travado) {
     return (
@@ -1005,9 +1018,15 @@ export function TarefaExtratos() {
                       {lote.razaoCompleto
                         ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
                         // o razão de todos de uma vez cai nos meses que faltam: enquanto algum deles não tem o extrato, não sobe
-                        : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
-                            semExtrato={meses.some(m => !m.razao && !m.semMovimento && !m.extrato && !m.ladoExtrato.doDrive.length) ? DICA_SEM_EXTRATO : undefined}
-                            onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />}
+                        : <ComRoboDoRazao codigo={s.codigo ?? null} empresa={s.nome} conta={vm.contaContabilDe(b.id)} meses={mesesDaEtapa}
+                            importar={f => vm.importarArquivos(b.id, 'sistema', [f])}>
+                            {robo => (
+                              <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
+                                semExtrato={meses.some(m => !m.razao && !m.semMovimento && !m.extrato && !m.ladoExtrato.doDrive.length) ? DICA_SEM_EXTRATO : undefined}
+                                onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} robo={robo} />
+                            )}
+                          </ComRoboDoRazao>
+                        }
                     </div>
                   </div>
                 ) : (
@@ -1052,9 +1071,15 @@ export function TarefaExtratos() {
                     </div>
                     <div className="imp-grupo" aria-label="Razão da conta">
                       <span className="imp-rotulo">Razão</span>
-                      <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
-                        semExtrato={!b.extrato.qtdArquivos ? DICA_SEM_EXTRATO : undefined}
-                        onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />
+                      {/* o ⬆ do razão com o robô do PC do Vitor no menu (17/11/2026) */}
+                      <ComRoboDoRazao codigo={s.codigo ?? null} empresa={s.nome} conta={vm.contaContabilDe(b.id)} meses={mesesDaEtapa}
+                        importar={f => vm.importarArquivos(b.id, 'sistema', [f])}>
+                        {robo => (
+                          <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado} robo={robo}
+                            semExtrato={!b.extrato.qtdArquivos ? DICA_SEM_EXTRATO : undefined}
+                            onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />
+                        )}
+                      </ComRoboDoRazao>
                       {ehTeste && !b.razao.qtdArquivos && (
                         <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Dados de teste: um razão de teste" aria-label="Razão de teste"
                           onClick={() => { void vm.importarTeste('sistema', b.id); }}><Icone nome="zap" /></button>

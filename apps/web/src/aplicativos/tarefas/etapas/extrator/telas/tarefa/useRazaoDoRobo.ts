@@ -24,7 +24,7 @@ const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
 function situacao(p: PedidoDoRazao | null): SituacaoDoMes {
   if (!p) return 'falta';
-  if (p.status === 'pendente') return 'fila';
+  if (p.status === 'pendente' || p.status === 'pendentePc') return 'fila';
   if (p.status === 'trabalhando') return 'robo';
   if (p.status === 'pronto' && p.razaoLido) return 'pronto';
   return 'erro';
