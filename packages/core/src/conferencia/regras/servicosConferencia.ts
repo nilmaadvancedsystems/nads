@@ -5,7 +5,7 @@ import { dataOrdem, lancN, nomeNorm } from '../../formatos';
 import { SERV_CAT, SV, type CategoriaServico } from '../tabelas/servicos';
 import type { Empresa, FiltroMovimento, Nota, NotaServico, TipoServico } from '../tipos';
 import { chaveNaturezaNota, emCentavos } from './cfop';
-import { contasForaDoBalancete, podeConferir, saldoDasContas, situacaoDaConta, verifEstado, type Situacao } from './conciliacao';
+import { contasForaDoBalancete, podeConferir, saldoDasContas, situacaoDaConta, verifEstadoDoGrupo, type Situacao } from './conciliacao';
 import { avisoPassivo, contasDaNatureza, listaTipo, nomeConta } from './empresa';
 import { noPeriodo } from './periodo';
 import { catDoPart, catFixa, catServ, chaveServ, contasDoPart, notasCfopDeServico, participantesDasNotas } from './servicos';
@@ -104,7 +104,7 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
     // sem conta e zerado (não teve movimento): não precisa de conta, fica o 0,00 (Vitor, 14/10/2026)
     const situacao: Situacao = !g.contas.length ? (Math.abs(g.total) < 0.005 ? { tipo: 'soma-zero' } : { tipo: 'sem-conta' }) : situacaoDaConta({
       somaNotas: g.total, saldo: sal,
-      revisao: verifEstado(e, f, g.contas[0]),
+      revisao: verifEstadoDoGrupo(e, f, g.contas),
       conferidoManual: false,
       podeConferir: podeConferir(e, g.contas, Object.keys(g.cats).map(id => g.cats[id].nome)),
     });
