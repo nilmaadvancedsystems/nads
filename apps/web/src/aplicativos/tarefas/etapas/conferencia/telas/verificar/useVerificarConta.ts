@@ -240,8 +240,6 @@ export function useVerificarConta() {
   return {
     /** para o botão Vitor do relatório da conta (17/11/2026): a empresa e os meses do período que está sendo conferido */
     empresaDoRobo: { codigo: s.codigo, nome: s.nome, meses: mesesDoFiltro(s.filtro) },
-    /** as notas da empresa (o robô do lançamento padrão confere quantas há em cada CFOP) */
-    notasDaEmpresa: { entradas: e.entradas, saidas: e.saidas },
     semPlano: !d.contasPlano.length,
     contaTexto: d.rotulo,
     conta: d.conta,

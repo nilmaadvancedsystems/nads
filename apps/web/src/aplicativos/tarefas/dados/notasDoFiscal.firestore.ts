@@ -194,36 +194,3 @@ export function ouvirMaquinaDoPc(maquina: string, chegou: (m: { contabil: string
     }, () => chegou(null));
   } catch { chegou(null); return () => {}; }
 }
-
-// o lançamento fora do padrão corrigido no Alterdata Fiscal pelo robô do PC (17/11/2026, o caminho que o Vitor gravou): o pedido
-// leva os CFOPs, o lançamento atual, o padrão e quantas notas o nads espera; ensaio: o robô só filtra e conta, sem mudar nada
-export interface PedidoDoPadrao extends PedidoDoFiscal { cfops: string[]; atual: string; padrao: string; esperado: number; ensaio: boolean; achadas: number; alteradas: number }
-
-export function ouvirLancamentosPadrao(codigo: number, chegou: (l: PedidoDoPadrao[]) => void, falhou: (e: Error) => void): () => void {
-  const auth = getAuth(appDoEntregas());
-  let parar = () => {};
-  let parado = false;
-  auth.authStateReady().then(() => {
-    if (parado) return;
-    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'lancamentoPadrao')),
-      s => chegou(s.docs.map(x => {
-        const d = x.data();
-        return {
-          ...doBanco(x.id, d), cfops: Array.isArray(d.cfops) ? (d.cfops as unknown[]).map(texto) : [], atual: texto(d.atual), padrao: texto(d.padrao),
-          esperado: Number(d.esperado) || 0, ensaio: !!d.ensaio, achadas: Number(d.achadas) || 0, alteradas: Number(d.alteradas) || 0,
-        };
-      }).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
-  }, falhou);
-  return () => { parado = true; parar(); };
-}
-
-export async function pedirLancamentoPadrao(o: { codigo: number; empresa: string; competencia: string; ate: string; cfops: string[]; atual: string; padrao: string; esperado: number; ensaio: boolean }): Promise<string> {
-  const u = getAuth(appDoEntregas()).currentUser;
-  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
-  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
-    status: statusDoPedido(), tipo: 'lancamentoPadrao', codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
-    cfops: o.cfops.slice(0, 30), atual: o.atual, padrao: o.padrao, esperado: o.esperado, ensaio: o.ensaio,
-    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
-  });
-  return r.id;
-}
