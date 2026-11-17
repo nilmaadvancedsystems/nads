@@ -25,6 +25,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // mes: o mês da grade em que entra (o Selecionar no Drive de um mês, 17/11/2026); sem ele, a competência da tela
   const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[]; mes?: string; titulo?: string } | null>(null);
   const [buscando, setBuscando] = useState<string | null>(null);
+  // o navegador de pastas do Selecionar no Drive (17/11/2026: "quero sistemas de pastas e diretórios, tudo bonitinho")
+  const [navegador, setNavegador] = useState<{ linha: Linha; mes: string; itens: readonly creditor.ItemDrive[]; raiz: string; pasta: string } | null>(null);
   // "Cancelar" a busca de vários meses: para antes do próximo mês
   const cancelado = useRef(false);
   const [cancelando, setCancelando] = useState(false);
@@ -225,10 +227,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     setBuscando(linha.id);
     try {
       const pasta = await drive.pastaDoCliente(codigo);
-      const lista = x.arquivosDoMesNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
-      const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
-      setEscolha({ linha, mes, titulo: 'Selecionar no Drive · ' + linha.nome + ' · ' + rotulo, candidatos: lista,
-        texto: !pasta ? 'Não achei a pasta da empresa no Drive.' : lista.length ? 'Escolha o extrato de ' + rotulo + ' na pasta da empresa.' : 'Nenhum arquivo de ' + rotulo + ' na pasta da empresa no Drive.' });
+      if (!pasta) { vm.avisarErro('Selecionar no Drive', 'Não achei a pasta da empresa no Drive.'); return; }
+      // abre na pasta do mês (EXTRATOS › 2026 › 09) e a pessoa anda pelas pastas
+      setNavegador({ linha, mes, itens: pasta.itens, raiz: pasta.raiz, pasta: x.pastaInicialDoMes(pasta.itens, pasta.raiz, mes) || pasta.raiz });
     } catch (e) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
     } finally {
@@ -470,6 +471,27 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     escolha,
     usar: (a: creditor.ArquivoAchado) => { if (escolha) void usar(escolha.linha, a, [], escolha.mes); },
     selecionar: (linha: Linha, mes: string) => { void selecionar(linha, mes); },
+    /** o navegador de pastas aberto: o título, o caminho (as migalhas), o que tem na pasta */
+    navegador: navegador ? {
+      titulo: navegador.linha.nome + ' · ' + navegador.mes.slice(5) + '/' + navegador.mes.slice(0, 4),
+      naRaiz: navegador.pasta === navegador.raiz,
+      caminho: x.caminhoAtePasta(navegador.itens, navegador.raiz, navegador.pasta),
+      conteudo: x.conteudoDaPasta(navegador.itens, navegador.pasta),
+    } : null,
+    abrirPasta: (id: string) => setNavegador(n => (n ? { ...n, pasta: id } : n)),
+    voltarPasta: () => setNavegador(n => {
+      if (!n || n.pasta === n.raiz) return n;
+      const atual = n.itens.find(it => it.i === n.pasta);
+      return { ...n, pasta: atual?.p || n.raiz };
+    }),
+    escolherNoDrive: (it: creditor.ItemDrive) => {
+      const n = navegador;
+      if (!n) return;
+      setNavegador(null);
+      const caminho = [...x.caminhoAtePasta(n.itens, n.raiz, n.pasta).map(p => p.n), it.n].join(' › ');
+      void usar(n.linha, { id: it.i, nome: it.n, caminho, modificado: it.m, credliquidacao: false, daCompetencia: true }, [], n.mes);
+    },
+    fecharNavegador: () => setNavegador(null),
     fecharEscolha: () => setEscolha(null),
     /** o link temporário para ver o arquivo do Drive (não guardar) */
     link: (arquivo: { id: string; nome: string }) => drive.link(arquivo.id, arquivo.nome),

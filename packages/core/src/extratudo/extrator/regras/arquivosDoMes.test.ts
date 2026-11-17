@@ -27,3 +27,20 @@ describe('arquivosDoMesNoDrive', () => {
     expect(arquivosDoMesNoDrive(itens, null, '2026-09')).toEqual([]);
   });
 });
+
+import { caminhoAtePasta, conteudoDaPasta, pastaInicialDoMes } from './drive';
+describe('o navegador de pastas', () => {
+  const itens: ItemDrive[] = [
+    { i: 'c', n: 'CONTÁBIL', p: 'raiz', t: 'd' }, { i: 'e', n: 'EXTRATOS', p: 'c', t: 'd' }, { i: 'a26', n: '2026', p: 'e', t: 'd' },
+    { i: 'm09', n: '09', p: 'a26', t: 'd' }, { i: 'b', n: 'BANCÁRIOS', p: 'm09', t: 'd' }, { i: 'f1', n: 'z.pdf', p: 'm09', t: 'f' }, { i: 'f2', n: 'a.pdf', p: 'm09', t: 'f' },
+  ];
+  it('abre na pasta do mês dentro de EXTRATOS; sem o mês, no ano', () => {
+    expect(pastaInicialDoMes(itens, 'raiz', '2026-09')).toBe('m09');
+    expect(pastaInicialDoMes(itens, 'raiz', '2026-10')).toBe('a26');
+    expect(pastaInicialDoMes(itens, 'raiz', '2025-10')).toBe('e');
+  });
+  it('as pastas primeiro, o caminho até a pasta', () => {
+    expect(conteudoDaPasta(itens, 'm09').map(i => i.n)).toEqual(['BANCÁRIOS', 'a.pdf', 'z.pdf']);
+    expect(caminhoAtePasta(itens, 'raiz', 'm09').map(i => i.n)).toEqual(['CONTÁBIL', 'EXTRATOS', '2026', '09']);
+  });
+});

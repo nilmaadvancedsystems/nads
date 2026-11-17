@@ -41,6 +41,7 @@ import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
 import { BlocoDoRobo } from './BlocoDoRobo';
 import { MarcaAlterdata } from '../../../conferencia/telas/importacao/partes/MarcaAlterdata';
+import { NavegadorDoDrive } from './NavegadorDoDrive';
 import { ComRoboDoRazao, MenuDeImportar, type RoboDoImportar } from './BotaoVitorDoRazao';
 import { useRazaoDoRobo } from './useRazaoDoRobo';
 import { ROBO_NAS_ETAPAS, roboNasEtapas, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
@@ -1151,6 +1152,10 @@ export function TarefaExtratos() {
       {/* o resultado: uma barrinha por cima da tela; o que deu certo some em 2,7 s, erro fica até o × */}
 
 
+      {d.navegador && (
+        <NavegadorDoDrive n={d.navegador} abrirPasta={d.abrirPasta} voltar={d.voltarPasta} escolher={d.escolherNoDrive} fechar={d.fecharNavegador}
+          irParaRaiz={() => { const raiz = d.navegador?.caminho[0]?.p; if (raiz) d.abrirPasta(raiz); }} />
+      )}
       {d.escolha && (
         <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
           <div className={classeDaJanela({}) + ' drive-escolha'} role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
