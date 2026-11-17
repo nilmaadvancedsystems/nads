@@ -234,7 +234,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const tipo = p.tipo || 'balancete';
     const codigo = Number(p.codigo);
     if (tipo === 'importar') return importar(id, p, codigo);
-    if (tipo === 'fiscal' || tipo === 'razaoConta' || tipo === 'balanceteDinamico') return fiscal(id, p, codigo);
+    if (tipo === 'fiscal' || tipo === 'razaoConta' || tipo === 'balanceteDinamico' || tipo === 'balancetePeriodo') return fiscal(id, p, codigo);
     if (tipo !== 'balancete' && tipo !== 'mensal') { await banco.atualizar(id, { status: 'erro', erro: 'tipo de relatório desconhecido: ' + tipo, fimEm: agora() }); return; }
     if (!Number.isInteger(codigo) || codigo <= 0) { await banco.atualizar(id, { status: 'erro', erro: 'código da empresa inválido', fimEm: agora() }); return; }
     if (!competenciaValida(p.competencia)) { await banco.atualizar(id, { status: 'erro', erro: 'competência inválida', fimEm: agora() }); return; }
@@ -434,11 +434,13 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const razaoConta = p.tipo === 'razaoConta';
     // o Balancete Dinâmico do período numa consulta só (17/11/2026, o caminho que o Vitor gravou)
     const dinamico = p.tipo === 'balanceteDinamico';
+    // o Balancete (Livros e Relatórios) do período, com o Salvar da visualização (17/11/2026, o caminho que o Vitor gravou)
+    const balancete = p.tipo === 'balancetePeriodo';
     const conta = String(p.conta || '').replace(/[^\d.]/g, '');
-    const rel = dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : String(p.relatorio || '');
-    if (dinamico ? false : razaoConta ? !conta : !RELATORIOS_FISCAIS[rel]) return erro(razaoConta ? 'sem a conta contábil' : 'relatório fiscal desconhecido: ' + rel);
-    const rotuloRel = dinamico ? 'Balancete dinamico' : razaoConta ? ROTULO_RAZAO_CONTA + ' ' + conta : RELATORIOS_FISCAIS[rel];
-    const doContabil = razaoConta || dinamico;
+    const rel = balancete ? 'balancetePeriodo' : dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : String(p.relatorio || '');
+    if (dinamico || balancete ? false : razaoConta ? !conta : !RELATORIOS_FISCAIS[rel]) return erro(razaoConta ? 'sem a conta contábil' : 'relatório fiscal desconhecido: ' + rel);
+    const rotuloRel = balancete ? 'Balancete' : dinamico ? 'Balancete dinamico' : razaoConta ? ROTULO_RAZAO_CONTA + ' ' + conta : RELATORIOS_FISCAIS[rel];
+    const doContabil = razaoConta || dinamico || balancete;
     if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
     const ate = p.ate || p.competencia;
     if (!competenciaValida(p.competencia) || !competenciaValida(ate) || ate < p.competencia) return erro('período inválido');
@@ -470,7 +472,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     // o número da empresa na frente (17/11/2026, Vitor: "ele coloca o numero da empresa e o nome do arquivo")
     const nomeBase = codigo + ' ' + rotuloRel + ' ' + lote;
     const destino = path.join(pasta, nomeBase + '.xls');
-    const r = await comPrazo(dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique, id);
+    const r = await comPrazo(balancete ? 'balancetePeriodo' : dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique, id);
     const fimP = await banco.ler(id);
     if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
       // volta o Alterdata ao ponto de antes (fecha o que o roteiro abriu) e apaga a pasta do pedido
