@@ -1693,9 +1693,13 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-robo-barra > span{display:block;height:100%;background:var(--success);}
 /* o robô do Fiscal embaixo da caixa da Importação (16/11/2026): a barra e o que ele está fazendo, numa linha */
 .imp-robo-fiscal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--ink-muted);}
-.imp-robo-fiscal .imp-robo-barra{flex:0 0 120px;}
 .imp-robo-fiscal > span{flex:1 1 200px;min-width:0;}
 .imp-robo-diag{flex:1 0 100%;}
+/* a tela travada enquanto o robô puxa do Alterdata (17/11/2026): nada responde ao clique; a barra continua à mostra */
+.imp-robo-bloqueio{position:fixed;inset:0;z-index:60;cursor:progress;background:transparent;}
+.imp-robo-fiscal .imp-robo-barra{flex:1 1 200px;}
+/* o botão só com a marca do Alterdata (17/11/2026) */
+.btn-icone-alterdata{padding-inline:12px;min-width:44px;justify-content:center;gap:6px;}
 .imp-robo-diag pre{max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;background:var(--surface-2);padding:8px;border-radius:6px;}
 .imp-robo-atencao{display:flex;flex-direction:column;gap:4px;padding:0 12px 12px 56px;font-size:var(--fs-12);line-height:18px;}
 .imp-robo-atencao > span{display:flex;align-items:flex-start;gap:6px;}
@@ -7287,3 +7291,38 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 @keyframes email-certo-traco{from{stroke-dashoffset:36;}to{stroke-dashoffset:0;}}
 .entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
 .entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}
+/* o Contatudo (17/11/2026): a escolha da empresa e as ferramentas do Contábil soltas, só consulta */
+.contatudo{max-width:1400px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.contatudo-topo{display:flex;flex-direction:column;gap:4px;}
+.contatudo-topo-empresa{flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;}
+.contatudo-titulo{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;}
+.contatudo-titulo .page-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contatudo-periodo{display:flex;gap:8px;}
+.contatudo-empresas{max-width:640px;}
+.contatudo-lista{list-style:none;margin:8px 0 0;padding:0;max-height:60vh;overflow:auto;}
+.contatudo-empresa{display:flex;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--ink);cursor:pointer;}
+.contatudo-empresa:hover{background:var(--hover-bg);}
+.contatudo-cod{min-width:40px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.contatudo-ferramenta{min-height:60vh;}
+/* o navegador de pastas do Selecionar no Drive (17/11/2026): o Voltar à esquerda, as migalhas, as pastas e os arquivos */
+.drive-nav{width:min(720px,calc(100vw - 32px));max-width:720px;text-align:left;}
+.drive-nav-topo{display:flex;align-items:center;gap:10px;}
+.drive-nav-topo h3{flex:1 1 auto;min-width:0;margin:0;font-size:var(--fs-16,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-nav-caminho{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin:12px 0 8px;font-size:13px;}
+.drive-nav-passo{display:inline-flex;align-items:center;gap:2px;color:var(--ink-muted);}
+.drive-nav-migalha{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--ink-muted);padding:4px 6px;border-radius:6px;cursor:pointer;font:inherit;}
+.drive-nav-migalha:hover{background:var(--hover-bg);color:var(--ink);}
+.drive-nav-passo:last-child .drive-nav-migalha{color:var(--ink);font-weight:600;}
+.drive-nav-lista{display:flex;flex-direction:column;max-height:min(420px,60vh);overflow:auto;border:1px solid var(--border,var(--surface-3));border-radius:8px;}
+.drive-nav-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border:0;border-bottom:1px solid var(--border,var(--surface-3));background:transparent;color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
+.drive-nav-item:last-child{border-bottom:0;}
+.drive-nav-item:hover{background:var(--hover-bg);}
+.drive-nav-ico{display:inline-flex;width:28px;justify-content:center;flex:0 0 28px;}
+.drive-nav-ico.pasta{color:#f4b400;}
+.drive-nav-nome{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-nav-info{flex:0 0 auto;font-size:12px;color:var(--ink-muted);display:inline-flex;align-items:center;}
+.drive-nav-vazio{padding:16px;margin:0;}
+/* o robô puxando no ⬆ (17/11/2026): a barra e o × no lugar do botão; o Cancelar fica acima da camada que trava a tela */
+.imp-robo-mini{display:inline-flex;align-items:center;gap:6px;min-width:96px;}
+.imp-robo-mini .imp-robo-barra{flex:1 1 60px;min-width:60px;}
+.imp-robo-cancelar{position:relative;z-index:61;}

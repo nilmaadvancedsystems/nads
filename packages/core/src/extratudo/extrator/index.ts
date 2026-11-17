@@ -32,7 +32,7 @@ export { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial,
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { chequeEspecialDoBanco, lancamentosDoChequeEspecial, type ChequeEspecialDoBanco } from './regras/chequeEspecial';
 export { lancamentosParaOSistema, lancamentosDoQueFaltaNoRazao, type PendenteDoBanco, type SugestaoDeLancamento } from './regras/lancamentosParaOSistema';
-export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
+export { acharExtratoNoDrive, arquivosDoMesNoDrive, caminhoAtePasta, conteudoDaPasta, mensagemDaBuscaDoExtrato, pastaInicialDoMes, type ContaProcurada } from './regras/drive';
 export { bancoDoTexto, deOutroBanco, preVerificarExtrato, type NaoEExtrato, type OutroDocumento } from './regras/preVerificacao';
 export { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes, type ComprovanteNoDrive } from './regras/comprovantes';
 export { linhaDoRecebido, type ExtratoRecebido, type LinhaParaRecebido } from './regras/recebidos';

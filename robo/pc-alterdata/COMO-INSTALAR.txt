@@ -1,0 +1,70 @@
+ROBÔ DO ALTERDATA NUM PC WINDOWS - PASSO A PASSO
+(puxa do Alterdata Fiscal as Entradas, Saídas, Serviços Tomados e Prestados da Importação da Tarefa no nads)
+
+ANTES DE COMEÇAR
+- O PC precisa ter o Alterdata Fiscal instalado.
+- O robô usa o mouse e o teclado do PC por 1 ou 2 minutos a cada pedido. A tela precisa ficar destravada.
+- O robô de um PC só atende a pessoa dona dele (pela conta de login do nads, nunca pelo nome).
+  Para um PC novo, peça para incluir a máquina (pc-NOME-DO-COMPUTADOR) e a conta da pessoa no nads
+  (arquivo packages/core/src/robos/robosDePc.json). Sem isso, o robô liga mas não pega nenhum pedido.
+
+1) INSTALAR (uma vez)
+Abra o PowerShell (pode ser como Administrador) e cole, uma linha de cada vez:
+
+Set-ExecutionPolicy -Scope Process Bypass
+irm https://raw.githubusercontent.com/nilmaadvancedsystems/nads/desenvolvimento/robo/pc-alterdata/instalar.ps1 -OutFile $env:TEMP\instalar-alterdata.ps1
+& $env:TEMP\instalar-alterdata.ps1
+
+O instalador:
+- instala o Git, o Node e o Python, se faltarem;
+- baixa o código em C:\nads;
+- instala o que o robô usa para clicar nas telas;
+- pede o "firebase login": entre com a conta do escritório;
+- cria o atalho para o robô ligar junto com o Windows e já liga o robô.
+
+2) GUARDAR A SENHA DO ALTERDATA PARA O ROBÔ (opcional)
+Só se quiser que o robô abra e entre no Alterdata sozinho quando estiver fechado. No PowerShell:
+
+cmdkey /generic:nads-alterdata-robo /user:USUARIO-DO-ALTERDATA /pass
+
+Ele pede a senha sem mostrar na tela. A senha fica só no Windows desse PC.
+Sem isso, deixe o Alterdata Fiscal aberto e logado.
+
+3) USAR
+No nads, Tarefa > Importação > aba Entradas, Saídas, Tomados ou Prestados:
+clique no botão com a marca do Alterdata e o seu nome. O robô puxa o período da Tarefa (um mês ou o lote),
+a barra mostra o andamento e as notas entram sozinhas.
+As planilhas passam por C:\Users\SEU-USUARIO\Downloads\robo e são apagadas depois de subir para o nads.
+
+4) CONFERIR SE O ROBÔ ESTÁ LIGADO
+No PowerShell:
+
+Get-Content C:\nads\robo\alterdata-no-pc.log -Tail 15
+
+As últimas linhas devem ser de hoje e dizer "ligado neste PC como pc-...".
+Se não estiver ligado:
+
+wscript C:\nads\robo\pc-alterdata\iniciar-oculto.vbs
+
+5) REINICIAR O ROBÔ (pega o código novo na hora)
+Ele se atualiza sozinho pelo GitHub a cada minuto. Para forçar:
+
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'alterdata-no-pc' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+6) TESTAR SEM O NADS (direto no PC)
+Com o Fiscal aberto. Troque a empresa e o período:
+
+& $env:PYTHON_EXE C:\nads\robo\alterdata_fiscal.py entradas 429 01/01/2026 31/10/2026 "C:\Users\SEU-USUARIO\Downloads\robo\teste\429 Entradas.xls"
+
+No lugar de "entradas": saidas, tomados ou prestados.
+
+7) ENSINAR UMA TELA NOVA AO ROBÔ
+Grava o caminho que você faz no Alterdata (só dentro do Alterdata; nunca a tela de login):
+
+& $env:PYTHON_EXE C:\nads\robo\alterdata_ensinar.py
+
+Faça o caminho com calma e aperte F12 no fim. O robô sobe a gravação sozinho para quem está ensinando.
+
+8) DESLIGAR
+Feche o node.exe do alterdata-no-pc no Gerenciador de Tarefas e apague o atalho "nads-alterdata"
+da pasta Inicializar (Win+R, shell:startup).

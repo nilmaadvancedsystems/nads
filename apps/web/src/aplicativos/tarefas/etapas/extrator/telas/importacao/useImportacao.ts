@@ -597,7 +597,10 @@ export function useImportacao() {
     /** o Cadastro da empresa já chegou (antes dele, prestaServico é null sem querer dizer "não informado") */
     cadastroCarregado: !!cad.cadastro,
     /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */
-    contaContabilDe: (banco: string) => cad.cadastro?.bancos?.find(c => c.id === banco)?.contaContabil || '',
+    // sem a conta no banco do Cadastro e a empresa com um banco só: a conta do banco das contas padrão (17/11/2026, na 292: o
+    // Sicoob sem a conta, e a 10503 "Banco Sicoob - 01" nas contas padrão)
+    contaContabilDe: (banco: string) => cad.cadastro?.bancos?.find(c => c.id === banco)?.contaContabil
+      || ((cad.cadastro?.bancos || []).length === 1 ? cad.cadastro?.contasPadrao?.contas?.banco || '' : ''),
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
     /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */

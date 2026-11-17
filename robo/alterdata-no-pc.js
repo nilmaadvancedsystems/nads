@@ -4,7 +4,7 @@
 // deixa ABERTOS E LOGADOS neste PC. A fila é a mesma do servidor (pedidosAlterdata): cada pedido é pego numa transação, então
 // o PC e o servidor juntos nunca fazem o mesmo; quem estiver com o Contábil pronto pega.
 //
-// Atualiza sozinho: a cada 5 min olha o ramo desenvolvimento no GitHub; se chegou commit que muda o robo/, pede para sair com
+// Atualiza sozinho: a cada minuto olha o ramo desenvolvimento no GitHub; se chegou commit que muda o robo/, pede para sair com
 // calma (termina o pedido do meio, não pega outro) e o iniciar.cmd puxa o código novo e liga de novo.
 //
 // Instalação: robo/pc-alterdata/LEIAME.md. Rodar à mão: node alterdata-no-pc.js
@@ -15,7 +15,15 @@ const { execFile } = require('child_process');
 
 // o nome deste PC na fila e no estado (robo/alterdata.maquinas.<onde>); a pasta de trabalho dos pedidos no disco local
 process.env.ALTERDATA_ONDE = process.env.ALTERDATA_ONDE || ('pc-' + String(process.env.COMPUTERNAME || 'windows').toLowerCase());
-process.env.ALTERDATA_PEDIDOS = process.env.ALTERDATA_PEDIDOS || path.join(process.env.LOCALAPPDATA || __dirname, 'nads-alterdata', 'pedidos');
+// as planilhas saem em Downloads\\robo (17/11/2026, Vitor: "C:\\Users\\Vitor\\Downloads\\robo\\ sao onde vao ficar os arquivos";
+// depois: "excluir o arquivo fisico depois de upar"): cada pedido trabalha numa subpasta de lá; com a planilha no nads, a
+// subpasta é apagada (a que deu erro fica, para ver o que houve)
+process.env.ALTERDATA_PEDIDOS = process.env.ALTERDATA_PEDIDOS || path.join(process.env.USERPROFILE || __dirname, 'Downloads', 'robo');
+// só os pedidos do dono deste PC (17/11/2026, Vitor: "se todo mundo for usar meu pc, lascou"): a conta dele está em
+// packages/core/src/robos/robosDePc.json, pela máquina (pc-<computador>); o alterdata.js confere. PC fora da lista: não pega nada.
+process.env.ALTERDATA_SO_DONO = '1';
+// as fotos da tela (o erro de janela) ficam fora do Downloads
+process.env.ALTERDATA_TELA = process.env.ALTERDATA_TELA || path.join(process.env.LOCALAPPDATA || __dirname, 'nads-alterdata', 'tela');
 
 const log = (...m) => console.log(new Date().toLocaleString('pt-BR'), '[alterdata-pc]', ...m);
 
@@ -41,6 +49,32 @@ require('./consumo').instalar(db, { log, tarefa: 'alterdata' });
 try { require('./alterdata').iniciarAlterdata(db, log); log('ligado neste PC como "' + process.env.ALTERDATA_ONDE + '"'); }
 catch (err) { log('Alterdata não ligou:', err.message); }
 
+// ---------- o que foi ensinado (17/11/2026, Vitor: "consegue entrar no diretorio do meu pc C:\\nads\\robo\\ensino e puxar
+// sozinho?") ----------
+// Cada gravação do modo de ensinar (alterdata_ensinar.py, robo\\ensino\\ensino-*.txt) sobe para o banco em robosEnsino, uma
+// vez: quem ensina o robô lê de lá. Só o robô (conta do firebase login) grava e lê: as regras do app não abrem a coleção.
+const PASTA_ENSINO = path.join(__dirname, 'ensino');
+const ENVIADOS = path.join(PASTA_ENSINO, '.enviados.json');
+async function subirEnsino() {
+  let feitos = [];
+  try { feitos = JSON.parse(fs.readFileSync(ENVIADOS, 'utf8')); } catch (e) { /* nenhum ainda */ }
+  let arquivos = [];
+  try { arquivos = fs.readdirSync(PASTA_ENSINO).filter(n => /^ensino-.*\.txt$/.test(n) && !feitos.includes(n)); } catch (e) { return; }
+  for (const nome of arquivos) {
+    try {
+      const texto = fs.readFileSync(path.join(PASTA_ENSINO, nome), 'utf8');
+      await db.collection('robosEnsino').doc(process.env.ALTERDATA_ONDE + '-' + nome.replace(/\.txt$/, '')).set({
+        maquina: process.env.ALTERDATA_ONDE, nome, texto: texto.slice(0, 900000), tamanho: texto.length, em: new Date().toISOString(),
+      });
+      feitos.push(nome);
+      fs.writeFileSync(ENVIADOS, JSON.stringify(feitos));
+      log('ensino: subi ' + nome + ' para o banco (robosEnsino)');
+    } catch (err) { log('ensino: não subi ' + nome + ':', err.message); }
+  }
+}
+setInterval(() => { void subirEnsino(); }, 30 * 1000).unref();
+setTimeout(() => { void subirEnsino(); }, 5 * 1000).unref();
+
 // ---------- o código novo do GitHub ----------
 const RAIZ = path.dirname(__dirname);
 const GIT = process.env.GIT_EXE || 'git';
@@ -53,5 +87,6 @@ async function olharAtualizacao() {
   log('chegou código novo do robô (' + mudou.split('\n').slice(0, 6).join(', ') + '): saio com calma para o iniciar.cmd atualizar');
   void ocupado.pedirParada('atualização do GitHub');
 }
-if (!process.env.ALTERDATA_SEM_ATUALIZAR) setInterval(() => { void olharAtualizacao(); }, 5 * 60 * 1000).unref();
-setTimeout(() => { void olharAtualizacao(); }, 60 * 1000).unref();
+// a cada minuto (17/11/2026, Vitor: "corrija o mais rapido possivel esse robo": o git fetch é barato)
+if (!process.env.ALTERDATA_SEM_ATUALIZAR) setInterval(() => { void olharAtualizacao(); }, 60 * 1000).unref();
+setTimeout(() => { void olharAtualizacao(); }, 20 * 1000).unref();

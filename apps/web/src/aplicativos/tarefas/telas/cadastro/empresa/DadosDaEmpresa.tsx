@@ -51,6 +51,16 @@ function LinhaDaRazaoSocial({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }
   );
 }
 
+/** A linha de baixo do responsável: de onde ele veio e a transferência pedida, se houver. */
+function descricaoDoResponsavel(x: ReturnType<typeof useDadosDaEmpresa>['responsaveis'][number]): string | undefined {
+  const partes = [
+    x.origem === 'planilha' ? 'Da planilha do Checklist Folha' : '',
+    x.origem === 'fora' ? x.foraDaEquipe + ' não está mais na equipe' : '',
+    x.transferencia ? 'Transferência pedida para ' + x.transferencia.para + (x.transferencia.faltam.length ? ' (falta o aceite de ' + x.transferencia.faltam.join(' e ') + ')' : '') : '',
+  ].filter(Boolean);
+  return partes.length ? partes.join(' · ') : undefined;
+}
+
 /** Empresa: os dados dela, o contato e os sócios. */
 export function DadosDaEmpresa({ rota }: { rota: string }) {
   const vm = useDadosDaEmpresa(rota);
@@ -82,6 +92,21 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         <ConfigLinha titulo="Código no Alterdata"><Valor v={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : ''} /></ConfigLinha>
         <ConfigLinha titulo="Inscrição estadual"><Valor v={d?.inscricaoEstadual || ''} /></ConfigLinha>
         <ConfigLinha titulo="Endereço"><Valor v={[r?.endereco || d?.endereco, !r?.endereco ? d?.cidade : ''].filter(Boolean).join(' · ')} /></ConfigLinha>
+      </ConfigSecao>
+      {/* quem cuida da empresa (17/11/2026: "a função de eu alterar o responsável fiscal e contábil aqui"): o Diretor troca
+          direto, sem pedir o aceite; a transferência pedida no departamento cai */}
+      <ConfigSecao titulo="Responsáveis">
+        {vm.responsaveis.map(x => (
+          <ConfigLinha key={x.dep} titulo={x.rotulo} descricao={descricaoDoResponsavel(x)}>
+            {vm.podeTrocarResponsavel
+              ? <MenuSuspenso rotulo={x.atual || 'Escolher'} className="btn btn-ghost" titulo={'Responsável no ' + x.rotulo} direita largura={220}
+                  itens={[
+                    ...x.opcoes.map(n => ({ rotulo: n, marcado: x.origem === 'cadastro' && x.atual === n, onClick: () => vm.trocarResponsavel(x.dep, n) })),
+                    ...(x.origem === 'cadastro' || x.origem === 'fora' ? ['separador' as const, { rotulo: x.daPlanilha ? 'Voltar ao da planilha (' + x.daPlanilha + ')' : 'Sem responsável', onClick: () => vm.trocarResponsavel(x.dep, '') }] : []),
+                  ]} />
+              : <Valor v={x.atual} />}
+          </ConfigLinha>
+        ))}
       </ConfigSecao>
 
       <ConfigSecao titulo="Na Receita" acao={r?.conferidoEm ? <span className="hint">conferido em {dataBr(r.conferidoEm.slice(0, 10))}</span> : undefined}>

@@ -598,24 +598,51 @@ def combo_ao_lado(its, comecos, texto, oque):
     return True
 
 
+BOTOES = {}
+
+
 def preencher(h):
     its = itens(h)
+    # o Exportar guardado agora, com a grade vazia (17/11/2026, Vitor: "um delay imenso": depois do Filtrar, achar o botão lia cada
+    # linha da grade pelo UI Automation; 35 s parado em "exportando")
+    BOTOES['exportar'] = next((e for e in its if 'excel' in norm(nome(e)) and ('export' in norm(nome(e)) or 'dados' in norm(nome(e))) and tipo(e) not in ('Text', 'Pane', 'Window')), None)
     contar_tela(h, 'a tela ' + TELA)
     if SO_VER:
         fim(ok=True, so_ver=True)
 
+    # O que o Vitor ensinou (17/11/2026, robo/alterdata_ensinar.py no PC dele, a tela TfrmConsultaNotasCDFiscais "Consulta de
+    # Notas Fiscais e Produtos"): a empresa é uma caixa com botão (TcxButtonEdit) no alto à esquerda, digita o código e Enter;
+    # o período são duas datas (TcxDateEdit) UMA EMBAIXO DA OUTRA, digitadas só com os números (ddmmaaaa); o tipo e as
+    # canceladas são botões de opção ("&Entrada"/"&Saída" e "Não", num TcxRadioGroup ao lado); depois o "&Filtrar".
+    def por_classe(cls):
+        return sorted([e for e in itens(h) if classe(e) == cls], key=lambda e: (caixa(e)[1], caixa(e)[0]))
+
+    def interna(e):
+        """A caixa de dentro (onde se digita) de uma caixa do DevExpress; sem ela, a própria."""
+        try:
+            for f2 in e.descendants():
+                if tipo(f2) == 'Edit' or 'inner' in classe(f2).lower():
+                    return f2
+        except Exception:
+            pass
+        return e
+
     # a empresa
     passo('empresa ' + CODIGO)
-    rot = rotulo_achado(its, 'empresa', 'emp.', 'cod. empresa', 'codigo da empresa')
-    cx = entradas_ao_lado(its, rot, 1) if rot else []
-    if not cx:
-        # sem o rótulo: a primeira caixa de cima, à esquerda
-        ent = sorted([e for e in its if entrada(e)], key=lambda e: (caixa(e)[1] // 10, caixa(e)[0]))
-        cx = ent[:1]
-    if not cx:
-        falhar('não achei o campo da empresa')
-    digitar(cx[0], str(int(CODIGO)), 'campo Empresa: ' + str(int(CODIGO)))
-    time.sleep(1)
+    caixas_emp = por_classe('TcxButtonEdit')
+    if caixas_emp:
+        alvo = interna(caixas_emp[0])
+    else:
+        rot = rotulo_achado(its, 'empresa', 'emp.', 'cod. empresa', 'codigo da empresa')
+        cx = entradas_ao_lado(its, rot, 1) if rot else []
+        if not cx:
+            cx = sorted([e for e in its if entrada(e)], key=lambda e: (caixa(e)[1] // 10, caixa(e)[0]))[:1]
+        if not cx:
+            falhar('não achei o campo da empresa')
+        alvo = cx[0]
+    clicar(alvo, 'campo Empresa: ' + str(int(CODIGO)))
+    keyboard.send_keys('^a{DEL}' + str(int(CODIGO)) + '{ENTER}', pause=0.04)
+    time.sleep(1.5)
     mensagem_na_frente('ao escolher a empresa ' + CODIGO)
     its = itens(h)
 
@@ -623,68 +650,134 @@ def preencher(h):
     if NOTAS:
         quero = ('Entrada', 'Entradas') if RELATORIO == 'entradas' else ('Saída', 'Saídas', 'Saida', 'Saidas')
         passo('tipo ' + quero[0])
-        if not escolher_opcao(its, quero, 'tipo') and not combo_ao_lado(its, ('tipo',), quero[0], 'tipo'):
+        radios = [e for e in its if tipo(e) == 'RadioButton']
+        diag('as opções da tela: ' + ' | '.join(nome(e) + '@' + str(caixa(e)[0]) + ',' + str(caixa(e)[1]) for e in radios))
+        tipo_r = next((e for e in radios if norm(nome(e)) in [norm(q) for q in quero]), None)
+        if tipo_r:
+            clicar(tipo_r, 'tipo: ' + nome(tipo_r).replace('&', ''))
+        elif not escolher_opcao(its, quero, 'tipo') and not combo_ao_lado(its, ('tipo',), quero[0], 'tipo'):
             falhar('não achei onde escolher o tipo ' + quero[0])
         passo('notas canceladas: não')
-        rot = rotulo_achado(its, 'notas canceladas', 'canceladas', 'considerar canceladas', 'exibir canceladas', 'mostrar canceladas')
-        if rot:
-            cx = entradas_ao_lado(its, rot, 1)
-            if cx:
-                digitar(cx[0], 'Não', 'notas canceladas: Não')
-            else:
-                # uma caixa de marcar com o nome: desmarcada
-                diag('o rótulo das canceladas sem caixa ao lado: ' + tipo(rot) + ' "' + nome(rot) + '"')
-        for e in its:
-            if tipo(e) == 'CheckBox' and 'cancelad' in norm(nome(e)):
-                try:
-                    if e.get_toggle_state() == 1:
-                        clicar(e, 'desmarcar ' + nome(e))
-                except Exception:
-                    pass
+        # o "Não" das canceladas: o botão de opção "Não" mais perto, à direita do tipo (a tela pode ter outros "Não")
+        naos = [e for e in radios if norm(nome(e)) == 'nao']
+        if tipo_r and naos:
+            tx, ty = caixa(tipo_r)[0], caixa(tipo_r)[1]
+            perto = sorted([e for e in naos if caixa(e)[0] > tx], key=lambda e: (abs(caixa(e)[1] - ty), caixa(e)[0] - tx))
+            nao = (perto or sorted(naos, key=lambda e: abs(caixa(e)[1] - ty)))[0]
+            clicar(nao, 'notas canceladas: Não')
+        elif naos:
+            clicar(naos[0], 'notas canceladas: Não')
+        else:
+            diag('não achei o "Não" das canceladas: segui com o que a tela já tinha')
     else:
-        quero = ('Tomador', 'ISS Tomador', 'Tomados', 'Serviços Tomados') if RELATORIO == 'tomados' else ('ISS Saída', 'ISS Saida', 'Saída', 'Saida', 'Prestados', 'Serviços Prestados')
+        # a tela do ISS como o Vitor ensinou (17/11/2026, TfrmConsultaISSFatDed "Consulta de movimento de ISS / Faturamento e
+        # Deduções"): "ISS Saída" (os prestados) ou "ISS Tomador" (os tomados), depois "Referência" (a data da competência)
+        quero = ('ISS Tomador', 'Tomador', 'Tomados', 'Serviços Tomados') if RELATORIO == 'tomados' else ('ISS Saída', 'ISS Saida', 'Saída', 'Saida', 'Prestados', 'Serviços Prestados')
         passo('tipo ' + quero[0])
+        radios = [e for e in its if tipo(e) == 'RadioButton']
+        diag('as opções da tela: ' + ' | '.join(nome(e) for e in radios))
+        ref = next((e for e in radios if norm(nome(e)) == 'referencia'), None)
         if not escolher_opcao(its, quero, 'tipo') and not combo_ao_lado(its, ('tipo', 'iss', 'operacao', 'movimento'), quero[0], 'tipo'):
-            # qualquer item cujo nome tenha a palavra
             chave = 'tomad' if RELATORIO == 'tomados' else 'saida'
             alvo = next((e for e in its if chave in norm(nome(e)) and tipo(e) not in ('Text', 'Pane', 'Window', 'Edit')), None)
             if not alvo:
                 falhar('não achei onde escolher ' + quero[0])
             clicar(alvo, 'tipo: ' + nome(alvo))
+        if ref:
+            time.sleep(.3)
+            clicar(ref, 'data pela Referência')
+        else:
+            diag('não achei o "Referência": segui com a data que a tela já tinha')
     time.sleep(.5)
     its = itens(h)
 
-    # o período
+    # o período: as duas datas (TcxDateEdit), a de cima é o início
     passo('período ' + INICIO + ' a ' + FIM)
-    rot = rotulo_achado(its, 'periodo', 'data', 'competencia', 'de ')
-    cxs = entradas_ao_lado(its, rot, 2) if rot else []
-    if len(cxs) < 2:
-        # as caixas que já mostram uma data
-        cxs = [e for e in its if entrada(e) and len(valor(e)) >= 8 and valor(e).count('/') == 2]
-        cxs = sorted(cxs, key=lambda e: (caixa(e)[1] // 10, caixa(e)[0]))[:2]
-    if len(cxs) < 2:
+    datas = por_classe('TcxDateEdit')
+    if len(datas) < 2:
+        rot = rotulo_achado(its, 'periodo', 'data', 'competencia', 'de ')
+        datas = entradas_ao_lado(its, rot, 2) if rot else []
+    if len(datas) < 2:
+        datas = sorted([e for e in its if entrada(e) and len(valor(e)) >= 8 and valor(e).count('/') == 2], key=lambda e: (caixa(e)[1], caixa(e)[0]))
+    if len(datas) < 2:
         falhar('não achei as duas datas do período')
-    for c, d in zip(cxs, (INICIO, FIM)):
-        digitar(c, d.replace('/', ''), 'período ' + d)
-    lidos = [valor(c) for c in cxs]
-    if not (INICIO.replace('/', '') in lidos[0].replace('/', '') and FIM.replace('/', '') in lidos[1].replace('/', '')):
-        # a máscara pode ser mês/ano
-        if not (INICIO[3:].replace('/', '') in lidos[0].replace('/', '') and FIM[3:].replace('/', '') in lidos[1].replace('/', '')):
-            falhar('o período na tela (' + ' a '.join(lidos) + ') não é o pedido (' + INICIO + ' a ' + FIM + ')')
+    datas = datas[:2]
+    for c, d in zip(datas, (INICIO, FIM)):
+        clicar(interna(c), 'período ' + d)
+        keyboard.send_keys('{HOME}' + d.replace('/', '') + '{TAB}', pause=0.04)
+        time.sleep(.5)
+    # a data do DevExpress não diz o valor ao UI Automation (17/11/2026: voltava vazio): lê o texto da janela da caixa e o da
+    # caixa de dentro pelo Windows
+    def texto_da_data(c):
+        v = valor(c)
+        if v:
+            return v
+        try:
+            hd = c.handle
+        except Exception:
+            hd = None
+        if not hd:
+            return ''
+        t = (win32gui.GetWindowText(hd) or '').strip()
+        if t:
+            return t
+        filhos_t = []
+
+        def ver(x, _):
+            try:
+                tx = (win32gui.GetWindowText(x) or '').strip()
+                if tx:
+                    filhos_t.append(tx)
+            except Exception:
+                pass
+            return True
+        try:
+            win32gui.EnumChildWindows(hd, ver, None)
+        except Exception:
+            pass
+        return filhos_t[0] if filhos_t else ''
+    lidos = [texto_da_data(c) for c in datas]
+    diag('as datas na tela depois de digitar: ' + ' a '.join(x or '(sem leitura)' for x in lidos))
+    if all(lidos) and not (INICIO in lidos[0] and FIM in lidos[1]):
+        falhar('o período na tela (' + ' a '.join(lidos) + ') não é o pedido (' + INICIO + ' a ' + FIM + ')')
     mensagem_na_frente('ao preencher o período')
 
-    # Filtrar
+    # Filtrar; o aviso que aparece depois (o Vitor clicou em OK) vai para o log e leva OK
     passo('filtrando')
     its = itens(h)
     f = next((e for e in its if norm(nome(e)) in ('filtrar', 'pesquisar', 'consultar') and tipo(e) in ('Button', 'MenuItem', 'SplitButton', 'Custom', 'Text')), None)
     if not f:
         falhar('não achei o Filtrar')
     clicar(f, 'Filtrar')
-    time.sleep(3)
-    mensagem_na_frente('ao filtrar')
+    # o aviso vem logo depois do Filtrar; sem aviso em 20 s, segue (o Exportar espera a consulta terminar)
+    limite = time.time() + 20
+    while time.time() < limite:
+        time.sleep(1.5)
+        ms = mensagens()
+        if not ms:
+            continue
+        texto = texto_da_mensagem(ms[0])
+        diag('depois do Filtrar, o Fiscal avisou: ' + texto)
+        t = norm(texto)
+        if any(x in t for x in ('nenhum', 'nao ha', 'nao foram encontrad', 'nao existe', 'sem registro')):
+            responder_nao(ms[0])
+            falhar('o Fiscal não achou notas: ' + texto)
+        b = botao_win32(ms[0], 'OK')
+        if b:
+            clique('OK (aviso do Fiscal)')
+            win32gui.PostMessage(b, win32con.BM_CLICK, 0, 0)
+        else:
+            responder_nao(ms[0])
+        time.sleep(1)
+        break
+    time.sleep(2)
 
 
 def achar_exportar(h, principal):
+    if BOTOES.get('exportar'):
+        b = BOTOES['exportar']
+        BOTOES['exportar'] = None   # se não abrir, procura de novo na próxima volta
+        return b
     for w in (h, principal):
         for e in itens(w):
             n = norm(nome(e))
@@ -718,7 +811,7 @@ def exportar(h, principal):
             time.sleep(2)
             continue
         clicar(b, 'Exportar dados em Excel')
-        sv = esperar(salvar_como, 8)
+        sv = esperar(salvar_como, 8, .2)
         if sv:
             break
         msgs = mensagens()
@@ -740,14 +833,21 @@ def exportar(h, principal):
                     break
     if not sv:
         falhar('a janela Salvar não abriu depois do Exportar dados em Excel (2 min)')
+    # a caixa "Nome:" do "Salvar como" do Windows (a gravação do Vitor, 17/11/2026: o controle 1148, um Edit dentro do ComboBox)
     nomecx = None
+    edits = []
 
     def ver(c, _):
-        nonlocal nomecx
-        if nomecx is None and win32gui.GetClassName(c) == 'Edit' and win32gui.IsWindowVisible(c):
-            nomecx = c
+        try:
+            if win32gui.GetClassName(c) == 'Edit' and win32gui.IsWindowVisible(c):
+                pai = win32gui.GetParent(c)
+                ids = (win32gui.GetDlgCtrlID(c), win32gui.GetDlgCtrlID(pai) if pai else 0, win32gui.GetDlgCtrlID(win32gui.GetParent(pai)) if pai and win32gui.GetParent(pai) else 0)
+                edits.append((c, 1148 in ids))
+        except Exception:
+            pass
         return True
     win32gui.EnumChildWindows(sv, ver, None)
+    nomecx = next((c for c, eh in edits if eh), None) or (edits[0][0] if edits else None)
     if not nomecx:
         falhar('não achei o Nome na janela Salvar')
     win32gui.SendMessage(nomecx, win32con.WM_SETTEXT, 0, DESTINO)
@@ -764,18 +864,18 @@ def exportar(h, principal):
     while time.time() < limite:
         time.sleep(.5)
         for m in mensagens():
-            t = norm(texto_da_mensagem(m))
-            if 'abrir' in t or 'visualizar' in t or 'excel' in t:
-                clique('Não (não abrir o arquivo)')
-                responder_nao(m)
-            else:
-                falhar('o Alterdata Fiscal mostrou uma mensagem depois do Salvar: ' + texto_da_mensagem(m))
+            # a pergunta depois do Salvar (a gravação: "Informação", Sim/Não; o Vitor clicou em Sim e o Excel abriu): o robô
+            # responde Não (não abre nada); o texto vai para o log
+            diag('depois do Salvar, o Fiscal perguntou: ' + texto_da_mensagem(m))
+            clique('Não (não abrir o arquivo)')
+            responder_nao(m)
+            time.sleep(.8)
         novos = [p for p in glob.glob(os.path.join(pasta, '*')) if p not in antes and not p.lower().endswith(('.tmp', '.~tmp')) and not os.path.basename(p).startswith('~$')]
         if novos:
             novo = max(novos, key=os.path.getmtime)
             t = os.path.getsize(novo)
             tamanhos.append(t)
-            if t > 0 and tamanhos[-4:] == [t, t, t, t]:
+            if t > 0 and tamanhos[-2:] == [t, t]:
                 break
     if not novo or os.path.getsize(novo) <= 0:
         falhar('a planilha não apareceu na pasta depois do Salvar')

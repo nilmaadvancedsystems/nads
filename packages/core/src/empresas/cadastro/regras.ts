@@ -585,6 +585,25 @@ export function cancelarTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoR
   return registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + t.de + ' para ' + t.para);
 }
 
+/**
+ * O Diretor troca quem cuida da empresa direto, pelo Cadastro › Dados da empresa (Vitor, 17/11/2026: "a função de eu alterar o
+ * responsável fiscal e contábil aqui"): sem pedir o aceite, como o definirResponsavel; a transferência que estava pedida
+ * no departamento cai, porque a troca direta passa por cima dela. Fica no histórico. Vazio tira o responsável.
+ */
+export function trocarResponsavelDireto(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, nome: string, por: string, agora: Date): CadastroDaEmpresa {
+  const pedida = c.transferencias?.[dep];
+  const semPedido = pedida ? registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + pedida.de + ' para ' + pedida.para + ' (trocado direto)') : c;
+  return definirResponsavel(semPedido, dep, nome, por, agora);
+}
+
+/**
+ * Quem pode ser responsável num departamento: as pessoas ativas dele (ou com o papel dele), em ordem de nome. O mesmo
+ * filtro de Empresas por responsável.
+ */
+export function quemPodeSerResponsavel(equipe: readonly { nome: string; ativo: boolean; departamento: string | null; papeis: readonly string[] }[], dep: DepartamentoDoResponsavel): string[] {
+  return equipe.filter(p => p.ativo && (p.departamento === dep || p.papeis.includes(dep))).map(p => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 /** Falta o aceite de quem? (os nomes, emitente primeiro) */
 export function faltamAceitar(t: TransferenciaDeResponsavel): string[] {
   return [...(t.aceiteDe ? [] : [t.de]), ...(t.aceitePara ? [] : [t.para])];

@@ -31,7 +31,7 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
 // tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
@@ -53,6 +53,15 @@ const batidaDoEstado = require('./batimento').criarBatimento({ ignorar: ['atuali
 const ASSENTAR_MS = 60 * 1000;
 
 const agora = () => new Date().toISOString();
+// os robôs em PCs de pessoas: o deste PC atende só o dono (17/11/2026)
+let ROBOS_DE_PC = [];
+try { ROBOS_DE_PC = require('../packages/core/src/robos/robosDePc.json'); } catch (e) { /* sem o arquivo: nenhum */ }
+const DONO_UID = (ROBOS_DE_PC.find(r => r.maquina === ONDE) || {}).uid || '';
+const DONOS_DE_PC = new Set(ROBOS_DE_PC.map(r => r.uid));
+// a fila só do robô de PC (17/11/2026): o servidor ainda no robô de 11/11 pegava os pedidos do Vitor (o razão de uma conta, as
+// notas do Fiscal) e respondia "tipo desconhecido". O pedido com status 'pendentePc' o servidor antigo não enxerga (ele só ouve
+// 'pendente'); o robô de um PC ouve os dois.
+const ESPERANDO = DONO_UID ? ['pendente', 'pendentePc'] : ['pendente'];
 const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', abrindo: 'entrando (tela de abertura)', fechado: 'fechado', dois: 'aberto duas vezes', erro: 'sem resposta' };
 
 /** Se já tem um Contábil (wcont.exe) rodando nesta máquina, mesmo sem janela à mostra (05/11/2026, Vitor: "o robo tem que
@@ -97,6 +106,8 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
       : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]
+        : relatorio === 'razaoConta' ? [String(a.codigo), a.conta, a.inicio, a.fim, a.destino]
+          : relatorio === 'dinamicoPeriodo' ? [String(a.codigo), a.inicio, a.fim, a.destino]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
@@ -308,7 +319,15 @@ function iniciarAlterdata(db, log) {
       // o pedido do Fiscal (16/11/2026) precisa do Fiscal aberto e logado, não do Contábil (no PC do Vitor, o Contábil
       // ficou com a janela oculta e o pedido do Fiscal esperou à toa)
       const ped = await pedidos.doc(id).get();
+      // o robô no PC de uma pessoa (17/11/2026, Vitor: "se todo mundo for usar meu pc, lascou"): só pega os pedidos da conta do
+      // dono (packages/core/src/robos/robosDePc.json). O balancete e o razão que o nads pede sozinho e os pedidos dos outros
+      // ficam para o servidor; o servidor não pega o que é do dono de um PC (fica para o robô dele).
+      const quem = ped.exists ? String(ped.data().criadoPorUid || '') : '';
+      // o robô de um PC sem dono no robosDePc.json não pega nada (ALTERDATA_SO_DONO, alterdata-no-pc.js)
+      if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
+      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ped.data().tipo === 'fiscal')) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
+      // o razão de uma conta usa o Contábil (o de sempre)
       if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
       const falta = doFiscal ? 0 : ASSENTAR_MS - (Date.now() - okDesde);
@@ -316,7 +335,7 @@ function iniciarAlterdata(db, log) {
       const ref = pedidos.doc(id);
       return db.runTransaction(async t => {
         const s = await t.get(ref);
-        if (!s.exists || s.data().status !== 'pendente') return null;
+        if (!s.exists || !ESPERANDO.includes(s.data().status)) return null;
         t.update(ref, { status: 'trabalhando', onde: ONDE, pegoEm: agora() });
         return s.data();
       });
@@ -370,7 +389,15 @@ function iniciarAlterdata(db, log) {
     },
   };
 
-  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata') });
+  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata'),
+    // ALTERDATA_COPIA: a pasta onde fica uma cópia de cada planilha do Fiscal (alterdata-no-pc.js: Downloads\robo)
+    copiarPara: process.env.ALTERDATA_COPIA || '',
+    // o Cancelar do nads (17/11/2026): fecha o que o roteiro deixou aberto no Alterdata
+    limparTela: async () => {
+      const r = await rodarPy(path.join(__dirname, 'alterdata_limpar.py'), [], 60 * 1000);
+      const m = r.out.match(/RESULTADO:\s*(\{.*\})/);
+      log('Alterdata: cancelado; voltei a tela: ' + (m ? m[1] : 'sem resultado'));
+    } });
   pausaLocal.quandoRetomar('alterdata', () => fila.retomar());
 
   // o que ficou no meio, nesta máquina, quando o robô reiniciou volta para a fila uma vez
@@ -383,7 +410,7 @@ function iniciarAlterdata(db, log) {
   // os pendentes: cada um entra na fila (o mesmo id não entra duas vezes); a cada minuto, com o Contábil pronto, os que
   // ficaram (o Contábil estava fechado quando chegaram) entram de novo
   const pendentes = new Set();
-  ouvir('pedidos do Alterdata', () => pedidos.where('status', '==', 'pendente'), snap => {
+  ouvir('pedidos do Alterdata', () => (ESPERANDO.length > 1 ? pedidos.where('status', 'in', ESPERANDO) : pedidos.where('status', '==', 'pendente')), snap => {
     for (const ch of snap.docChanges()) {
       if (ch.type === 'removed') { pendentes.delete(ch.doc.id); fila.saiu(ch.doc.id); } else {
         pendentes.add(ch.doc.id); fila.chegou(ch.doc.id);

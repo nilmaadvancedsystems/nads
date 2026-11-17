@@ -10,6 +10,7 @@ import { clientes as cl, conferencia as c, releitura, tarefas as t } from '@nads
 import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { guardadosQueCasam, useGuardado } from './guardado';
+import { roboDePcDoUsuario } from '../aplicativos/tarefas/dados/notasDoFiscal.firestore';
 
 export interface RazaoGuardado { arquivo: string; razao: t.RazaoDaConta }
 /** O nome do razão que veio da Importação (do robô ou do upload), com o número da conta (Vitor, 10/11/2026: "para ajudar"). */
@@ -25,6 +26,14 @@ interface Contabil { dinamico?: DinamicoGuardado; razoes?: Record<string, RazaoG
  * guardado e continua valendo. Para voltar, é só pôr true.
  */
 export const ROBO_NAS_ETAPAS: boolean = false;
+
+/**
+ * O robô nas etapas para quem tem o robô do Alterdata no próprio PC (Vitor, 17/11/2026: "podemos desenvolver todos os robos aqui
+ * com o vitor primeiro"): os pedidos dele vão para o PC dele (core/robos/robosDePc); para os outros, o ROBO_NAS_ETAPAS.
+ */
+export function roboNasEtapas(): boolean {
+  return ROBO_NAS_ETAPAS || !!roboDePcDoUsuario();
+}
 
 const SEM_RAZAO_DO_ROBO = 'Na Importação, aba Balancete e razões, puxe os razões do Alterdata pelo robô.';
 
