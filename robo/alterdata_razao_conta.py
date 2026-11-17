@@ -477,7 +477,8 @@ def preencher(h):
     clicar(f, 'Consultar')
     # só uma olhada rápida no aviso (17/11/2026, Vitor: "apos clicar em consultar, tem um delay imenso para salvar em excel": esperava
     # até 20 s por um aviso que, com movimento, nunca vem); o aviso que vier depois é tratado no Exportar (checar_aviso)
-    limite = time.time() + 2.5
+    # 3 s (Vitor, 17/11/2026: "apos a consulta, ja aparece o aviso")
+    limite = time.time() + 3
     while time.time() < limite:
         time.sleep(.5)
         checar_aviso('depois do Consultar')
