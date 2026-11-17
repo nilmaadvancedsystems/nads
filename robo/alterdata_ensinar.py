@@ -76,7 +76,15 @@ def janela_de_cima(h):
 
 def do_alterdata(h):
     exe = proc.exe_da_janela(h)
-    return '\\alterdata\\' in exe
+    if '\\alterdata\\' in exe or os.path.basename(exe).startswith(('wfiscal', 'wcont', 'wphd', 'wdp', 'altpack')):
+        return True
+    # sem conseguir ler o programa (outro usuário, outro nível de acesso): a janela do Delphi do Alterdata
+    if not exe:
+        try:
+            return win32gui.GetClassName(janela_de_cima(h)).startswith('Tfrm')
+        except Exception:
+            return False
+    return False
 
 
 def de_login(h):
@@ -116,9 +124,59 @@ def texto_da_tecla(vk):
 uia = Desktop(backend='uia')
 
 
+def ler_uia(x, y, segundos=3):
+    """O item do UI Automation no ponto, com prazo: numa tela grande o Alterdata pode demorar (ou travar) para responder."""
+    r = {}
+
+    def ler():
+        try:
+            import comtypes
+            comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
+        except Exception:
+            pass
+        try:
+            e = uia.from_point(x, y)
+            i = e.element_info
+            r.update({'nome': (i.name or '').strip()[:80], 'tipo': str(i.control_type or ''), 'classe': i.class_name or '', 'id': i.automation_id or ''})
+            rc = e.rectangle()
+            r['tamanho'] = [rc.right - rc.left, rc.bottom - rc.top]
+            pais = []
+            p = e.parent()
+            for _ in range(2):
+                if not p:
+                    break
+                pi = p.element_info
+                pais.append((str(pi.control_type or '') + '/' + (pi.class_name or '') + ('"' + (pi.name or '')[:40] + '"' if pi.name else '')))
+                p = p.parent()
+            r['dentro_de'] = pais
+        except Exception as ex:
+            r['erro_uia'] = type(ex).__name__ + ': ' + str(ex)[:80]
+    t = threading.Thread(target=ler, daemon=True)
+    t.start()
+    t.join(segundos)
+    if t.is_alive():
+        r['erro_uia'] = 'o Alterdata não respondeu ao UI Automation em ' + str(segundos) + ' s'
+    return r
+
+
+IGNORADOS = []
+
+
 def descrever_item(x, y):
     h = user32.WindowFromPoint(wt.POINT(x, y))
-    if not h or not do_alterdata(h) or de_login(h):
+    if not h:
+        return None
+    if not do_alterdata(h):
+        exe = os.path.basename(proc.exe_da_janela(h)) or '?'
+        try:
+            cls = win32gui.GetClassName(janela_de_cima(h))
+        except Exception:
+            cls = '?'
+        print('   (clique ignorado: fora do Alterdata — ' + exe + ', ' + cls + ')', flush=True)
+        IGNORADOS.append(exe + ' ' + cls)
+        return None
+    if de_login(h):
+        print('   (clique na tela de login: não gravo)', flush=True)
         return None
     topo = janela_de_cima(h)
     d = {'janela': win32gui.GetClassName(topo), 'titulo': (win32gui.GetWindowText(topo) or '')[:60], 'classe_win32': win32gui.GetClassName(h)}
@@ -128,23 +186,10 @@ def descrever_item(x, y):
     except Exception:
         pass
     try:
-        e = uia.from_point(x, y)
-        i = e.element_info
-        d.update({'nome': (i.name or '').strip()[:80], 'tipo': str(i.control_type or ''), 'classe': i.class_name or '', 'id': i.automation_id or ''})
-        r = e.rectangle()
-        d['tamanho'] = [r.right - r.left, r.bottom - r.top]
-        # o rótulo e o grupo de quem está em volta: o pai e o avô
-        pais = []
-        p = e.parent()
-        for _ in range(2):
-            if not p:
-                break
-            pi = p.element_info
-            pais.append((str(pi.control_type or '') + '/' + (pi.class_name or '') + ('"' + (pi.name or '')[:40] + '"' if pi.name else '')))
-            p = p.parent()
-        d['dentro_de'] = pais
-    except Exception as ex:
-        d['erro_uia'] = type(ex).__name__
+        d['texto_win32'] = (win32gui.GetWindowText(h) or '')[:60]
+    except Exception:
+        pass
+    d.update(ler_uia(x, y))
     return d
 
 
@@ -175,7 +220,9 @@ def trabalhador(saida, linhas):
             linha = (str(n) + '. clique' + (' ' + ev[3] if ev[3] else '') + ' em ' + (d.get('tipo') or '?') + ' "' + (d.get('nome') or '') + '"'
                      + ' (' + (d.get('classe') or d.get('classe_win32', '')) + ')' + ' na janela ' + d['janela'] + (' "' + d['titulo'] + '"' if d['titulo'] else '')
                      + (' @' + str(d['na_janela'][0]) + ',' + str(d['na_janela'][1]) if 'na_janela' in d else '')
-                     + (' · dentro de ' + ' < '.join(d.get('dentro_de', [])) if d.get('dentro_de') else ''))
+                     + (' · dentro de ' + ' < '.join(d.get('dentro_de', [])) if d.get('dentro_de') else '')
+                     + (' · texto "' + d['texto_win32'] + '"' if d.get('texto_win32') else '')
+                     + (' · ' + d['erro_uia'] if d.get('erro_uia') else ''))
             linhas.append(linha)
             saida.append({'evento': 'clique', 'botao': ev[3] or 'esquerdo', **d})
             print(linha, flush=True)
