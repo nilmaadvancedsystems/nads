@@ -40,7 +40,8 @@ CFOPS = [c.strip() for c in (ARGS[3] if len(ARGS) > 3 else '').split(',') if c.s
 ATUAL = (ARGS[4] if len(ARGS) > 4 else '').strip()
 PADRAO = (ARGS[5] if len(ARGS) > 5 else '').strip()
 ESPERADO = int(ARGS[6]) if len(ARGS) > 6 and ARGS[6].isdigit() else 0
-# entradas (CFOP 1, 2, 3) ou saídas (5, 6, 7): o tipo da consulta
+# entradas (CFOP 1, 2, 3) ou saídas (5, 6, 7): a mesma tela, o tipo da consulta (17/11/2026, Vitor: "educa ele pra ter essa alternancia
+# entre entradas e saidas, mas a tela e a mesma")
 RELATORIO = 'saidas' if CFOPS and CFOPS[0][:1] in '567' else 'entradas'
 DESTINO = ''
 NOTAS = True
@@ -883,6 +884,97 @@ def exportar(h, principal):
 
 
 # ---------- a grade: os filtros das colunas e a seleção ----------
+# O ensaio de 17/11/2026 mostrou que o UI Automation NÃO vê o cxGrid do Fiscal (nem colunas, nem linhas). Então: o filtro da coluna do
+# CFOP pelo lugar onde o Vitor clicou nas duas gravações (na janela da consulta, maximizada: x 729, y 367); a lista do filtro
+# (TcxGridFilterPopup) o UI Automation vê. A contagem: seleciona tudo e copia (Ctrl+C) — as linhas copiadas são as notas filtradas.
+FUNIL_CFOP = (729, 367)
+LINHA_1 = (300, 390)
+
+
+def no_form(h, x, y):
+    x0, y0, _, _ = win32gui.GetWindowRect(h)
+    return (x0 + x, y0 + y)
+
+
+def filtrar_cfop_pelo_lugar(h, valores):
+    pop = None
+    for dx in (0, -3, 3):
+        px, py = no_form(h, FUNIL_CFOP[0] + dx, FUNIL_CFOP[1])
+        mouse.move(coords=(px - 40, py))
+        time.sleep(.4)
+        mouse.move(coords=(px, py))
+        time.sleep(.3)
+        clique('filtro da coluna do CFOP')
+        mouse.click(coords=(px, py))
+        pop = esperar(popup_do_filtro, 3, .2)
+        if pop:
+            break
+    if not pop:
+        falhar('não abriu o filtro da coluna do CFOP (o lugar da gravação: ' + str(FUNIL_CFOP) + ')')
+    time.sleep(.6)
+    lista = [e for e in itens(pop) if tipo(e) in ('ListItem', 'CheckBox', 'DataItem')]
+    nomes = [nome(e) for e in lista]
+    diag('o filtro da coluna tem: ' + ' | '.join(nomes[:60]))
+    cfops_na_lista = [n for n in nomes if len(n.strip()) == 4 and n.strip().isdigit() and n.strip()[0] in '1234567']
+    if not cfops_na_lista:
+        keyboard.send_keys('{ESC}')
+        falhar('o filtro aberto não é o da coluna do CFOP (as colunas da grade mudaram de lugar?): ' + ' | '.join(nomes[:12]))
+    faltam = []
+    for v in valores:
+        alvo = next((e for e in lista if nome(e).strip() == v), None)
+        if not alvo:
+            faltam.append(v)
+            continue
+        clicar(alvo, 'CFOP ' + v)
+        time.sleep(.5)
+    keyboard.send_keys('{ESC}')
+    time.sleep(1)
+    if popup_do_filtro():
+        win32gui.PostMessage(popup_do_filtro(), win32con.WM_CLOSE, 0, 0)
+        time.sleep(.5)
+    if faltam:
+        falhar('o filtro do CFOP não tem ' + ', '.join(faltam) + ' (nenhuma nota assim no período?)')
+
+
+def copiar_selecao(h):
+    """Clica na primeira linha, Ctrl+A e Ctrl+C: o texto das linhas selecionadas (as notas filtradas)."""
+    import win32clipboard
+    try:
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.CloseClipboard()
+    except Exception:
+        pass
+    px, py = no_form(h, *LINHA_1)
+    clique('a primeira nota da grade')
+    mouse.click(coords=(px, py))
+    time.sleep(.5)
+    keyboard.send_keys('^a')
+    time.sleep(.6)
+    keyboard.send_keys('^c')
+    time.sleep(1)
+    texto = ''
+    for _ in range(5):
+        try:
+            win32clipboard.OpenClipboard()
+            try:
+                if win32clipboard.IsClipboardFormatAvailable(win32con.CF_UNICODETEXT):
+                    texto = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) or ''
+            finally:
+                win32clipboard.CloseClipboard()
+            break
+        except Exception:
+            time.sleep(.4)
+    return texto
+
+
+def contar_pela_copia(texto, cfops):
+    linhas = [l for l in texto.splitlines() if l.strip()]
+    if linhas and 'cfop' in norm(linhas[0]):
+        linhas = linhas[1:]   # o título das colunas
+    com_cfop = [l for l in linhas if any(('\t' + c + '\t') in ('\t' + l + '\t') or (' ' + c + ' ') in (' ' + l.replace('\t', ' ') + ' ') for c in cfops)]
+    return linhas, com_cfop
+
 def cabecalhos(h):
     """Os títulos das colunas da grade (o UI Automation do cxGrid dá HeaderItem; sem ele, os Text no alto da grade)."""
     its = itens(h)
@@ -1094,18 +1186,16 @@ try:
     preencher(form)
     time.sleep(1)
     passo('filtrando a grade: CFOP ' + ', '.join(CFOPS))
-    cabs, its = cabecalhos(form)
-    diag('as colunas da grade: ' + ' | '.join(nome(e) + '@' + str(caixa(e)[0]) for e in cabs))
-    total, como = contar_linhas(form)
-    diag('notas na grade antes dos filtros: ' + str(total) + ' (' + como + ')')
-    c_cfop = coluna(cabs, 'cfop')
-    if not c_cfop:
-        falhar('não achei a coluna do CFOP na grade (colunas: ' + ', '.join(nome(e) for e in cabs)[:300] + ')')
-    # só os CFOPs da natureza (17/11/2026, Vitor regravou com uma nota só: "seleciona so os cfops daquela natureza e troca TODOS
-    # pelo lancamento automatico padrao informado no nads"); o período já vem só com as competências das notas fora do padrão
-    filtrar_coluna(form, c_cfop, CFOPS, 'CFOP')
-    achadas, como = contar_linhas(form)
-    diag('notas na grade com os filtros: ' + str(achadas) + ' (' + como + '); o nads espera ' + str(ESPERADO))
+    filtrar_cfop_pelo_lugar(form, CFOPS)
+    passo('conferindo as notas filtradas')
+    texto = copiar_selecao(form)
+    linhas, com_cfop = contar_pela_copia(texto, CFOPS)
+    achadas = len(linhas)
+    diag('a cópia da grade: ' + str(achadas) + ' linha(s), ' + str(len(com_cfop)) + ' com o CFOP; o nads espera ' + str(ESPERADO) + ' · ' + ' // '.join(l[:120] for l in linhas[:3]))
+    if not texto.strip():
+        falhar('a grade não copiou nada (Ctrl+C): não sei quantas notas o filtro deixou; não alterei nada')
+    if len(com_cfop) != achadas:
+        falhar('há linha copiada sem o CFOP pedido (' + str(achadas - len(com_cfop)) + '): não alterei nada')
     if ENSAIO:
         try:
             import alterdata_tela
@@ -1117,8 +1207,7 @@ try:
         fim(ok=True, ensaio=True, achadas=achadas, esperado=ESPERADO)
     if achadas != ESPERADO:
         falhar('a grade filtrada tem ' + str(achadas) + ' nota(s) e o nads espera ' + str(ESPERADO) + ': não alterei nada')
-    passo('selecionando as ' + str(achadas) + ' notas')
-    selecionar_tudo(form)
+    passo(str(achadas) + ' nota(s) selecionadas')
     alterar_notas(form)
     passo(str(achadas) + ' nota(s) com o lançamento ' + PADRAO)
     limpar()
