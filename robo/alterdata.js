@@ -112,8 +112,14 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
-    let resto = '', erros = '', resultado = null;
+    let resto = '', erros = '', resultado = null, prazoDoFim = null, terminou = false;
     const diags = [];
+    const terminar = () => {
+      if (terminou) return;
+      terminou = true;
+      clearTimeout(prazoDoFim);
+      resolve(Object.assign(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }, diags.length ? { diag: diags.slice(-60) } : {}));
+    };
     filho.stdout.on('data', b => {
       resto += b.toString('utf8');
       const linhas = resto.split(/\r?\n/);
@@ -130,13 +136,16 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
         if (dg) { registrarDiag(dg[1].trim()); diags.push(dg[1].trim().slice(0, 300)); }
         const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
         if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* mal escrito */ } }
+        // o resultado saiu: o roteiro tem 3 s para fechar (17/11/2026, Vitor: "encerra ele dentro de 3s, pq ta bugando, parece que
+        // ele continua, quando liga outro, ja nao funciona mais"); o Python que fica preso na saída (o UI Automation) é morto
+        if (r && !prazoDoFim) prazoDoFim = setTimeout(() => { matar(filho); terminar(); }, 3000);
       }
     });
     filho.stderr.on('data', b => { erros += b.toString('utf8'); if (erros.length > 2000) erros = erros.slice(-2000); });
     if (sinal) sinal.addEventListener('abort', () => matar(filho));
     filho.on('error', err => resolve({ ok: false, erro: 'não consegui rodar o Python: ' + err.message }));
     // o que o roteiro viu na tela (DIAG:) vai junto no resultado: a fila guarda no pedido (o Fiscal, 16/11/2026)
-    filho.on('close', () => resolve(Object.assign(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }, diags.length ? { diag: diags.slice(-60) } : {})));
+    filho.on('close', () => terminar());
   });
 }
 
@@ -395,16 +404,16 @@ function iniciarAlterdata(db, log) {
     copiarPara: process.env.ALTERDATA_COPIA || '',
     // o Cancelar do nads (17/11/2026): fecha o que o roteiro deixou aberto no Alterdata
     limparTela: async () => {
-      const r = await rodarPy(path.join(__dirname, 'alterdata_limpar.py'), [], 60 * 1000);
+      const r = await rodarPy(path.join(__dirname, 'alterdata_limpar.py'), [], 30 * 1000);
       const m = r.out.match(/RESULTADO:\s*(\{.*\})/);
-      log('Alterdata: cancelado; voltei a tela: ' + (m ? m[1] : 'sem resultado'));
+      log('Alterdata: voltei a tela ao ponto de antes: ' + (m ? m[1] : 'sem resultado'));
     } });
   pausaLocal.quandoRetomar('alterdata', () => fila.retomar());
 
   // o que ficou no meio, nesta máquina, quando o robô reiniciou volta para a fila uma vez
   pedidos.where('status', '==', 'trabalhando').get().then(s => Promise.all(s.docs.filter(d => (d.data().onde || 'pc') === ONDE).map(d => {
     const t = Number(d.data().tentativas || 0);
-    return t < 1 ? d.ref.update({ status: 'pendente', tentativas: t + 1, passos: [] })
+    return t < 1 ? d.ref.update({ status: ONDE.startsWith('pc-') ? 'pendentePc' : 'pendente', tentativas: t + 1, passos: [] })
       : d.ref.update({ status: 'erro', erro: 'o robô reiniciou no meio duas vezes; peça de novo', fimEm: agora() });
   }))).catch(() => {});
 

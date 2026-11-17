@@ -484,6 +484,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       return;
     }
     const arquivo = r.ok ? [r.arquivo, destino].find(x => x && fs.existsSync(x)) : '';
+    // deu errado: o Alterdata volta ao ponto de antes (17/11/2026: a consulta e o aviso que ficavam abertos travavam o próximo)
+    if (!arquivo && !r.semMovimento && limparTela) { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois do erro', err.message); } }
     if (!arquivo) {
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
       const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
@@ -553,6 +555,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       return;
     }
     const diag = Array.isArray(r.diag) ? r.diag : [];
+    if (!r.ok && limparTela) { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois do erro', err.message); } }
     if (!r.ok) {
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
       await banco.atualizar(id, { status: 'erro', erro: String(r.erro || 'o roteiro parou').slice(0, 500), diag, andamento: andamentoFim('erro'), fimEm: agora() });
