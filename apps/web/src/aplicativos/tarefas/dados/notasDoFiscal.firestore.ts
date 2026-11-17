@@ -6,6 +6,7 @@
 // e exporta a planilha; ela volta em pedaços (pedidosAlterdata/{id}/partes/fiscal-nnn) e o resumo em arquivos.fiscal.
 // O pedido só gera um relatório (não muda dado nenhum): sai também no modo desenvolvedor, como o balancete da Conferência
 // saía (14/10/2026); a importação que vem depois, no modo desenvolvedor, continua só na tela.
+import { robos } from '@nads/core';
 import { getAuth } from 'firebase/auth';
 import { addDoc as addDocBruto, collection, doc, getDocs, onSnapshot, query, updateDoc, where, type Firestore } from 'firebase/firestore';
 import { travarPedido } from '../../../comum/disjuntorDeGravacao';
@@ -15,6 +16,11 @@ import { appDoEntregas } from './driveDasFerramentas.firestore';
 const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
 
 export type RelatorioDoFiscal = 'entradas' | 'saidas' | 'tomados' | 'prestados';
+
+/** O robô do Alterdata no PC da pessoa logada (core/robos/robosDePc: só o dono vê o botão do Fiscal), ou null. */
+export function roboDePcDoUsuario(): { maquina: string; rotulo: string } | null {
+  return robos.roboDePcDaConta(getAuth(appDoEntregas()).currentUser?.uid);
+}
 
 export interface PedidoDoFiscal {
   id: string;

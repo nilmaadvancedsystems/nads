@@ -53,6 +53,11 @@ const batidaDoEstado = require('./batimento').criarBatimento({ ignorar: ['atuali
 const ASSENTAR_MS = 60 * 1000;
 
 const agora = () => new Date().toISOString();
+// os robôs em PCs de pessoas: o deste PC atende só o dono (17/11/2026)
+let ROBOS_DE_PC = [];
+try { ROBOS_DE_PC = require('../packages/core/src/robos/robosDePc.json'); } catch (e) { /* sem o arquivo: nenhum */ }
+const DONO_UID = (ROBOS_DE_PC.find(r => r.maquina === ONDE) || {}).uid || '';
+const DONOS_DE_PC = new Set(ROBOS_DE_PC.map(r => r.uid));
 const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', abrindo: 'entrando (tela de abertura)', fechado: 'fechado', dois: 'aberto duas vezes', erro: 'sem resposta' };
 
 /** Se já tem um Contábil (wcont.exe) rodando nesta máquina, mesmo sem janela à mostra (05/11/2026, Vitor: "o robo tem que
@@ -308,10 +313,13 @@ function iniciarAlterdata(db, log) {
       // o pedido do Fiscal (16/11/2026) precisa do Fiscal aberto e logado, não do Contábil (no PC do Vitor, o Contábil
       // ficou com a janela oculta e o pedido do Fiscal esperou à toa)
       const ped = await pedidos.doc(id).get();
-      // o pedido endereçado a uma máquina (17/11/2026, Vitor: "se todo mundo for usar meu pc, lascou"): o robô de um PC
-      // (ALTERDATA_SO_ENDERECADOS, alterdata-no-pc.js) só pega o que tem maquina == ele; o servidor não pega o que é de outra
-      const para = ped.exists ? String(ped.data().maquina || '') : '';
-      if (process.env.ALTERDATA_SO_ENDERECADOS === '1' ? para !== ONDE : (para && para !== ONDE)) return null;
+      // o robô no PC de uma pessoa (17/11/2026, Vitor: "se todo mundo for usar meu pc, lascou"): só pega os pedidos da conta do
+      // dono (packages/core/src/robos/robosDePc.json). O balancete e o razão que o nads pede sozinho e os pedidos dos outros
+      // ficam para o servidor; o servidor não pega o que é do dono de um PC (fica para o robô dele).
+      const quem = ped.exists ? String(ped.data().criadoPorUid || '') : '';
+      // o robô de um PC sem dono no robosDePc.json não pega nada (ALTERDATA_SO_DONO, alterdata-no-pc.js)
+      if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
+      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ped.data().tipo === 'fiscal')) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
       if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)

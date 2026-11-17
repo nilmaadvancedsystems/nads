@@ -37,10 +37,11 @@ export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImp
           <div className="import-box-row">
             <CampoArquivo id={vm.cfg.idArquivo} arquivo={vm.arquivo} onEscolher={vm.setArquivo} aceitar={vm.cfg.aceitar} abrirAgora={vm.abrirArquivo} />
             {vm.robo.disponivel && (
-              // só a marca do Alterdata (Vitor, 17/11/2026: "um icone do alterdata que enviei, apenas, sem nada escrito")
-              <BotaoAcao className="btn btn-outline btn-icone-alterdata" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando="" disabled={vm.carregando}
-                onClick={vm.robo.pedir} title={'Puxar ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' do Alterdata'} aria-label={'Puxar ' + vm.nomeDoTipo + ' do Alterdata'}>
-                <MarcaAlterdata />
+              // a marca do Alterdata e o nome de quem tem o robô no PC (Vitor, 17/11/2026: "muda o nome do botao com o icone do
+              // alterdata e o nome vitor")
+              <BotaoAcao className="btn btn-outline btn-icone-alterdata" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando={vm.robo.rotulo} disabled={vm.carregando}
+                onClick={vm.robo.pedir} title={'Puxar ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' do Alterdata, pelo robô do PC de ' + vm.robo.rotulo} aria-label={'Puxar ' + vm.nomeDoTipo + ' do Alterdata pelo robô de ' + vm.robo.rotulo}>
+                <MarcaAlterdata />{vm.robo.rotulo}
               </BotaoAcao>
             )}
             <BotaoAcao carregando={vm.carregando} textoCarregando="Importando…" disabled={!vm.arquivo} onClick={vm.importar}>Importar</BotaoAcao>
