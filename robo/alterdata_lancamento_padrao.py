@@ -1,12 +1,12 @@
 # O lançamento fora do padrão corrigido no Alterdata Fiscal pelo robô (17/11/2026, o caminho que o Vitor gravou: "quero fazer um
 # robo que corrige isso... basicamente mudar os lancamentos automaticos para o padrao"). No Fiscal JÁ ABERTO E LOGADO:
 #   Lançamentos → Notas Fiscais e Produtos → a empresa (Enter), o tipo, canceladas: Não, o período → Filtrar (aviso: OK) → na
-#   grade, o filtro da coluna do CFOP (os CFOPs do grupo) e o da coluna do lançamento (o lançamento atual, ex.: 00216) → seleciona
-#   tudo ("filtrando, pode selecionar tudo") → Editar → "Alterar Notas": o campo "Lanc. Cont. Vl. Contábil", o lançamento padrão
+#   grade, o filtro da coluna do CFOP (só os CFOPs da natureza; o período só com as competências das notas fora do padrão) →
+#   seleciona tudo e troca TODAS (17/11/2026, regravado com uma nota só) → Editar → "Alterar Notas": o campo "Lanc. Cont. Vl. Contábil", o lançamento padrão
 #   (ex.: 215), Adicionar, Aplicar.
 #
 # Este roteiro MUDA dado no Alterdata. Travas:
-# - só troca o "Lanc. Cont. Vl. Contábil", de ATUAL para PADRAO, nas notas que a grade mostra com os dois filtros;
+# - só troca o "Lanc. Cont. Vl. Contábil" para PADRAO, nas notas que a grade mostra com o filtro do CFOP (ATUAL vai só para o log);
 # - antes do Editar, as notas filtradas têm de ser exatamente as que o nads espera (ESPERADO); senão para sem mudar nada;
 # - --ensaio: faz tudo até antes do Editar (filtra, conta, descreve a tela) e fecha sem mudar nada;
 # - qualquer janela inesperada: para, conta o que viu e fecha a consulta.
@@ -1093,19 +1093,17 @@ try:
     form = abrir_a_tela(principal)
     preencher(form)
     time.sleep(1)
-    passo('filtrando a grade: CFOP ' + ', '.join(CFOPS) + ' e lançamento ' + ATUAL)
+    passo('filtrando a grade: CFOP ' + ', '.join(CFOPS))
     cabs, its = cabecalhos(form)
     diag('as colunas da grade: ' + ' | '.join(nome(e) + '@' + str(caixa(e)[0]) for e in cabs))
     total, como = contar_linhas(form)
     diag('notas na grade antes dos filtros: ' + str(total) + ' (' + como + ')')
     c_cfop = coluna(cabs, 'cfop')
-    c_lanc = coluna(cabs, 'lanc. cont. vl. contabil', 'lanc. cont.', 'lanc. contabil', 'lancamento contabil', 'lanc. vl. contabil', 'lanc.', 'lancamento')
-    if not c_cfop or not c_lanc:
-        falhar('não achei a coluna do ' + ('CFOP' if not c_cfop else 'lançamento') + ' na grade (colunas: ' + ', '.join(nome(e) for e in cabs)[:300] + ')')
+    if not c_cfop:
+        falhar('não achei a coluna do CFOP na grade (colunas: ' + ', '.join(nome(e) for e in cabs)[:300] + ')')
+    # só os CFOPs da natureza (17/11/2026, Vitor regravou com uma nota só: "seleciona so os cfops daquela natureza e troca TODOS
+    # pelo lancamento automatico padrao informado no nads"); o período já vem só com as competências das notas fora do padrão
     filtrar_coluna(form, c_cfop, CFOPS, 'CFOP')
-    cabs, its = cabecalhos(form)
-    c_lanc = coluna(cabs, norm(nome(c_lanc))) or c_lanc
-    filtrar_coluna(form, c_lanc, [ATUAL], 'lançamento')
     achadas, como = contar_linhas(form)
     diag('notas na grade com os filtros: ' + str(achadas) + ' (' + como + '); o nads espera ' + str(ESPERADO))
     if ENSAIO:

@@ -14,7 +14,7 @@ const CORRIGIDOS = { marginTop: 16, fontWeight: 600, color: 'var(--ink)' } as co
 
 export function ForaDoPadraoDaConta({ vm }: { vm: Vm }) {
   const f = vm.foraDoPadrao;
-  const robo = useLancamentoPadraoPeloRobo({ codigo: vm.empresaDoRobo.codigo, empresa: vm.empresaDoRobo.nome, meses: vm.empresaDoRobo.meses, fiscais: f.fiscais, marcar: vm.acoes.marcarNotaCorrigida });
+  const robo = useLancamentoPadraoPeloRobo({ codigo: vm.empresaDoRobo.codigo, empresa: vm.empresaDoRobo.nome, meses: vm.empresaDoRobo.meses, fiscais: f.fiscais, notas: vm.notasDaEmpresa, marcar: vm.acoes.marcarNotaCorrigida });
   if (!f.fiscais.length && !f.servicos.length) return null;
   // mais de um tipo (a conta com entradas e tomados…): o nome do tipo em cima de cada um
   const titulo = f.fiscais.length + f.servicos.length > 1;
@@ -66,7 +66,7 @@ type Robo = ReturnType<typeof useLancamentoPadraoPeloRobo>;
  */
 function RoboDoPadrao({ r }: { r: Robo }) {
   const { modal } = useRetorno();
-  if (!r.disponivel) return null;
+  if (!r.disponivel || r.soBloqueados) return null;
   if (r.andando) {
     return (
       <span className="imp-robo-mini" style={{ marginLeft: 'auto' }} title={'O robô de ' + r.rotulo + ' está no Alterdata Fiscal'}>
@@ -79,7 +79,7 @@ function RoboDoPadrao({ r }: { r: Robo }) {
     const corrigir = async () => {
       const ok = await modal<boolean>({
         icone: 'alert', titulo: 'Corrigir no Alterdata Fiscal?',
-        html: 'O robô de ' + r.rotulo + ' vai trocar o lançamento contábil de <b>' + r.notasACorrigir + ' nota(s)</b> para o padrão, no Alterdata Fiscal. O ensaio conferiu as mesmas notas que o nads mostra.',
+        html: 'O robô de ' + r.rotulo + ' vai pôr o lançamento padrão em <b>' + r.notasACorrigir + ' nota(s)</b> desses CFOPs no Alterdata Fiscal (' + r.foraDoPadrao + ' fora do padrão; as outras já estão nele ou ficam iguais). O ensaio conferiu as mesmas notas que o nads tem.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Corrigir', valor: true, variante: 'btn-primary' }],
       });
       if (ok) void r.corrigir();
