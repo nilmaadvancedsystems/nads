@@ -370,7 +370,9 @@ function iniciarAlterdata(db, log) {
     },
   };
 
-  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata') });
+  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata'),
+    // ALTERDATA_COPIA: a pasta onde fica uma cópia de cada planilha do Fiscal (alterdata-no-pc.js: Downloads\robo)
+    copiarPara: process.env.ALTERDATA_COPIA || '' });
   pausaLocal.quandoRetomar('alterdata', () => fila.retomar());
 
   // o que ficou no meio, nesta máquina, quando o robô reiniciou volta para a fila uma vez

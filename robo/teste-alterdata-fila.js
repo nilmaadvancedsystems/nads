@@ -162,7 +162,7 @@ function novo(id, tipo, codigo, competencia) {
   {
     const recebidos = [];
     let recusar = false;
-    const f3 = criarFilaAlterdata({ banco, limiteMs: 300, pastaDoPedido: id => path.join(BASE, 'fiscal', id),
+    const f3 = criarFilaAlterdata({ banco, limiteMs: 300, pastaDoPedido: id => path.join(BASE, 'fiscal', id), copiarPara: path.join(BASE, 'copias'),
       rodar: async (rel, a3) => {
         recebidos.push([rel, a3.relatorio, a3.codigo, a3.inicio, a3.fim].join(' '));
         if (recusar) return { ok: false, login: true, erro: 'o login do robô no Fiscal não deu: senha' };
@@ -179,9 +179,10 @@ function novo(id, tipo, codigo, competencia) {
     await f3.ocioso();
     assert.deepStrictEqual(recebidos, ['fiscal entradas 301 01/01/2026 31/03/2026', 'fiscal tomados 301 01/02/2026 28/02/2026']);
     assert.strictEqual(st('fe'), 'pronto');
-    assert.strictEqual(pedidos.get('fe').arquivos.fiscal.nome, 'Entradas 301 2026-01 a 2026-03.xlsx');
+    assert.strictEqual(pedidos.get('fe').arquivos.fiscal.nome, '301 Entradas 2026-01 a 2026-03.xlsx');
+    assert.strictEqual(fs.readFileSync(path.join(BASE, 'copias', '301 Entradas 2026-01 a 2026-03.xlsx'), 'utf8'), 'planilha entradas', 'a cópia na pasta da máquina');
     assert.strictEqual(partes.get('fe').fiscal.toString(), 'planilha entradas');
-    assert.strictEqual(pedidos.get('ft').arquivos.fiscal.nome, 'Tomados 301 2026-02.xlsx');
+    assert.strictEqual(pedidos.get('ft').arquivos.fiscal.nome, '301 Tomados 2026-02.xlsx');
     assert.strictEqual(st('fx'), 'erro');
     assert.match(pedidos.get('fl').erro, /passa de 12 meses/);
     recusar = true;

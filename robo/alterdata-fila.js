@@ -87,7 +87,7 @@ function mensagemClara(classe, erros, extra) {
 }
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true,
-  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false }) {
+  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false, copiarPara = '' }) {
   const fila = [];
   let ocupado = false;
   let atual = null;
@@ -450,7 +450,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     if (painel) painel.fazendo('alterdata', RELATORIOS_FISCAIS[rel] + ' ' + codigo + ' ' + lote + ' no Alterdata Fiscal');
     log('Alterdata: Fiscal', rel, codigo, lote, id);
     const pasta = pastaVazia(pastaDoPedido(id));
-    const nomeBase = RELATORIOS_FISCAIS[rel] + ' ' + codigo + ' ' + lote;
+    // o número da empresa na frente (17/11/2026, Vitor: "ele coloca o numero da empresa e o nome do arquivo")
+    const nomeBase = codigo + ' ' + RELATORIOS_FISCAIS[rel] + ' ' + lote;
     const destino = path.join(pasta, nomeBase + '.xls');
     const r = await comPrazo('fiscal', { relatorio: rel, codigo, inicio, fim, destino }, passo, clique);
     const fimP = await banco.ler(id);
@@ -468,6 +469,11 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const nome = nomeBase + path.extname(arquivo);
     clique('subindo a planilha para o nads');
     const g = await banco.gravarArquivo(id, 'fiscal', buf, nome, 'fiscal');
+    // a cópia na pasta da máquina (17/11/2026, no PC do Vitor: Downloads\robo), além da que sobe para o nads
+    if (copiarPara) {
+      try { fs.mkdirSync(copiarPara, { recursive: true }); fs.writeFileSync(path.join(copiarPara, nome), buf); }
+      catch (err) { log('Alterdata: não copiei a planilha para', copiarPara, err.message); }
+    }
     deuCerto();
     if (apagarPasta) { try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (err) { log('Alterdata: não apaguei a pasta', pasta, err.message); } }
     await banco.atualizar(id, { status: 'pronto', erro: '', diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
