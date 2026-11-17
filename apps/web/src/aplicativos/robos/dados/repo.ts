@@ -3,7 +3,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { robos } from '@nads/core';
 import type { ClienteDaTela, DocsDaCentral, FilaDaTela, PedidoDaTela } from './central';
-import { repoDaCentral, repoDosAjustes } from './fonte';
+import { repoDaCentral, repoDosAjustes, repoDoWhatsapp } from './fonte';
+import type { RepoWhatsapp } from './whatsapp';
 
 /** As configurações da central (ver dados/ajustes.ts): só os ViewModels chamam. */
 export const ajustesDaCentral = repoDosAjustes;
@@ -43,4 +44,12 @@ export function useRegistrosDoRobo(robo: string, ligado: boolean): robos.Registr
   useEffect(() => (ligado && robo ? repo.acompanharRegistros(robo) : undefined), [repo, robo, ligado]);
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo.registros(robo);
+}
+
+/** O WhatsApp do robô (ver dados/whatsapp.ts), ao vivo enquanto a aba WhatsApp está aberta. */
+export function useWhatsappDoRobo(): { situacao: robos.WhatsappDoRobo; repo: RepoWhatsapp } {
+  const repo = repoDoWhatsapp();
+  useEffect(() => repo.acompanhar(), [repo]);
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return { situacao: repo.situacao(), repo };
 }

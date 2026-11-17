@@ -110,7 +110,8 @@ export interface PedidoRegistrado {
   /** 'dd/mm/aaaa' (vazio = sem prazo) */
   prazo: string;
   email?: { para: string[]; assunto: string; /** os pedidos na fila do robô do Entregas (para ver a situação) */ solicitacoes: string[] };
-  whatsapp?: { telefone: string; texto: string };
+  /** solicitacao: o pedido na fila do robô quando foi pelo WhatsApp do robô (12/11/2026); sem = abriu o WhatsApp na tela */
+  whatsapp?: { telefone: string; texto: string; solicitacao?: string };
 }
 
 /** Resultado da leitura de um arquivo (antes de importar). */

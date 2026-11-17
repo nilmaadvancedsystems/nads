@@ -32,8 +32,9 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
   if (!p.aberto) return null;
   const adicionar = () => { p.adicionarDocumento(outro); setOutro(''); };
   const enviar = () => {
-    // o WhatsApp abre já (no clique; depois o navegador bloquearia), o e-mail vai para a fila do robô
-    if (p.whatsapp.ligado && p.whatsapp.ok) window.open(p.whatsapp.link, '_blank');
+    // o WhatsApp abre já (no clique; depois o navegador bloquearia), o e-mail vai para a fila do robô; com o WhatsApp do
+    // robô conectado, a mensagem também vai pela fila e nada abre
+    if (p.whatsapp.ligado && p.whatsapp.ok && !p.whatsapp.peloRobo) window.open(p.whatsapp.link, '_blank');
     p.enviar();
   };
   const conferir = p.etapa === 'conferir';
@@ -124,6 +125,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
                   Mandar também pelo WhatsApp{p.whatsapp.telefone ? ' · ' + p.whatsapp.telefone : ''}
                 </label>
                 {!p.whatsapp.ok && p.contato.dados && <span className="hint">Sem telefone de WhatsApp no cadastro do Entregas.</span>}
+                {p.whatsapp.ok && <span className="hint">{p.whatsapp.peloRobo ? 'O robô manda pelo WhatsApp do escritório.' : 'Abre o WhatsApp com a mensagem pronta; você aperta Enviar.'}</span>}
                 {p.whatsapp.ligado && (
                   <>
                     <textarea className="pedir-whats" rows={8} value={p.whatsapp.texto} onChange={e => p.whatsapp.escrever(e.target.value)} aria-label="Mensagem do WhatsApp" />
@@ -202,7 +204,14 @@ export function JanelaHistoricoDePedidos({ p }: { p: P }) {
                     })}
                   </span>
                 )}
-                {r.whatsapp && <span className="pedir-hist-canal"><span className="pedir-app"><LogoWhatsApp /></span>{r.whatsapp.telefone}<span className="badge badge-neutral">Aberto no WhatsApp</span></span>}
+                {r.whatsapp && (
+                  <span className="pedir-hist-canal"><span className="pedir-app"><LogoWhatsApp /></span>{r.whatsapp.telefone}
+                    {r.whatsapp.solicitacao ? (() => {
+                      const s = p.historico.situacoes[r.whatsapp.solicitacao]?.status;
+                      return <span className={'badge ' + (s ? COR[s] : 'badge-neutral')} title={p.historico.situacoes[r.whatsapp.solicitacao]?.erro}>{s ? STATUS[s] : '…'}</span>;
+                    })() : <span className="badge badge-neutral">Aberto no WhatsApp</span>}
+                  </span>
+                )}
                 {r.prazo && <span className="hint">Prazo: até {r.prazo}</span>}
               </div>
             </div>

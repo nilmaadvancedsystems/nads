@@ -5,9 +5,12 @@ import { criarAjustesMemoria, type RepoAjustes } from './ajustes';
 import { criarAjustesFirestore } from './ajustes.firestore';
 import { criarCentralMemoria, type RepoCentral } from './central';
 import { criarCentralFirestore } from './central.firestore';
+import { criarWhatsappMemoria, type RepoWhatsapp } from './whatsapp';
+import { criarWhatsappFirestore } from './whatsapp.firestore';
 
 let central: RepoCentral | null = null;
 let ajustes: RepoAjustes | null = null;
+let whatsapp: RepoWhatsapp | null = null;
 
 export function repoDosAjustes(): RepoAjustes {
   if (!ajustes) ajustes = noBanco ? criarAjustesFirestore() : criarAjustesMemoria();
@@ -17,4 +20,9 @@ export function repoDosAjustes(): RepoAjustes {
 export function repoDaCentral(): RepoCentral {
   if (!central) central = noBanco ? criarCentralFirestore() : criarCentralMemoria();
   return central;
+}
+
+export function repoDoWhatsapp(): RepoWhatsapp {
+  if (!whatsapp) whatsapp = noBanco ? criarWhatsappFirestore() : criarWhatsappMemoria();
+  return whatsapp;
 }

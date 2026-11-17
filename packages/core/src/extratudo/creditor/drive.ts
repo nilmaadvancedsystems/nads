@@ -5,6 +5,7 @@ import type { BalanceteDaEmpresa } from './regras/balancete';
 import type { ItemDrive } from './regras/drive';
 import type { RemetenteDoPedido } from '../../entregas/gmail';
 import type { ExtratoRecebido } from '../extrator/regras/recebidos';
+import type { WhatsappDoRobo } from '../../robos/whatsapp';
 
 export interface AcessoDrive {
   /** já sabe se tem alguém logado (antes disso, não mostra o login) */
@@ -82,6 +83,13 @@ export interface RepoDrive {
   contatoDoCliente?(codigo: number): Promise<ContatoDoCliente | null>;
   /** põe o e-mail na fila do robô do Entregas e espera ele enviar (erro = o motivo); 'na-fila' = o robô ainda não pegou */
   pedirEmail?(p: PedidoDeEmail, passo?: (texto: string) => void): Promise<{ id: string; situacao: 'enviado' | 'na-fila' }>;
+  /**
+   * O WhatsApp do robô (12/11/2026, o chip do escritório pelo QR code): conectado e liberado, o pedido vai pelo robô;
+   * senão, a tela abre o WhatsApp com o texto pronto. Não existe acoplado no Entregas.
+   */
+  whatsappDoRobo?(): Promise<WhatsappDoRobo>;
+  /** põe a mensagem na fila do robô (a mesma do e-mail, tipo 'whatsapp') e espera ele mandar (erro = o motivo) */
+  pedirWhatsapp?(p: { contato: ContatoDoCliente; para: string; texto: string }, passo?: (texto: string) => void): Promise<{ id: string; situacao: 'enviado' | 'na-fila' }>;
   /** de qual Gmail o pedido vai sair: o do setor de quem pede (a mesma regra do robô); não existe acoplado no Entregas */
   remetente?(): Promise<RemetenteDoPedido>;
   /** a situação de cada pedido de e-mail na fila do robô (pelo id) */

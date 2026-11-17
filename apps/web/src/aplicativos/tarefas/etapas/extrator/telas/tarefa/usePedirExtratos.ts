@@ -3,9 +3,11 @@
 // Duas etapas: montar (para quem, os documentos — cada um com os seus meses —, o prazo e o WhatsApp) e
 // conferir (o e-mail como o cliente vai ver). Documento de um mês já importado no sistema ou já achado no
 // Drive fica travado. O contato vem do cadastro de clientes do Entregas (mesmo login do Drive); o e-mail vai
-// para a fila do robô do Entregas com o HTML montado aqui (regras/email.ts); o WhatsApp abre pelo link wa.me.
+// para a fila do robô do Entregas com o HTML montado aqui (regras/email.ts). O WhatsApp (12/11/2026): com o WhatsApp do robô
+// conectado e liberado (o chip do escritório, Central dos robôs › Ajustes › WhatsApp), vai pela mesma fila; senão, abre
+// pelo link wa.me com o texto pronto, como antes.
 // Cada pedido fica no histórico da empresa (extrator/{empresa}.pedidos).
-import { creditor, extrator as x, tarefas } from '@nads/core';
+import { creditor, extrator as x, robos, tarefas } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 
@@ -55,6 +57,8 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   const [prazo, setPrazo] = useState('');
   const [emails, setEmails] = useState<string[]>([]);
   const [whats, setWhats] = useState({ ligado: false, texto: '', editado: false });
+  // o WhatsApp do robô (null = ainda não leu, ou não existe aqui: abre o WhatsApp na tela)
+  const [roboWhats, setRoboWhats] = useState<robos.WhatsappDoRobo | null>(null);
   const [enviando, setEnviando] = useState('');
   const [historico, setHistorico] = useState<{ aberto: boolean; situacoes: Record<string, creditor.SituacaoDoEmail>; erro: string }>({ aberto: false, situacoes: {}, erro: '' });
 
@@ -67,6 +71,12 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     } catch (e) {
       setDe({ carregando: false, email: '', respostas: '', erro: mensagemDeErro(e) });
     }
+  }
+
+  async function carregarWhatsDoRobo() {
+    setRoboWhats(null);
+    if (!drive.whatsappDoRobo) return;
+    try { setRoboWhats(await drive.whatsappDoRobo()); } catch { setRoboWhats(null); }
   }
 
   async function carregarContato() {
@@ -141,6 +151,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     void carregarContato();
     void carregarPasta();
     void carregarRemetente();
+    void carregarWhatsDoRobo();
   }
 
   const catalogo = [...x.documentosDoPedido(vm.bancos.map(b => ({ id: b.id, nome: b.nome, marca: b.marca, conta: b.conta || undefined }))), ...extras];
@@ -156,6 +167,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   };
   const textoWhats = whats.editado ? whats.texto : x.textoDoWhatsApp(pedido, prazo);
   const telefone = contato.dados ? x.telefoneParaWhatsApp(contato.dados.telefone) : '';
+  const peloRobo = !!roboWhats && !!drive.pedirWhatsapp && robos.mandaPeloRobo(roboWhats, telefone);
   const html = etapa === 'conferir' ? x.htmlDoPedido({ pedido, prazo, enviadoEm: new Date(), logo: imagens.logo, logoDoBanco: imagens.logoDoBanco, whatsapp: WHATSAPP_DO_ESCRITORIO }) : '';
   const podeContinuar = !!contato.dados && emails.length > 0 && pedido.documentos.length > 0 && (!whats.ligado || !!telefone) && !de?.erro;
 
@@ -172,14 +184,26 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
         solicitacoes.push(r.id);
         if (r.situacao !== 'enviado') naFila = true;
       }
+      // o WhatsApp pelo robô: se não for, o e-mail já foi; o pedido fica registrado e o aviso diz o porquê
+      let solicitacaoWhats = '';
+      let erroWhats = '';
+      if (whats.ligado && peloRobo && drive.pedirWhatsapp) {
+        setEnviando('Mandando o WhatsApp');
+        try {
+          const r = await drive.pedirWhatsapp({ contato: contato.dados, para: telefone, texto: textoWhats }, passo => setEnviando(passo));
+          solicitacaoWhats = r.id;
+          if (r.situacao !== 'enviado') naFila = true;
+        } catch (e) { erroWhats = mensagemDeErro(e); }
+      }
       vm.registrarPedido({
         id: Date.now().toString(36), em: new Date().toISOString(), por: quemPede(acesso),
         competencias: pedido.competencias, documentos: pedido.documentos.map(d => x.nomeComCompetencias(d, pedido)), prazo,
         email: { para: emails, assunto, solicitacoes },
-        ...(whats.ligado && contato.dados ? { whatsapp: { telefone: contato.dados.telefone, texto: textoWhats } } : {}),
+        ...(whats.ligado && contato.dados ? { whatsapp: { telefone: contato.dados.telefone, texto: textoWhats, ...(solicitacaoWhats ? { solicitacao: solicitacaoWhats } : {}) } } : {}),
       });
       setEtapa('fechado');
-      vm.avisar(naFila ? 'Pedido na fila do robô do Entregas: o e-mail sai assim que ele estiver online' : 'E-mail enviado para ' + emails.join(', '));
+      if (erroWhats) vm.avisarErro('O e-mail foi, o WhatsApp não', erroWhats + '. Mande pelo WhatsApp do escritório.');
+      else vm.avisar(naFila ? 'Pedido na fila do robô do Entregas: sai assim que ele estiver online' : 'E-mail enviado para ' + emails.join(', ') + (solicitacaoWhats ? ', e o WhatsApp pelo robô' : ''));
     } catch (e) {
       vm.avisarErro('O e-mail não foi', mensagemDeErro(e));
     } finally {
@@ -189,7 +213,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
 
   async function abrirHistorico() {
     setHistorico({ aberto: true, situacoes: {}, erro: '' });
-    const ids = vm.pedidos.flatMap(p => p.email?.solicitacoes || []);
+    const ids = vm.pedidos.flatMap(p => [...(p.email?.solicitacoes || []), ...(p.whatsapp?.solicitacao ? [p.whatsapp.solicitacao] : [])]);
     if (!ids.length || !drive.situacaoDosEmails || precisaEntrar()) return;
     try { const s = await drive.situacaoDosEmails(ids); setHistorico(h => ({ ...h, situacoes: s })); }
     catch (e) { setHistorico(h => ({ ...h, erro: mensagemDeErro(e) })); }
@@ -232,6 +256,8 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     setPrazo: (iso: string) => setPrazo(deData(iso)),
     whatsapp: {
       ...whats, texto: textoWhats, telefone: contato.dados?.telefone || '', ok: !!telefone,
+      /** vai pelo WhatsApp do robô (o chip do escritório); false = abre o WhatsApp com o texto pronto */
+      peloRobo,
       ligar: (v: boolean) => setWhats(w => ({ ...w, ligado: v })),
       escrever: (t: string) => setWhats(w => ({ ...w, texto: t, editado: true })),
       refazer: () => setWhats(w => ({ ...w, texto: '', editado: false })),

@@ -382,3 +382,10 @@
   .cr-ajuste-campo, .cr-ajuste-lista { width: 100%; }
   .cr-horario-horas .cr-campo { max-width: none; }
 }
+
+/* o WhatsApp do robô (Ajustes › WhatsApp, 12/11/2026): o QR em fundo branco (a câmera do celular precisa do contraste) */
+.cr-whats-qr { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--e4); margin-top: var(--e4); }
+.cr-whats-qr img { width: 260px; max-width: 100%; height: auto; padding: var(--e2); border-radius: 8px; background: #fff; }
+.cr-whats-qr ol { flex: 1 1 220px; margin: 0; padding-left: 1.2em; color: var(--ink-muted); line-height: 1.6; }
+.cr-whats-texto { width: 100%; min-height: 72px; padding: var(--e2) var(--e3); border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 16px; resize: vertical; }
+.cr-whats-texto:focus { outline: 0; border-color: var(--border-forte); }
