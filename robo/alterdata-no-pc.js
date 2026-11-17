@@ -43,6 +43,32 @@ require('./consumo').instalar(db, { log, tarefa: 'alterdata' });
 try { require('./alterdata').iniciarAlterdata(db, log); log('ligado neste PC como "' + process.env.ALTERDATA_ONDE + '"'); }
 catch (err) { log('Alterdata não ligou:', err.message); }
 
+// ---------- o que foi ensinado (17/11/2026, Vitor: "consegue entrar no diretorio do meu pc C:\\nads\\robo\\ensino e puxar
+// sozinho?") ----------
+// Cada gravação do modo de ensinar (alterdata_ensinar.py, robo\\ensino\\ensino-*.txt) sobe para o banco em robosEnsino, uma
+// vez: quem ensina o robô lê de lá. Só o robô (conta do firebase login) grava e lê: as regras do app não abrem a coleção.
+const PASTA_ENSINO = path.join(__dirname, 'ensino');
+const ENVIADOS = path.join(PASTA_ENSINO, '.enviados.json');
+async function subirEnsino() {
+  let feitos = [];
+  try { feitos = JSON.parse(fs.readFileSync(ENVIADOS, 'utf8')); } catch (e) { /* nenhum ainda */ }
+  let arquivos = [];
+  try { arquivos = fs.readdirSync(PASTA_ENSINO).filter(n => /^ensino-.*\.txt$/.test(n) && !feitos.includes(n)); } catch (e) { return; }
+  for (const nome of arquivos) {
+    try {
+      const texto = fs.readFileSync(path.join(PASTA_ENSINO, nome), 'utf8');
+      await db.collection('robosEnsino').doc(process.env.ALTERDATA_ONDE + '-' + nome.replace(/\.txt$/, '')).set({
+        maquina: process.env.ALTERDATA_ONDE, nome, texto: texto.slice(0, 900000), tamanho: texto.length, em: new Date().toISOString(),
+      });
+      feitos.push(nome);
+      fs.writeFileSync(ENVIADOS, JSON.stringify(feitos));
+      log('ensino: subi ' + nome + ' para o banco (robosEnsino)');
+    } catch (err) { log('ensino: não subi ' + nome + ':', err.message); }
+  }
+}
+setInterval(() => { void subirEnsino(); }, 30 * 1000).unref();
+setTimeout(() => { void subirEnsino(); }, 5 * 1000).unref();
+
 // ---------- o código novo do GitHub ----------
 const RAIZ = path.dirname(__dirname);
 const GIT = process.env.GIT_EXE || 'git';
