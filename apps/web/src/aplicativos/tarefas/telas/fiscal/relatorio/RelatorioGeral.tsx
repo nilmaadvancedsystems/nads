@@ -7,21 +7,56 @@
 // o envios do dp"): para quem grava, abre a janela do lote de guias (JanelaDasGuias); o robô manda e preenche a tabela.
 import { tarefas as t } from '@nads/core';
 import { baixarBytes, BotaoIcone, Esqueleto, Icone, Interruptor, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
-import { useState, type CSSProperties } from 'react';
+import { memo, useState, type CSSProperties } from 'react';
 import { useColunasAjustaveis } from '../../../../../comum/ColunasAjustaveis';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { JanelaDasGuias } from './JanelaDasGuias';
-import { Entrega, Valor } from './PartesDoRelatorio';
-import { dataBr, useRelatorioGeral, type RegimeDoRelatorio } from './useRelatorioGeral';
+import { Bolinha, Entrega, Valor } from './PartesDoRelatorio';
+import { JanelaDaRetificacao } from './JanelaDaRetificacao';
+import { dataBr, useRelatorioGeral, type RegimeDoRelatorio, type VmRelatorio } from './useRelatorioGeral';
 
-type EstadoDaMarca = 'nao-tem' | 'a-fazer' | 'feita';
-
-/** A conferência: a bolinha pequena (vazia a fazer, ✓ feita, – não se aplica); clicável quando pode. */
-function Bolinha({ estado, dica, pode, clicar }: { estado: EstadoDaMarca; dica: string; pode: boolean; clicar?: () => void }) {
-  const conteudo = estado === 'feita' ? <Icone nome="check" width={11} height={11} /> : estado === 'nao-tem' ? '–' : null;
-  if (!pode || !clicar) return <span className={'fr-marca ' + estado} title={dica} aria-label={dica}>{conteudo}</span>;
-  return <button type="button" className={'fr-marca ' + estado} onClick={clicar} title={dica} aria-label={dica} aria-pressed={estado === 'feita'}>{conteudo}</button>;
+interface PropsDaLinha {
+  codigo: number; nome: string; linha: t.LinhaDoControle; situacao: t.SituacaoGeral; rotuloSituacao: string; pode: boolean;
+  grupo: t.GrupoDoControle; guias: VmRelatorio['guias'];
+  /** as ações do ViewModel (não entram na comparação: as de um desenho antigo valem enquanto a linha não muda) */
+  acoes: Pick<VmRelatorio, 'mudarValor' | 'virarMarca' | 'mudarData' | 'mudarEntrega' | 'alternarRetificacao'>;
 }
+/**
+ * Uma empresa na tabela (17/11/2026: "tá travando muito"): só se desenha de novo quando os dados dela mudam, não a
+ * cada clique na tabela ou ao abrir a janela da retificação.
+ */
+const LinhaDoRelatorio = memo(function LinhaDoRelatorio({ codigo, nome, linha, situacao, rotuloSituacao, pode, grupo: g, guias, acoes }: PropsDaLinha) {
+  return (
+    <tr className={situacao === 'concluida' ? 'fr-feita' : undefined}>
+      <td className="fr-num fr-cod">{codigo}</td>
+      <td className="fr-cliente"><span title={nome}>{nome}</span></td>
+      {guias.map((c, i) => (
+        <td key={c.id} className={i === 0 ? 'fr-g' : undefined}>
+          <Valor estreito zeroComoTraco valor={linha.valores[c.id] || ''} rotulo={c.nome + ' de ' + nome} pode={pode} aoSalvar={v => acoes.mudarValor(codigo, c.id, v)} />
+        </td>
+      ))}
+      {g.marcas.map((m, i) => {
+        const mk = linha.marcas[m.id] || '';
+        return (
+          <td key={m.id} className={'fr-centro' + (i === 0 ? ' fr-g' : '')}>
+            <Bolinha estado={mk === 'ok' ? 'feita' : mk === 'na' ? 'nao-tem' : 'a-fazer'} pode={pode} clicar={() => acoes.virarMarca(codigo, m.id)}
+              dica={m.dica + ' de ' + nome + ': ' + (mk === 'ok' ? 'conferido' : mk === 'na' ? 'não se aplica' : 'falta') + ' (clique: OK → não se aplica → em branco)'} />
+          </td>
+        );
+      })}
+      <td className="fr-g fr-data">
+        <Valor estreito valor={dataBr(linha.data)} molde="dd/mm/aaaa" rotulo={'Data de ' + nome} pode={pode} aoSalvar={v => acoes.mudarData(codigo, v)} />
+      </td>
+      <td className="fr-centro"><Entrega valor={linha.entregue} pode={pode} rotulo={'Entrega de ' + nome} aoMudar={e => acoes.mudarEntrega(codigo, e)} /></td>
+      <td className="fr-centro"><span className={'fr-sit ' + situacao} title={rotuloSituacao} aria-label={rotuloSituacao}>{situacao === 'concluida' && <Icone nome="check" width={11} height={11} />}</span></td>
+      <td className="fr-g fr-centro fr-retif">
+        {pode
+          ? <Interruptor ligado={t.linhaRetificada(linha)} onMudar={() => acoes.alternarRetificacao(codigo)} rotulo={'Retificação de ' + nome} />
+          : (t.linhaRetificada(linha) ? 'Sim' : '–')}
+      </td>
+    </tr>
+  );
+}, (a, b) => a.linha === b.linha && a.codigo === b.codigo && a.nome === b.nome && a.situacao === b.situacao && a.pode === b.pode && a.grupo === b.grupo && a.guias === b.guias);
 
 export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
   const vm = useRelatorioGeral(regime);
@@ -84,6 +119,11 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                 <BotaoIcone pequeno icone="chevronRight" titulo={'Próxima página (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima} />
               </>
             )}
+            {/* a retificação (16/11/2026: "um botão parecido com o do 13º"; 17/11/2026: "uma opção [que] abra uma tela flutuante
+                que possa ser colocado o valor"): abre a janela com o quadro de retificação do mês */}
+            <button type="button" className="btn btn-sm btn-outline fr-ret-abrir" onClick={vm.retificacao.abrir} title="Abrir o quadro de retificação do mês para pôr os valores">
+              <Icone nome="fileText" />Retificação{vm.retificacao.total ? <span className="fr-qtd">{vm.retificacao.total}</span> : null}
+            </button>
           </div>
           {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
             : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
@@ -112,34 +152,8 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                   </thead>
                   <tbody>
                     {vm.linhas.map(r => (
-                      <tr key={r.codigo} className={r.situacao === 'concluida' ? 'fr-feita' : undefined}>
-                        <td className="fr-num fr-cod">{r.codigo}</td>
-                        <td className="fr-cliente"><span title={r.nome}>{r.nome}</span></td>
-                        {vm.guias.map((c, i) => (
-                          <td key={c.id} className={i === 0 ? 'fr-g' : undefined}>
-                            <Valor estreito zeroComoTraco valor={r.linha.valores[c.id] || ''} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
-                          </td>
-                        ))}
-                        {g.marcas.map((m, i) => {
-                          const mk = r.linha.marcas[m.id] || '';
-                          return (
-                            <td key={m.id} className={'fr-centro' + (i === 0 ? ' fr-g' : '')}>
-                              <Bolinha estado={mk === 'ok' ? 'feita' : mk === 'na' ? 'nao-tem' : 'a-fazer'} pode={vm.podeGravar} clicar={() => vm.virarMarca(r.codigo, m.id)}
-                                dica={m.dica + ' de ' + r.nome + ': ' + (mk === 'ok' ? 'conferido' : mk === 'na' ? 'não se aplica' : 'falta') + ' (clique: OK → não se aplica → em branco)'} />
-                            </td>
-                          );
-                        })}
-                        <td className="fr-g fr-data">
-                          <Valor estreito valor={dataBr(r.linha.data)} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
-                        </td>
-                        <td className="fr-centro"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
-                        <td className="fr-centro"><span className={'fr-sit ' + r.situacao} title={r.rotuloSituacao} aria-label={r.rotuloSituacao}>{r.situacao === 'concluida' && <Icone nome="check" width={11} height={11} />}</span></td>
-                        <td className="fr-g fr-centro fr-retif">
-                          {vm.podeGravar
-                            ? <Interruptor ligado={t.linhaRetificada(r.linha)} onMudar={() => vm.alternarRetificacao(r.codigo)} rotulo={'Retificação de ' + r.nome} />
-                            : (t.linhaRetificada(r.linha) ? 'Sim' : '–')}
-                        </td>
-                      </tr>
+                      <LinhaDoRelatorio key={r.codigo} codigo={r.codigo} nome={r.nome} linha={r.linha} situacao={r.situacao} rotuloSituacao={r.rotuloSituacao}
+                        pode={vm.podeGravar} grupo={g} guias={vm.guias} acoes={vm} />
                     ))}
                   </tbody>
                 </table>
@@ -148,6 +162,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
         </section>
       )}
       {guiasAbertas && <JanelaDasGuias regime={regime} competencia={vm.competencia} fechar={() => setGuiasAbertas(false)} />}
+      {vm.retificacao.aberta && <JanelaDaRetificacao vm={vm} regime={regime} />}
     </section>
   );
 }

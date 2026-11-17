@@ -6087,6 +6087,26 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela col.fr-c-sit{width:36px;}
 .fr-tabela col.fr-c-ret{width:52px;}
 .fr-retif .toggle-txt{display:none;}
+/* a janela da retificação (16/11/2026; flutuante desde 17/11/2026): o + Retificação em cima, a referência e a lixeira */
+.fr-ret-abrir .fr-qtd{margin-left:2px;}
+.modal.fr-ret-janela{max-width:min(1320px,96vw);width:100%;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;}
+.fr-ret-cabeca{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px 10px 16px;border-bottom:1px solid var(--border);}
+.modal .fr-ret-cabeca h3{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;}
+.fr-ret-janela .fr-ret-novo{padding:10px 16px;border-bottom:1px solid var(--border);}
+.fr-ret-janela .fr-ret-rola{flex:1 1 auto;min-height:0;max-height:none;}
+.fr-ret-janela .fr-tabela{min-width:1000px;}
+.fr-ret-janela .dp-vazio{padding:24px 16px;}
+.fr-ret-janela .modal-actions{align-items:center;}
+.fr-ret-dica{margin-right:auto;font-size:var(--fs-12);}
+.fr-tabela tr.fr-ret-destaque td{background:var(--accent-soft);}
+.fr-ret-novo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fr-ret-novo input{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm,6px);background:var(--surface);color:var(--ink);font-size:var(--fs-12);}
+.fr-ret-novo .fr-ret-empresa{width:240px;max-width:100%;}
+.fr-ret-novo .fr-ret-ref{width:84px;}
+.fr-tabela col.fr-c-ref{width:78px;}
+.fr-tabela col.fr-c-tirar{width:40px;}
+.fr-ret-tirar{width:26px;height:26px;color:var(--ink-muted);}
+.fr-ret-tirar:hover{color:var(--danger,#c0392b);}
 /* a REINF, nas mesmas linhas */
 .fr-tabela.fr-reinf{min-width:1190px;}
 .fr-tabela col.fr-c-ate{width:112px;}
