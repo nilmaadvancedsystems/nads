@@ -323,7 +323,7 @@ function DriveDoSemMovimento({ subindo, arquivo }: { subindo: boolean; arquivo: 
   return <span className="icon-btn icon-btn-sm imp-btn imp-drive" title={'Arquivado no Drive: ' + arquivo.nome} aria-label="Arquivado no Drive"><LogoDrive /></span>;
 }
 
-function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
+function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive , roboDoRazao}: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
@@ -341,6 +341,8 @@ function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceita
   subindo: (mes: string) => boolean;
   /** o arquivo do Drive do mês sem movimento (o olhinho do "s/ mov.") */
   semMovimentoDoDrive: (mes: string) => { id: string; nome: string } | null;
+  /** o robô do PC do dono no ⬆ do razão de cada mês (Vitor, 17/11/2026: "coloca o vitor so no mes individual tbm") */
+  roboDoRazao?: { codigo: number | null; empresa: string; conta: string; importar: (f: File) => unknown };
 }) {
   const grade = useColunaAjustavel('importacao', '96px', meses.length);
   const celula = (m: ReturnType<Vm['mesesDoBanco']>[number], lado: 'banco' | 'sistema', n: number) => {
@@ -382,6 +384,14 @@ function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceita
     // subindo para o Drive, só o Drive, sem o check (Vitor, 12/11/2026: "tira o certinho e deixa só o ícone do drive")
     if (lado === 'banco' && subindo(m.mes)) {
       return <><SubindoAoDrive />{info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
+    }
+    if (lado === 'sistema' && roboDoRazao && !info.qtdArquivos) {
+      return (
+        <ComRoboDoRazao codigo={roboDoRazao.codigo} empresa={roboDoRazao.empresa} conta={roboDoRazao.conta} meses={[m.mes]} importar={roboDoRazao.importar}>
+          {robo => <BotaoLado lado={info} titulo={'Razão de ' + m.rotulo} aceitar={aceitarRazao} travado={trava} semExtrato={semExtrato} robo={robo}
+            onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />}
+        </ComRoboDoRazao>
+      );
     }
     return <><BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semExtrato={semExtrato}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
@@ -1113,7 +1123,8 @@ export function TarefaExtratos() {
                 puxados={mes => puxadosDe(chaveDoExtrato(s.codigo, b.id), mes)}
                 subindo={mes => d.subindoAoDrive(b.id, mes)}
                 semMovimentoDoDrive={mes => vm.arquivoSemMovimento(b.id, mes)}
-                onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
+                onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)}
+                roboDoRazao={{ codigo: s.codigo ?? null, empresa: s.nome, conta: vm.contaContabilDe(b.id), importar: f => vm.importarArquivos(b.id, 'sistema', [f]) }} />}
               {(emLote ? gradeAberta : aberta) && <ComprovantesDoBanco vm={comp} id={b.id} competencia={vm.competencia} avisarErro={vm.avisarErro} />}
               {verLancamentos && (emLote ? (
                 <FaixaQueAbre titulo="Lançamentos" qtd={vm.movimentoDe(b.id).linhas.length}>
