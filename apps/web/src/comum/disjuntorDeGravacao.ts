@@ -18,6 +18,8 @@
 // A recusa acontece antes do SDK do Firestore: não há mudança local nem reversão, e o snapshot não volta a disparar o
 // efeito que estava em ciclo.
 
+import { emConsulta, MENSAGEM_CONSULTA } from './travaDoModoDev';
+
 export interface Teto { max: number; janelaMs: number }
 export interface LimitesDoDisjuntor {
   porDocumento: readonly Teto[];
@@ -224,4 +226,19 @@ function avisarNaAuditoria(d: Disparo, caminho: string) {
 }
 
 export const travaDaAba: TravaDeGravacao = criarTravaDeGravacao({ disjuntor: criarDisjuntor(), avisar: avisarNaAuditoria, atrasoDaRecusaMs: 1000 });
-export const { travar, travarPedido, travarLote } = travaDaAba;
+// o Contatudo (travaDoModoDev.ts, emConsulta): por baixo de tudo, nada grava — o documento e o lote fingem que gravaram (a tela
+// segue com o que a pessoa fez, só nela) e o pedido (robô, e-mail, IA) é recusado
+export function travar<A extends unknown[], R>(gravar: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
+  const t = travaDaAba.travar(gravar);
+  return (...a: A) => (emConsulta() ? Promise.resolve(undefined as R) : t(...a));
+}
+export function travarPedido<A extends unknown[], R>(gravar: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
+  const t = travaDaAba.travarPedido(gravar);
+  return (...a: A) => (emConsulta() ? Promise.reject(new Error(MENSAGEM_CONSULTA)) : t(...a));
+}
+export function travarLote<L extends { commit: () => Promise<void> }>(lote: L): L {
+  const l = travaDaAba.travarLote(lote);
+  const commit = l.commit.bind(l);
+  l.commit = () => (emConsulta() ? Promise.resolve() : commit());
+  return l;
+}
