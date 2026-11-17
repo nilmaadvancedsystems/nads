@@ -598,7 +598,12 @@ export function ehFaturaDeCartao(texto: string): boolean {
  */
 export function ehRelatorioDeTitulos(texto: string): boolean {
   const t = normalizarTexto(texto);
-  return /relatorio titulos por periodo/.test(t) && /\bnosso numero\b/.test(t) && /\bsacado\b/.test(t) && !/saldo (?:anterior|inicial)/.test(t);
+  if (!/\bnosso numero\b/.test(t) || !/\bsacado\b/.test(t) || /saldo (?:anterior|inicial)/.test(t)) return false;
+  // pelo título, ou (17/11/2026, na 292: o "Relatório - Títulos por Período" do Sicoob, liquidação e baixa, entrou como o extrato
+  // de 09/2026 — o título sai como desenho e o leitor não o vê) pelas colunas que só o relatório de cobrança tem
+  if (/relatorio\W*titulos por periodo/.test(t) || /titulos por periodo/.test(t)) return true;
+  const sinais = [/\bvlr\.? cobrado\b/, /\bdt\.? liquid/, /\bcedente\b/, /liquidacao e baixa/, /\bseu numero\b/, /\bvlr\.? mora\b/];
+  return sinais.filter(r => r.test(t)).length >= 2;
 }
 
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
