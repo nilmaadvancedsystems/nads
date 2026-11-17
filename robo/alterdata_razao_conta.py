@@ -475,31 +475,30 @@ def preencher(h):
     if not f:
         falhar('não achei o Consultar')
     clicar(f, 'Consultar')
-    limite = time.time() + 20
+    # só uma olhada rápida no aviso (17/11/2026, Vitor: "apos clicar em consultar, tem um delay imenso para salvar em excel": esperava
+    # até 20 s por um aviso que, com movimento, nunca vem); o aviso que vier depois é tratado no Exportar (checar_aviso)
+    limite = time.time() + 2.5
     while time.time() < limite:
-        time.sleep(1.5)
-        ms = mensagens()
-        if not ms:
-            continue
-        # o texto do aviso: o do Windows e o que o UI Automation lê (o TLabel do Delphi não é janela: "Confirmação" só tinha o
-        # título; 17/11/2026, na 292: "Não existe movimento no período informado para esta conta. Deseja localizar a próxima
-        # conta com movimento?")
-        texto = texto_da_mensagem(ms[0])
+        time.sleep(.5)
+        checar_aviso('depois do Consultar')
+
+
+def checar_aviso(quando):
+    """O aviso do Contábil na frente: sem movimento encerra ("Movimento mm/aaaa não importado"); outro leva OK/Não e segue."""
+    for m in mensagens():
+        texto = texto_da_mensagem(m)
         try:
-            texto = texto + ' ' + ' '.join(nome(e) for e in itens(ms[0]) if tipo(e) in ('Text', 'Edit', 'Document') and nome(e))
+            texto = texto + ' ' + ' '.join(nome(e) for e in itens(m) if tipo(e) in ('Text', 'Edit', 'Document') and nome(e))
         except Exception:
             pass
-        diag('depois do Consultar, o Contábil avisou: ' + texto)
+        diag(quando + ', o Contábil avisou: ' + texto)
         t = norm(texto)
-        sim_nao = botao_win32(ms[0], 'Sim') and botao_win32(ms[0], 'Não', 'Nao')
+        sim_nao = botao_win32(m, 'Sim') and botao_win32(m, 'Não', 'Nao')
+        responder_nao(m)
         if any(x in t for x in ('nenhum', 'nao ha', 'nao foram encontrad', 'nao existe', 'sem movimento', 'sem lancamento', 'proxima conta com movimento')) or (sim_nao and 'confirma' in t):
-            responder_nao(ms[0])
             # o aviso para o nads (Vitor, 17/11/2026: "no nads vai aparecer o erro 'Movimento [meses] nao importado'")
             fim(ok=False, semMovimento=True, erro='Movimento ' + meses_do_periodo() + ' não importado')
-        responder_nao(ms[0])
-        break
-    time.sleep(2)
-
+        time.sleep(.5)
 
 def exportar(h):
     passo('exportando para o Excel')
@@ -508,9 +507,10 @@ def exportar(h):
     sv = None
     limite = time.time() + 120
     while time.time() < limite and not sv:
+        checar_aviso('antes do Exportar')
         imp = next((e for e in itens(h) if norm(nome(e)) == 'imprimir' and tipo(e) in ('Button', 'MenuItem', 'SplitButton')), None)
         if not imp:
-            time.sleep(2)
+            time.sleep(1)
             continue
         clicar(imp, 'Imprimir')
         item = None
@@ -528,7 +528,7 @@ def exportar(h):
         clicar(item, nome(item))
         sv = esperar(salvar_como, 15)
         if not sv:
-            mensagem_na_frente('ao exportar')
+            checar_aviso('ao exportar')
     if not sv:
         falhar('a janela Salvar não abriu depois do Exportar para excel')
     edits = []
