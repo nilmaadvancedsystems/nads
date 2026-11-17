@@ -362,6 +362,12 @@ def salvar_como():
     return None
 
 
+def meses_do_periodo():
+    """'09/2026' ou '01/2026 a 09/2026' (o período pedido)."""
+    a, b = INICIO[3:], FIM[3:]
+    return a if a == b else a + ' a ' + b
+
+
 def principal_do_contabil():
     hs = [h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmPrincipal']
     return hs[0] if len(hs) == 1 else None
@@ -475,12 +481,21 @@ def preencher(h):
         ms = mensagens()
         if not ms:
             continue
+        # o texto do aviso: o do Windows e o que o UI Automation lê (o TLabel do Delphi não é janela: "Confirmação" só tinha o
+        # título; 17/11/2026, na 292: "Não existe movimento no período informado para esta conta. Deseja localizar a próxima
+        # conta com movimento?")
         texto = texto_da_mensagem(ms[0])
+        try:
+            texto = texto + ' ' + ' '.join(nome(e) for e in itens(ms[0]) if tipo(e) in ('Text', 'Edit', 'Document') and nome(e))
+        except Exception:
+            pass
         diag('depois do Consultar, o Contábil avisou: ' + texto)
         t = norm(texto)
-        if any(x in t for x in ('nenhum', 'nao ha', 'nao foram encontrad', 'nao existe', 'sem movimento', 'sem lancamento')):
+        sim_nao = botao_win32(ms[0], 'Sim') and botao_win32(ms[0], 'Não', 'Nao')
+        if any(x in t for x in ('nenhum', 'nao ha', 'nao foram encontrad', 'nao existe', 'sem movimento', 'sem lancamento', 'proxima conta com movimento')) or (sim_nao and 'confirma' in t):
             responder_nao(ms[0])
-            fim(ok=False, semMovimento=True, erro='o Contábil não tem lançamento na conta ' + CONTA + ' no período: ' + texto)
+            # o aviso para o nads (Vitor, 17/11/2026: "no nads vai aparecer o erro 'Movimento [meses] nao importado'")
+            fim(ok=False, semMovimento=True, erro='Movimento ' + meses_do_periodo() + ' não importado')
         responder_nao(ms[0])
         break
     time.sleep(2)

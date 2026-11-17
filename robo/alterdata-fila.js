@@ -465,7 +465,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     if (!arquivo) {
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
       const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
-      await banco.atualizar(id, { status: 'erro', erro: msg, diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
+      await banco.atualizar(id, { status: 'erro', erro: msg, semMovimento: !!r.semMovimento, diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
       if (painel) painel.erro('alterdata', (razaoConta ? 'Contábil ' : 'Fiscal ') + rotuloRel + ' ' + codigo + ' ' + lote, msg, { pedido: id });
       log('Alterdata: fim do Fiscal', id, 'erro:', msg);
       return;
