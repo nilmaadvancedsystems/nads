@@ -3,6 +3,7 @@
 // embaixo só o que pede atenção, em vermelho, com o botão para pedir de novo. Sem animação.
 import { Icone } from '@nads/ui';
 import type { RazaoDoRobo, SituacaoDoMes } from './useRazaoDoRobo';
+import { MarcaAlterdata } from '../../../conferencia/telas/importacao/partes/MarcaAlterdata';
 
 const SELO: Record<SituacaoDoMes, { rotulo: string; classe: string }> = {
   pronto: { rotulo: 'Pronto', classe: 'badge-ok' },
@@ -41,7 +42,15 @@ export function BlocoDoRobo({ robo }: { robo: RazaoDoRobo }) {
         <div className="imp-grupos">
           <div className="imp-grupo" aria-label="Robô do Alterdata">
             <span className="imp-rotulo">{robo.carregado ? robo.prontos.length + ' de ' + n : ''}</span>
-            {erros.length || faltam.length ? (
+            {robo.rotulo ? (
+              // a marca do Alterdata e o nome do dono do robô (Vitor, 17/11/2026: "coloca o botao Vitor, para puxar do robo")
+              <button type="button" className="btn btn-outline btn-sm btn-icone-alterdata" disabled={!!fila.length || !!comRobo.length}
+                onClick={() => { void (erros.length || faltam.length ? robo.pedirOsQueFaltam() : robo.pedirDeNovo()); }}
+                title={(erros.length || faltam.length ? 'Puxar do Alterdata: ' + meses([...erros, ...faltam]) : 'Puxar de novo do Alterdata') + ', pelo robô do PC de ' + robo.rotulo}
+                aria-label={'Puxar o balancete e os razões do Alterdata pelo robô de ' + robo.rotulo}>
+                {fila.length || comRobo.length ? <span className="btn-spinner" /> : <MarcaAlterdata />}{robo.rotulo}
+              </button>
+            ) : erros.length || faltam.length ? (
               <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={() => { void robo.pedirOsQueFaltam(); }}
                 title={'Pedir ao robô: ' + meses([...erros, ...faltam])} aria-label="Pedir ao robô os meses que faltam"><Icone nome="play" /></button>
             ) : (

@@ -41,7 +41,7 @@ import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
 import { BlocoDoRobo } from './BlocoDoRobo';
 import { useRazaoDoRobo } from './useRazaoDoRobo';
-import { roboNasEtapas, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { ROBO_NAS_ETAPAS, roboNasEtapas, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -741,7 +741,9 @@ export function TarefaExtratos() {
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
   const importados = useImportadosDaConferencia(s.nome, mesesDaEtapa);
   // os razões pelo robô do Alterdata (06/11/2026): na Importação da Tarefa ainda não concluída, pede sozinho os meses
-  const razaoDoRobo = useRazaoDoRobo({ nome: s.nome, codigo: s.codigo, meses: roboNasEtapas() ? mesesDaEtapa : [], automatico: ponte.naTarefa && !ponte.etapaConcluida && !vm.etapaCheque });
+  // o pedido sozinho ao abrir só com o robô ligado para todos; quem tem o robô no PC pede pelo botão (Vitor, 17/11/2026: abrir a
+  // Tarefa em lote mandou os nove meses para a fila)
+  const razaoDoRobo = useRazaoDoRobo({ nome: s.nome, codigo: s.codigo, meses: roboNasEtapas() ? mesesDaEtapa : [], automatico: ROBO_NAS_ETAPAS && ponte.naTarefa && !ponte.etapaConcluida && !vm.etapaCheque });
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
   // algum banco fecha negativo no período: a etapa Cheque especial aparece; sem nenhum, a Tarefas a pula (Vitor, 02/10/2026)
