@@ -773,7 +773,7 @@ export function TarefaExtratos() {
   // os razões pelo robô do Alterdata (06/11/2026): na Importação da Tarefa ainda não concluída, pede sozinho os meses
   // o pedido sozinho ao abrir só com o robô ligado para todos; quem tem o robô no PC pede pelo botão (Vitor, 17/11/2026: abrir a
   // Tarefa em lote mandou os nove meses para a fila)
-  const razaoDoRobo = useRazaoDoRobo({ nome: s.nome, codigo: s.codigo, meses: roboNasEtapas() ? mesesDaEtapa : [], automatico: ROBO_NAS_ETAPAS && ponte.naTarefa && !ponte.etapaConcluida && !vm.etapaCheque });
+  const razaoDoRobo = useRazaoDoRobo({ nome: s.nome, codigo: s.codigo, meses: ROBO_NAS_ETAPAS ? mesesDaEtapa : [], automatico: ROBO_NAS_ETAPAS && ponte.naTarefa && !ponte.etapaConcluida && !vm.etapaCheque });
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
   // algum banco fecha negativo no período: a etapa Cheque especial aparece; sem nenhum, a Tarefas a pula (Vitor, 02/10/2026)
@@ -855,7 +855,7 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} blocoDoRobo={roboNasEtapas() ? <BlocoDoRobo robo={razaoDoRobo} /> : null} /></div>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} blocoDoRobo={ROBO_NAS_ETAPAS ? <BlocoDoRobo robo={razaoDoRobo} /> : null} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} codigo={s.codigo} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}

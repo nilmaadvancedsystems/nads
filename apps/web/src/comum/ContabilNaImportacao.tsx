@@ -7,6 +7,7 @@ import { BotaoIcone, CampoArquivo, Icone, useRetorno } from '@nads/ui';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { roboNasEtapas, useContabilDaEmpresa } from './contabilDaEmpresa';
 import { BotaoDiario } from './BotaoDiario';
+import { ComRoboDoDinamico, MenuDeImportar } from '../aplicativos/tarefas/etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
 
 /**
  * meses: o período da Tarefa (para acusar o mês que falta no razão). soDiario: a empresa ainda não saiu da Importação (Vitor,
@@ -95,10 +96,15 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                 </button>
               ) : (
-                <>
-                  <label htmlFor={idDin} className="icon-btn icon-btn-sm imp-btn" title={vm.dinamico ? 'Importar o balancete dinâmico de novo (o do Clientes está valendo)' : 'Importar o balancete dinâmico (XLS do Alterdata)'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
-                  <CampoArquivo semCaixa id={idDin} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void importarDinamico(f); }} />
-                </>
+                // o ⬆ com o robô do PC do Vitor no menu (17/11/2026: o Balancete Dinâmico do período numa consulta só)
+                <ComRoboDoDinamico codigo={codigo} empresa={nome} meses={meses} importar={f => importarDinamico(f)}>
+                  {robo => robo ? <MenuDeImportar titulo="o balancete dinâmico" aceitar=".xls,.xlsx,.ods" travado={false} onArquivos={fs => { void importarDinamico(fs[0] || null); }} robo={robo} /> : (
+                    <>
+                      <label htmlFor={idDin} className="icon-btn icon-btn-sm imp-btn" title={vm.dinamico ? 'Importar o balancete dinâmico de novo (o do Clientes está valendo)' : 'Importar o balancete dinâmico (XLS do Alterdata)'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
+                      <CampoArquivo semCaixa id={idDin} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void importarDinamico(f); }} />
+                    </>
+                  )}
+                </ComRoboDoDinamico>
               )}
             </div>
           </div>

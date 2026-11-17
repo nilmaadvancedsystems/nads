@@ -134,3 +134,29 @@ export async function pedirRazaoDaConta(o: { codigo: number; empresa: string; co
   });
   return r.id;
 }
+
+// ---------- o Balancete Dinâmico do período (17/11/2026, o caminho que o Vitor gravou: Consultas › Balancete Dinâmico, a empresa,
+// o período inteiro numa consulta, Saldo por mês, Ocultar contas sem movimento, Exportar › Gravar › Salvar) ----------
+// {status, tipo: 'balanceteDinamico', codigo, empresa, competencia, ate, criadoEm, criadoPor, criadoPorUid}: a planilha volta em
+// partes/fiscal-nnn e entra como o balancete dinâmico da Tarefa.
+export function ouvirDinamicos(codigo: number, chegou: (l: PedidoDoFiscal[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'balanceteDinamico')),
+      s => chegou(s.docs.map(x => doBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirDinamico(o: { codigo: number; empresa: string; competencia: string; ate: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: statusDoPedido(), tipo: 'balanceteDinamico', codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia, ate: o.ate,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
+}

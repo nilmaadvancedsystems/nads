@@ -6,6 +6,7 @@ import { Icone, MenuSuspenso } from '@nads/ui';
 import { useRef, type ReactNode } from 'react';
 import { MarcaAlterdata } from '../../../conferencia/telas/importacao/partes/MarcaAlterdata';
 import { useRazaoDaContaPeloRobo } from './useRazaoDaContaPeloRobo';
+import { useDinamicoPeloRobo } from './useDinamicoPeloRobo';
 
 /** O robô para o menu do ⬆: o nome no item, se está puxando e o pedir. */
 export interface RoboDoImportar { rotulo: string; andando: boolean; pedir: () => void; titulo?: string }
@@ -40,6 +41,18 @@ export function MenuDeImportar({ titulo, aceitar, travado, onArquivos, robo, gra
         )} />
       <input ref={arquivo} type="file" multiple accept={aceitar} className="sr-only" tabIndex={-1} aria-hidden="true"
         onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos(fs); }} />
+    </>
+  );
+}
+
+/** O mesmo para o Balancete dinâmico do período (17/11/2026). */
+export function ComRoboDoDinamico(p: { codigo: number | null; empresa: string; meses: readonly string[]; importar: (f: File) => unknown; children: (robo: RoboDoImportar | undefined) => ReactNode }) {
+  const r = useDinamicoPeloRobo(p);
+  const robo = r.disponivel ? { rotulo: r.rotulo, andando: r.andando, pedir: () => { void r.pedir(); }, titulo: 'Puxar o Balancete Dinâmico do período do Alterdata' } : undefined;
+  return (
+    <>
+      {p.children(robo)}
+      {r.disponivel && r.erro && <span className="ext-neg imp-robo-erro-curto" title={r.erro}>{r.erro}</span>}
     </>
   );
 }
