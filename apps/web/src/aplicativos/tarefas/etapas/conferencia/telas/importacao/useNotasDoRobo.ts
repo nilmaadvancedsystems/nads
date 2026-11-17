@@ -2,7 +2,9 @@
 // tomados e prestados"): pede ao robô do servidor a planilha do Alterdata Fiscal do período da Tarefa, mostra a barra dele e,
 // quando a planilha volta, entrega o arquivo para a mesma importação de quem sobe à mão. Só o pedido feito ou visto andando
 // nesta tela é importado sozinho (abrir a tela outro dia não reimporta o pedido antigo).
-// Enquanto o robô aprende as telas do Fiscal, só no modo desenvolvedor.
+// Entradas e saídas para todos (Vitor, 17/11/2026: "pode publicar, tanto entradas quanto saidas, ta funcionando"); tomados e
+// prestados, enquanto o robô aprende a tela do ISS, só no modo desenvolvedor. O detalhe técnico (o que o robô viu, a tela, a
+// foto) também só no modo desenvolvedor ("esse tanto de informacao apenas para o desenvolvedor").
 import { conferencia as c } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
@@ -15,7 +17,9 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const ordenados = [...(o.meses || [])].sort();
   const competencia = ordenados[0] || '';
   const ate = ordenados[ordenados.length - 1] || '';
-  const disponivel = modoDesenvolvedor() && !!relatorio && !!o.codigo && !!competencia;
+  const dev = modoDesenvolvedor();
+  const liberado = relatorio === 'entradas' || relatorio === 'saidas' || dev;
+  const disponivel = liberado && !!relatorio && !!o.codigo && !!competencia;
   const [pedidos, setPedidos] = useState<PedidoDoFiscal[] | null>(null);
   const [falha, setFalha] = useState('');
   const [pedindo, setPedindo] = useState(false);
@@ -63,13 +67,15 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   }
 
   const andando = !!atual && ANDANDO.includes(atual.status);
+  // fora do modo desenvolvedor, o erro sem o detalhe da tela (o tamanho, as janelas, o caminho da foto)
+  const erroLimpo = (t: string) => (dev ? t : t.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '').trim());
   const situacao = !atual ? '' : atual.status === 'pendente' ? 'Na fila do robô' : atual.status === 'trabalhando' ? (atual.etapa || 'O robô está no Alterdata Fiscal')
-    : atual.status === 'erro' ? 'O robô não conseguiu: ' + (atual.erro || 'sem detalhe') : '';
+    : atual.status === 'erro' ? 'O robô não conseguiu puxar do Alterdata: ' + (erroLimpo(atual.erro) || 'sem detalhe') : '';
   return {
-    disponivel, pedindo, andando, lendo, pct: atual?.pct || 0, situacao, clique: andando ? atual?.clique || '' : '',
+    disponivel, pedindo, andando, lendo, pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',
     erro: atual?.status === 'erro' && !andando, falha, pedir, cancelar,
     /** o que o robô viu nas telas do Fiscal (o modo desenvolvedor mostra embaixo) */
-    diag: !andando ? atual?.diag || [] : [],
+    diag: !andando && dev ? atual?.diag || [] : [],
   };
 }
 

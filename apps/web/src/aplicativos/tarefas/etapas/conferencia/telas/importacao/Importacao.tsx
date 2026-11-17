@@ -8,6 +8,7 @@ import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';
 import { useImportacao, type Mensagem } from './useImportacao';
 import type { NotasDoRobo } from './useNotasDoRobo';
+import { MarcaAlterdata } from './partes/MarcaAlterdata';
 
 /**
  * naEtapa: dentro da primeira etapa da Tarefas. Dentro da Tarefa (a Importação ou a Conferência fiscal), sem o "Apagar ao sair"
@@ -36,9 +37,10 @@ export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImp
           <div className="import-box-row">
             <CampoArquivo id={vm.cfg.idArquivo} arquivo={vm.arquivo} onEscolher={vm.setArquivo} aceitar={vm.cfg.aceitar} abrirAgora={vm.abrirArquivo} />
             {vm.robo.disponivel && (
-              <BotaoAcao className="btn btn-outline" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando="Com o robô…" disabled={vm.carregando}
-                onClick={vm.robo.pedir} title={'O robô do servidor puxa ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' no Alterdata Fiscal e importa aqui'}>
-                <Icone nome="robo" />Pedir ao robô
+              // só a marca do Alterdata (Vitor, 17/11/2026: "um icone do alterdata que enviei, apenas, sem nada escrito")
+              <BotaoAcao className="btn btn-outline btn-icone-alterdata" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando="" disabled={vm.carregando}
+                onClick={vm.robo.pedir} title={'Puxar ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' do Alterdata'} aria-label={'Puxar ' + vm.nomeDoTipo + ' do Alterdata'}>
+                <MarcaAlterdata />
               </BotaoAcao>
             )}
             <BotaoAcao carregando={vm.carregando} textoCarregando="Importando…" disabled={!vm.arquivo} onClick={vm.importar}>Importar</BotaoAcao>

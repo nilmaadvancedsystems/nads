@@ -1696,6 +1696,8 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-robo-fiscal .imp-robo-barra{flex:0 0 120px;}
 .imp-robo-fiscal > span{flex:1 1 200px;min-width:0;}
 .imp-robo-diag{flex:1 0 100%;}
+/* o botão só com a marca do Alterdata (17/11/2026) */
+.btn-icone-alterdata{padding-inline:12px;min-width:44px;justify-content:center;}
 .imp-robo-diag pre{max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;background:var(--surface-2);padding:8px;border-radius:6px;}
 .imp-robo-atencao{display:flex;flex-direction:column;gap:4px;padding:0 12px 12px 56px;font-size:var(--fs-12);line-height:18px;}
 .imp-robo-atencao > span{display:flex;align-items:flex-start;gap:6px;}
