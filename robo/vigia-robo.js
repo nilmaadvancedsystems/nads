@@ -974,7 +974,7 @@ async function atenderFila() {
         else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p, doc.id);
         else if (p.tipo === 'mandei') resultado = await atenderMandei(p, doc.id);
         // o WhatsApp do robô (12/11/2026, robo/whatsapp.js): só liga na nuvem; fora dela, o pedido vira erro com o motivo
-        else if (p.tipo === 'whatsapp') resultado = await require('./whatsapp').atenderPedido(p);
+        else if (p.tipo === 'whatsapp') resultado = await require('./whatsapp').atenderPedido(p, doc.ref, { ler: () => lerAnexoDasPartes(p, doc.ref), apagar: () => apagarPartes(p, doc.ref) });
         else if (p.tipo === 'whatsapp-conectar' || p.tipo === 'whatsapp-desconectar') resultado = await require('./whatsapp').atenderComando(p);
         else if (p.tipo === 'cartaBalanco') resultado = await atenderCartaBalanco(p);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);

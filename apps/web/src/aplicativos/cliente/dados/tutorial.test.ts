@@ -22,7 +22,7 @@ describe('o tutorial guiado (13/11/2026)', () => {
     for (const p of todosOsPassos('pc', TODAS)) expect(p.titulo && p.texto).toBeTruthy();
   });
   it('os capítulos do tour, na ordem, sem o começo e o fim', () => {
-    expect(capitulosDoTutorial(passosDoTutorial('pc', TODAS))).toEqual(['Menu', 'Visão geral', 'Guias', 'Solicitações']);
+    expect(capitulosDoTutorial(passosDoTutorial('pc', TODAS))).toEqual(['Menu', 'Guias e documentos', 'Guias', 'Solicitações']);
   });
   it('o "?" de cada tela: só os passos dela, sem os cartões e o menu', () => {
     expect(passosDaTela('pc', TODAS, 'dp').map(p => p.id)).toEqual(['equipe', 'ferias', 'custo', 'folha']);

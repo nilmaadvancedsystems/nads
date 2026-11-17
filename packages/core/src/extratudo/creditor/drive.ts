@@ -50,7 +50,8 @@ export interface AnexoDoEmail {
 }
 
 /** Como está o e-mail na fila do robô do Entregas. */
-export interface SituacaoDoEmail { status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string }
+/** A situação de um pedido na fila do robô; no WhatsApp (17/11/2026), também quando chegou e quando foi lido (ISO). */
+export interface SituacaoDoEmail { status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string; entregueEm?: string; lidoEm?: string }
 
 export interface RepoDrive {
   readonly exemplos: boolean;
@@ -88,8 +89,11 @@ export interface RepoDrive {
    * senão, a tela abre o WhatsApp com o texto pronto. Não existe acoplado no Entregas.
    */
   whatsappDoRobo?(): Promise<WhatsappDoRobo>;
-  /** põe a mensagem na fila do robô (a mesma do e-mail, tipo 'whatsapp') e espera ele mandar (erro = o motivo) */
-  pedirWhatsapp?(p: { contato: ContatoDoCliente; para: string; texto: string }, passo?: (texto: string) => void): Promise<{ id: string; situacao: 'enviado' | 'na-fila' }>;
+  /**
+   * põe a mensagem na fila do robô (a mesma do e-mail, tipo 'whatsapp') e espera ele mandar (erro = o motivo). `anexo`: um
+   * PDF que vai junto, com a mensagem de legenda (17/11/2026); semAnexo = o PDF não subiu e a mensagem foi sem ele.
+   */
+  pedirWhatsapp?(p: { contato: ContatoDoCliente; para: string; texto: string; anexo?: { nome: string; bytes: Uint8Array } }, passo?: (texto: string) => void): Promise<{ id: string; situacao: 'enviado' | 'na-fila'; semAnexo?: boolean }>;
   /** de qual Gmail o pedido vai sair: o do setor de quem pede (a mesma regra do robô); não existe acoplado no Entregas */
   remetente?(): Promise<RemetenteDoPedido>;
   /** a situação de cada pedido de e-mail na fila do robô (pelo id) */

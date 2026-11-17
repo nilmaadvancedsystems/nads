@@ -24,7 +24,8 @@ export type IdAba = 'inicio' | 'documentos' | 'guias' | 'dp' | 'chamados' | 'fat
 /** As abas do menu; as do Administrativo (12/11/2026: o Faturamento, os Dados cadastrais e o Fale com o escritório, que
  *  eram janelas) vêm embaixo do título dele. */
 export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone; administrativo?: boolean }[] = [
-  { id: 'inicio', rotulo: 'Visão geral', icone: 'home' },
+  // (17/11/2026: "remove esse boa tarde e esse inicio ... uma tela de guias e documentos la") era Visão geral
+  { id: 'inicio', rotulo: 'Guias e documentos', icone: 'home' },
   { id: 'documentos', rotulo: 'Central de documentos', icone: 'pastaAberta' },
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
   { id: 'dp', rotulo: 'RH', icone: 'equipe' }, // (16/11/2026: "muda isso para RH") era Registro
@@ -80,6 +81,9 @@ export function useAreaCliente() {
     documentos: area.documentos.filter(d => d.novo).length,
     guias: guias.filter(g => g.situacao === 'vencida').length,
   };
+  // (17/11/2026) a tela inicial agora tem as guias e os documentos: o número dela soma os dois (no celular, as abas
+  // Guias e Documentos saíram da barra de baixo)
+  contadores.inicio = (contadores.documentos ?? 0) + (contadores.guias ?? 0);
   const escritorio = area.resumo?.escritorio ?? {};
 
   // a troca de empresa (12/11/2026): esta empresa entra na lista do aparelho; as outras aparecem no menu do topo
@@ -202,7 +206,7 @@ export function useAreaCliente() {
 }
 
 /** o rótulo na barra de baixo do celular, onde cabe pouco */
-const ROTULO_CURTO: Partial<Record<IdAba, string>> = { inicio: 'Início', documentos: 'Documentos', guias: 'Guias', chamados: 'Solicitações' };
+const ROTULO_CURTO: Partial<Record<IdAba, string>> = { inicio: 'Guias e docs', documentos: 'Documentos', guias: 'Guias', chamados: 'Solicitações' };
 
 export type AreaCliente = ReturnType<typeof useAreaCliente>;
 /** o que cada aba recebe da casca */

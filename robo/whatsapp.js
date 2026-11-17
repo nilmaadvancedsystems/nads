@@ -21,6 +21,8 @@ const R = require('./whatsapp-regras');
 
 const PASTA_DA_SESSAO = path.join(__dirname, 'whatsapp-sessao');
 const ARQUIVO_DOS_ENVIOS = path.join(__dirname, 'whatsapp-envios.json');
+/** as mensagens mandadas esperando o tique de entregue/lido: id → { caminho do pedido, em, entregueEm, lidoEm } */
+const ARQUIVO_DO_RASTREIO = path.join(__dirname, 'whatsapp-rastreio.json');
 const MAX_QRS = 5;                      // cada QR vale ~20 s: depois de uns 2 minutos sem ler, desiste
 const RENOVAR_A_CADA_MS = 10 * 60000;   // o "estou vivo" enquanto conectado
 const ESPERAS_PARA_RELIGAR = [5000, 15000, 60000, 5 * 60000];
@@ -37,6 +39,7 @@ let religar = null;
 let renovar = null;
 let enviados = [];
 let ultimoEnvio = 0;
+let rastreio = {};
 
 const agoraIso = () => new Date().toISOString();
 const dormir = ms => new Promise(ok => setTimeout(ok, ms));
@@ -59,6 +62,25 @@ function guardarEnvio(t) {
   enviados = R.enviosQueContam(enviados.concat(t), t);
   ultimoEnvio = t;
   try { fs.writeFileSync(ARQUIVO_DOS_ENVIOS, JSON.stringify(enviados)); } catch (e) { st.log('whatsapp: não guardei o envio no disco:', e.message); }
+}
+
+function lerRastreio() {
+  try { rastreio = R.rastreioQueConta(JSON.parse(fs.readFileSync(ARQUIVO_DO_RASTREIO, 'utf8')), Date.now()); } catch (e) { rastreio = {}; }
+}
+function guardarRastreio() {
+  rastreio = R.rastreioQueConta(rastreio, Date.now());
+  try { fs.writeFileSync(ARQUIVO_DO_RASTREIO, JSON.stringify(rastreio)); } catch (e) { st.log('whatsapp: não guardei o rastreio no disco:', e.message); }
+}
+/** Um tique da Baileys (messages.update): entregue ou lida, grava no pedido da fila (sem ler nada do banco). */
+function marcarEntrega(key, update) {
+  const id = key && key.id;
+  const r = id && rastreio[id];
+  if (!r || !update || update.status == null) return;
+  const novo = R.marcasDaEntrega(r, update.status, agoraIso());
+  if (!novo) return;
+  Object.assign(r, novo);
+  guardarRastreio();
+  st.db.doc(r.caminho).set(novo, { merge: true }).catch(err => st.log('whatsapp: não gravei o tique:', err.message));
 }
 
 const temSessao = () => fs.existsSync(path.join(PASTA_DA_SESSAO, 'creds.json'));
@@ -125,6 +147,10 @@ async function conectar(pedirQr) {
   }, version ? { version } : {}));
   sock = s;
   s.ev.on('creds.update', saveCreds);
+  s.ev.on('messages.update', lista => {
+    if (sock !== s) return;
+    for (const u of lista || []) { try { marcarEntrega(u.key, u.update); } catch (e) { /* um tique a menos */ } }
+  });
   s.ev.on('connection.update', u => {
     if (sock !== s) return;
     if (u.qr) {
@@ -182,6 +208,7 @@ function falhou(err) {
 function iniciarWhatsapp({ db, log, roboRef, painel }) {
   st = { db, log, roboRef, painel };
   lerEnvios();
+  lerRastreio();
   if (temSessao()) conectar(false).catch(falhou);
   else gravarEstado({ situacao: 'desconectado', motivo: 'ainda não conectado: peça o QR code na Central dos robôs' });
 }
@@ -195,8 +222,11 @@ function naoLigado() {
   return new Error('o WhatsApp só roda no robô da nuvem, e ele não ligou aqui');
 }
 
-/** Um pedido da fila (tipo 'whatsapp'). Devolve o que vai no próprio pedido; erro vira exceção com o motivo. */
-async function atenderPedido(p) {
+/**
+ * Um pedido da fila (tipo 'whatsapp'). Devolve o que vai no próprio pedido; erro vira exceção com o motivo. `ref`: o pedido
+ * no banco (para os tiques); `anexo`: { ler, apagar } do PDF que a tela subiu em partes (o mesmo do disparo, no vigia).
+ */
+async function atenderPedido(p, ref, anexo) {
   if (!st) throw naoLigado();
   if (estado.situacao !== 'conectado' || !sock) throw new Error('o WhatsApp do robô não está conectado (' + (estado.motivo || estado.situacao) + ')');
   let cliente = null;
@@ -206,6 +236,9 @@ async function atenderPedido(p) {
   }
   const motivo = R.motivoParaNaoMandar(p, cliente);
   if (motivo) throw new Error(motivo);
+  const arquivo = p.anexo && anexo ? await anexo.ler() : null;
+  const motivoDoArquivo = R.motivoDoAnexo(arquivo);
+  if (motivoDoArquivo) throw new Error(motivoDoArquivo);
   const freio = R.motivoDoFreio(enviados, Date.now());
   if (freio) throw new Error(freio);
   const espera = R.esperaAntesDeMandar(ultimoEnvio, Date.now(), Math.random());
@@ -218,10 +251,17 @@ async function atenderPedido(p) {
     if (a && a.exists) { achado = a; break; }
   }
   if (!achado) throw new Error(R.numeroFormatado(numero) + ' não tem WhatsApp');
-  const msg = await sock.sendMessage(achado.jid, { text: String(p.texto).trim() });
+  const texto = String(p.texto).trim();
+  // com o PDF, a mensagem vai de legenda dele (uma mensagem só, como o Acessórias)
+  const msg = await sock.sendMessage(achado.jid, arquivo
+    ? { document: arquivo.buffer, mimetype: arquivo.mime, fileName: arquivo.nome, caption: texto }
+    : { text: texto });
   guardarEnvio(Date.now());
+  const idDaMensagem = (msg && msg.key && msg.key.id) || '';
+  if (idDaMensagem && ref && ref.path) { rastreio[idDaMensagem] = { caminho: ref.path, em: Date.now() }; guardarRastreio(); }
+  if (arquivo && anexo) await anexo.apagar().catch(() => {});
   st.log('whatsapp: mandou para', p.clienteNome || R.numeroFormatado(numero));
-  return { status: 'enviado', enviadoEm: agoraIso(), whatsappId: (msg && msg.key && msg.key.id) || '', de: estado.numero };
+  return { status: 'enviado', enviadoEm: agoraIso(), whatsappId: idDaMensagem, de: estado.numero, ...(arquivo ? { anexoEnviado: arquivo.nome } : {}) };
 }
 
 /** 'whatsapp-conectar' e 'whatsapp-desconectar': só admin. */

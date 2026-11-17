@@ -27,6 +27,7 @@ robo/gemini_key.json
 # o WhatsApp do robô (12/11/2026, robo/whatsapp.js): a sessão do chip (a "senha" da conexão) e o freio do dia
 robo/whatsapp-sessao/
 robo/whatsapp-envios.json
+robo/whatsapp-rastreio.json
 robo/gmail-processados-*.json
 robo/gmail-processados.json
 robo/gmail-sem-cliente-*.json

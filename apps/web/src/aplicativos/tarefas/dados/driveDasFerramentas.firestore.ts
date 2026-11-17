@@ -26,7 +26,7 @@ import { creditor as cr, entregas, extrator as ex, robos } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { addDoc as addDocBruto, Bytes, collection, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, doc, deleteField, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -404,10 +404,26 @@ export function criarDriveFirestore(): cr.RepoDrive {
       const u = auth.currentUser;
       if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
       passo?.('pondo o WhatsApp na fila do robô');
+      // o PDF (17/11/2026) vai em pedaços base64 em partes/{n}, como o arquivo do disparo: o pedido nasce "subindo" (o robô
+      // só pega "pendente") e vira pendente quando o PDF subiu inteiro; se não subir (o setor de quem pede não pode gravar
+      // as partes, por exemplo), a mensagem vai sem ele
+      const pedacos = p.anexo ? robos.pedacosDoAnexo(p.anexo.bytes) : [];
       const ref = await addDoc(collection(db, 'solicitacoesEmail'), {
-        tipo: robos.TIPOS_DO_WHATSAPP.enviar, clienteId: p.contato.id, clienteNome: p.contato.nome, para: p.para, texto: p.texto, status: 'pendente',
+        tipo: robos.TIPOS_DO_WHATSAPP.enviar, clienteId: p.contato.id, clienteNome: p.contato.nome, para: p.para, texto: p.texto, status: pedacos.length ? 'subindo' : 'pendente',
+        ...(pedacos.length && p.anexo ? { anexo: { nome: p.anexo.nome, mime: 'application/pdf', partes: pedacos.length } } : {}),
         criadoEm: serverTimestamp(), criadoPor: acesso.quem || 'nads', criadoPorEmail: u.email || '', criadoPorUid: u.uid, origem: 'nads',
       });
+      let semAnexo = false;
+      if (pedacos.length) {
+        passo?.('subindo o PDF');
+        try {
+          for (let i = 0; i < pedacos.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: pedacos[i] });
+          await updateDoc(ref, { status: 'pendente' });
+        } catch {
+          semAnexo = true;
+          await updateDoc(ref, { status: 'pendente', anexo: deleteField() });
+        }
+      }
       const situacao = await new Promise<'enviado' | 'na-fila'>((ok, falha) => {
         // o robô espera de 20 a 60 s entre uma mensagem e outra: 2 minutos antes de dizer "na fila"
         const fim = setTimeout(() => { parar(); ok('na-fila'); }, 2 * ESPERA_DO_EMAIL_MS);
@@ -418,7 +434,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
           if (s.status === 'erro') { clearTimeout(fim); parar(); falha(new Error(String(s.erro || 'erro'))); }
         }, e => { clearTimeout(fim); falha(e); });
       });
-      return { id: ref.id, situacao };
+      return { id: ref.id, situacao, ...(semAnexo ? { semAnexo } : {}) };
     },
 
     /** De qual Gmail o pedido sai: o setor de quem pede (usuarios) e o endereço da caixa (robo/estado.caixas). */
@@ -437,7 +453,11 @@ export function criarDriveFirestore(): cr.RepoDrive {
       await Promise.all(ids.map(async id => {
         const d = await getDoc(doc(db, 'solicitacoesEmail', id));
         const s = d.data();
-        r[id] = !s ? { status: 'sumiu' } : { status: (s.status as cr.SituacaoDoEmail['status']) || 'pendente', ...(s.erro ? { erro: String(s.erro) } : {}) };
+        r[id] = !s ? { status: 'sumiu' } : {
+          status: (s.status as cr.SituacaoDoEmail['status']) || 'pendente', ...(s.erro ? { erro: String(s.erro) } : {}),
+          // o WhatsApp: quando chegou e quando foi lido (o robô marca pelos tiques)
+          ...(typeof s.entregueEm === 'string' ? { entregueEm: s.entregueEm } : {}), ...(typeof s.lidoEm === 'string' ? { lidoEm: s.lidoEm } : {}),
+        };
       }));
       return r;
     },
