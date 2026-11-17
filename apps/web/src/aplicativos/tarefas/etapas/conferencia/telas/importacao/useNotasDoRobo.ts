@@ -24,9 +24,9 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const dev = modoDesenvolvedor();
   // só quem tem o robô no próprio PC (o servidor ainda não tem o Fiscal): o botão leva o nome; o robô do PC só atende o dono
   const doPc = roboDePcDoUsuario();
-  // o balancete do período (17/11/2026, Vitor: "joga no modo desenvolvedor primeiro"): só no modo desenvolvedor
+  // o balancete do período (17/11/2026: testado no modo desenvolvedor, "pode publicar pra todos"; o botão Vitor só na conta dele)
   const balancete = o.tipo === 'balancete';
-  const disponivel = !!doPc && (balancete ? dev : !!relatorio) && !!o.codigo && !!competencia;
+  const disponivel = !!doPc && (balancete || !!relatorio) && !!o.codigo && !!competencia;
   const [pedidos, setPedidos] = useState<PedidoDoFiscal[] | null>(null);
   const [falha, setFalha] = useState('');
   const [pedindo, setPedindo] = useState(false);
