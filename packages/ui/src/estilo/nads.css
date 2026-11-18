@@ -7392,3 +7392,23 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-notificacoes.nova .ini-comunicado .popover-texto > br{display:none;}
 .ini-notificacoes.nova .ini-comunicado > .badge,.ini-notificacoes.nova .ini-comunicado > .selo-reuniao{flex:none;}
 @media (min-width:861px){.ini-notificacoes.nova > .ini-detalhe{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;}}
+
+/* as Notificações em lista, com os filtros no alto (modo desenvolvedor, 18/11/2026) */
+.notif-filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;}
+.notif-filtros .num{opacity:.7;margin-left:4px;}
+.notif-filtros-espaco{flex:1;}
+.notif-lista{padding:0;overflow:hidden;}
+.notif-linha{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(90px,160px) minmax(110px,190px) auto 16px;align-items:center;gap:12px;width:100%;padding:12px 18px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer;}
+.notif-linha:hover{background:color-mix(in srgb,var(--accent) 6%,transparent);}
+.notif-linha.aberta{background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.notif-linha.pendente .notif-icone{color:var(--warn);}
+.notif-linha > svg{width:16px;height:16px;color:var(--ink-muted);}
+.notif-icone{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--surface-2,color-mix(in srgb,var(--ink) 6%,transparent));color:var(--ink-muted);}
+.notif-icone svg{width:16px;height:16px;}
+.notif-titulo{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.notif-titulo b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.notif-quem,.notif-quando{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.notif-selo{display:flex;justify-content:flex-end;}
+.notif-detalhe{padding:16px 18px 20px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--accent) 4%,transparent);}
+.notif-detalhe > .card{margin:0;box-shadow:none;}
+@media (max-width:720px){.notif-linha{grid-template-columns:32px minmax(0,1fr) auto 16px;}.notif-quem,.notif-quando{display:none;}}

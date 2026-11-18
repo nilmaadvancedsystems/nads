@@ -5,7 +5,7 @@
 // as reuniões (pedidas pelo Sênior ou marcadas pelo Diretor), com o detalhe e as ações à direita (ReunioesDoInicio). O aviso
 // que pede confirmação tem o Recebido; quem escreveu vê quem marcou e quem falta. Só os destinatários veem o aviso.
 import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
-import { useRef } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useInicio } from '../useInicio';
@@ -106,6 +106,8 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
   const r = vm.reuniao;
   // o detalhe arrumado e as listas com rolagem (18/11/2026): só no modo desenvolvedor por enquanto
   const [devNovo] = useModoDesenvolvedor();
+  // em lista, com os filtros no alto (Vitor, 18/11/2026: "deixa em modo lista... onde o usuario pode filtrar"): só no modo desenvolvedor
+  if (devNovo) return <section className="ini-lista"><ListaDeNotificacoes vm={vm} mural={mural} podeMexer={podeMexer} /></section>;
   return (
     <section className="ini-lista">
       {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length && !vm.cobrancas.length ? (
@@ -160,75 +162,150 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
           </section>
           </div>
           {r && <DetalheDaReuniao x={r} vm={vm.reunioesVm} />}
-          {!r && c && (
-            <section className="card ini-detalhe">
-              <div className="ini-detalhe-topo">
-                <h2>{c.titulo || c.tipoRotulo}</h2>
-                {podeMexer && (
-                  <span className="ini-detalhe-acoes">
-                    <button type="button" className="btn btn-outline" onClick={() => void mural.fixar(c.id, !c.fixado)}><Icone nome="mapaPin" />{c.fixado ? 'Soltar' : 'Fixar no alto'}</button>
-                    <button type="button" className="btn btn-outline btn-danger" onClick={() => void mural.apagar(c.id)}><Icone nome="lixeira" />Apagar</button>
-                  </span>
-                )}
-              </div>
-              {devNovo ? <>
-              {/* mais arrumado (Vitor, 18/11/2026: "textos muito embolados, da uma ajeitada"): quem, o tipo e quando numa linha só
-                  embaixo do título; o texto do aviso em destaque; o Recebido com a contagem, a barra e cada pessoa numa etiqueta */}
-              <p className="ini-detalhe-meta">
-                <Icone nome={ICONE_DO_TIPO[c.tipo || 'aviso']} />{c.tipoRotulo}{c.fixado && ' · fixado'}
-                <span aria-hidden="true">·</span><Icone nome="usuario" />{c.por}
-                <span aria-hidden="true">·</span><Icone nome="clock" /><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span>
-              </p>
-              {c.texto && <p className="ini-detalhe-texto ini-detalhe-corpo">{c.texto}</p>}
-              {(c.reuniao || c.link || c.anexo || c.para) && (
-                <div className="registro-props">
-                  {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
-                  {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
-                  {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
-                  {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
-                </div>
-              )}
-              {c.acompanha && (() => {
-                const recebidos = (c.recebidos || []).map(x => x.nome);
-                const total = recebidos.length + c.faltaReceber.length;
-                return (
-                  <div className="ini-recebidos">
-                    <div className="ini-recebidos-topo">
-                      <span><Icone nome="checkCircle" /><b>Recebido</b></span>
-                      <span className="hint num">{recebidos.length} de {total}</span>
-                    </div>
-                    <div className="ini-recebidos-barra" aria-hidden="true"><span style={{ width: (total ? Math.round(recebidos.length / total * 100) : 0) + '%' }} /></div>
-                    <div className="ini-recebidos-pessoas">
-                      {recebidos.map((n, i) => <span key={'r' + i} className="ini-pessoa ok"><Icone nome="check" />{n}</span>)}
-                      {c.faltaReceber.map((n, i) => <span key={'f' + i} className="ini-pessoa falta">{n}</span>)}
-                      {!total && <span className="hint">Ninguém ainda</span>}
-                    </div>
-                  </div>
-                );
-              })()}
-              </> : <>
-              <div className="registro-props">
-                <Propriedade icone={ICONE_DO_TIPO[c.tipo || 'aviso']} rotulo="Tipo"><span>{c.tipoRotulo}{c.fixado && <span className="fraco"> · fixado</span>}</span></Propriedade>
-                <Propriedade icone="usuario" rotulo="Quem"><span>{c.por}</span></Propriedade>
-                <Propriedade icone="clock" rotulo="Publicado"><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span></Propriedade>
-                {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
-                {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
-                {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
-                {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
-                {c.acompanha && <Propriedade icone="checkCircle" rotulo="Recebido"><span>{(c.recebidos || []).map(x => x.nome).join(', ') || 'Ninguém ainda'}{c.faltaReceber.length > 0 && <><br /><span className="fraco">Falta: {c.faltaReceber.join(', ')}</span></>}</span></Propriedade>}
-              </div>
-              <p className="ini-detalhe-texto">{c.texto}</p>
-              </>}
-              {c.pedeConfirmacao && !c.acompanha && (
-                <div className="ini-reuniao-linha">
-                  {c.jaRecebi ? <span className="badge badge-suave badge-ok">Você marcou como recebido</span>
-                    : <><span>Este aviso pede que você confirme que leu.</span><button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(c.id)}><Icone nome="check" />Recebido</button></>}
-                </div>
-              )}
-            </section>
-          )}
+          {!r && c && <DetalheDoComunicado c={c} vm={vm} mural={mural} podeMexer={podeMexer} devNovo={devNovo} />}
         </div>
       )}
     </section>
+  );
+}
+
+type Comunicado = NonNullable<ReturnType<typeof useInicioNovo>['comunicado']>;
+
+/** O detalhe de um comunicado (o aviso, o estudo, o geral): as Notificações em duas colunas e a lista (modo desenvolvedor) usam. */
+export function DetalheDoComunicado({ c, vm, mural, podeMexer, devNovo }: { c: Comunicado; vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean; devNovo: boolean }) {
+  return (
+    <section className="card ini-detalhe">
+      <div className="ini-detalhe-topo">
+        <h2>{c.titulo || c.tipoRotulo}</h2>
+        {podeMexer && (
+          <span className="ini-detalhe-acoes">
+            <button type="button" className="btn btn-outline" onClick={() => void mural.fixar(c.id, !c.fixado)}><Icone nome="mapaPin" />{c.fixado ? 'Soltar' : 'Fixar no alto'}</button>
+            <button type="button" className="btn btn-outline btn-danger" onClick={() => void mural.apagar(c.id)}><Icone nome="lixeira" />Apagar</button>
+          </span>
+        )}
+      </div>
+      {devNovo ? <>
+      {/* mais arrumado (Vitor, 18/11/2026: "textos muito embolados, da uma ajeitada"): quem, o tipo e quando numa linha só
+          embaixo do título; o texto do aviso em destaque; o Recebido com a contagem, a barra e cada pessoa numa etiqueta */}
+      <p className="ini-detalhe-meta">
+        <Icone nome={ICONE_DO_TIPO[c.tipo || 'aviso']} />{c.tipoRotulo}{c.fixado && ' · fixado'}
+        <span aria-hidden="true">·</span><Icone nome="usuario" />{c.por}
+        <span aria-hidden="true">·</span><Icone nome="clock" /><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span>
+      </p>
+      {c.texto && <p className="ini-detalhe-texto ini-detalhe-corpo">{c.texto}</p>}
+      {(c.reuniao || c.link || c.anexo || c.para) && (
+        <div className="registro-props">
+          {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
+          {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
+          {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
+          {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
+        </div>
+      )}
+      {c.acompanha && (() => {
+        const recebidos = (c.recebidos || []).map(x => x.nome);
+        const total = recebidos.length + c.faltaReceber.length;
+        return (
+          <div className="ini-recebidos">
+            <div className="ini-recebidos-topo">
+              <span><Icone nome="checkCircle" /><b>Recebido</b></span>
+              <span className="hint num">{recebidos.length} de {total}</span>
+            </div>
+            <div className="ini-recebidos-barra" aria-hidden="true"><span style={{ width: (total ? Math.round(recebidos.length / total * 100) : 0) + '%' }} /></div>
+            <div className="ini-recebidos-pessoas">
+              {recebidos.map((n, i) => <span key={'r' + i} className="ini-pessoa ok"><Icone nome="check" />{n}</span>)}
+              {c.faltaReceber.map((n, i) => <span key={'f' + i} className="ini-pessoa falta">{n}</span>)}
+              {!total && <span className="hint">Ninguém ainda</span>}
+            </div>
+          </div>
+        );
+      })()}
+      </> : <>
+      <div className="registro-props">
+        <Propriedade icone={ICONE_DO_TIPO[c.tipo || 'aviso']} rotulo="Tipo"><span>{c.tipoRotulo}{c.fixado && <span className="fraco"> · fixado</span>}</span></Propriedade>
+        <Propriedade icone="usuario" rotulo="Quem"><span>{c.por}</span></Propriedade>
+        <Propriedade icone="clock" rotulo="Publicado"><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span></Propriedade>
+        {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
+        {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
+        {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
+        {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
+        {c.acompanha && <Propriedade icone="checkCircle" rotulo="Recebido"><span>{(c.recebidos || []).map(x => x.nome).join(', ') || 'Ninguém ainda'}{c.faltaReceber.length > 0 && <><br /><span className="fraco">Falta: {c.faltaReceber.join(', ')}</span></>}</span></Propriedade>}
+      </div>
+      <p className="ini-detalhe-texto">{c.texto}</p>
+      </>}
+      {c.pedeConfirmacao && !c.acompanha && (
+        <div className="ini-reuniao-linha">
+          {c.jaRecebi ? <span className="badge badge-suave badge-ok">Você marcou como recebido</span>
+            : <><span>Este aviso pede que você confirme que leu.</span><button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(c.id)}><Icone nome="check" />Recebido</button></>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+type FiltroDaLista = 'todos' | 'avisos' | 'reunioes' | 'cobrancas';
+interface LinhaDaLista { chave: string; id: string; tipo: Exclude<FiltroDaLista, 'todos'>; icone: NomeIcone; titulo: string; rotulo: string; quem: string; quando: string; pendente: boolean; selo: ReactNode; abrir?: () => void }
+
+/**
+ * As Notificações em lista (modo desenvolvedor, 18/11/2026): as cobranças, as reuniões e os comunicados numa lista só, com os
+ * filtros no alto (o tipo e "só pendentes"); clicar abre o detalhe logo embaixo da linha (a cobrança abre a tarefa).
+ */
+function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
+  const [filtro, setFiltro] = useState<FiltroDaLista>('todos');
+  const [soPendentes, setSoPendentes] = useState(false);
+  const [aberta, setAberta] = useState<string | null>(null);
+  const linhas: LinhaDaLista[] = [
+    ...vm.cobrancas.map(x => ({ chave: 'c' + x.id, id: x.id, tipo: 'cobrancas' as const, icone: x.icone, titulo: x.texto, rotulo: 'Cobrança', quem: '', quando: x.quando, pendente: !!x.aberta,
+      selo: x.aberta ? <span className="badge badge-suave badge-warn">Responder</span> : null, abrir: () => vm.abrir(x.tarefa) })),
+    ...vm.reunioesNaLista.map(x => ({ chave: 'r' + x.id, id: x.id, tipo: 'reunioes' as const, icone: 'calendar' as NomeIcone, titulo: x.titulo, rotulo: 'Reunião', quem: x.criadaPor.nome, quando: x.quandoTexto,
+      pendente: x.minhaPresenca === null && x.acoes.includes('confirmar'), selo: <SeloDaReuniao x={x} /> })),
+    ...vm.comunicados.map(x => ({ chave: 'a' + x.id, id: x.id, tipo: 'avisos' as const, icone: (x.fixado ? 'mapaPin' : ICONE_DO_TIPO[x.tipo || 'aviso']) as NomeIcone, titulo: x.tituloNaLista, rotulo: x.tipoRotulo, quem: x.por, quando: x.quandoFoi,
+      pendente: !!x.precisaReceber, selo: x.precisaReceber ? <span className="badge badge-suave badge-warn">Marcar recebido</span> : x.fixado ? <span className="badge badge-suave">Fixado</span> : null })),
+  ];
+  const conta = (f: FiltroDaLista) => linhas.filter(l => (f === 'todos' || l.tipo === f) && (!soPendentes || l.pendente)).length;
+  const visiveis = linhas.filter(l => (filtro === 'todos' || l.tipo === filtro) && (!soPendentes || l.pendente));
+  const FILTROS: { id: FiltroDaLista; rotulo: string }[] = [{ id: 'todos', rotulo: 'Todos' }, { id: 'avisos', rotulo: 'Avisos' }, { id: 'reunioes', rotulo: 'Reuniões' }, { id: 'cobrancas', rotulo: 'Cobranças' }];
+  const clicar = (l: LinhaDaLista) => {
+    if (l.abrir) { l.abrir(); return; }
+    if (aberta === l.chave) { setAberta(null); return; }
+    vm.escolherComunicado(l.id);
+    setAberta(l.chave);
+  };
+  return (
+    <>
+      <div className="notif-filtros" role="toolbar" aria-label="Filtrar as notificações">
+        {FILTROS.map(f => (
+          <button key={f.id} type="button" className={'chip-f' + (filtro === f.id ? ' on' : '')} aria-pressed={filtro === f.id} onClick={() => setFiltro(f.id)}>
+            {f.rotulo} <span className="num">{conta(f.id)}</span>
+          </button>
+        ))}
+        <span className="notif-filtros-espaco" />
+        <button type="button" className={'chip-f' + (soPendentes ? ' on' : '')} aria-pressed={soPendentes} onClick={() => setSoPendentes(v => !v)}>
+          <Icone nome="alert" width={13} height={13} />Só pendentes
+        </button>
+      </div>
+      <section className="card notif-lista">
+        {visiveis.length ? visiveis.map(l => {
+          const aqui = aberta === l.chave;
+          return (
+            <Fragment key={l.chave}>
+              <button type="button" className={'notif-linha' + (aqui ? ' aberta' : '') + (l.pendente ? ' pendente' : '')} aria-expanded={l.abrir ? undefined : aqui} onClick={() => clicar(l)}>
+                <span className="notif-icone"><Icone nome={l.icone} /></span>
+                <span className="notif-titulo"><b>{l.titulo}</b><span className="hint">{l.rotulo}</span></span>
+                <span className="hint notif-quem">{l.quem}</span>
+                <span className="hint notif-quando">{l.quando}</span>
+                <span className="notif-selo">{l.selo}</span>
+                <Icone nome={l.abrir ? 'chevronRight' : aqui ? 'chevronDown' : 'chevronRight'} />
+              </button>
+              {aqui && (
+                <div className="notif-detalhe">
+                  {l.tipo === 'reunioes' && vm.reuniao?.id === l.id && <DetalheDaReuniao x={vm.reuniao} vm={vm.reunioesVm} />}
+                  {l.tipo === 'avisos' && vm.comunicado?.id === l.id && <DetalheDoComunicado c={vm.comunicado} vm={vm} mural={mural} podeMexer={podeMexer} devNovo />}
+                </div>
+              )}
+            </Fragment>
+          );
+        }) : <Vazio compacto icone="sino" titulo={soPendentes ? 'Nada pendente' : 'Nada por aqui'} />}
+      </section>
+    </>
   );
 }
