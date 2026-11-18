@@ -119,6 +119,16 @@ export function Executor() {
   const itensDaFolha = naFolha && folha.itens ? folha.itens.map(i => ({ codigo: i.id, nome: i.nome })) : [];
   const delegacao = useDelegacao('dp', itensDaFolha, { codigo: vm.empresa?.codigo ?? null, nome: vm.empresa?.nome || '', meses: vm.meses.length ? vm.meses : [vm.competencia] });
   const itensDoChecklist = folha.itens && naFolha ? folha.itens.filter(i => delegacao.visivel(i.id)) : folha.itens;
+  // o item que a pessoa fez na delegação fica marcado na Folha de quem delegou (Vitor, 18/11/2026: "se ela deu concluida, tem que ficar
+  // concluida pra mim aqui na minha empresa! tem que ta com o check"): marca em ordem, um por vez, só se ainda não está; por enquanto
+  // só no modo desenvolvedor
+  const feitoNaDelegacao = folha.itens && naFolha && vm.dev && !delegacao.recebida ? folha.itens.find(i => !i.marcado && i.liberado && delegacao.ofuscada(i.id)) || null : null;
+  const marcouDaDelegacao = useRef(new Set<string>());
+  useEffect(() => {
+    if (!feitoNaDelegacao || marcouDaDelegacao.current.has(feitoNaDelegacao.id)) return;
+    marcouDaDelegacao.current.add(feitoNaDelegacao.id);
+    folha.alternar(feitoNaDelegacao.id);
+  }, [feitoNaDelegacao?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const faltamFerramenta = vm.tela && requisitos && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
