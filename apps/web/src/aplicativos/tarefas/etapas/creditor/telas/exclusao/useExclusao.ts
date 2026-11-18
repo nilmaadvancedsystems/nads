@@ -96,6 +96,8 @@ export function useExclusao() {
   return {
     competencia: cr.rotuloCompetencia(s.estado.competencia),
     contaBanco,
+    /** para o botão Vitor do razão (18/11/2026): a empresa e os meses do Creditor */
+    roboDoRazao: { codigo: s.empresa.codigo, empresa: nome, meses },
     banco: banco ? { id: banco.id, nome: banco.nome, marca: banco.marca, conta: [banco.agencia && 'Ag. ' + banco.agencia, banco.conta && 'C/C ' + banco.conta].filter(Boolean).join(' · ') } : null,
     lendo,
     /** o razão do banco no período já está aqui (sem ele, só o importar) */
