@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ehDiaUtil, novaRecorrencia, proximaOcorrencia, proximoDiaUtil } from './recorrencia';
+import { ehDiaUtil, novaRecorrencia, prazoDaUltima, proximaOcorrencia, proximoDiaUtil } from './recorrencia';
 
 describe('a tarefa recorrente', () => {
   it('o dia útil: sábado, domingo, feriado e ponto facultativo não; meio expediente sim', () => {
@@ -31,5 +31,18 @@ describe('a tarefa recorrente', () => {
     expect(mar.prazo).toBe('2026-03-31');
     const a = proximaOcorrencia(novaRecorrencia('anual', '2026-11-15')!)!;
     expect(a.recorrencia.ancora).toBe('2027-11-15');
+  });
+  it('com quantidade de vezes, conta e para na última', () => {
+    const r = novaRecorrencia('mensal', '2026-11-30', 3)!;
+    expect(r).toMatchObject({ vezes: 3, n: 1 });
+    const dez = proximaOcorrencia(r)!;
+    expect(dez.recorrencia.n).toBe(2);
+    const jan = proximaOcorrencia(dez.recorrencia)!;
+    expect(jan.recorrencia.n).toBe(3);
+    expect(proximaOcorrencia(jan.recorrencia)).toBeNull();
+    expect(prazoDaUltima(r)).toBe(jan.prazo);
+    expect(prazoDaUltima(novaRecorrencia('mensal', '2026-11-30')!)).toBe('');
+    expect(novaRecorrencia('anual', '2026-11-30', 1)!.vezes).toBe(1);
+    expect(proximaOcorrencia(novaRecorrencia('anual', '2026-11-30', 1)!)).toBeNull();
   });
 });

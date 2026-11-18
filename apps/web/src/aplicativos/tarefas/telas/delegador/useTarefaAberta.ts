@@ -99,6 +99,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // proximo dia util"): só na nova e, por enquanto, só no modo desenvolvedor
   const [dev] = useModoDesenvolvedor();
   const [repete, setRepete] = useState<tarefas.recorrencia.Repeticao | ''>('');
+  // quantas vezes ('' = sem fim; 18/11/2026: "as vezes a pessoa so quer colocar 12 meses ou 3 meses")
+  const [vezes, setVezes] = useState('');
   // delegar documentos no Início novo (13/11/2026): pedir ou enviar, o cliente obrigatório e uma ou mais pessoas (uma tarefa
   // para cada); a janela antiga não escolhe o modo e segue como era
   const [modoDocs, setModoDocs] = useState<tarefas.delegadas.ModoDosDocumentos | null>(null);
@@ -131,7 +133,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const delegar = delegarEscolhido ?? (!!r.responsavel && r.responsavel.uid !== uid);
   // repetindo, o prazo vai para o próximo dia útil e a recorrência guarda a data escolhida (a âncora)
   const recorrente = dev && ehNova && !pedido && !!repete && !!prazo;
-  const recorrencia = recorrente ? tarefas.recorrencia.novaRecorrencia(repete as tarefas.recorrencia.Repeticao, prazo as string) : null;
+  const recorrencia = recorrente ? tarefas.recorrencia.novaRecorrencia(repete as tarefas.recorrencia.Repeticao, prazo as string, Number(vezes) || undefined) : null;
   const prazoUtil = recorrencia ? tarefas.recorrencia.proximoDiaUtil(prazo as string) : null;
   const final: Rascunho = {
     ...r, prazo: prazoUtil ?? prazo ?? r.prazo, responsavel: delegar || !eu ? r.responsavel : { uid: eu.uid, nome: eu.nome },
@@ -240,8 +242,15 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     prazoInvalido: prazo === null,
     /** a recorrência (modo desenvolvedor): repetir, as opções e, se o prazo cair em dia não útil, para onde ele vai */
     podeRepetir: dev && ehNova && !pedido,
-    repete, setRepete,
+    repete, setRepete: (v: tarefas.recorrencia.Repeticao | '') => { setRepete(v); setErro(''); },
     opcoesDeRepeticao: tarefas.recorrencia.REPETICOES,
+    vezes, setVezes: (v: string) => setVezes(v.replace(/\D/g, '').slice(0, 3)),
+    maisVezes: tarefas.recorrencia.MAIS_VEZES,
+    unidadeDasVezes: repete ? tarefas.recorrencia.unidadeDaRepeticao(repete, Number(vezes) || 2) : '',
+    /** a recorrência precisa da data: é a primeira vez */
+    repeteSemPrazo: !!repete && !prazo,
+    /** com quantidade de vezes: o prazo da última (dd/mm/aaaa) */
+    prazoDaUltima: recorrencia?.vezes ? d.prazoParaTela(tarefas.recorrencia.prazoDaUltima(recorrencia)) : '',
     prazoNoDiaUtil: prazoUtil && prazoUtil !== prazo ? d.prazoParaTela(prazoUtil) : '',
     prazoHora: r.prazoHora,
     setPrazoHora: (prazoHora: string) => mudar({ prazoHora }),
@@ -497,7 +506,6 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     async salvar() {
       if (pedido && modoDocs) {
         if (prazo === null) { setErro('O prazo não é uma data válida (dd/mm/aaaa).'); return; }
-      if (dev && ehNova && repete && !prazo) { setErro('Para repetir, coloque o prazo (a primeira data).'); return; }
         const problema = d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: pessoasDocs.length, anexos: pendentes.length, links: linksPendentes.length, prazo: prazo || '' });
         if (problema) { setErro(problema); return; }
         if (deTeste) { toast('Teste: nada foi gravado no banco.'); voltar(); return; }
@@ -518,6 +526,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
         return;
       }
       if (prazo === null) { setErro('O prazo não é uma data válida (dd/mm/aaaa).'); return; }
+      if (dev && ehNova && !pedido && repete && !prazo) { setErro('Para repetir, coloque o prazo (a data da primeira vez).'); return; }
+      if (dev && ehNova && !pedido && repete && vezes && !(Number(vezes) >= 1 && Number(vezes) <= tarefas.recorrencia.MAIS_VEZES)) { setErro('Repetir: de 1 a ' + tarefas.recorrencia.MAIS_VEZES + ' vezes.'); return; }
       const problema = d.problemaDaTarefa(final);
       if (problema) { setErro(problema); setAba('tarefa'); return; }
       // a Entrega: nenhuma tarefa é criada; o pedido vai para a fila do office boy no Entregas

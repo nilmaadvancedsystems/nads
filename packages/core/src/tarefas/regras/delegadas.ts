@@ -1174,6 +1174,15 @@ const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((
   })) : []);
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
+const REPETE = ['diaria', 'semanal', 'quinzenal', 'mensal', 'anual'];
+function lerRecorrencia(v: unknown): Recorrencia | null {
+  const r = v && typeof v === 'object' ? v as Record<string, unknown> : null;
+  if (!r || !REPETE.includes(String(r.repete)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.ancora)) || !(Number(r.dia) >= 1 && Number(r.dia) <= 31)) return null;
+  const vezes = Number(r.vezes), n = Number(r.n);
+  const conta = Number.isInteger(vezes) && vezes >= 1 ? { vezes, n: Number.isInteger(n) && n >= 1 ? n : 1 } : {};
+  return { repete: r.repete as Recorrencia['repete'], ancora: String(r.ancora), dia: Number(r.dia), ...conta };
+}
+
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {
   const lerCliente = (v: unknown): ClienteVinculado | null => {
     const c = obj(v);
@@ -1206,6 +1215,8 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     ...(x.tipo === 'documentos' || x.tipo === 'envio' ? { tipo: x.tipo } : {}),
     ...(x.entrega === 'enviada' || x.entrega === 'contestada' || x.entrega === '' ? { entrega: x.entrega } : {}),
     ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),
+    // a recorrência (18/11/2026)
+    ...(lerRecorrencia(x.recorrencia) ? { recorrencia: lerRecorrencia(x.recorrencia)! } : {}),
   };
 }
 

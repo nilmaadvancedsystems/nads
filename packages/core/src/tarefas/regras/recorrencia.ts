@@ -13,17 +13,30 @@ export interface Recorrencia {
   ancora: string;
   /** no mês e no ano: o dia do mês da primeira (31 continua 31 nos meses que têm) */
   dia: number;
+  /** quantas vezes no total (Vitor, 18/11/2026: "as vezes a pessoa so quer colocar 12 meses ou 3 meses"); sem = sem fim */
+  vezes?: number;
+  /** qual vez é esta (a primeira é 1); só com vezes */
+  n?: number;
 }
 
-export const REPETICOES: readonly { valor: Repeticao; rotulo: string }[] = [
-  { valor: 'diaria', rotulo: 'Todo dia útil' },
-  { valor: 'semanal', rotulo: 'Toda semana' },
-  { valor: 'quinzenal', rotulo: 'A cada 15 dias' },
-  { valor: 'mensal', rotulo: 'Todo mês' },
-  { valor: 'anual', rotulo: 'Todo ano' },
+/** o maior número de vezes que dá para escolher */
+export const MAIS_VEZES = 120;
+
+/** as opções da tela (18/11/2026: "Todo dia, toda semana, todo mes, todo ano"); a quinzenal segue valendo nas que já existem */
+export const REPETICOES: readonly { valor: Repeticao; rotulo: string; unidade: string; unidades: string }[] = [
+  { valor: 'diaria', rotulo: 'Todo dia', unidade: 'dia', unidades: 'dias' },
+  { valor: 'semanal', rotulo: 'Toda semana', unidade: 'semana', unidades: 'semanas' },
+  { valor: 'mensal', rotulo: 'Todo mês', unidade: 'mês', unidades: 'meses' },
+  { valor: 'anual', rotulo: 'Todo ano', unidade: 'ano', unidades: 'anos' },
 ];
 
-export const rotuloDaRepeticao = (r: Repeticao): string => REPETICOES.find(x => x.valor === r)?.rotulo || '';
+export const rotuloDaRepeticao = (r: Repeticao): string => REPETICOES.find(x => x.valor === r)?.rotulo || (r === 'quinzenal' ? 'A cada 15 dias' : '');
+
+/** "dias", "semanas", "meses", "anos" (ou no singular, para 1) */
+export const unidadeDaRepeticao = (r: Repeticao, vezes: number): string => {
+  const o = REPETICOES.find(x => x.valor === r);
+  return o ? (vezes === 1 ? o.unidade : o.unidades) : 'vezes';
+};
 
 const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 const dois = (n: number) => String(n).padStart(2, '0');
@@ -48,9 +61,11 @@ export function proximoDiaUtil(iso: string): string {
 }
 
 /** A recorrência que começa num prazo ('aaaa-mm-dd'). */
-export function novaRecorrencia(repete: Repeticao, prazo: string): Recorrencia | null {
+export function novaRecorrencia(repete: Repeticao, prazo: string, vezes?: number): Recorrencia | null {
   const d = deIso(prazo);
-  return d ? { repete, ancora: prazo, dia: d.getDate() } : null;
+  if (!d) return null;
+  const v = vezes && Number.isInteger(vezes) && vezes >= 1 ? Math.min(vezes, MAIS_VEZES) : 0;
+  return { repete, ancora: prazo, dia: d.getDate(), ...(v ? { vezes: v, n: 1 } : {}) };
 }
 
 const ultimoDia = (ano: number, mes0: number) => new Date(ano, mes0 + 1, 0).getDate();
@@ -59,11 +74,14 @@ const ultimoDia = (ano: number, mes0: number) => new Date(ano, mes0 + 1, 0).getD
 export function proximaOcorrencia(r: Recorrencia): { recorrencia: Recorrencia; prazo: string } | null {
   const d = deIso(r.ancora);
   if (!d) return null;
+  // com quantidade de vezes: a última não tem próxima
+  if (r.vezes && (r.n || 1) >= r.vezes) return null;
+  const conta = r.vezes ? { n: (r.n || 1) + 1 } : {};
   if (r.repete === 'diaria') {
     // todo dia útil: o dia útil seguinte ao prazo desta
     d.setDate(d.getDate() + 1);
     const prox = proximoDiaUtil(paraIso(d));
-    return { recorrencia: { ...r, ancora: prox }, prazo: prox };
+    return { recorrencia: { ...r, ancora: prox, ...conta }, prazo: prox };
   }
   if (r.repete === 'semanal' || r.repete === 'quinzenal') d.setDate(d.getDate() + (r.repete === 'semanal' ? 7 : 14));
   else {
@@ -74,5 +92,17 @@ export function proximaOcorrencia(r: Recorrencia): { recorrencia: Recorrencia; p
     d.setTime(n.getTime());
   }
   const ancora = paraIso(d);
-  return { recorrencia: { ...r, ancora }, prazo: proximoDiaUtil(ancora) };
+  return { recorrencia: { ...r, ancora, ...conta }, prazo: proximoDiaUtil(ancora) };
+}
+
+/** O prazo da última vez ('aaaa-mm-dd'), quando a recorrência tem quantidade de vezes; '' quando é sem fim. */
+export function prazoDaUltima(r: Recorrencia): string {
+  if (!r.vezes) return '';
+  let atual: { recorrencia: Recorrencia; prazo: string } | null = { recorrencia: r, prazo: proximoDiaUtil(r.ancora) };
+  for (let i = 0; i < MAIS_VEZES + 1; i++) {
+    const p: { recorrencia: Recorrencia; prazo: string } | null = proximaOcorrencia(atual!.recorrencia);
+    if (!p) break;
+    atual = p;
+  }
+  return atual ? atual.prazo : '';
 }
