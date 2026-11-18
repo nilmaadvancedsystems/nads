@@ -52,7 +52,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
   const andando = !!estado && (estado.status === 'pendente' || estado.status === 'trabalhando');
   const semCodigo = !p.codigo;
   const desligado = IMPORTAR_DESLIGADO || p.disabled || semCodigo || andando || mandando;
-  const titulo = IMPORTAR_DESLIGADO ? MOTIVO_DESLIGADO : semCodigo ? 'A empresa não tem o código do Alterdata' : p.disabled ? p.motivo : andando ? 'O robô está importando' : (roboDePcDoUsuario() ? 'O robô do seu PC (' + roboDePcDoUsuario()!.rotulo + ') importa' : 'O robô do servidor importa') + ' estes lançamentos no Alterdata Contábil, no lote "Importacao nads"';
+  const titulo = IMPORTAR_DESLIGADO ? MOTIVO_DESLIGADO : semCodigo ? 'A empresa não tem o código do Alterdata' : p.disabled ? p.motivo : andando ? 'O robô está importando' : (roboDePcDoUsuario() ? 'O robô do seu PC (' + roboDePcDoUsuario()!.rotulo + ') importa' : 'O robô do servidor importa') + ' estes lançamentos no Alterdata Contábil, no lote "IMPORTAÇÃO NADS"';
 
   async function importar() {
     const pl = p.planilha();
@@ -60,7 +60,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
     const ok = await modal<boolean>({
       icone: 'upload', titulo: 'Importar no Alterdata?',
       html: 'O robô vai importar <b>' + pl.linhas.toLocaleString('pt-BR') + (pl.linhas === 1 ? ' lançamento' : ' lançamentos') + '</b> na empresa <b>'
-        + String(p.codigo) + '</b>, num lote novo: <b>' + escapar(p.lote) + '</b>.',
+        + String(p.codigo) + '</b>, no lote <b>IMPORTAÇÃO NADS</b> (se não existir, o robô cria).',
       botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Importar', valor: true, variante: 'btn-primary' }],
     });
     if (!ok) return;
@@ -98,7 +98,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
             conteudo={fechar => (
               <>
                 <button type="button" className="popover-item" role="menuitem" disabled={desligado} title={titulo} onClick={() => { fechar(); void importar(); }}>
-                  <Icone nome="upload" /><span className="popover-texto"><b>Importar direto no Alterdata</b><br /><span className="hint">{roboDePcDoUsuario() ? 'O robô do seu PC importa, no lote "Importacao nads"' : 'O robô importa daqui, no lote "Importacao nads"'}</span></span>
+                  <Icone nome="upload" /><span className="popover-texto"><b>Importar direto no Alterdata</b><br /><span className="hint">{roboDePcDoUsuario() ? 'O robô do seu PC importa, no lote "IMPORTAÇÃO NADS"' : 'O robô importa daqui, no lote "IMPORTAÇÃO NADS"'}</span></span>
                 </button>
                 <button type="button" className="popover-item" role="menuitem" disabled={p.disabled} title={p.disabled ? p.motivo : undefined} onClick={() => { fechar(); baixar(); }}>
                   <Icone nome="download" /><span className="popover-texto"><b>Baixar a planilha</b><br /><span className="hint">Você importa no Alterdata</span></span>
@@ -137,8 +137,4 @@ function SituacaoDaImportacao({ e }: { e: ImportacaoNoAlterdata }) {
   }
   if (e.status === 'cancelado') return <span className="hint">Cancelado</span>;
   return <span className="badge badge-warn" role="status" title={e.erro}>Não importou: {e.erro.replace(/^o Alterdata não importou:\s*/i, '').slice(0, 160)}</span>;
-}
-
-function escapar(s: string): string {
-  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 }

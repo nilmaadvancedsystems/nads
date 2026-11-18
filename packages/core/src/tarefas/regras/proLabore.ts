@@ -27,6 +27,7 @@ export interface PagamentoDoProLabore {
 
 const centavos = (n: number) => Math.round(n * 100) / 100;
 const RE_REF = /<(\d{2})\/(\d{4})>\s*(.*)$/;
+const RE_MES_SOLTO = /\b(\d{2})\/(\d{4})\b/;
 const fimDoMes = (m: string) => m + '-' + String(new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate()).padStart(2, '0');
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
 const mesBR = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
@@ -51,21 +52,50 @@ export function dataDoPagamentoDoProLabore(competencia: string, diaUtilDoMes = 5
 export const historicoDoPagamento = (competencia: string, socio: string, modelos?: ModelosDoHistorico) =>
   preencherHistorico('prolabore.pagamento', { ref: mesBR(competencia), socio }, modelos).trim();
 
-/** O que falta pagar de cada competência e sócio, da mais antiga para a mais nova (só o que sobra). */
-export function pagamentosDoProLabore(razao: RazaoDaConta, modelos?: ModelosDoHistorico): PagamentoDoProLabore[] {
-  const grupos = new Map<string, { competencia: string; socio: string; valor: number; anterior?: boolean }>();
-  const soltos: number[] = [];
+/**
+ * O que falta pagar de cada competência e sócio, da mais antiga para a mais nova (só o que sobra). As mesmas contas da grade dos
+ * meses (mesesDoProLabore; Vitor, 18/11/2026: a grade dizia "tudo pago" e o Gerar montava 3 pagamentos):
+ * - o pagamento com "<mm/aaaa> SÓCIO" é desse sócio na competência; com "mm/aaaa" no histórico (sem o sócio), da competência;
+ *   o que sobra de um sócio na competência abate os outros da mesma competência (nome escrito diferente não fica sem abater);
+ * - o pagamento sem competência abate as mais antigas (o saldo de antes do razão primeiro);
+ * - ate ('aaaa-mm'): só até o fim do período (o razão vem até o mês seguinte por causa dos pagamentos; a provisão dele não entra).
+ */
+export function pagamentosDoProLabore(razao: RazaoDaConta, modelos?: ModelosDoHistorico, ate?: string): PagamentoDoProLabore[] {
+  type Grupo = { competencia: string; socio: string; valor: number; anterior?: boolean };
+  const grupos = new Map<string, Grupo>();
+  const pagoNaComp = new Map<string, number>();
+  let solto = 0;
+  const de = (competencia: string, socio: string) => {
+    const k = competencia + '|' + socio;
+    let g = grupos.get(k);
+    if (!g) { g = { competencia, socio, valor: 0 }; grupos.set(k, g); }
+    return g;
+  };
   for (const l of razao.lancamentos) {
     const m = RE_REF.exec(l.historico);
-    if (!m) { soltos.push(l.valor); continue; }
-    const competencia = m[2] + '-' + m[1];
-    const socio = m[3].replace(/\s+/g, ' ').trim();
-    const k = competencia + '|' + socio;
-    const g = grupos.get(k) || { competencia, socio, valor: 0 };
-    g.valor = centavos(g.valor + l.valor);
-    grupos.set(k, g);
+    if (m) {
+      const g = de(m[2] + '-' + m[1], m[3].replace(/\s+/g, ' ').trim());
+      g.valor = centavos(g.valor + l.valor);
+      continue;
+    }
+    const mm = l.valor < 0 ? RE_MES_SOLTO.exec(l.historico) : null;
+    if (mm) { const c = mm[2] + '-' + mm[1]; pagoNaComp.set(c, centavos((pagoNaComp.get(c) || 0) - l.valor)); continue; }
+    solto = centavos(solto + l.valor);
   }
+  // o que ficou negativo num sócio (o pagamento com o nome diferente) e o pago com o mês sem o sócio abatem a competência
+  for (const g of grupos.values()) if (g.valor < -0.005) { pagoNaComp.set(g.competencia, centavos((pagoNaComp.get(g.competencia) || 0) - g.valor)); g.valor = 0; }
   const ordem = [...grupos.values()].sort((a, b) => a.competencia.localeCompare(b.competencia) || a.socio.localeCompare(b.socio));
+  for (const [c, pago] of pagoNaComp) {
+    let resta = pago;
+    for (const g of ordem) {
+      if (resta <= 0.005) break;
+      if (g.competencia !== c || g.valor <= 0.005) continue;
+      const usa = Math.min(g.valor, resta);
+      g.valor = centavos(g.valor - usa);
+      resta = centavos(resta - usa);
+    }
+    if (resta > 0.005) solto = centavos(solto - resta);   // pagou mais que a competência: o resto abate as mais antigas
+  }
   // o saldo de antes do razão (credor = pró-labore que vinha sem pagar): a competência anterior, com o sócio mais comum
   if (razao.saldoInicial > 0.005 && ordem.length) {
     const conta = new Map<string, number>();
@@ -74,7 +104,6 @@ export function pagamentosDoProLabore(razao: RazaoDaConta, modelos?: ModelosDoHi
     ordem.unshift({ competencia: mesAntes(ordem[0].competencia), socio, valor: centavos(razao.saldoInicial), anterior: true });
   }
   // o pagamento (ou crédito) sem a competência no histórico: abate as mais antigas
-  let solto = centavos(soltos.reduce((t, v) => t + v, 0));
   for (const g of ordem) {
     if (solto >= -0.005) break;
     const usa = Math.min(g.valor, -solto);
@@ -82,7 +111,7 @@ export function pagamentosDoProLabore(razao: RazaoDaConta, modelos?: ModelosDoHi
     g.valor = centavos(g.valor - usa);
     solto = centavos(solto + usa);
   }
-  return ordem.filter(g => g.valor > 0.005).map(g => ({
+  return ordem.filter(g => g.valor > 0.005 && (!ate || g.anterior || g.competencia <= ate)).map(g => ({
     competencia: g.competencia, socio: g.socio, valor: g.valor, data: fimDoMes(g.competencia),
     historico: historicoDoPagamento(g.competencia, g.socio, modelos), ...(g.anterior ? { doSaldoAnterior: true } : {}),
   }));
@@ -111,7 +140,6 @@ export interface MesDoProLabore {
   saldo: number | null;
 }
 
-const RE_MES_SOLTO = /\b(\d{2})\/(\d{4})\b/;
 
 /**
  * O pró-labore mês a mês (Vitor, 18/11/2026: "coloca um saldo mensal embaixo para eu ver quais pagamentos faltam... pago ou nao

@@ -5,7 +5,7 @@ import type { ContaDoPlano } from '../empresas/cadastro/tipos';
 import type { EmpresaExtrator, Lancamento } from '../extratudo/extrator/tipos';
 import {
   chaveDoFavorecido, chavesDasLinhas, mesesComExtrato, configDoDocumento, configVazia, criarRegra, dadosDoBanco, documentoDaConfig, documentoDoMes, editarHistorico, editarRegra,
-  escolherConta, excluirRegras, gravarLinha, expressaoCasa, ignorarLinha, lancamentosParaImportar, mesDoDocumento, mesVazio, montarRegistro, percentualConciliado,
+  contaDoBancoNaConfig, definirContaDoBanco, escolherConta, excluirRegras, gravarLinha, expressaoCasa, ignorarLinha, lancamentosParaImportar, mesDoDocumento, mesVazio, montarRegistro, percentualConciliado,
   planilhaDaConferencia, problemaDaRegra, regraDaLinha, regraSugerida, registrarExportacao, removerConta, totaisDoRegistro, voltarAoAutomatico,
   type DadosDaRegra, type DadosDoBanco, type RegraDoLancatudo,
 } from './index';
@@ -264,5 +264,14 @@ describe('o documento no banco', () => {
     expect(mesDoDocumento(documentoDoMes(m), '2026-09')).toEqual(m);
     expect(configDoDocumento({ regras: [{ id: 1 }, null, 'x'], lembradas: { a: 1 } })).toEqual(configVazia());
     expect(mesDoDocumento(null, '2026-09')).toEqual(mesVazio('2026-09'));
+  });
+  it('o código contábil do banco escolhido no Lançatudo: só dígitos, vale sem o do Cadastro, vai e volta do banco', () => {
+    const c = definirContaDoBanco(configVazia(), 'sicoob', '1.05.03');
+    expect(c.contasDosBancos).toEqual({ sicoob: '10503' });
+    expect(contaDoBancoNaConfig(c, 'sicoob', '')).toBe('10503');
+    expect(contaDoBancoNaConfig(c, 'sicoob', '11111')).toBe('11111');
+    expect(contaDoBancoNaConfig(c, 'bb', undefined)).toBe('');
+    expect(configDoDocumento(documentoDaConfig(c))).toEqual(c);
+    expect(definirContaDoBanco(c, 'sicoob', '').contasDosBancos).toEqual({});
   });
 });

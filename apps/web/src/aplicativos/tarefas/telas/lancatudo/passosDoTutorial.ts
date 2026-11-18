@@ -21,6 +21,8 @@ export const PASSOS_DO_TUTORIAL: readonly PassoDoTutorial[] = [
     texto: 'O extrato do banco vira lançamentos prontos para o Alterdata. Em poucos passos você vê como.' },
   { id: 'topo', alvo: '[data-tut="lt-topo"]', icone: 'predio', titulo: 'Empresa, mês e banco',
     texto: 'Escolha a empresa, a competência e a conta bancária. Cada banco tem as suas regras.' },
+  { id: 'extrato', alvo: '[data-tut="lt-extrato"]', icone: 'upload', titulo: 'O extrato e o razão',
+    texto: 'Traga o extrato do mês do computador, do Drive ou do e-mail, e o razão do Alterdata: o razão ajuda a achar as contas.' },
   { id: 'progresso', alvo: '[data-tut="lt-progresso"]', icone: 'checkCircle', titulo: 'Quanto falta',
     texto: 'Quantos lançamentos já têm a conta certa. Quando não faltar nenhum, dá para exportar.' },
   { id: 'filtros', alvo: '[data-tut="lt-filtros"]', icone: 'filtro', titulo: 'Os filtros',

@@ -9,6 +9,7 @@ import { BotaoIcone, Icone, LogoBanco, MenuSuspenso, Segmentado, SeletorMes, use
 import { useState, type ReactNode } from 'react';
 import { BotaoImportarNoAlterdata } from '../../../../comum/BotaoImportarNoAlterdata';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
+import { JanelaDoExtrato } from './JanelaDoExtrato';
 import { Janela, JanelaDaLinha, JanelaDaRegra, JanelaDoPlano } from './Janelas';
 import { useLancatudo, type EmpresaDoLancatudo } from './useLancatudo';
 import { useRegistroDoLancatudo } from './useRegistroDoLancatudo';
@@ -44,8 +45,11 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
   const rotuloDoBanco = (b: Vm['banco']) => b.nome + (b.conta ? ' ' + b.conta : '');
   // o tutorial (18/11/2026): sozinho na primeira vez que a tela tem lançamentos; de novo pelo botão Tutorial
   const tutorial = useTutorialDoLancatudo(vm.pronto && vm.linhas.length > 0 && !regrasAbertas);
+  // o extrato e o razão do mês aqui mesmo (18/11/2026: "tem que ter como adicionar o extrato aqui ou puxar do drive")
+  const [extratoAberto, setExtratoAberto] = useState(false);
   return (
     <section className="lt">
+      {extratoAberto && <JanelaDoExtrato empresa={empresa} competencia={entrada.competencia} rotuloDoMes={vm.rotuloDoMes} fechar={() => setExtratoAberto(false)} />}
       {tutorial.aberto && <TutorialDoLancatudo fechar={tutorial.fechar} />}
       {regrasAbertas && (
         <Janela titulo="Regras" fechar={() => setRegrasAbertas(false)} className="lt-janela-regras">
@@ -64,21 +68,42 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
           itens={vm.bancos.map(b => ({ rotulo: <span className="lt-banco-item"><span className="lt-logo"><LogoBanco banco={b.marca || 'outro'} cor /></span>{rotuloDoBanco(b)}</span>, marcado: b.id === vm.banco.id, onClick: () => entrada.setBanco(b.id) }))} />
         </span>
         <span className="tarefas-barra-espaco" />
+        <button type="button" className="btn btn-outline" data-tut="lt-extrato" onClick={() => setExtratoAberto(true)} title="Importar o extrato e o razão do mês: do computador, do Drive ou do e-mail">
+          <Icone nome="upload" />Extrato e razão
+        </button>
         {vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
         <button type="button" className="btn btn-outline" data-tut="lt-regras" onClick={() => setRegrasAbertas(true)} title="As regras da empresa e as contas que o nads aprendeu">
           <Icone nome="settings" />Regras<span className="menu-contador">{vm.regras.length}</span>
         </button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro lt-dica"><Icone nome="alert" />O banco recusou: {vm.erro}</p>}
-      {vm.pronto && !vm.contaDoBanco && <p className="registro-dica registro-dica-erro lt-dica"><Icone nome="alert" />Falta o código contábil da conta {rotuloDoBanco(vm.banco)} em Configurações › Empresas › Contas bancárias: sem ele não dá para exportar.</p>}
+      {vm.pronto && !vm.contaDoBanco && <ContaDoBanco vm={vm} rotulo={rotuloDoBanco(vm.banco)} />}
       {vm.semPlano && <p className="registro-dica lt-dica"><Icone nome="ajuda" />A empresa ainda não tem plano de contas no Cadastro: o código da conta vale como for digitado, sem conferir.</p>}
-      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} />
+      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setExtratoAberto(true)} />
     </section>
   );
 }
 
 // ------------------------------------------------------------------------------------------------- os lançamentos
-function Lancamentos({ vm, irParaOMes }: { vm: Vm; irParaOMes: (competencia: string) => void }) {
+/**
+ * Sem o código contábil da conta bancária no Cadastro (18/11/2026: "tem que ter como configurar por aqui as contas"): o código
+ * aqui mesmo, digitado ou escolhido no plano de contas; fica guardado no Lançatudo da empresa, para esta conta bancária.
+ */
+function ContaDoBanco({ vm, rotulo }: { vm: Vm; rotulo: string }) {
+  const [codigo, setCodigo] = useState('');
+  const gravar = () => { if (codigo.trim()) vm.gravarContaDoBanco(codigo); };
+  return (
+    <div className="lt-conta-banco">
+      <span className="lt-conta-banco-texto"><Icone nome="alert" /><span>Falta o código contábil da conta <b>{rotulo}</b>: sem ele não dá para exportar. Digite o código ou escolha no plano.</span></span>
+      <input type="text" inputMode="numeric" className="lt-conta-banco-campo" value={codigo} placeholder="Código" aria-label={'O código contábil da conta ' + rotulo}
+        onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} onKeyDown={e => { if (e.key === 'Enter') gravar(); }} />
+      <button type="button" className="btn btn-sm btn-outline" onClick={vm.abrirPlanoDoBanco}><Icone nome="search" />No plano</button>
+      <button type="button" className="btn btn-sm btn-primary" disabled={!codigo.trim()} onClick={gravar}><Icone nome="check" />Gravar</button>
+    </div>
+  );
+}
+
+function Lancamentos({ vm, irParaOMes, abrirExtrato }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void }) {
   const t = vm.totais;
   if (vm.semExtrato) {
     const temOutros = vm.mesesComExtrato.length > 0;
@@ -86,14 +111,17 @@ function Lancamentos({ vm, irParaOMes }: { vm: Vm; irParaOMes: (competencia: str
       <div className="gh-blank">
         <Icone nome="landmark" />
         <h4>{'Sem extrato de ' + vm.banco.nome + ' em ' + vm.rotuloDoMes}</h4>
-        <p>{temOutros ? 'O Extrator tem extrato desta conta nestes meses:'
-          : 'O Lançatudo usa o extrato que o Extrator já leu, e esta conta ainda não tem nenhum. Importe na etapa Importação da rotina do Contábil (Minhas empresas) e volte aqui.'}</p>
+        <p>Envie o extrato do computador ou puxe do Drive; o razão do mês ajuda a achar as contas.</p>
+        <p className="cad-botoes"><button type="button" className="btn btn-primary" onClick={abrirExtrato}><Icone nome="upload" />Adicionar o extrato</button></p>
         {temOutros && (
-          <p className="cad-botoes">
-            {vm.mesesComExtrato.map((m, i) => (
-              <button key={m.valor} type="button" className={'btn ' + (i === 0 ? 'btn-primary' : 'btn-outline')} onClick={() => irParaOMes(m.valor)}><Icone nome="calendar" />{m.rotulo}</button>
-            ))}
-          </p>
+          <>
+            <p className="hint">Ou abra um mês que já tem extrato desta conta:</p>
+            <p className="cad-botoes">
+              {vm.mesesComExtrato.slice(0, 6).map(m => (
+                <button key={m.valor} type="button" className="btn btn-outline" onClick={() => irParaOMes(m.valor)}><Icone nome="calendar" />{m.rotulo}</button>
+              ))}
+            </p>
+          </>
         )}
       </div>
     );
@@ -127,10 +155,11 @@ function Lancamentos({ vm, irParaOMes }: { vm: Vm; irParaOMes: (competencia: str
         <div className="lt-painel-acoes">
           <div className="lt-painel-botoes" data-tut="lt-exportar">
             <BotaoImportarNoAlterdata codigo={vm.empresa.codigo} empresa={vm.empresa.nome} lote={vm.lote} origem="lancatudo" planilha={vm.planilhaParaOAlterdata}
-              disabled={!!vm.motivoSemExportar} motivo={vm.motivoSemExportar} quem={vm.quem} />
+              disabled={!!vm.motivoSemExportar} motivo={vm.motivoSemExportar} quem={vm.quem} baixar={vm.baixarArquivo} />
             <MenuSuspenso rotulo="Ações" className="btn btn-primary" titulo="Ações" direita flutuante largura={340} itens={[
               { rotulo: 'Exportar lançamentos contábeis (.xls) · ' + vm.paraExportar, icone: 'download', desabilitado: !!vm.motivoSemExportar, onClick: vm.baixarArquivo },
               { rotulo: 'Exportar Simples Conferência (Excel)', icone: 'fileText', desabilitado: !!vm.motivoSemExportar, onClick: vm.baixarConferencia },
+              ...(vm.contaDoBanco && !vm.contaDoBancoNoCadastro ? [{ rotulo: 'Código contábil do banco: ' + vm.contaDoBanco + ' (trocar)', icone: 'landmark' as const, onClick: vm.abrirPlanoDoBanco }] : []),
               'separador',
               { rotulo: 'Confirmar as ' + t.sugeridas + ' sugeridas pelo razão', icone: 'check', desabilitado: !t.sugeridas, onClick: vm.confirmarSugeridas },
               { rotulo: 'Levar as sugeridas sem confirmar', icone: 'checklist', marcado: vm.comSugeridas, onClick: () => vm.setComSugeridas(!vm.comSugeridas) },
