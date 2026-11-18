@@ -36,7 +36,7 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, m
         <>
           <BotaoDiario onClick={vm.usarDiario} />
           {meses && meses.length && contaDoRobo ? (
-            <ComRoboDoRazao codigo={codigo} empresa={empresa} conta={contaDoRobo} meses={meses} importar={f => vm.importar(f)}>
+            <ComRoboDoRazao codigo={codigo} empresa={empresa} conta={contaDoRobo} meses={meses} importar={f => vm.importar(f)} retomar={dev}>
               {robo => (robo
                 ? <MenuDeImportar titulo={'o razão do Pró-labore (' + contaDoRobo + ')'} aceitar=".xls,.xlsx,.ods" travado={!!travado} robo={robo} onArquivos={fs => { if (fs[0]) void vm.importar(fs[0]); }} />
                 : doComputador)}
