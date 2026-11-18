@@ -138,7 +138,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     fazerAcao: (id: string, novo: Status) => {
       const gravar = () => repo.salvar(id, { status: novo });
       const t = todas.find(x => x.id === id);
-      // concluir pergunta "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+      // concluir pergunta "Mais algo que eu deva saber?" (18/11/2026)
       (novo === 'concluida' && t ? concluirComPergunta(t, gravar) : gravar()).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e))));
     },
     vazio: daAba.length ? { titulo: 'Nenhuma tarefa com isso', texto: '' } : VAZIO_DA_ABA[aba],

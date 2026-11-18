@@ -341,7 +341,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     async fazerAcao(status: tarefas.delegadas.Status) {
       if (!tarefa) return;
       try {
-        // concluir pergunta "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+        // concluir pergunta "Mais algo que eu deva saber?" (18/11/2026)
         if (status === 'concluida') { if (!(await concluirComPergunta(tarefa, () => repo.salvar(tarefa.id, { status })))) return; }
         else await repo.salvar(tarefa.id, { status });
         if (status === 'concluida' && !mudou) voltar();

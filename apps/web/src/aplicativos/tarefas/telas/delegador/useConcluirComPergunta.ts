@@ -1,9 +1,8 @@
 // "Mais algo que eu deva saber?" ao concluir (Vitor, 18/11/2026): a pergunta e a observação para quem criou (o campo em
-// perguntaAoConcluir.tsx). Por enquanto só no modo desenvolvedor.
+// perguntaAoConcluir.tsx). Para todos desde 18/11/2026.
 import { tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createElement } from 'react';
-import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useTarefasDelegadas } from '../../dados/repo';
 import { CampoDaObservacao } from './perguntaAoConcluir';
 
@@ -13,11 +12,10 @@ import { CampoDaObservacao } from './perguntaAoConcluir';
  */
 export function useConcluirComPergunta() {
   const { modal } = useRetorno();
-  const [dev] = useModoDesenvolvedor();
   const repo = useTarefasDelegadas();
   const uid = repo.eu()?.uid || '';
   return async (t: Pick<tarefas.delegadas.TarefaDelegada, 'id' | 'criadaPor'>, salvar: () => Promise<unknown>): Promise<boolean> => {
-    if (!dev || !uid || t.criadaPor.uid === uid) { await salvar(); return true; }
+    if (!uid || t.criadaPor.uid === uid) { await salvar(); return true; }
     const quem = t.criadaPor.nome.split(' ')[0];
     const r = await modal<'nao' | 'sim' | null>({
       icone: 'mensagem', titulo: 'Mais algo que ' + quem + ' deva saber?', texto: 'Se tiver, mande uma observação junto com a conclusão.',

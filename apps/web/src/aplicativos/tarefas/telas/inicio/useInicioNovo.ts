@@ -154,7 +154,7 @@ export function useInicioNovo() {
     ...comunicados.filter(c => c.tipo === 'reuniao' && (c.quando || '').startsWith(dia)).map(c => ({ id: c.id, titulo: c.tituloNaLista, hora: horaDe(c.quando || ''), duracao: '', quando: c.quando || '' })),
   ].sort((a, b) => a.quando.localeCompare(b.quando));
 
-  // a pergunta "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+  // a pergunta "Mais algo que eu deva saber?" (18/11/2026)
   const concluirComPergunta = useConcluirComPergunta();
   const concluir = (t: tarefas.delegadas.TarefaDelegada) => {
     // concluir pelo círculo só quando a tarefa deixa: os documentos (o envio e o requerer) e as que não deixam abrem a janela

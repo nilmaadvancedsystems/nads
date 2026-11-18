@@ -629,7 +629,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     concluirDelegada: async () => {
       if (!recebida) return;
       try {
-        // "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+        // "Mais algo que eu deva saber?" (18/11/2026)
         if (!(await concluirComPergunta(recebida, () => repoDelegadas.salvar(recebida.id, { status: 'concluida' })))) return;
         toast('Tarefa concluída.');
         navegar(BASE + '/inicio?aba=minhas');
