@@ -43,7 +43,7 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   // do banco movimento, do plano de contas para selecionar"): a analítica embaixo da sintética Caixa ou Bancos (na ordem do
   // balancete), ou com caixa/banco no nome; aplicação, empréstimo e financiamento ficam de fora
   const deDinheiro = useMemo(() => {
-    const fora = /aplica|empr[eé]stimo|financiamento|consórcio|consorcio|cap\.? de giro|capital de giro/i;
+    const fora = /aplica|investimento|poupan|empr[eé]stimo|financiamento|consórcio|consorcio|cap\.? de giro|capital de giro/i;
     const ordem = [...(contas || [])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
     let pai = '';
     const achadas: { codigo: string; nome: string }[] = [];
@@ -51,7 +51,8 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
       if (c.sintetica) { pai = c.nome; continue; }
       const doPai = /^caixa\b|caixa geral|^bancos?\b|conta movimento/i.test(pai) && !fora.test(pai);
       const doNome = /^caixa\b|banco|conta movimento/i.test(c.nome);
-      if ((doPai || doNome) && !fora.test(c.nome) && (!c.grupo || /ativo/i.test(c.grupo))) achadas.push({ codigo: c.codigo, nome: c.nome });
+      // embaixo de aplicação (ou empréstimo) não entra nem com "banco" no nome (18/11/2026: "aplicacao nao entra")
+      if ((doPai || doNome) && !fora.test(pai) && !fora.test(c.nome) && (!c.grupo || /ativo/i.test(c.grupo))) achadas.push({ codigo: c.codigo, nome: c.nome });
     }
     return achadas;
   }, [contas]);
