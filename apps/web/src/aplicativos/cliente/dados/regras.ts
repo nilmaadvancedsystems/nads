@@ -2,6 +2,8 @@
 // pessoal, o filtro dos documentos, os avisos do sino e o texto dos pedidos do pessoal (admissão, férias e demissão viram
 // um chamado do tipo certo com os dados no texto). Funções puras, testadas em regras.test.ts.
 import type { areaCliente as ac } from '@nads/core';
+import { areaCliente as acValor } from '@nads/core';
+const certidaoParaAvisar = acValor.certidaoParaAvisar;
 import type { CertificadoDigital, DocumentoDoCliente, EstadoDaArea } from './areaCliente';
 
 const DIA = 86_400_000;
@@ -63,10 +65,18 @@ export function mesesDosDocumentos(docs: DocumentoDoCliente[]): string[] {
   return [...new Set(docs.map(d => d.competencia).filter(Boolean))].sort().reverse();
 }
 
-export interface Notificacao { id: string; titulo: string; texto: string; ir: 'documentos' | 'guias' | 'chamados' }
+export interface Notificacao {
+  id: string; titulo: string; texto: string; ir: 'documentos' | 'guias' | 'chamados' | 'mandei';
+  /** o pedido do Mandei: o código do link do formulário (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino") */
+  codigo?: string;
+  /** o que falta mandar: a janela de envio abre neste tipo */
+  enviar?: ac.TipoDeEnvio;
+  /** a entrega que o cliente confirma que recebeu (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
+  confirmarEntrega?: string;
+}
 
 /** O que o sino mostra: guias vencidas ou que vencem hoje, documentos novos, chamados respondidos e o certificado perto de vencer. */
-export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'chamados' | 'certificado'>, hoje: Date, rotuloDaGuia: (g: ac.GuiaDoCliente) => string): Notificacao[] {
+export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'chamados' | 'certificado'> & Partial<Pick<EstadoDaArea, 'avisos' | 'tickets' | 'entregas'>>, hoje: Date, rotuloDaGuia: (g: ac.GuiaDoCliente) => string): Notificacao[] {
   const lista: Notificacao[] = [];
   for (const g of e.guias) {
     if (g.situacao === 'vencida') lista.push({ id: 'g-' + g.id, titulo: rotuloDaGuia(g) + ' vencida', texto: 'Venceu em ' + g.vencimento, ir: 'guias' });
@@ -76,6 +86,21 @@ export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'cha
   if (novos.length) lista.push({ id: 'docs-' + novos.map(d => d.id).join('.'), titulo: novos.length === 1 ? 'Documento novo' : novos.length + ' documentos novos', texto: novos.map(d => d.nome).slice(0, 2).join(', ') + (novos.length > 2 ? ' e mais ' + (novos.length - 2) : ''), ir: 'documentos' });
   for (const c of e.chamados) {
     if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id + '-' + c.mensagens.length, titulo: 'O escritório respondeu', texto: c.titulo, ir: 'chamados' });
+  }
+  // o que o escritório espera do cliente (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): o documento do mês que falta (abre o
+  // envio no tipo certo) e o pedido do Mandei (abre o formulário). Mandou ou respondeu, o aviso some sozinho.
+  for (const a of e.avisos ?? []) lista.push({ id: 'p-' + a.id, titulo: 'Falta mandar', texto: a.titulo, ir: a.ir === 'chamados' ? 'chamados' : 'documentos', ...(a.tipo ? { enviar: a.tipo } : {}) });
+  for (const t of e.tickets ?? []) {
+    const ate = /^\d{4}-\d{2}-\d{2}/.test(t.validoAte) ? ' · até ' + t.validoAte.slice(8, 10) + '/' + t.validoAte.slice(5, 7) : '';
+    lista.push({ id: 't-' + t.codigo + '-' + t.faltam + '-' + t.refazer, titulo: t.refazer ? 'O escritório pediu de novo' : 'O escritório pediu', texto: t.assunto + ate, ir: 'mandei', codigo: t.codigo });
+  }
+  // a entrega que espera o cliente confirmar (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
+  for (const en of e.entregas ?? []) lista.push({ id: 'ent-' + en.id, titulo: 'Entrega para confirmar', texto: en.titulo + ': toque para confirmar que recebeu', ir: 'documentos', confirmarEntrega: en.id });
+  // a certidão vencida ou que vence em até 15 dias (plano do Acessórias, 18/11/2026, ficha certidoes)
+  const hojeIso = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+  for (const d of e.documentos) {
+    const s = d.pasta === 'certidoes' ? certidaoParaAvisar(d.validoAte, hojeIso) : null;
+    if (s) lista.push({ id: 'cnd-' + d.id + '-' + d.validoAte, titulo: d.nome + (s === 'vencida' ? ' vencida' : ' perto de vencer'), texto: (s === 'vencida' ? 'Venceu em ' : 'Vale até ') + (d.validoAte ?? '').split('-').reverse().join('/') + '. Peça uma nova ao escritório.', ir: 'chamados' });
   }
   if (e.certificado) {
     const s = situacaoDoCertificado(e.certificado, hoje);

@@ -1224,6 +1224,14 @@ async function iniciar() {
   catch (err) { log('comprovante por e-mail desligado:', err.message); }
   try { require('./regua-cobranca').iniciarReguaDeCobranca({ db, log, correio }); }
   catch (err) { log('régua de cobrança desligada:', err.message); }
+  // o lembrete de vencimento ao cliente (17/11/2026, ficha lembrete-de-vencimento): desligado e travado até liberar
+  try { require('./lembrete-guia').iniciarLembreteDeGuias({ db, log, correio }); }
+  catch (err) { log('lembrete de vencimento desligado:', err.message); }
+  // o e-mail ao cliente quando o escritório responde (17/11/2026, ficha aviso-de-resposta): só na nuvem, travado até liberar
+  if (process.env.ROBO_NA_NUVEM) {
+    try { require('./aviso-de-resposta').iniciarAvisoDeResposta({ db, log, correio }); }
+    catch (err) { log('aviso de resposta desligado:', err.message); }
+  }
   limparFila();
   setInterval(limparFila, 24 * 36e5);
 

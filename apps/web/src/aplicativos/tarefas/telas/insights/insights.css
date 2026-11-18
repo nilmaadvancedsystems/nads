@@ -1,0 +1,125 @@
+/* A Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; "faz algo bonito"): o visual é do NADS */
+.ins, .ins-tv { --ins-bom: var(--success); --ins-alerta: var(--warn); --ins-ruim: var(--danger); --ins-neutro: var(--accent); --ins-apagado: var(--border-strong); }
+.ins .t-bom, .ins-tv .t-bom { --ins-cor: var(--ins-bom); }
+.ins .t-alerta, .ins-tv .t-alerta { --ins-cor: var(--ins-alerta); }
+.ins .t-ruim, .ins-tv .t-ruim { --ins-cor: var(--ins-ruim); }
+.ins .t-neutro, .ins-tv .t-neutro { --ins-cor: var(--ins-neutro); }
+.ins .t-apagado, .ins-tv .t-apagado { --ins-cor: var(--ins-apagado); }
+
+/* o topo */
+.ins-topo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0 16px; }
+.ins-topo h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+.ins-ao-vivo { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; animation: ins-pulso 2s infinite; }
+@keyframes ins-pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* os destaques */
+.ins-destaques { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.ins-destaque { display: flex; align-items: center; gap: 14px; padding: 14px 16px; position: relative; overflow: hidden; }
+.ins-destaque::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--ins-cor, var(--accent)); }
+.ins-destaque-icone { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--ins-cor); background: color-mix(in srgb, var(--ins-cor, var(--accent)) 14%, transparent); }
+.ins-destaque-texto { display: grid; gap: 1px; min-width: 0; }
+.ins-destaque-texto b { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.ins-destaque-texto span { font-size: var(--fs-13); color: var(--ink); }
+.ins-destaque-texto small { font-size: var(--fs-12); }
+
+/* o anel */
+.ins-anel { position: relative; display: inline-grid; place-items: center; flex: none; }
+.ins-anel svg { position: absolute; inset: 0; }
+.ins-anel-fundo { fill: none; stroke: var(--surface-3); }
+.ins-anel-cheio { fill: none; stroke: var(--ins-cor, var(--accent)); stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+.ins-anel-meio { position: relative; display: grid; place-items: center; color: var(--ins-cor, var(--ink)); }
+
+/* os cartões */
+.ins-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; margin-top: 12px; }
+.ins-cartao { padding: 16px 18px; display: grid; gap: 14px; align-content: start; }
+.ins-cabeca { display: flex; align-items: center; gap: 10px; }
+.ins-cabeca h3 { margin: 0; font-size: 16px; }
+.ins-cabeca .hint { display: block; font-size: var(--fs-12); }
+.ins-icone { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); flex: none; }
+
+/* a equipe */
+.ins-equipe { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ins-pessoa { display: grid; justify-items: center; gap: 4px; padding: 14px 8px 12px; border-radius: 14px; background: var(--surface-2); text-align: center; transition: transform .15s ease; }
+.ins-pessoa:hover { transform: translateY(-2px); }
+.ins-iniciais { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 20px; color: var(--ink); background: var(--surface-3); }
+.ins-pessoa-nome { margin-top: 6px; font-size: 15px; }
+.ins-pilula { font-size: var(--fs-12); padding: 2px 8px; border-radius: 999px; color: var(--ins-cor); background: color-mix(in srgb, var(--ins-cor) 14%, transparent); font-variant-numeric: tabular-nums; }
+
+/* a barra dividida */
+.ins-barra-bloco { display: grid; gap: 12px; }
+.ins-barra { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--surface-3); gap: 2px; }
+.ins-barra > span { background: var(--ins-cor); min-width: 6px; }
+.ins-legenda { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.ins-legenda li { display: grid; grid-template-columns: 10px auto 1fr; align-items: baseline; gap: 8px; }
+.ins-legenda i { width: 10px; height: 10px; border-radius: 3px; background: var(--ins-cor); align-self: center; }
+.ins-legenda b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.ins-legenda span { font-size: var(--fs-13); color: var(--ink-muted); }
+
+/* o funil das guias */
+.ins-funil { display: grid; gap: 14px; }
+.ins-funil-topo { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-13); margin-bottom: 6px; }
+.ins-funil-topo b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.ins-funil-topo small { font-size: var(--fs-12); color: var(--ink-muted); font-weight: 500; }
+.ins-trilho { display: block; height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.ins-trilho > span { display: block; height: 100%; border-radius: 999px; background: var(--ins-cor, var(--accent)); transition: width .8s ease; }
+
+/* a nota e os clientes */
+.ins-nota { display: flex; align-items: center; gap: 14px; }
+.ins-nota > b { font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+.ins-nota > div { display: grid; gap: 2px; }
+.ins-estrelas { font-size: 22px; letter-spacing: 2px; color: var(--surface-3); }
+.ins-estrelas .cheia { color: #e5a400; }
+.ins-estrelas .meia { background: linear-gradient(90deg, #e5a400 50%, var(--surface-3) 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ins-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ins-itens li { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid var(--border-muted); font-size: var(--fs-13); }
+.ins-itens li b { font-size: 16px; color: var(--ins-cor); font-variant-numeric: tabular-nums; }
+
+/* as tarefas atrasadas */
+.ins-atrasos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ins-atrasos li { display: grid; grid-template-columns: 30px minmax(70px, auto) 1fr 28px; align-items: center; gap: 10px; }
+.ins-atrasos b { text-align: right; color: var(--ins-ruim); font-variant-numeric: tabular-nums; }
+.ins-mini { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--surface-3); }
+.ins-atraso-nome { font-size: var(--fs-13); }
+.ins-tudo-certo { display: flex; gap: 8px; align-items: center; color: var(--success); margin: 0; }
+
+/* o Modo TV: tela cheia, tudo maior */
+.ins-tv { position: fixed; inset: 0; z-index: 1000; background: var(--surface); display: grid; grid-template-rows: auto 1fr auto; gap: 2vh; padding: 3vh 4vw 2vh; overflow: hidden; }
+.ins-tv-topo { display: flex; align-items: baseline; gap: 16px; }
+.ins-tv-topo h2 { margin: 0; font-size: clamp(20px, 2.2vw, 40px); }
+.ins-tv-corpo { display: grid; align-content: center; animation: ins-entra .6s ease; min-height: 0; }
+@keyframes ins-entra { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.ins-tv .ins-cartao { border: 0; box-shadow: none; background: transparent; gap: 4vh; padding: 0; }
+.ins-tv .ins-cabeca h3 { font-size: clamp(28px, 3.6vw, 64px); }
+.ins-tv .ins-cabeca .hint { font-size: clamp(14px, 1.4vw, 26px); }
+.ins-tv .ins-icone { width: clamp(40px, 4vw, 72px); height: clamp(40px, 4vw, 72px); }
+.ins-tv .ins-equipe { grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 14vw, 260px), 1fr)); gap: 2vw; }
+.ins-tv .ins-pessoa-nome { font-size: clamp(16px, 1.5vw, 28px); }
+.ins-tv .ins-pilula { font-size: clamp(12px, 1.1vw, 20px); }
+.ins-tv .ins-barra { height: clamp(18px, 2.4vh, 36px); }
+.ins-tv .ins-legenda b { font-size: clamp(28px, 3.6vw, 72px); }
+.ins-tv .ins-legenda span, .ins-tv .ins-funil-topo, .ins-tv .ins-itens li, .ins-tv .ins-atraso-nome { font-size: clamp(16px, 1.6vw, 30px); }
+.ins-tv .ins-funil-topo b { font-size: clamp(24px, 2.6vw, 52px); }
+.ins-tv .ins-trilho { height: clamp(14px, 2vh, 28px); }
+.ins-tv .ins-nota > b { font-size: clamp(56px, 7vw, 140px); }
+.ins-tv .ins-estrelas { font-size: clamp(28px, 3vw, 60px); }
+.ins-tv .ins-itens li b { font-size: clamp(22px, 2.4vw, 46px); }
+.ins-tv .ins-atrasos li { grid-template-columns: clamp(36px, 3vw, 56px) minmax(120px, auto) 1fr clamp(40px, 3vw, 70px); }
+.ins-tv .ins-mini { width: clamp(36px, 3vw, 56px); height: clamp(36px, 3vw, 56px); font-size: clamp(14px, 1.2vw, 22px); }
+.ins-tv .ins-atrasos b { font-size: clamp(22px, 2.4vw, 46px); }
+.ins-tv-pe { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ins-pontos { display: flex; gap: 8px; flex: 1; }
+.ins-pontos button { width: 12px; height: 12px; border-radius: 50%; border: 0; padding: 0; background: var(--border-strong); cursor: pointer; transition: width .2s ease; }
+.ins-pontos button.ativo { width: 28px; border-radius: 999px; background: var(--accent); }
+
+@media (max-width: 600px) {
+  .ins-grade { grid-template-columns: 1fr; }
+  .ins-legenda { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ins-ao-vivo, .ins-tv-corpo { animation: none; }
+  .ins-anel-cheio, .ins-trilho > span, .ins-pessoa { transition: none; }
+}
+/* na TV, os anéis da equipe crescem junto com o texto (o SVG acompanha pelo viewBox) */
+.ins-tv .ins-pessoa .ins-anel { width: clamp(84px, 9vw, 170px) !important; height: clamp(84px, 9vw, 170px) !important; }
+.ins-tv .ins-anel svg { width: 100%; height: 100%; }
+.ins-tv .ins-iniciais { width: clamp(62px, 6.6vw, 126px); height: clamp(62px, 6.6vw, 126px); font-size: clamp(20px, 2.2vw, 44px); }

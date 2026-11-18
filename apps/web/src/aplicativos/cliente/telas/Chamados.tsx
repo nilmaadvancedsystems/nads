@@ -171,6 +171,35 @@ export function Chamados(props: DaCasca) {
                   </li>
                 )}
               </ol>
+              {/* a avaliação da concluída (ficha avaliacao-do-atendimento, 18/11/2026): só o escritório vê; não é conversa */}
+              {s.avaliar && (
+                <div className="cli-sol-avaliar">
+                  {s.notaDada && !vm.reavaliar ? (
+                    <p className="cli-sol-avaliar-feito">
+                      <span className="cli-sol-estrelas-fixas" aria-label={s.notaDada + ' de 5'}>{'★'.repeat(s.notaDada)}<span className="apagada">{'★'.repeat(5 - s.notaDada)}</span></span>
+                      Obrigado pela avaliação.
+                      <button type="button" className="cli-link-mini" onClick={vm.mudarNota}>Mudar</button>
+                    </p>
+                  ) : (
+                    <>
+                      <p className="cli-sol-avaliar-titulo"><b>Como foi o atendimento?</b>{vm.nota > 0 && <span className="hint">{vm.rotuloDaNota(vm.nota)}</span>}</p>
+                      <div className="cli-sol-estrelas" role="radiogroup" aria-label="Nota de 1 a 5">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <button key={n} type="button" role="radio" aria-checked={vm.nota === n} aria-label={n + ' de 5'} className={n <= vm.nota ? 'on' : ''} onClick={() => vm.escolherNota(n)}>★</button>
+                        ))}
+                      </div>
+                      {vm.nota > 0 && (
+                        <>
+                          <textarea rows={2} maxLength={vm.maiorComentario} aria-label="Comentário (opcional)" value={vm.comentario} onChange={e => vm.mudarComentario(e.target.value)} placeholder="Quer contar mais alguma coisa? (opcional, só o escritório vê)" />
+                          <div className="cli-sol-rodape">
+                            <button type="button" className="btn btn-primary" disabled={vm.avaliando} onClick={() => vm.avaliar(s.id)}>{vm.avaliando ? 'Enviando…' : 'Enviar avaliação'}</button>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
               {(s.aceitaArquivo || s.whatsapp) && (
                 <div className="cli-sol-fim">
                   {s.aceitaArquivo && (

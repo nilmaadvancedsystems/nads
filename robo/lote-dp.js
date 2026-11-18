@@ -33,6 +33,18 @@ const MAX_PARTES = 30;
 const CADASTRO_VALE_MS = 30 * 60 * 1000;
 // lote esquecido (a pessoa fechou a tela no meio, ou não disparou): some do banco, com os pedaços
 const ESQUECIDO_MS = 3 * 24 * 36e5;
+
+/**
+ * O envio agendado (plano do Acessórias, 17/11/2026, ficha E17; frase do dono: "Seguir"): o lote pedido para disparar com agendadoPara
+ * ('2026-11-20T08:00:00-03:00', a hora de Brasília com o fuso) no futuro espera; a comparação é pelo instante, sem
+ * depender do fuso da máquina. O mesmo do aindaAgendado do core (tarefas/regras/agendamento.ts).
+ */
+function agendadoNoFuturo(lote, agora = Date.now()) {
+  return !!lote && typeof lote.agendadoPara === 'string' && Date.parse(lote.agendadoPara) > agora;
+}
+const AGENDADO = lote => agendadoNoFuturo(lote);
+/** de quanto em quanto tempo o robô olha a fila de novo, para pegar o agendado que chegou na hora */
+const OLHAR_AGENDADOS_MS = 5 * 60 * 1000;
 // a pasta do DP no mês de cada tipo escolhido à mão na revisão (o que o leitor não reconheceu)
 const PASTA_DO_TIPO = { FGTS: 'FGTS', DARF: 'DARF', FOLHA: 'FOLHA', 'PRO-LABORE': 'PRÓ-LABORE', OUTRO: '' };
 
@@ -146,7 +158,10 @@ async function contextoDoArquivador(db) {
   return contexto;
 }
 
-async function bufferDoArquivo(ref, a) {
+// o arquivo do lote que veio da pasta do Drive ({ driveId, origem }) em vez dos pedaços (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir"): só o
+// lote do Fiscal cria; o PDF vem pelo guias-do-fiscal.bufferDoDrive, que confere a lista do mês. ctx: { getDrive }.
+async function bufferDoArquivo(ref, a, ctx) {
+  if (a && a.driveId) return require('./guias-do-fiscal').bufferDoDrive(ref.firestore, ctx && ctx.getDrive, a);
   const n = Number(a.partes);
   if (!Number.isInteger(n) || n < 1 || n > MAX_PARTES) throw new Error('quantidade de partes inválida');
   const snap = await ref.collection('partes').get();
@@ -264,6 +279,13 @@ async function dispararLote(db, ref, lote, deps) {
         resultado.econtadorSaida = await EC.anotarSaida(db, { origem: 'lote-dp', codigo, competencia, empresa: nome, registro: registro.id, arquivos })
           .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
       }
+      // a DARF na Área do Cliente, antes de apagar os pedaços (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)"). Só a DARF: o FGTS do DP já vem do
+      // pedidosFgts (robo/area-cliente.js) e duplicaria; holerites e outros papéis não são guia. Nunca derruba o envio.
+      try {
+        const r = await require('./envios-do-nads').guiasDoLoteNaArea(db, itens, anexos.map(a => a.buffer), log, ['DARF']);
+        if (r.gravadas) resultado.areaDoCliente = r.gravadas;
+        if (r.semArea.length) resultado.semAreaDoCliente = r.semArea;
+      } catch (err) { resultado.semAreaDoCliente = ['erro: ' + String(err.message || err).slice(0, 160)]; }
       for (const i of itens) await apagarPartes(i.ref).catch(() => {});
       enviados++;
     } catch (err) {
@@ -294,6 +316,7 @@ function iniciarLoteDp(db, deps) {
           const lote = doc.data();
           try {
             if (lote.status === 'pendente') await lerLote(db, doc.ref, lote, log);
+            else if (agendadoNoFuturo(lote)) continue;   // agendado: espera a hora (ficha E17)
             else await dispararLote(db, doc.ref, lote, deps);
           } catch (err) {
             log('lote do DP', doc.id, 'deu erro:', err.message);
@@ -305,11 +328,14 @@ function iniciarLoteDp(db, deps) {
     } catch (err) { log('lote do DP: não li a fila:', err.message); } finally { ocupado = false; require('./ocupado').marcar('lote-dp', null); }
   }
   ouvir('Lote do DP', () => db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar']), () => { void atender(); }, log);
+  // o agendado não muda nada no banco na hora marcada: o robô olha a fila de novo de tempo em tempo (ficha E17)
+  setInterval(() => { void atender(); }, OLHAR_AGENDADOS_MS);
   // o lote esquecido some, com os arquivos e os pedaços
   setInterval(async () => {
     try {
       const velhos = await db.collection(COLECAO).where('criadoEm', '<', new Date(Date.now() - ESQUECIDO_MS).toISOString()).limit(10).get();
-      for (const d of velhos.docs) await db.recursiveDelete(d.ref);
+      // o lote agendado espera a hora dele, mesmo depois dos 3 dias (o envio agendado, 17/11/2026, ficha E17)
+      for (const d of velhos.docs) if (!(d.get('status') === 'disparar' && AGENDADO(d.data()))) await db.recursiveDelete(d.ref);
     } catch (e) { /* tenta de novo depois */ }
   }, 6 * 36e5);
   log('lote do DP: ligado');
@@ -320,5 +346,7 @@ module.exports = {
   // o lote do Fiscal (lote-fiscal.js, 03/11/2026) usa o mesmo cadastro do arquivador, os mesmos pedaços e a mesma checagem
   contextoDoArquivador, bufferDoArquivo, apagarPartes,
   // puras, pro teste
+  // o envio agendado (ficha E17), também para o lote do Fiscal
+  agendadoNoFuturo, OLHAR_AGENDADOS_MS,
   competenciaIso, valorNumero, tributoDoNome, leituraDe, doArquivo, grupos, valoresDoGrupo, PASTA_DO_TIPO, COLECAO,
 };

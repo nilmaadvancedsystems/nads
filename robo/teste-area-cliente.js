@@ -234,7 +234,9 @@ igual('toda etapa da tabela de vencimentos está na agenda do robô', R.VENCIMEN
 let C = null;
 try {
   C = {
-    v: require(path.join(CORE, 'areaCliente', 'vencimentos.ts')),
+    // os vencimentos pelo pacote gerado do core (17/11/2026, ficha E01): o vencimentos.ts agora importa o calendário único
+    // (diasUteis.ts), que o Node não carrega direto; o robo/gerado/danfse.js é o core empacotado
+    v: require(path.join(__dirname, 'gerado', 'danfse')),
     g: require(path.join(CORE, 'areaCliente', 'guias.ts')),
     c: require(path.join(CORE, 'areaCliente', 'chamados.ts')),
     e: require(path.join(CORE, 'areaCliente', 'envios.ts')),

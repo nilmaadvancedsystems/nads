@@ -10,6 +10,7 @@ export function LinkDoClienteNaEmpresa({ codigo, nome }: { codigo: number; nome:
     <BlocoDoLink endereco={vm.endereco} data={vm.data} podeMexer={acoes.pode} carregando={vm.carregando} ocupado={acoes.ocupada === codigo}
       aoGerar={() => void acoes.gerar(e)} aoCopiar={() => link && acoes.copiar(link.token)} aoWhatsApp={() => link && acoes.whatsapp(e, link.token)}
       aoTrocar={() => void acoes.trocar(e)} aoRevogar={() => void acoes.revogar(e)}
-      logo={vm.logo} gravandoLogo={vm.gravandoLogo} aoEnviarLogo={vm.enviarLogo} aoTirarLogo={vm.tirarLogo} />
+      logo={vm.logo} gravandoLogo={vm.gravandoLogo} aoEnviarLogo={vm.enviarLogo} aoTirarLogo={vm.tirarLogo}
+      guiasAbertas={vm.guiasAbertas} />
   );
 }

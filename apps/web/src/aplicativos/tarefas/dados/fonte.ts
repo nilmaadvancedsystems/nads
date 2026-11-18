@@ -52,6 +52,8 @@ import { criarControleTributosMemoria, type RepoControleTributos } from './contr
 import { criarControleTributosFirestore } from './controleTributos.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
+import { criarInsightsMemoria, type RepoInsights } from './insights';
+import { criarInsightsFirestore } from './insights.firestore';
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
 import { criarAreaClienteMemoria, type RepoAreaCliente } from './areaCliente';
 import { criarAreaClienteFirestore } from './areaCliente.firestore';
@@ -675,6 +677,13 @@ let categoriasDp: RepoCategoriasDp | null = null;
 export function repoDeCategoriasDp(): RepoCategoriasDp {
   if (!categoriasDp) categoriasDp = noBanco ? criarCategoriasDpFirestore(() => quemPede()?.nome || '') : criarCategoriasDpMemoria();
   return categoriasDp;
+}
+
+let insights: RepoInsights | null = null;
+/** A Tela de Insights: no banco, nadsInsights/atual; nos exemplos, na memória (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de Insights eu quero", "esses paineis so vao ser vistos por diretor e admin", "Todos os seis"). */
+export function repoDosInsights(): RepoInsights {
+  if (!insights) insights = noBanco ? criarInsightsFirestore() : criarInsightsMemoria();
+  return insights;
 }
 
 let legislacaoDp: RepoLegislacaoDp | null = null;

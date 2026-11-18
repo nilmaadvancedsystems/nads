@@ -102,7 +102,7 @@ describe('abrir o link', () => {
 
   it('link bom: ouve o espelho e só mostra quando tudo chegou; nada do documento do link além do nome', () => {
     const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
-    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/resumo/faturamento', RAIZ + '/resumo/marca'].sort());
+    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/resumo/faturamento', RAIZ + '/resumo/marca', RAIZ + '/resumo/certificado', RAIZ + '/resumo/pendencias', RAIZ + '/resumo/tickets', RAIZ + '/resumo/ficha', RAIZ + '/resumo/entregas', RAIZ + '/resumo/parcelamentos'].sort()); // o certificado (17/11/2026, ficha certificado-digital)
     expect(telas).toHaveLength(1);
     const e = telas[0];
     expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: true, pagas: false } });
@@ -112,6 +112,19 @@ describe('abrir o link', () => {
     expect(e.envios.map(x => x.id)).toEqual(['e1']);
     expect(e.chamados.map(c => c.id)).toEqual(['c1']);
     expect(JSON.stringify(e)).not.toContain('Fulano');
+  });
+
+  // (17/11/2026) as partes que não seguram a tela chegam à tela: o certificado, o que falta mandar e os pedidos do Mandei
+  // (antes eram lidas e ficavam de fora do estado)
+  it('o certificado, o que falta mandar e os pedidos do Mandei chegam à tela', () => {
+    const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
+    ouvinte(RAIZ + '/resumo/certificado').proximo(docSnap({ tipo: 'A1', titular: 'Padaria Boa Ltda', validoAte: '2026-12-10', atualizadoEm: 'x' }));
+    ouvinte(RAIZ + '/resumo/pendencias').proximo(docSnap({ itens: [{ id: 'extrato-2026-10', titulo: 'Extrato bancário de outubro', tipo: 'extrato', competencia: '2026-10' }], competencia: '2026-10', atualizadoEm: 'x' }));
+    ouvinte(RAIZ + '/resumo/tickets').proximo(docSnap({ tickets: [{ codigo: 'AAAAAAAAAAAAAAAAAAAAAAAA', numero: '#0003', assunto: 'Saldos', validoAte: '2026-11-25', total: 2, faltam: 1, refazer: 0 }], atualizadoEm: 'x' }));
+    const e = telas.at(-1)!;
+    expect(e.certificado?.validoAte).toBe('2026-12-10');
+    expect(e.avisos.map(a => a.id)).toEqual(['extrato-2026-10']);
+    expect(e.tickets.map(t => t.codigo)).toEqual(['AAAAAAAAAAAAAAAAAAAAAAAA']);
   });
 
   it('revogado com a página aberta: a tela vira "link inválido" e para de ouvir', () => {

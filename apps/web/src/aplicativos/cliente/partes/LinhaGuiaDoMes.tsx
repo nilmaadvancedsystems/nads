@@ -9,18 +9,22 @@ import { Icone, MenuSuspenso, type ItemMenu } from '@nads/ui';
 import type { GuiaPaga } from '../dados/areaCliente';
 import { SiglaDaGuia } from './SiglaDaGuia';
 
-export function LinhaGuiaDoMes({ guia, codigo, quando, destaque, escolhida, dia, ocupado, onVer, onBaixar, onCopiar, onPedirNova }: {
+export function LinhaGuiaDoMes({ guia, codigo, quando, destaque, escolhida, dia, ocupado, onVer, onBaixar, onCopiar, onPedirNova, onComprovante, comprovanteEm }: {
   guia: ac.GuiaDoCliente; codigo?: string; /** a frase curta (dados/guiasDoMes.quandoVence) */ quando: { texto: string; tom: '' | 'vencida' | 'hoje' }; /** o Baixar carmim (a próxima a pagar) */ destaque: boolean;
   /** o dia escolhido no calendário */ escolhida: boolean; dia: number; ocupado: boolean;
   onVer: (id: string) => void; onBaixar: (id: string) => void; onCopiar: (codigo: string) => void; onPedirNova: (guia: ac.GuiaDoCliente) => void;
+  /** "Já paguei: mandar o comprovante" e o dia em que o cliente mandou ('dd/mm'; '' = ainda não) (plano do Acessórias, 17/11/2026, ficha comprovante-da-guia, parte A) */
+  onComprovante?: (guia: ac.GuiaDoCliente) => void; comprovanteEm?: string;
 }) {
-  const nome = ac.ROTULO_DA_GUIA[guia.tipo];
+  const nome = ac.rotuloDaGuia(guia);
   const vencida = guia.situacao === 'vencida';
   // (16/11/2026) o que não é a ação principal vai para o "⋯"; a vencida não tem o código (não passa mais no banco)
   const mais: ItemMenu[] = [
     ...(guia.temPdf ? [{ rotulo: 'Ver a guia', icone: 'olho' as const, desabilitado: ocupado, onClick: () => onVer(guia.id) }] : []),
     ...(vencida && guia.temPdf ? [{ rotulo: 'Baixar a vencida', icone: 'download' as const, desabilitado: ocupado, onClick: () => onBaixar(guia.id) }] : []),
     ...(!vencida && codigo && guia.temPdf ? [{ rotulo: 'Copiar o código de barras', icone: 'copiar' as const, onClick: () => onCopiar(codigo) }] : []),
+    // (17/11/2026, ficha comprovante-da-guia) um item no "⋯", não um botão novo na linha (R10)
+    ...(onComprovante ? [{ rotulo: 'Já paguei: mandar o comprovante', icone: 'upload' as const, onClick: () => onComprovante(guia) }] : []),
   ];
   // (16/11/2026, revisão de consistência: "muita informação") sem o PDF, o botão principal vira Copiar código, como nas
   // Próximas guias da Visão geral (antes ficava um Baixar apagado e o código só no "⋯")
@@ -30,7 +34,7 @@ export function LinhaGuiaDoMes({ guia, codigo, quando, destaque, escolhida, dia,
       <span className="cli-gu-logo"><SiglaDaGuia tipo={guia.tipo} tamanho={34} /></span>
       <span className="cli-gu-txt">
         <b className="cli-gu-nome">{nome}</b>
-        <span className="cli-gu-sub"><span className={'cli-gu-junto' + (quando.tom ? ' cli-gu-sit' : '')}>{quando.texto}</span></span>
+        <span className="cli-gu-sub"><span className={'cli-gu-junto' + (quando.tom ? ' cli-gu-sit' : '')}>{quando.texto}</span>{comprovanteEm ? <span className="cli-gu-junto"> · Comprovante enviado em {comprovanteEm}</span> : null}</span>
       </span>
       <span className="cli-gu-valor">{formatos.reais(guia.valor)}</span>
       {/* duas casas iguais em todas as linhas: o botão principal e o "⋯" */}

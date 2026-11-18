@@ -518,6 +518,11 @@ async function releituraDoCliente(db, pasta, porCodigo, log, soEnsaio) {
     const dp = require('./envios-do-dp');
     await dp.gravarArquivosDoDp(db, resumo.codigo, dp.arquivosDoDpNaPasta(itens, pasta.id, PASTA_ANO, caminhos, chaveDeNome));
   } catch (err) { log('pasta do cliente:', (cliente && cliente.nome) || pasta.name, '- documentos do DP não foram listados:', err.message); }
+  // e as guias do Fiscal já arquivadas, para o Fiscal › Enviar guias › Já na pasta (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir")
+  try {
+    const gf = require('./guias-do-fiscal');
+    await gf.gravarGuiasDoFiscal(db, resumo.codigo, gf.guiasDoFiscalNaPasta(itens, pasta.id, caminhos, chaveDeNome));
+  } catch (err) { log('pasta do cliente:', (cliente && cliente.nome) || pasta.name, '- guias do Fiscal não foram listadas:', err.message); }
   return { resumo, marcados, itens };
 }
 

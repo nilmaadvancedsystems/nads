@@ -18,7 +18,7 @@ export function CartaoDeGuia({ guia, codigo, faltam, ocupado, destaque = true, o
         <span className={SELO_DA_SITUACAO[guia.situacao]}>{ac.ROTULO_DA_SITUACAO_DA_GUIA[guia.situacao]}</span>
       </div>
       <p className="cli-cartao-valor">{formatos.reais(guia.valor)}</p>
-      <p className="cli-cartao-nome">{ac.ROTULO_DA_GUIA[guia.tipo]}</p>
+      <p className="cli-cartao-nome">{ac.rotuloDaGuia(guia)}</p>
       <p className="hint">Competência {guia.competencia.slice(5, 7)}/{guia.competencia.slice(0, 4)}</p>
       <p className="hint">{guia.situacao === 'vencida' ? 'Venceu em ' : 'Vence em '}{guia.vencimento}{faltam ? ' · ' + faltam : ''}</p>
       <div className="cli-cartao-pe">

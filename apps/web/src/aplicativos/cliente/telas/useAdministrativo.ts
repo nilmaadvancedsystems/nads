@@ -30,7 +30,7 @@ export function useEmpresa({ area, copiar, hoje }: DaCasca) {
     inscricaoEstadual: f?.inscricaoEstadual ?? '', inscricaoMunicipal: f?.inscricaoMunicipal ?? '',
     endereco: f?.endereco ?? '',
     mapa: f?.endereco ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(f.endereco) : '',
-    socios: (f?.socios ?? []).map(s => ({ nome: s.nome, participacao: s.participacao, largura: Math.max(0, Math.min(100, Number(s.participacao.replace(',', '.').replace(/[^\d.]/g, '')) || 0)) })),
+    socios: (f?.socios ?? []).map(s => ({ nome: s.nome, participacao: s.participacao ?? '', largura: Math.max(0, Math.min(100, Number((s.participacao ?? '').replace(',', '.').replace(/[^\d.]/g, '')) || 0)) })),
     copiar: (valor: string, rotulo: string) => copiar(valor, rotulo),
     copiarTudo: () => { if (f) copiar(dadosParaCopiar(f), 'Dados da empresa'); },
   };

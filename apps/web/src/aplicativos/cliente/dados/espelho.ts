@@ -3,8 +3,9 @@
 // descartado em vez de quebrar a tela. Também os pedidos que o cliente manda (as caixas areaClienteChamados e
 // areaClienteEnvios, com as chaves exatas das regras do banco) e o que ele mandou e ainda não voltou pelo espelho (o robô
 // do PC processa a caixa). Funções puras, sem Firebase: o repositório (areaCliente.firestore.ts) só lê e grava.
-import { areaCliente as ac } from '@nads/core';
-import { AREA_VAZIA, SECOES_DO_BANCO, type EstadoDaArea } from './areaCliente';
+import { areaCliente as ac, type mandei } from '@nads/core';
+import { formatoPeloNome } from '@nads/ui';
+import { AREA_VAZIA, SECOES_DO_BANCO, type AvisoDoEscritorio, type CertificadoDigital, type DocumentoDoCliente, type EstadoDaArea, type FichaDaEmpresa, type GuiaPaga } from './areaCliente';
 import type { DanfeNoEspelho } from './biblioteca';
 
 /** O token do link: 40 letras hexadecimais minúsculas (o mesmo que as regras do banco e o robô aceitam). */
@@ -146,6 +147,105 @@ export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
 }
 
 /** resumo/marca (12/11/2026): { logo, atualizadoEm }; só a imagem PNG/JPG/WebP em data URL (erroDaLogo) passa. */
+/**
+ * resumo/certificado (plano do Acessórias, 17/11/2026, ficha certificado-digital; frase do dono: "Seguir"): { tipo 'A1'|'A3', titular, validoAte 'aaaa-mm-dd' }; o torto fica de
+ * fora (null).
+ */
+export function lerCertificado(x: unknown): CertificadoDigital | null {
+  const c = objeto(x);
+  if (!c) return null;
+  const tipo = texto(c.tipo), titular = texto(c.titular).trim(), validoAte = texto(c.validoAte);
+  if ((tipo !== 'A1' && tipo !== 'A3') || !titular || !/^\d{4}-\d{2}-\d{2}$/.test(validoAte) || Number.isNaN(Date.parse(validoAte + 'T00:00:00Z'))) return null;
+  return { tipo, titular: titular.slice(0, 200), validoAte };
+}
+
+/**
+ * resumo/pendencias (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): { itens: [{ id, titulo, tipo, competencia }], competencia }
+ * vira os avisos do sino (o que falta mandar). O item torto fica de fora.
+ */
+export function lerPendencias(x: unknown): AvisoDoEscritorio[] {
+  const itens = objeto(x)?.itens;
+  if (!Array.isArray(itens)) return [];
+  return itens.map(objeto).filter((i): i is Record<string, unknown> => !!i)
+    .filter(i => typeof i.id === 'string' && /^[a-z]+-\d{4}-\d{2}$/.test(i.id) && typeof i.titulo === 'string' && i.titulo.trim() !== '')
+    .map(i => ({ id: i.id as string, titulo: (i.titulo as string).slice(0, 120), texto: '', ir: 'documentos' as const,
+      ...(['extrato', 'nota', 'comprovante', 'outro'].includes(texto(i.tipo)) ? { tipo: texto(i.tipo) as ac.TipoDeEnvio } : {}) }));
+}
+
+/** resumo/tickets (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): os pedidos do Mandei esperando o cliente; o torto fica de fora. */
+export function lerTickets(x: unknown): mandei.TicketNaArea[] {
+  const lista = objeto(x)?.tickets;
+  if (!Array.isArray(lista)) return [];
+  const n = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : -1);
+  return lista.map(objeto).filter((t): t is Record<string, unknown> => !!t)
+    .filter(t => typeof t.codigo === 'string' && /^[A-Za-z0-9]{8,64}$/.test(t.codigo) && typeof t.assunto === 'string' && t.assunto.trim() !== '' && n(t.total) >= 0 && n(t.faltam) >= 0 && n(t.refazer) >= 0)
+    .map(t => ({ codigo: t.codigo as string, numero: texto(t.numero).slice(0, 20), assunto: (t.assunto as string).slice(0, 200), validoAte: texto(t.validoAte).slice(0, 40), total: t.total as number, faltam: t.faltam as number, refazer: t.refazer as number }));
+}
+
+/**
+ * documentos/{id} com tipo 'escritorio' (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio; frase do dono: "Pasta fixa"): { id, nome, area, enviadoEm, tamanho,
+ * partes }. novo = o cliente ainda não baixou neste aparelho (a lista dos baixados vem de fora). O torto fica de fora.
+ */
+export function lerDocumentoDoEscritorio(id: string, x: unknown, baixados: ReadonlySet<string> = new Set()): (DocumentoDoCliente & { partes: number }) | null {
+  const d = objeto(x);
+  if (!d || d.tipo !== 'escritorio' || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
+  const nome = texto(d.nome).trim();
+  const area = texto(d.area);
+  const partes = typeof d.partes === 'number' && Number.isInteger(d.partes) && d.partes >= 0 ? d.partes : -1;
+  if (!nome || !['fiscal', 'dp', 'contabil', 'societario'].includes(area) || partes < 0) return null;
+  return { id, nome: nome.slice(0, 200), descricao: '', area: area as DocumentoDoCliente['area'], competencia: '', enviadoEm: texto(d.enviadoEm), novo: !baixados.has(id), formato: formatoPeloNome(nome), partes };
+}
+
+/** resumo/ficha (plano do Acessórias, 18/11/2026, ficha dados-cadastrais; frase do dono: "Sim, comece assim"): a ficha cadastral, conferida campo a campo; sem razão social ou CNPJ, null. */
+export function lerFicha(x: unknown): FichaDaEmpresa | null {
+  const f = objeto(x);
+  if (!f) return null;
+  const razaoSocial = texto(f.razaoSocial).trim(), cnpj = texto(f.cnpj).replace(/\D/g, '');
+  if (!razaoSocial || cnpj.length !== 14) return null;
+  const op = (k: string, max = 200) => { const v = texto(f[k]).trim().slice(0, max); return v ? { [k]: v } : {}; };
+  return {
+    razaoSocial: razaoSocial.slice(0, 200), ...op('nomeFantasia'), cnpj: cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5'),
+    ...op('inscricaoEstadual', 30), regime: texto(f.regime).slice(0, 60), cnae: texto(f.cnae).slice(0, 250),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(texto(f.abertura)) ? { abertura: texto(f.abertura) } : {}), endereco: texto(f.endereco).slice(0, 300),
+    socios: (Array.isArray(f.socios) ? f.socios : []).map(objeto).filter((s): s is Record<string, unknown> => !!s && typeof s.nome === 'string' && s.nome.trim() !== '').map(s => ({ nome: (s.nome as string).trim().slice(0, 120) })).slice(0, 20),
+  };
+}
+
+/**
+ * documentos/{id} com tipo 'certidao' (plano do Acessórias, 18/11/2026, ficha certidoes): a última de cada órgão, com a validade.
+ * Vai na lista dos documentos (o mesmo download e o mesmo "Novo"), na pasta Certidões. O torto fica de fora.
+ */
+export function lerCertidao(id: string, x: unknown, baixados: ReadonlySet<string> = new Set()): (DocumentoDoCliente & { partes: number }) | null {
+  const d = objeto(x);
+  if (!d || d.tipo !== 'certidao' || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
+  const orgao = texto(d.orgao).trim().slice(0, 40);
+  const partes = typeof d.partes === 'number' && Number.isInteger(d.partes) && d.partes >= 0 ? d.partes : -1;
+  if (!orgao || partes < 0) return null;
+  const validoAte = /^\d{4}-\d{2}-\d{2}$/.test(texto(d.validoAte)) ? texto(d.validoAte) : '';
+  const br = validoAte ? validoAte.slice(8, 10) + '/' + validoAte.slice(5, 7) + '/' + validoAte.slice(0, 4) : '';
+  return { id, nome: 'Certidão ' + orgao, descricao: br ? 'válida até ' + br : 'sem a validade no nome do arquivo', area: 'societario', competencia: validoAte ? validoAte.slice(0, 7) : '',
+    enviadoEm: validoAte || '', novo: !baixados.has(id), formato: 'PDF', pasta: 'certidoes', ...(validoAte ? { validoAte } : {}), partes };
+}
+
+/** resumo/parcelamentos (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir"): o item torto fica de fora. */
+export function lerParcelamentos(x: unknown): ac.ParcelamentoNaArea[] {
+  const itens = objeto(x)?.itens;
+  if (!Array.isArray(itens)) return [];
+  return itens.map(objeto).filter((i): i is Record<string, unknown> => !!i).flatMap(i => {
+    const parcela = Number(i.parcela), parcelas = Number(i.parcelas), valor = Number(i.valorParcela);
+    if (!texto(i.orgao).trim() || !ac.dataDoVencimento(texto(i.vencimento)) || !Number.isInteger(parcela) || !Number.isInteger(parcelas) || parcela < 1 || parcela > parcelas || !(valor > 0)) return [];
+    return [{ id: texto(i.id).slice(0, 40), orgao: texto(i.orgao).slice(0, 60), modalidade: texto(i.modalidade).slice(0, 60), parcela, parcelas, valorParcela: valor, vencimento: texto(i.vencimento) }];
+  }).slice(0, 10);
+}
+
+/** resumo/entregas (plano do Acessórias, 18/11/2026, ficha confirmar-entrega): as que esperam o cliente confirmar; o item torto fica de fora. */
+export function lerEntregas(x: unknown): ac.EntregaParaConfirmar[] {
+  const itens = objeto(x)?.itens;
+  if (!Array.isArray(itens)) return [];
+  return itens.map(objeto).filter((i): i is Record<string, unknown> => !!i && typeof i.id === 'string' && /^[A-Za-z0-9_-]{6,40}$/.test(i.id) && typeof i.titulo === 'string' && i.titulo.trim() !== '')
+    .map(i => ({ id: i.id as string, titulo: (i.titulo as string).slice(0, 120), competencia: /^\d{4}-\d{2}$/.test(texto(i.competencia)) ? texto(i.competencia) : '' }));
+}
+
 export function lerMarca(x: unknown): string | null {
   const logo = objeto(x)?.logo;
   return typeof logo === 'string' && !ac.erroDaLogo(logo) ? logo : null;
@@ -196,7 +296,8 @@ export function lerDocumentoDp(id: string, x: unknown): ac.DocumentoDoDp | null 
   };
 }
 
-const TIPOS_DE_GUIA = new Set<string>(['FGTS', 'DAS', 'DAE', 'outra']);
+// a DARF e o DAM do ISS (17/11/2026, ficha todas-as-guias do plano do Acessórias)
+const TIPOS_DE_GUIA = new Set<string>(['FGTS', 'DAS', 'DAE', 'DARF', 'DAM', 'outra']);
 const SITUACOES_DA_GUIA = new Set<string>(['a vencer', 'vence hoje', 'vencida']);
 
 /** guias/{id}: { id, tipo, competencia, vencimento 'dd/mm/aaaa', valor, numero?, situacao, temPdf }. O id é o do documento. */
@@ -208,15 +309,20 @@ export function lerGuia(id: string, x: unknown): ac.GuiaDoCliente | null {
   const valor = g.valor;
   if (!COMPETENCIA.test(competencia) || !ac.dataDoVencimento(vencimento) || typeof valor !== 'number' || !Number.isFinite(valor)) return null;
   const numero = texto(g.numero).trim();
+  // o tributo da DARF: texto curto, só letras, espaço e barra ("INSS", "PIS/COFINS"); o resto não passa
+  const tributo = texto(g.tributo).trim().toUpperCase();
   const situacao = texto(g.situacao);
   return {
     id,
     tipo: (TIPOS_DE_GUIA.has(texto(g.tipo)) ? g.tipo : 'outra') as ac.TipoDeGuia,
     competencia, vencimento, valor,
     ...(numero ? { numero } : {}),
+    ...(/^[A-Z][A-Z /]{0,19}$/.test(tributo) ? { tributo } : {}),
     // quem mostra recalcula pela data de hoje (guiasDeHoje); aqui só não deixa passar um valor estranho
     situacao: (SITUACOES_DA_GUIA.has(situacao) ? situacao : 'a vencer') as ac.SituacaoDaGuia,
     temPdf: g.temPdf === true,
+    // paga pelo extrato (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir")
+    ...(ac.dataDoVencimento(texto(g.pagoEm)) ? { pagoEm: texto(g.pagoEm) } : {}),
   };
 }
 
@@ -308,6 +414,19 @@ export interface PartesDoEspelho {
   faturamento?: ac.ResumoDoFaturamento | null;
   /** a logo (resumo/marca) */
   logo?: string | null;
+  /** os parcelamentos ativos (resumo/parcelamentos; ficha parcelamentos, 18/11/2026) */
+  parcelamentos?: ac.ParcelamentoNaArea[];
+  /** as entregas a confirmar (resumo/entregas; ficha confirmar-entrega, 18/11/2026) */
+  entregas?: ac.EntregaParaConfirmar[];
+  /** a ficha cadastral (resumo/ficha; ficha dados-cadastrais, 18/11/2026) */
+  ficha?: FichaDaEmpresa | null;
+  /** o acervo do escritório (documentos/* com tipo 'escritorio'; ficha documentos-do-escritorio, 17/11/2026) */
+  documentos?: (DocumentoDoCliente & { partes?: number })[];
+  /** o certificado A1 do cofre (resumo/certificado; ficha certificado-digital, 17/11/2026) */
+  certificado?: CertificadoDigital | null;
+  /** o que falta mandar (resumo/pendencias) e os pedidos do Mandei (resumo/tickets), no sino (17/11/2026) */
+  avisos?: AvisoDoEscritorio[];
+  tickets?: mandei.TicketNaArea[];
   /** as DANFEs prontas (documentos com tipo 'danfe') */
   danfes?: DanfeNoEspelho[];
   /** o nome do link (o documento areasCliente/{token}): só para o topo enquanto o robô não gravou o resumo */
@@ -318,6 +437,11 @@ export interface PartesDoEspelho {
   chamados: ac.ChamadoDoCliente[];
 }
 
+/** A guia paga pelo extrato como a aba Pagas mostra (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir"). */
+function guiaPaga(g: ac.GuiaDoCliente): GuiaPaga {
+  return { id: g.id, tipo: g.tipo, nome: ac.rotuloDaGuia(g), competencia: g.competencia, valor: g.valor, pagoEm: g.pagoEm ?? '', temComprovante: false };
+}
+
 /** O que a tela recebe de um link do banco: o que o espelho tem; as seções sem fonte ficam vazias e escondidas. */
 export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [], respostas: RespostaPendente[] = []): EstadoDaArea {
   const resumo = p.resumo ?? (p.nomeDoLink ? { empresas: [{ codigo: 0, nome: p.nomeDoLink, cnpj: '' }], escritorio: {}, atualizadoEm: '' } : null);
@@ -325,9 +449,14 @@ export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [
   const documentosDp = p.documentosDp ?? [];
   return {
     ...AREA_VAZIA, carregado: true, valido: true, exemplos: false,
-    secoes: SECOES_DO_BANCO,
-    resumo, pessoal, documentosDp, faturamento: p.faturamento ?? null, logo: p.logo ?? null, danfes: p.danfes ?? [],
-    guias: p.guias,
+    // a Central de documentos só aparece quando o escritório pôs algo na pasta (ficha documentos-do-escritorio)
+    // a aba Pagas só aparece quando o robô achou alguma paga pelo extrato (ficha guia-paga-confirmada, 18/11/2026)
+    secoes: { ...SECOES_DO_BANCO, documentos: (p.documentos ?? []).length > 0, pagas: p.guias.some(g => g.pagoEm) },
+    documentos: (p.documentos ?? []).map(({ partes: _partes, ...d }) => d),
+    resumo, pessoal, documentosDp, faturamento: p.faturamento ?? null, logo: p.logo ?? null, danfes: p.danfes ?? [], certificado: p.certificado ?? null, avisos: p.avisos ?? [], tickets: p.tickets ?? [], ficha: p.ficha ?? null, entregas: p.entregas ?? [], parcelamentos: p.parcelamentos ?? [],
+    // a paga sai de "a pagar" e vai para Pagas (o comprovante para baixar ainda não tem fonte)
+    guias: p.guias.filter(g => !g.pagoEm),
+    pagas: p.guias.filter(g => g.pagoEm).map(guiaPaga),
     agenda: [...p.agenda].sort((a, b) => a.mes.localeCompare(b.mes)),
     envios: [...p.envios].sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm)),
     chamados: comPendentes(p.chamados, novos, respostas),
@@ -382,4 +511,5 @@ export function base64DosBytes(bytes: Uint8Array): string {
 }
 
 /** O nome do PDF da guia que desce para o cliente (o mesmo do exemplo). */
-export const nomeDoPdfDaGuia = (g: Pick<ac.GuiaDoCliente, 'tipo' | 'competencia'> | null) => (g ? `guia-${g.tipo.toLowerCase()}-${g.competencia}.pdf` : 'guia.pdf');
+export const nomeDoPdfDaGuia = (g: Pick<ac.GuiaDoCliente, 'tipo' | 'competencia' | 'tributo'> | null) =>
+  (g ? `guia-${[g.tipo, g.tributo].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${g.competencia}.pdf` : 'guia.pdf');

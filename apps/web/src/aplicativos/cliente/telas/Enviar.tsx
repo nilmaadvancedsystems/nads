@@ -3,13 +3,13 @@
 // o que já foi enviado nesta visita.
 import { Icone, type NomeIcone } from '@nads/ui';
 import { AreaDeSoltar } from '../partes/AreaDeSoltar';
-import { useEnviar } from './useEnviar';
+import { useEnviar, type InicialDoEnvio } from './useEnviar';
 import type { DaCasca } from './useAreaCliente';
 
 const ICONE_DO_TIPO: Record<string, NomeIcone> = { extrato: 'landmark', nota: 'recibo', comprovante: 'check', outro: 'arquivo' };
 
-export function Enviar(props: DaCasca) {
-  const vm = useEnviar(props);
+export function Enviar({ inicial, ...props }: DaCasca & { inicial?: InicialDoEnvio }) {
+  const vm = useEnviar(props, inicial);
   return (
     <>
       {/* o tipo em cartões 2×2 com o ícone (12/11/2026: os chips quebravam em duas linhas tortas) */}

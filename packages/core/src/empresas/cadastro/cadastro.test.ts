@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -518,5 +518,21 @@ describe('gravar só o que mudou no cadastro (30/10/2026)', () => {
     porta.ouvirCadastro('fito', d => { doc = d; }, () => {});
     await Promise.resolve();
     expect(doc).toMatchObject({ regime: 'Simples', vendeNoCartao: true, campoDoFuturo: { a: 1 } });
+  });
+});
+
+// o lembrete de vencimento por cliente (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente")
+describe('o lembrete de vencimento da empresa', () => {
+  it('mandar, não mandar e como o escritório; vai e volta do documento, com o histórico', () => {
+    const c = definirLembreteDeVencimento(vazio(), { modo: 'sim', diasAntes: 1 }, 'Vitor', AGORA);
+    expect(c.lembreteVencimento).toEqual({ modo: 'sim', diasAntes: 1 });
+    expect(c.historico[0]).toMatchObject({ acao: 'Lembrete de vencimento', detalhe: 'Mandar, 1 dia(s) antes' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).lembreteVencimento).toEqual({ modo: 'sim', diasAntes: 1 });
+    expect(definirLembreteDeVencimento(c, { modo: 'sim', diasAntes: 1 }, 'Vitor', AGORA)).toBe(c);
+    const nao = definirLembreteDeVencimento(c, { modo: 'nao' }, 'Vitor', AGORA);
+    expect(nao.lembreteVencimento).toEqual({ modo: 'nao' });
+    const padrao = definirLembreteDeVencimento(nao, null, 'Vitor', AGORA);
+    expect('lembreteVencimento' in documentoDoCadastro(padrao)).toBe(false);
+    expect(cadastroDoDocumento('FITO', 292, { ...documentoDoCadastro(padrao), lembreteVencimento: { modo: 'talvez' } }).lembreteVencimento).toBeUndefined();
   });
 });

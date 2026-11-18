@@ -27,6 +27,10 @@ export interface DocumentoDoCliente {
   /** o cliente ainda não baixou */
   novo: boolean;
   formato: FormatoDoArquivo;
+  /** a certidão vai na pasta Certidões da Central; o resto, em Do escritório (plano do Acessórias, 18/11/2026, ficha certidoes) */
+  pasta?: 'certidoes';
+  /** a validade da certidão ('aaaa-mm-dd'): o sino avisa perto de vencer */
+  validoAte?: string;
 }
 
 /** O formato do arquivo (o ícone da Central de documentos sai dele; o IconeDeArquivo do @nads/ui). */
@@ -47,7 +51,8 @@ export interface FichaDaEmpresa {
   /** 'aaaa-mm-dd' */
   abertura?: string;
   endereco: string;
-  socios: { nome: string; participacao: string }[];
+  /** a participação só no exemplo: a Receita não informa (ficha dados-cadastrais, 18/11/2026) */
+  socios: { nome: string; participacao?: string }[];
 }
 
 /** Quem atende o cliente no escritório e por onde. */
@@ -59,7 +64,8 @@ export interface Atendimento {
 }
 
 /** Um recado do escritório (ex.: mandar os extratos até o dia 5). */
-export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados' }
+export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados';
+  /** o que falta mandar: o tipo do envio que resolve (a janela já abre nele) (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino") */ tipo?: ac.TipoDeEnvio }
 
 /** O que vai no quadradinho da guia: os tipos do core, mais os das guias pagas (DARF, INSS, DCTFWeb e os honorários). */
 export type TipoDoQuadradinho = ac.TipoDeGuia | 'DARF' | 'INSS' | 'DCTFWeb' | 'HON';
@@ -126,11 +132,15 @@ export interface EstadoDaArea {
    * da Omie). Por enquanto só nos dados de exemplo: o banco ainda não liga o Mandei (o robô não espelha os tickets).
    */
   tickets: mandei.TicketNaArea[];
+  /** as entregas que esperam o cliente confirmar que recebeu (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
+  entregas: ac.EntregaParaConfirmar[];
+  /** os parcelamentos ativos, com a parcela e o próximo vencimento (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir") */
+  parcelamentos: ac.ParcelamentoNaArea[];
 }
 
 export const AREA_VAZIA: EstadoDaArea = {
   carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [],
+  documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [], entregas: [], parcelamentos: [],
 };
 
 export interface RepoAreaCliente {
@@ -158,4 +168,8 @@ export interface RepoAreaCliente {
   extratoDoMes(token: string, codigo: number, mes: string): Promise<{ lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null>;
   /** a DANFE da nota (12/11/2026): pede ao robô pela caixa dos chamados e espera o PDF no espelho; ou o porquê de não vir */
   pedirDanfe(token: string, chave: string): Promise<{ nome: string; arquivo: Blob } | { erro: string }>;
+  /** A nota da solicitação concluída: o pedido marcado vai para o robô (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir") */
+  avaliarChamado(token: string, chamadoId: string, nota: number, comentario: string): Promise<void>;
+  /** "Confirmar que recebi" a entrega: o pedido marcado vai para o robô (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
+  confirmarRecebido(token: string, entregaId: string): Promise<void>;
 }
