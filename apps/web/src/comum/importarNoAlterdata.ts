@@ -57,7 +57,7 @@ function doBanco(id: string, d: Record<string, unknown>): ImportacaoNoAlterdata 
  * corrigir"): o botão fica apagado em todas as telas e nenhum pedido sai. Volta quando ele liberar (false).
  */
 export const IMPORTAR_DESLIGADO = true;
-/** desligado para todos, menos para o dono do robô de PC (o botão Vitor, 18/11/2026: o teste do lote "Importacao nads" no PC dele) */
+/** desligado para todos, menos para o dono do robô de PC (o botão Vitor, 18/11/2026: o teste do lote "IMPORTAÇÃO NADS" no PC dele) */
 export const importarDesligado = (): boolean => IMPORTAR_DESLIGADO && !roboDePcDoUsuario();
 export const MOTIVO_DESLIGADO = 'Importar no Alterdata está desligado por enquanto (em correção). Baixe a planilha e importe você.';
 

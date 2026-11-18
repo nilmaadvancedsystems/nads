@@ -7,13 +7,15 @@
 # planilha" → Avançar) → a empresa, "Criar novo Lote", a descrição do lote, o caminho da planilha, o layout
 # "Importação Personalizada - Excel" → Concluir.
 #
-# O lote (Vitor, 18/11/2026, gravou o caminho): sempre o lote "Importacao nads" (sem acento). Existe: "Importar em Lote já
+# O lote (Vitor, 18/11/2026, gravou o caminho): sempre o lote "IMPORTAÇÃO NADS". Existe: "Importar em Lote já
 # existente" → a lupa → a Pesquisa de Seleção de lote → pesquisa o nome → a 1ª linha → Selecionar. Não existe: "Criar novo
-# Lote" com esse nome. No erro, a tela fica onde parou (Vitor: "deixe onde ele parou, porque ai eu ajudo voces").
+# Lote" com esse nome. No erro, a tela fica onde parou (Vitor: "deixe onde ele parou, porque ai eu ajudo voces"); mensagem do
+# Alterdata no meio da importação vira o erro do pedido, com o texto, e fica aberta (Vitor: "se apareceu outra mensagem, o robo
+# deve mandar o erro e aparecer no nads").
 #
 # Travas (só importa o que foi pedido):
 # - só clica em Concluir com a empresa, a descrição, o arquivo e o layout conferidos na tela;
-# - lote já existente só o "Importacao nads" (conferido na tela); nunca mexe no layout (Configurar Layout fica intocado);
+# - lote já existente só o "IMPORTAÇÃO NADS" (conferido na tela); nunca mexe no layout (Configurar Layout fica intocado);
 # - depois do Concluir: mensagem só com OK é lida e fechada; pergunta (Sim/Não) nunca leva Sim: o roteiro conta o que ela
 #   perguntava, responde Não e para;
 # - cada janela nova que aparecer vai para o log (DIAG:), para conferir o que o Alterdata mostrou.
@@ -27,8 +29,9 @@ from pywinauto import Desktop, mouse
 sys.stdout.reconfigure(encoding='utf-8')
 CODIGO, LOTE, PLANILHA = sys.argv[1], sys.argv[2], sys.argv[3]
 LAYOUT = 'Importação Personalizada - Excel'
-# o lote do nads no Contábil (18/11/2026): um só, sem acento (o "ó" do "Pró-labore" não entrava na descrição)
-LOTE_NADS = 'Importacao nads'
+# o lote do nads no Contábil (18/11/2026, Vitor: "o nome do lote em caps lock IMPORTAÇÃO NADS"): um só; o nome vai COLADO (o
+# type_keys não digitava o Ç e o Ã nas caixas do Alterdata)
+LOTE_NADS = 'IMPORTAÇÃO NADS'
 d = Desktop(backend='win32')
 mensagens = []
 CLASSE = 'TfrmImportacaoLotes'   # a janela da importação (trocada pela que abrir de verdade)
@@ -179,6 +182,39 @@ def digitar(campo, valor):
     campo.type_keys(seguro, pause=0.01, with_spaces=True)
 
 
+def colar(campo, valor):
+    """Escreve pelo Ctrl+V (o acento e o Ç entram certos); a área de transferência volta como estava."""
+    import win32clipboard
+    import win32con
+    antes = None
+    try:
+        win32clipboard.OpenClipboard()
+        try:
+            antes = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
+        except Exception:
+            antes = None
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardText(valor, win32con.CF_UNICODETEXT)
+    finally:
+        win32clipboard.CloseClipboard()
+    campo.click_input()
+    campo.type_keys('^a{DEL}', pause=0.02)
+    campo.type_keys('^v', pause=0.05)
+    time.sleep(.3)
+    try:
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        if antes is not None:
+            win32clipboard.SetClipboardText(antes, win32con.CF_UNICODETEXT)
+    except Exception:
+        pass
+    finally:
+        try:
+            win32clipboard.CloseClipboard()
+        except Exception:
+            pass
+
+
 def so_numeros(s):
     n = ''.join(ch for ch in (s or '') if ch.isdigit())
     return int(n) if n else 0
@@ -300,7 +336,7 @@ try:
     if so_numeros(emp.window_text()) != int(CODIGO):
         falhar('o código na tela (' + emp.window_text() + ') não é o ' + CODIGO)
 
-    # ── o lote "Importacao nads": existe, seleciona; não existe, cria (18/11/2026)
+    # ── o lote "IMPORTAÇÃO NADS": existe, seleciona; não existe, cria (18/11/2026)
     passo('lote "' + LOTE_NADS + '"')
     if LOTE.strip() and norm(LOTE) != norm(LOTE_NADS):
         print('DIAG: o pedido trouxe o lote "' + LOTE + '"; uso "' + LOTE_NADS + '"', flush=True)
@@ -329,7 +365,7 @@ try:
                 busca = filhos(pesq, 'TcxCustomInnerTextEdit')
                 if busca:
                     clique('pesquisa do lote: ' + LOTE_NADS)
-                    digitar(busca[0], LOTE_NADS)
+                    colar(busca[0], LOTE_NADS)
                     time.sleep(1.2)
                 grade = sorted(filhos(pesq, 'TcxGridSite'), key=lambda c: c.rectangle().top)
                 sel = [b for b, t in botoes(pesq) if t == 'Selecionar']
@@ -374,7 +410,7 @@ try:
             falhar('não achei o campo Descrição do lote')
         desc = desc[0]
         clique('descrição do lote')
-        digitar(desc, LOTE_NADS)
+        colar(desc, LOTE_NADS)
         time.sleep(.3)
         lote_ok = norm(desc.window_text()) == norm(LOTE_NADS)
         if not lote_ok:
@@ -455,7 +491,10 @@ try:
     # (Sim/Não) é Não e para.
     def resultado():
         for c in filhos(imp):
-            t = (c.window_text() or '').strip()
+            try:   # a peça que some no meio (a janela do Alterdata se refazendo, 18/11/2026) não para o roteiro
+                t = (c.window_text() or '').strip()
+            except Exception:
+                continue
             if 'Início:' in t and 'Fim:' in t:
                 return t
         return ''
@@ -464,18 +503,21 @@ try:
     while time.time() < limite:
         time.sleep(.5)
         for w in mensagens_abertas():
-            txt = texto_da_mensagem(w)
-            nomes_b = [t for _, t in botoes(w)]
-            if 'Sim' in nomes_b or 'Yes' in nomes_b:
-                mensagens.append('pergunta: ' + txt)
-                apertar(w, ('Não', 'Nao', 'No', 'Cancelar'))
-                falhar('o Alterdata perguntou "' + txt + '" e o robô respondeu Não (ainda não sabe responder essa)')
+            try:   # a mensagem que fechou sozinha enquanto era lida (18/11/2026: "Handle … is not a valid window handle")
+                txt = texto_da_mensagem(w)
+                nomes_b = [t for _, t in botoes(w)]
+                if not w.is_visible():
+                    continue
+            except Exception:
+                continue
+            # qualquer mensagem no meio (18/11/2026): vira o erro do pedido, com o texto, e fica aberta na tela para o Vitor ver
             mensagens.append(txt)
             print('DIAG: mensagem "' + txt + '" ' + str(nomes_b), flush=True)
-            if not apertar(w, ('OK', 'Ok', 'Fechar')):
-                falhar('uma mensagem sem OK: ' + txt)
-            time.sleep(.5)
-        texto = resultado()
+            falhar('o Alterdata mostrou: "' + txt + '"' + (' (pergunta ' + '/'.join(nomes_b) + ')' if nomes_b else ''))
+        try:
+            texto = resultado()
+        except Exception:
+            texto = ''
         if texto:
             break
         if not janelas(CLASSE):
