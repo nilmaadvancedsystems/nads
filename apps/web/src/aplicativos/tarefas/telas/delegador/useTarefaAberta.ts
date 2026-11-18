@@ -6,7 +6,6 @@
 import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
-import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
 import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
@@ -96,8 +95,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // (o pedido de documentos já abre delegando: é para outra pessoa anexar)
   const [delegarEscolhido, setDelegarEscolhido] = useState<boolean | null>(pedido ? true : null);
   // a tarefa recorrente (Vitor, 18/11/2026: "ao criar a tarefa, colocar ela recorrente, se cair em um dia nao util, colocar no
-  // proximo dia util"): só na nova e, por enquanto, só no modo desenvolvedor
-  const [dev] = useModoDesenvolvedor();
+  // proximo dia util"): só na nova (para todos desde 18/11/2026)
+  const dev = true;
   const [repete, setRepete] = useState<tarefas.recorrencia.Repeticao | ''>('');
   // quantas vezes ('' = sem fim; 18/11/2026: "as vezes a pessoa so quer colocar 12 meses ou 3 meses")
   const [vezes, setVezes] = useState('');
@@ -240,7 +239,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     prazoTexto,
     setPrazo: (v: string) => { setPrazoTexto(v); setErro(''); },
     prazoInvalido: prazo === null,
-    /** a recorrência (modo desenvolvedor): repetir, as opções e, se o prazo cair em dia não útil, para onde ele vai */
+    /** a recorrência: repetir, as opções e, se o prazo cair em dia não útil, para onde ele vai */
     podeRepetir: dev && ehNova && !pedido,
     repete, setRepete: (v: tarefas.recorrencia.Repeticao | '') => { setRepete(v); setErro(''); },
     opcoesDeRepeticao: tarefas.recorrencia.REPETICOES,

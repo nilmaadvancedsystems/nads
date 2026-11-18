@@ -82,7 +82,7 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
  * Repetir, numa linha própria (Vitor, 18/11/2026: "coloca numa linha própria Repetir... Todo dia, toda semana, todo mes, todo
  * ano... e escolher qual periodo que eu quero, que as vezes a pessoa so quer colocar 12 meses ou 3 meses"): a frequência e, ao
  * repetir, Sem fim ou Por um período (quantos dias, semanas, meses ou anos). A data do prazo é a primeira vez; sem prazo, o
- * Repetir põe hoje. Concluída, nasce a próxima; dia não útil vai para o próximo dia útil. Modo desenvolvedor.
+ * Repetir põe hoje. Concluída, nasce a próxima; dia não útil vai para o próximo dia útil. Para todos.
  */
 function RepetirDaTarefa({ vm }: { vm: Vm }) {
   const [porPeriodo, setPorPeriodo] = useState(() => !!vm.vezes);

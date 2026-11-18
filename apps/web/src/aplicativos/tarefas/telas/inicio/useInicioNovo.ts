@@ -81,7 +81,7 @@ export function useInicioNovo() {
   const mudarAba = (a: AbaDoInicio) => setParams(p => { const n = new URLSearchParams(p); n.set('aba', a); return n; }, { replace: true });
 
   const repo = useTarefasDelegadas();
-  // as tarefas recorrentes concluídas ganham a próxima (18/11/2026; modo desenvolvedor)
+  // as tarefas recorrentes concluídas ganham a próxima (18/11/2026)
   useRecorrentes();
   const acesso = useAcesso();
   const docs = acesso.equipe().docs;
