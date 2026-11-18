@@ -60,6 +60,18 @@ describe('leitura dos arquivos', () => {
     expect(r.lancamentos).toEqual([{ data: '2026-08-05', valor: 100000, historico: 'Recebimento' }]);
   });
 
+  it('o relatório de títulos do Sicoob não é extrato: sai como "não é extrato" (18/11/2026, na 292)', async () => {
+    // fictício, no jeito do "Relatório - Títulos por Período" com o título em desenho
+    const pdf = pdfMinimo([
+      [40, 760, 'Cedente: 100200 - EMPRESA EXEMPLO LTDA'], [40, 745, 'Tipo Consulta: Liquidacao e baixa'],
+      [40, 720, 'Sacado'], [200, 720, 'Nosso Numero'], [300, 720, 'Seu Numero'], [400, 720, 'Vlr. Mora'], [480, 720, 'Dt. Liquid.'], [540, 720, 'Vlr. Cobrado'],
+      [40, 700, 'CLIENTE EXEMPLO LTDA'], [200, 700, '10702-3'], [300, 700, '9955/3/3'], [400, 700, '0,00'], [480, 700, '04/09/2026'], [540, 700, '1.441,07'],
+    ]);
+    const r = await lerArquivo('SICOOB 09.pdf', pdf, 'banco');
+    expect(r.lancamentos).toEqual([]);
+    expect(r.naoEExtrato).toBe(true);
+  });
+
   it('OFX pelo conteúdo', async () => {
     const r = await lerArquivo('extrato.txt', new TextEncoder().encode('OFXHEADER:100\n<OFX><STMTTRN><DTPOSTED>20260805<TRNAMT>-1.50<MEMO>TARIFA</STMTTRN></OFX>'), 'banco');
     expect(r.lancamentos).toEqual([{ data: '2026-08-05', valor: -150, historico: 'TARIFA' }]);

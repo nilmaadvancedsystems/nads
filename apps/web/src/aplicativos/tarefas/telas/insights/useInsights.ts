@@ -1,20 +1,16 @@
 // ViewModel da Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de
 // Insights eu quero", "esses paineis so vao ser vistos por diretor e admin", "Todos os seis", "faz algo bonito assim como
 // no acessorias"). Os destaques do mês no alto, a equipe em cartões com o anel do quanto já concluiu, e os painéis do DP,
-// das guias, dos clientes, das entregas e das tarefas em barras. O Modo TV mostra um por vez, girando. Só Diretor e admin
-// chegam aqui (a gaveta esconde dos outros e o banco não deixa ler). A tela cheia é da View (Insights.tsx).
+// das guias, dos clientes, das entregas e das tarefas em barras. O clique numa pessoa abre a visão dela (as empresas e as
+// tarefas atrasadas). O Modo TV saiu (18/11/2026: "remove o modo tv"). Só Diretor e admin chegam aqui (a gaveta esconde
+// dos outros e o banco não deixa ler).
 import { tarefas as t } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { useInsightsDoBanco } from '../../dados/repo';
+import { useAcesso, useInsightsDoBanco } from '../../dados/repo';
 
-/** quanto tempo cada painel fica na TV */
-export const SEGUNDOS_POR_PAINEL = [10, 20, 30, 60] as const;
 /** os números mais velhos que isto: o robô pode ter parado */
 const VELHO_MS = 60 * 60 * 1000;
-/** os painéis do Modo TV, na ordem em que giram */
-export const PAINEIS_DA_TV = ['equipe', 'dp', 'guias', 'clientes', 'entregas', 'tarefas'] as const;
-export type PainelDaTv = (typeof PAINEIS_DA_TV)[number];
 
 export type Tom = 'bom' | 'alerta' | 'ruim' | 'neutro' | 'apagado';
 export interface Destaque { id: string; icone: NomeIcone; rotulo: string; valor: string; detalhe: string; pct: number | null; tom: Tom }
@@ -82,41 +78,65 @@ export function telaDosInsights(r: t.ResumoDosInsights) {
   };
 }
 
+const ROTULO_DA_SITUACAO = { parada: 'Parada', 'em-andamento': 'Em andamento', 'nao-iniciada': 'Não iniciada', concluida: 'Concluída' } as const;
+const TOM_DA_SITUACAO: Record<keyof typeof ROTULO_DA_SITUACAO, Tom> = { parada: 'ruim', 'em-andamento': 'alerta', 'nao-iniciada': 'apagado', concluida: 'bom' };
+const diasDeAtraso = (prazo: string, agora: Date) => {
+  const p = /^(\d{4})-(\d{2})-(\d{2})$/.exec(prazo);
+  if (!p) return 0;
+  const h = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
+  return Math.max(0, Math.round((h - new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3])).getTime()) / 864e5));
+};
+
+/** A visão de uma pessoa (o clique no cartão): as empresas que faltam com a etapa, as concluídas e as tarefas atrasadas. */
+export function visaoDaPessoa(p: ReturnType<typeof telaDosInsights>['equipe'][number], agora: Date) {
+  const empresas = p.empresas.map(e => ({
+    nome: e.nome, situacao: ROTULO_DA_SITUACAO[e.situacao], tom: TOM_DA_SITUACAO[e.situacao],
+    etapa: e.etapa, progresso: e.total ? Math.round((e.feitas / e.total) * 100) : 0, texto: e.feitas + ' de ' + e.total + ' etapas',
+  }));
+  return {
+    ...p,
+    faltando: empresas.filter(e => e.situacao !== 'Concluída'),
+    concluidas: empresas.filter(e => e.situacao === 'Concluída'),
+    /** as que não couberam no resumo (o robô manda até 80 por pessoa) */
+    foraDaLista: Math.max(0, p.total - empresas.length),
+    tarefas: p.tarefas.map(t => { const d = diasDeAtraso(t.prazo, agora); return { titulo: t.titulo, atraso: d === 0 ? 'vence hoje' : d === 1 ? '1 dia de atraso' : d + ' dias de atraso' }; }),
+  };
+}
+
+const simples = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+
+/**
+ * A foto de perfil de quem é da equipe pelo nome que vem no resumo (o do Cadastro: às vezes o nome inteiro, às vezes só o
+ * primeiro, em maiúsculas): o nome igual; senão, o primeiro nome, se só uma pessoa ativa tiver esse (18/11/2026: "preciso
+ * das fotos de perfil das pessoas"). Sem foto, a tela mostra as iniciais.
+ */
+export function fotoPeloNome(equipe: readonly { nome: string; fotoPerfil: string | null; ativo: boolean }[], nome: string): string | null {
+  const ativos = equipe.filter(p => p.ativo);
+  const alvo = simples(nome);
+  const igual = ativos.find(p => simples(p.nome) === alvo);
+  if (igual) return igual.fotoPerfil || null;
+  const primeiro = alvo.split(/\s+/)[0];
+  const mesmos = ativos.filter(p => simples(p.nome).split(/\s+/)[0] === primeiro);
+  return mesmos.length === 1 ? mesmos[0].fotoPerfil || null : null;
+}
+
 export function useInsights() {
   const repo = useInsightsDoBanco();
   const e = repo.estado();
   const [agora, setAgora] = useState(() => new Date());
-  const [tv, setTv] = useState(false);
-  const [indice, setIndice] = useState(0);
-  const [segundos, setSegundos] = useState<number>(20);
-  const [pausado, setPausado] = useState(false);
-  const tela = e.resumo ? telaDosInsights(e.resumo) : null;
-  const entrarNaTv = useCallback(() => { setIndice(0); setPausado(false); setTv(true); }, []);
-  const sairDaTv = useCallback(() => setTv(false), []);
-  const total = PAINEIS_DA_TV.length;
+  // a pessoa aberta (a chave setor|nome); o clique no cartão abre a visão dela (18/11/2026)
+  const [aberta, setAberta] = useState('');
+  // as fotos de perfil (a lista da equipe, que o Diretor e o admin já leem)
+  const equipe = useAcesso().equipe();
+  const base = e.resumo ? telaDosInsights(e.resumo) : null;
+  const foto = (nome: string) => fotoPeloNome(equipe.lista, nome);
+  const tela = base ? { ...base, equipe: base.equipe.map(p => ({ ...p, foto: foto(p.nome) })), tarefas: base.tarefas.map(p => ({ ...p, foto: foto(p.nome) })) } : null;
 
   // o relógio da idade dos números (a cada minuto)
   useEffect(() => { const i = setInterval(() => setAgora(new Date()), 60000); return () => clearInterval(i); }, []);
-  // a TV gira os painéis
-  useEffect(() => {
-    if (!tv || pausado) return;
-    const i = setInterval(() => setIndice(x => (x + 1) % total), segundos * 1000);
-    return () => clearInterval(i);
-  }, [tv, pausado, segundos, total]);
-  // Esc sai da TV (fora da tela cheia); as setas trocam o painel; espaço pausa
-  useEffect(() => {
-    if (!tv) return;
-    const tecla = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') sairDaTv();
-      else if (ev.key === 'ArrowRight') setIndice(x => (x + 1) % total);
-      else if (ev.key === 'ArrowLeft') setIndice(x => (x - 1 + total) % total);
-      else if (ev.key === ' ') { ev.preventDefault(); setPausado(p => !p); }
-    };
-    window.addEventListener('keydown', tecla);
-    return () => window.removeEventListener('keydown', tecla);
-  }, [tv, total, sairDaTv]);
 
   const velho = !!e.resumo && agora.getTime() - new Date(e.resumo.atualizadoEm).getTime() > VELHO_MS;
+  const pessoa = tela?.equipe.find(p => p.setor + '|' + p.nome === aberta) ?? null;
   return {
     exemplos: repo.exemplos,
     carregando: !e.carregado,
@@ -125,11 +145,8 @@ export function useInsights() {
     tela,
     atualizado: e.resumo ? idadeDosNumeros(e.resumo.atualizadoEm, agora) : '',
     velho,
-    tv, entrarNaTv, sairDaTv,
-    painelDaTv: PAINEIS_DA_TV[indice % total],
-    indice: indice % total,
-    irPara: (i: number) => setIndice(i),
-    pausado, pausar: () => setPausado(p => !p),
-    segundos, mudarSegundos: setSegundos,
+    pessoa: pessoa ? { ...visaoDaPessoa(pessoa, agora), foto: pessoa.foto } : null,
+    abrirPessoa: (setor: string, nome: string) => setAberta(setor + '|' + nome),
+    fecharPessoa: useCallback(() => setAberta(''), []),
   };
 }

@@ -48,6 +48,11 @@ export interface ConfigDoLancatudo {
   regras: RegraDoLancatudo[];
   /** chave do favorecido com o sentido ('e:' entrada / 's:' saída) → a conta */
   lembradas: Record<string, ContaLembrada>;
+  /**
+   * o código contábil de cada conta bancária (o id do Cadastro → o código), escolhido no próprio Lançatudo (18/11/2026: "tem
+   * que ter como configurar por aqui as contas"); vale quando o Cadastro não tem
+   */
+  contasDosBancos?: Record<string, string>;
 }
 
 /** O que a pessoa decidiu numa linha (vale mais que regra e aprendizado). */

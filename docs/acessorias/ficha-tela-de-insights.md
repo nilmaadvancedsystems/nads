@@ -82,3 +82,13 @@ match /nadsInsights/{id} {
 3. Os índices: as contagens usam só igualdades (`solicitacoesEmail` tipo+competencia+status; `entregas` status e
    status+competencia; `areaClienteLeituras` competencia); o Firestore costuma servir sem índice composto, mas se o
    robô logar "uma contagem falhou" com link de índice, é criar o índice que o link pede.
+
+## Mudanças do dono (18/11/2026, depois de publicada a 0.0.793)
+
+- "faz algo bonito assim como no acessorias": destaques com anéis, a equipe em cartões com anel, barras, funil e estrelas.
+- "pode dividir em menu lateral": Visão geral, Equipe, Departamento Pessoal, Guias, Clientes, Entregas físicas, Tarefas.
+- "quer que quando eu clique abra uma visao do que a pessoa ta fazendo": o clique na pessoa abre a janela dela (as
+  empresas faltando com a etapa e o progresso, as concluídas, as tarefas atrasadas pelo título). O robô passou a mandar
+  no resumo, por pessoa, até 80 empresas (nome, situação, etapa) e até 10 tarefas atrasadas (título, prazo). Só Diretor
+  e admin leem o documento.
+- "remove o modo tv": o Modo TV saiu.

@@ -63,7 +63,7 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
   const doTexto = (paginas: ItemDeTexto[][], porOcr: boolean): ArquivoLido => {
     const marca = porOcr ? { ocr: true } : {};
     if (lado === 'banco' && ehFaturaDeCartao(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É a fatura do cartão, não o extrato da conta.', faturaDeCartao: true, ...marca };
-    if (lado === 'banco' && ehRelatorioDeTitulos(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É o relatório de cobrança (títulos por período), não o extrato da conta.', ...marca };
+    if (lado === 'banco' && ehRelatorioDeTitulos(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É o relatório de cobrança (títulos por período), não o extrato da conta.', naoEExtrato: true, ...marca };
     const { lancamentos: l, saldoAnteriorPelaLinha, saldoAnteriorConferido, conferenciaPeloSaldo } = extratoDoPdf(paginas, lado, anoPadrao);
     // a pré-verificação (Vitor, 10/11/2026): a aplicação, o comprovante e os outros que caem na pasta do extrato não entram
     const outro = lado === 'banco' ? preVerificarExtrato(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'), l, porOcr) : null;

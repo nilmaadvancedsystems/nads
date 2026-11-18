@@ -1,8 +1,8 @@
 'use strict';
 // A Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de Insights eu
 // quero", "esses paineis so vao ser vistos por diretor e admin", "Todos os seis"). A cada 15 min monta os números do
-// escritório e grava nadsInsights/atual (só números e nomes da equipe; nenhum nome de cliente). A tela e a TV ouvem só
-// esse documento. As contas são do core (tarefas/regras/insights.ts, pelo robo/gerado/danfse.js).
+// escritório e grava nadsInsights/atual (os números; os nomes da equipe; e, na visão de cada pessoa, as empresas dela e o
+// título das tarefas atrasadas: só Diretor e admin leem). A tela ouve só esse documento. As contas são do core (tarefas/regras/insights.ts, pelo robo/gerado/danfse.js).
 //
 // Vem DESLIGADO: liga em Robôs › Ajustes › "Tela de Insights" (config/insights.ligado). Desligado, não lê nada além do
 // próprio ajuste (um ouvinte).
@@ -75,7 +75,8 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
       const lista = doSetor(setor, compAnterior);
       const codigos = new Set(lista.map(e => Number(e.codigo)).filter(Boolean));
       for (const [codigo, cad] of fontes.cadastroPorCodigo) if (cad && cad.responsaveis && cad.responsaveis[setor]) codigos.add(codigo);
-      const empresas = [...codigos].map(codigo => ({ codigo, responsavel: String(((fontes.cadastroPorCodigo.get(codigo) || {}).responsaveis || {})[setor] || '') }));
+      // o nome vai junto: a visão da pessoa mostra as empresas dela (18/11/2026: "abra uma visao do que a pessoa ta fazendo")
+      const empresas = [...codigos].map(codigo => { const cad = fontes.cadastroPorCodigo.get(codigo) || {}; return { codigo, responsavel: String((cad.responsaveis || {})[setor] || ''), nome: String(cad.nome || '') }; });
       return { setor, competencia: compAnterior, pessoas: P.rotinasPorPessoa(empresas, lista, codigo => P.rotinaDaEmpresa(setor, codigo)) };
     });
 
