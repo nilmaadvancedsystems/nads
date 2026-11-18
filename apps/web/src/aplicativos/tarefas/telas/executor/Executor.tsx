@@ -9,7 +9,7 @@ import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarre
 import { demo } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router';
-import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
+import { useAvisoDeBloqueio, useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { implantarNotasFiscaisDeTeste } from '../../etapas/conferencia/importadosNaEtapa';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
@@ -129,6 +129,17 @@ export function Executor() {
     marcouDaDelegacao.current.add(feitoNaDelegacao.id);
     folha.alternar(feitoNaDelegacao.id);
   }, [feitoNaDelegacao?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // o item delegado fica travado para quem delegou (Vitor, 18/11/2026: "da check la e bloqueia pra mim, so clara pode desmarcar,
+  // porque foi ela que fez"): o check segue o da pessoa; ela desmarcou na delegação, desmarca aqui também. Modo desenvolvedor.
+  const [dev] = useModoDesenvolvedor();
+  const travadoNaDelegacao = (id: string) => (dev && naFolha && !delegacao.recebida ? delegacao.com(id) : '');
+  const desfeitoNaDelegacao = dev && folha.itens && naFolha && !delegacao.recebida
+    ? folha.itens.find(i => i.marcado && i.liberado && !!delegacao.com(i.id) && !delegacao.ofuscada(i.id)) || null : null;
+  useEffect(() => {
+    if (!desfeitoNaDelegacao) return;
+    marcouDaDelegacao.current.delete(desfeitoNaDelegacao.id);
+    folha.alternar(desfeitoNaDelegacao.id);
+  }, [desfeitoNaDelegacao?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const faltamFerramenta = vm.tela && requisitos && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
@@ -408,8 +419,11 @@ export function Executor() {
                         <label>
                           {delegacao.recebida
                             ? <input type="checkbox" checked={delegacao.feita(i.id)} onChange={() => delegacao.alternar({ codigo: i.id, nome: i.nome })} title="Feito" />
-                            : <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
-                              title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />}
+                            : travadoNaDelegacao(i.id)
+                              ? <input type="checkbox" checked={i.marcado} disabled onChange={() => undefined}
+                                title={delegacao.ofuscada(i.id) ? 'Feito por ' + travadoNaDelegacao(i.id) + ': só ' + travadoNaDelegacao(i.id) + ' desmarca' : 'Com ' + travadoNaDelegacao(i.id) + ': marca quando ' + travadoNaDelegacao(i.id) + ' fizer'} />
+                              : <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
+                                title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />}
                           <span className="folha-check-texto">
                             <b>{i.nome}{naFolha && delegacao.para(i.id) && <> <span className="badge badge-neutral">{delegacao.para(i.id)}</span></>}</b>
                             {i.contas.length > 0 && <span className="hint">{i.contas.join(' · ')}</span>}
