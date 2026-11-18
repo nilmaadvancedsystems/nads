@@ -7080,6 +7080,20 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-coluna{display:flex;flex-direction:column;gap:28px;min-width:0;}
 .ini-coluna > .card{margin-bottom:0;}
 .ini-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+/* o Quadro de avisos destacado, no alto da coluna da direita (18/11/2026) */
+.ini-quadro{border-color:color-mix(in srgb,var(--accent) 45%,var(--border));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent);}
+.ini-quadro .card-head{background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.ini-quadro .card-head h3{display:inline-flex;align-items:center;gap:8px;}
+.ini-quadro .card-head h3 svg{width:18px;height:18px;color:var(--accent);}
+.ini-quadro-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+.ini-quadro-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
+.ini-quadro-item:hover{border-color:var(--accent);}
+.ini-quadro-item > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
+.ini-quadro-dia{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:44px;height:44px;border-radius:8px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);flex:none;line-height:1.05;}
+.ini-quadro-dia b{font-size:var(--fs-18,18px);}
+.ini-quadro-dia small{font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+.ini-quadro-texto{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.ini-quadro-texto b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-linha{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;border-bottom:1px solid var(--border);}
 /* a reunião do dia escolhido, em primeiro na caixa de prazos e destacada (18/11/2026) */
 .ini-reuniao-do-dia{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding:4px 10px;margin-bottom:6px;border-bottom:0;}

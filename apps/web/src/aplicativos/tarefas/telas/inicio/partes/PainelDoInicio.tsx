@@ -26,6 +26,8 @@ function Cartao({ titulo, acao, children }: { titulo: ReactNode; acao?: ReactNod
   );
 }
 
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
 const quantas = (n: number) => n + (n === 1 ? ' tarefa' : ' tarefas');
 
 /** O tempo por extenso: "24 min", "6h", "6h 24min" (Vitor, 13/11/2026: o "06:24" sozinho não dizia o que era). */
@@ -76,7 +78,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             {p && (
               <div className="ini-calendario-aviso" role="alertdialog" aria-label={p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}>
                 <div className="card ini-calendario-cartao">
-                  <span className="badge badge-suave badge-warn">{p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}</span>
+                  {/* sem o "Aviso: confirme que leu", o Abrir e o "+1 esperando" (Vitor, 18/11/2026); a reunião mantém o selo */}
+                  {p.tipo === 'reuniao' && <span className="badge badge-suave badge-warn">Reunião: confirme a presença</span>}
                   <b>{p.titulo}</b>
                   <span className="hint">{p.quem} · {p.quando}</span>
                   {p.texto && <p className="ini-calendario-texto">{p.texto}</p>}
@@ -85,8 +88,6 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
                       <button type="button" className="btn btn-primary" onClick={() => vm.reunioesVm.confirmar(p.id, true)}><Icone nome="check" />Confirmar presença</button>
                       <button type="button" className="btn btn-outline" onClick={() => vm.reunioesVm.confirmar(p.id, false)}>Não vou</button>
                     </> : <button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(p.id)}><Icone nome="check" />Recebido</button>}
-                    <button type="button" className="btn btn-ghost" onClick={() => abrir(p.id)}>Abrir</button>
-                    {vm.paraConfirmar.length > 1 && <span className="hint">+{vm.paraConfirmar.length - 1} esperando</span>}
                   </div>
                 </div>
               </div>
@@ -104,16 +105,28 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             </ul>
           )}
         </Cartao>
-        <Cartao titulo="Quadro de avisos" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
-          {vm.reunioes.length ? vm.reunioes.map(r => (
-            <button key={r.id} type="button" className="popover-item" onClick={() => abrir(r.id)}>
-              <Icone nome="calendar" />
-              <span className="popover-texto"><b>{r.tituloNaLista}</b><br /><span className="hint">{r.reuniao}</span></span>
-            </button>
-          )) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
-        </Cartao>
       </div>
       <div className="ini-coluna">
+        {/* o Quadro de avisos no alto da coluna da direita e destacado (Vitor, 18/11/2026: "muito apagado da tela inicial... seja
+            mais superior"): cada reunião com o dia em destaque à esquerda */}
+        <section className="card ini-cartao ini-quadro">
+          <div className="card-head"><h3><Icone nome="sino" />Quadro de avisos</h3>
+            <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button></div>
+          {vm.reunioes.length ? (
+            <div className="ini-quadro-lista">
+              {vm.reunioes.map(r => (
+                <button key={r.id} type="button" className="ini-quadro-item" onClick={() => abrir(r.id)}>
+                  <span className="ini-quadro-dia" aria-hidden="true">
+                    <b>{r.quando ? r.quando.slice(8, 10) : '—'}</b>
+                    <small>{r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small>
+                  </span>
+                  <span className="ini-quadro-texto"><b>{r.tituloNaLista}</b><span className="hint">{r.reuniao}</span></span>
+                  <Icone nome="chevronRight" />
+                </button>
+              ))}
+            </div>
+          ) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
+        </section>
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>
