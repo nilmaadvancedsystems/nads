@@ -122,26 +122,29 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
         )}
       </div>
       <div className="ini-coluna">
-        {/* o Quadro de avisos no alto da coluna da direita e destacado (Vitor, 18/11/2026: "muito apagado da tela inicial... seja
-            mais superior"): cada reunião com o dia em destaque à esquerda */}
-        {dev && <section className="card ini-cartao ini-quadro">
-          <div className="card-head"><h3><Icone nome="sino" />Quadro de avisos</h3>
-            <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button></div>
-          {vm.reunioes.length ? (
-            <div className="ini-quadro-lista">
-              {vm.reunioes.map(r => (
-                <button key={r.id} type="button" className="ini-quadro-item" onClick={() => abrir(r.id)}>
-                  <span className="ini-quadro-dia" aria-hidden="true">
-                    <b>{r.quando ? r.quando.slice(8, 10) : '—'}</b>
-                    <small>{r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small>
-                  </span>
-                  <span className="ini-quadro-texto"><b>{r.tituloNaLista}</b><span className="hint">{r.reuniao}</span></span>
-                  <Icone nome="chevronRight" />
-                </button>
-              ))}
-            </div>
-          ) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
-        </section>}
+        {/* o Quadro de avisos sem a caixa: só os cards, das reuniões e dos avisos (Vitor, 18/11/2026: "tira essa box e deixa so os
+            cards, tanto de aviso quanto de reuniao"); só no modo desenvolvedor */}
+        {dev && (vm.reunioes.length + vm.avisosNoQuadro.length > 0) && (
+          <div className="ini-quadro-lista ini-quadro-solto" aria-label="Quadro de avisos">
+            {vm.reunioes.map(r => (
+              <button key={'r' + r.id} type="button" className="ini-quadro-item" onClick={() => abrir(r.id)}>
+                <span className="ini-quadro-dia" aria-hidden="true">
+                  <b>{r.quando ? r.quando.slice(8, 10) : '—'}</b>
+                  <small>{r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small>
+                </span>
+                <span className="ini-quadro-texto"><b>{r.tituloNaLista}</b><span className="hint">Reunião · {r.reuniao}</span></span>
+                <Icone nome="chevronRight" />
+              </button>
+            ))}
+            {vm.avisosNoQuadro.map(a => (
+              <button key={'a' + a.id} type="button" className={'ini-quadro-item aviso' + (a.precisaReceber ? ' pendente' : '')} onClick={() => abrir(a.id)}>
+                <span className="ini-quadro-dia" aria-hidden="true"><Icone nome={a.fixado ? 'mapaPin' : 'sino'} /></span>
+                <span className="ini-quadro-texto"><b>{a.titulo}</b><span className="hint">{a.detalhe}</span></span>
+                <Icone nome="chevronRight" />
+              </button>
+            ))}
+          </div>
+        )}
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>

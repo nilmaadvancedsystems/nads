@@ -275,6 +275,13 @@ export function useInicioNovo() {
           .catch((e: unknown) => toast('Não cobrei: ' + (e instanceof Error ? e.message : String(e)))),
       };
     }),
+    /**
+     * os avisos (os que não são reunião) nos cards do Painel, junto das reuniões (Vitor, 18/11/2026: "deixa so os cards, tanto de
+     * aviso quanto de reuniao"): os fixados e os mais novos primeiro (a ordem do mural), até 4
+     */
+    avisosNoQuadro: comunicados.filter(c => c.tipo !== 'reuniao').slice(0, 4).map(c => ({
+      id: c.id, titulo: c.tituloNaLista, detalhe: [c.tipoRotulo, c.por, c.quandoFoi].filter(Boolean).join(' · '), em: c.em, fixado: !!c.fixado, precisaReceber: c.precisaReceber,
+    })),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
     reunioes: [
       ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo })),

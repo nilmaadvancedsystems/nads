@@ -7091,6 +7091,12 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro .card-head h3{display:inline-flex;align-items:center;gap:8px;}
 .ini-quadro .card-head h3 svg{width:18px;height:18px;color:var(--accent);}
 .ini-quadro-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+/* os cards soltos, sem a caixa (18/11/2026): o aviso com o ícone no lugar do dia, o que pede o Recebido com a borda de atenção */
+.ini-quadro-solto .ini-quadro-item{background:var(--surface);}
+.ini-coluna > .ini-quadro-solto{margin-bottom:-12px;}
+.ini-quadro-item.aviso .ini-quadro-dia{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);}
+.ini-quadro-item.aviso .ini-quadro-dia svg{width:20px;height:20px;}
+.ini-quadro-item.pendente{border-color:color-mix(in srgb,var(--warn) 60%,var(--border));}
 .ini-quadro-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
 .ini-quadro-item:hover{border-color:var(--accent);}
 .ini-quadro-item > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
