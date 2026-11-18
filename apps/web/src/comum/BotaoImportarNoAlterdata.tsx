@@ -42,7 +42,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
 
   useEffect(() => { setId(lembrado(k)); setEstado(null); }, [k]);
   useEffect(() => {
-    if (!id) return;
+    if (!id || IMPORTAR_DESLIGADO) return;
     return acompanharImportacao(id, setEstado, () => setEstado(null));
   }, [id]);
 
@@ -70,6 +70,17 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não mandei ao robô', texto: (e as Error).message });
     } finally { setMandando(false); }
+  }
+
+  // desligado (18/11/2026: "remove importar direto do alterdata e deixa so baixar a planilha por enquanto"): some das telas; onde o
+  // botão juntava as duas saídas, fica só o Baixar a planilha (as outras telas já têm o Baixar ao lado)
+  if (IMPORTAR_DESLIGADO) {
+    if (!p.baixar) return null;
+    return (
+      <button type="button" className="btn btn-secondary" disabled={p.disabled} title={p.disabled ? p.motivo : 'Baixar a planilha para importar no Alterdata'} onClick={p.baixar}>
+        <Icone nome="download" width={16} height={16} />Baixar a planilha
+      </button>
+    );
   }
 
   if (p.baixar) {
