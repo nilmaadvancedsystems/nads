@@ -7420,3 +7420,5 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .notif-detalhe{padding:16px 18px 20px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--accent) 4%,transparent);}
 .notif-detalhe > .card{margin:0;box-shadow:none;}
 @media (max-width:720px){.notif-linha{grid-template-columns:32px minmax(0,1fr) auto 16px;}.notif-quem,.notif-quando{display:none;}}
+/* a paginação das tabelas longas (o Creditor, 18/11/2026) */
+.paginacao{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;}

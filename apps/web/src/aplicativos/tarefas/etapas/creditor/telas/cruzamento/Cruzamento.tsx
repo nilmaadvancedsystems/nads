@@ -1,6 +1,6 @@
 // Etapa Relatório de Recebimento do Creditor: a conta de cada título (aprendida ou do balancete) e, sem conta, a decisão.
 import { creditor as cr } from '@nads/core';
-import { Alerta, MenuSuspenso } from '@nads/ui';
+import { Alerta, Icone, MenuSuspenso } from '@nads/ui';
 import { Fragment } from 'react';
 import { Celula } from './partes/Celula';
 import { MenuDeConta } from '../../partes/MenuDeConta';
@@ -75,6 +75,15 @@ export function Cruzamento() {
           </table>
         </div>
         {!vm.linhas.length && <p className="hint">Nada neste filtro.</p>}
+        {vm.paginacao && (
+          <div className="paginacao" role="navigation" aria-label="Páginas dos títulos">
+            <span className="hint num">{vm.paginacao.de}–{vm.paginacao.ate} de {vm.paginacao.total}</span>
+            <span className="tarefas-barra-espaco" />
+            <button type="button" className="btn btn-outline" disabled={vm.paginacao.pagina === 0} onClick={() => vm.paginacao!.irPara(vm.paginacao!.pagina - 1)}><Icone nome="chevronLeft" />Anterior</button>
+            <span className="hint num">{vm.paginacao.pagina + 1} / {vm.paginacao.paginas}</span>
+            <button type="button" className="btn btn-outline" disabled={vm.paginacao.pagina >= vm.paginacao.paginas - 1} onClick={() => vm.paginacao!.irPara(vm.paginacao!.pagina + 1)}>Próxima<Icone nome="chevronRight" /></button>
+          </div>
+        )}
       </div>
 
     </section>
