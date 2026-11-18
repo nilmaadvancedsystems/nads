@@ -44,6 +44,9 @@ export const NOVIDADES = {
    *  fazendo perguntas"): o Perguntar na janela do feedback do admin; quem mandou responde na janela grande e no balão (só aparece
    *  depois que o admin pergunta); aprovada para todos no mesmo dia ("Aprova para todos") */
   'conversa-feedback': { desde: '16/11/2026', aprovada: true },
+  /** o Lançatudo (17/11/2026: "desenvolver um Mister dentro do nads"): o extrato do banco em lançamentos para o Alterdata, com as
+   *  regras de cada empresa; só o Contábil e o admin */
+  lancatudo: { desde: '17/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
