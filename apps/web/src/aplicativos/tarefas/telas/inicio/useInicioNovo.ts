@@ -298,8 +298,8 @@ export function useInicioNovo() {
      * sem o Recebido, um de cada vez; respondeu, aparece o próximo
      */
     paraConfirmar: [
-      // no modo desenvolvedor, só as reuniões em que quem marcou pediu a confirmação de presença (18/11/2026, em teste)
-      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null && (!devPresenca || x.pedirPresenca === true))
+      // só as reuniões em que quem marcou pediu a confirmação de presença (18/11/2026)
+      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null && x.pedirPresenca === true)
         .map(x => ({ tipo: 'reuniao' as const, id: x.id, titulo: x.titulo, texto: x.pauta, quem: x.criadaPor.nome, quando: x.quandoTexto })),
       ...comunicados.filter(c => c.precisaReceber)
         .map(c => ({ tipo: 'aviso' as const, id: c.id, titulo: c.tituloNaLista, texto: c.texto, quem: c.por, quando: c.quandoFoi })),

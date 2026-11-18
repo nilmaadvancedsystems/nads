@@ -6,7 +6,6 @@
 import { tarefas } from '@nads/core';
 import { BotaoFechar, CampoData, Icone, Interruptor, MenuSuspenso, useJanela, Vazio } from '@nads/ui';
 import { useRef, useState, type ReactNode } from 'react';
-import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useReunioesDoInicio } from '../useReunioesDoInicio';
 import { NovoComunicado } from './NotificacoesDoInicio';
@@ -71,10 +70,9 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   const [tipo, setTipo] = useState<tarefas.reunioes.TipoDaReuniao>('equipe');
   const [duracao, setDuracao] = useState(0);
   // pedir a confirmação de presença (Vitor, 18/11/2026: "uma opcao de marcar, de confirmar presenca"; "coloca no modo desenvolvedor,
-  // essa funcao de fazer disparar no calendario, para eu testar"): por enquanto só no modo desenvolvedor
-  const [dev] = useModoDesenvolvedor();
+  // essa funcao de fazer disparar no calendario, para eu testar"; publicada para todos)
   const [pedirPresenca, setPedirPresenca] = useState(false);
-  const pedido = { titulo, pauta, link: tipo === 'live' ? link : '', quando: dataDoCampo(data, hora), participantes, tipo, duracao, pedirPresenca: dev && pedirPresenca };
+  const pedido = { titulo, pauta, link: tipo === 'live' ? link : '', quando: dataDoCampo(data, hora), participantes, tipo, duracao, pedirPresenca };
   const problema = vm.problemaDoPedido(pedido);
   const enviar = async () => { if (!problema && await vm.pedir(pedido)) fechar(); };
   const alternar = (p: Pessoa) => setParticipantes(x => (x.some(y => y.uid === p.uid) ? x.filter(y => y.uid !== p.uid) : [...x, p]));
@@ -100,12 +98,10 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
             itens={vm.duracoes.map(d => ({ rotulo: d.rotulo, marcado: d.valor === duracao, onClick: () => setDuracao(d.valor) }))} />
         </Propriedade>
         {!direta && <Propriedade icone="usuario" rotulo="Quem vai"><EscolherPessoas equipe={vm.equipe} escolhidas={participantes} alternar={alternar} vazio="Escolher os convidados" /></Propriedade>}
-        {dev && (
-          <Propriedade icone="checkCircle" rotulo="Presença">
-            <Interruptor ligado={pedirPresenca} onMudar={() => setPedirPresenca(v => !v)} rotulo="Pedir a confirmação de presença" />
-            <span className="fraco registro-origem">{pedirPresenca ? 'aparece no calendário de cada um até confirmar' : 'pedir confirmação de presença'}</span>
-          </Propriedade>
-        )}
+        <Propriedade icone="checkCircle" rotulo="Presença">
+          <Interruptor ligado={pedirPresenca} onMudar={() => setPedirPresenca(v => !v)} rotulo="Pedir a confirmação de presença" />
+          <span className="fraco registro-origem">{pedirPresenca ? 'aparece no calendário de cada um até confirmar' : 'pedir confirmação de presença'}</span>
+        </Propriedade>
         {tipo === 'live' && <Propriedade icone="link" rotulo="Link da LIVE"><input type="url" value={link} onChange={e => setLink(e.target.value)} placeholder="https://…" aria-label="Link da LIVE" /></Propriedade>}
       </div>
       <div className="field">
