@@ -5,6 +5,7 @@ import { CampoArquivo, fundoSuaveDoBanco, Icone, LogoBanco, MenuSuspenso, Segmen
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
+import { ComRoboDoDinamico, ComRoboDoRazao, MenuDeImportar } from '../../../../etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from '../clientes/DigitarLancamento';
@@ -61,7 +62,7 @@ function Arquivos({ vm }: { vm: VM }) {
   const grade = useColunaAjustavel('fornecedores-devedores', Math.max(18, 30 - vm.mesesDosCredores.length) + '%', vm.mesesDosCredores.length);
   return (
     <div className="imp-lista">
-      <LinhaDoArquivo titulo="Balancete dinâmico" feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste}>
+      <LinhaDoArquivo titulo="Balancete dinâmico" feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste} robo={vm.robo}>
         {/* importado: os devedores em algum mês, na grade dos meses do Caixa; o mês devedor em azul (Vitor, 07/10/2026) (o saldo do lado do fornecedor: negativo = devedor) */}
         {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
           <div className="imp-periodo-linha">
@@ -89,7 +90,9 @@ function Arquivos({ vm }: { vm: VM }) {
   );
 }
 
-function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, children }: {
+function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, robo, children }: {
+  /** o botão Vitor (18/11/2026): o robô do PC dele puxa o Balancete Dinâmico do período */
+  robo?: { codigo: number | null; empresa: string; meses: readonly string[] };
   titulo: string; dica?: string; feito: { nome: string; resumo: string } | null; onArquivo: (f: File | undefined) => void; onTirar: () => void; teste: ItemDeTeste[];
   children?: ReactNode;
 }) {
@@ -109,10 +112,16 @@ function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, c
             ) : (
               <>
                 <BotaoDeTeste itens={teste} />
-                <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o ' + titulo.toLowerCase()} aria-label={'Importar o ' + titulo.toLowerCase()} onClick={() => arquivo.current?.click()}>
-                  <Icone nome="upload" />
-                </button>
-                <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.csv" onEscolher={f => onArquivo(f ?? undefined)} />
+                <ComRoboDoDinamico codigo={robo?.codigo ?? null} empresa={robo?.empresa || ''} meses={robo?.meses || []} importar={f => onArquivo(f)}>
+                  {r => r ? <MenuDeImportar titulo={'o ' + titulo.toLowerCase()} aceitar=".xls,.xlsx,.csv" travado={false} onArquivos={fs => onArquivo(fs[0])} robo={r} /> : (
+                    <>
+                      <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o ' + titulo.toLowerCase()} aria-label={'Importar o ' + titulo.toLowerCase()} onClick={() => arquivo.current?.click()}>
+                        <Icone nome="upload" />
+                      </button>
+                      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.csv" onEscolher={f => onArquivo(f ?? undefined)} />
+                    </>
+                  )}
+                </ComRoboDoDinamico>
               </>
             )}
           </div>
@@ -219,11 +228,16 @@ function ListaDeFornecedores({ vm, delegacao }: { vm: VM; delegacao: VmDelegacao
                   ) : (
                     <>
                     <BotaoDiario desabilitado={!vm.carregado} onClick={() => { abrir(l.codigo); vm.usarDiarioNaConta(l.codigo); }} titulo={'Usar o razão do robô na conta ' + l.codigo} />
-                    <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado}
-                      onClick={() => { conta.current = l.codigo; arquivo.current?.click(); }}
-                      title={'Importar o razão da conta ' + l.codigo + ' (as notas em aberto vão para a relação do cliente)'} aria-label={'Importar o razão de ' + l.nome}>
-                      <Icone nome="upload" />
-                    </button>
+                    {/* o botão Vitor no razão da conta (18/11/2026): o robô do PC dele puxa o razão da conta no período da Tarefa */}
+                    <ComRoboDoRazao codigo={vm.robo.codigo} empresa={vm.robo.empresa} conta={l.codigo} meses={vm.robo.meses} importar={f => { abrir(l.codigo); vm.importarRazao(l.codigo, f); }}>
+                      {r => r ? <MenuDeImportar titulo={'o razão da conta ' + l.codigo} aceitar=".xls,.xlsx,.ods" travado={!vm.carregado} onArquivos={fs => { if (fs[0]) abrir(l.codigo); vm.importarRazao(l.codigo, fs[0]); }} robo={r} /> : (
+                        <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado}
+                          onClick={() => { conta.current = l.codigo; arquivo.current?.click(); }}
+                          title={'Importar o razão da conta ' + l.codigo + ' (as notas em aberto vão para a relação do cliente)'} aria-label={'Importar o razão de ' + l.nome}>
+                          <Icone nome="upload" />
+                        </button>
+                      )}
+                    </ComRoboDoRazao>
                     </>
                   )}
                   </span>
