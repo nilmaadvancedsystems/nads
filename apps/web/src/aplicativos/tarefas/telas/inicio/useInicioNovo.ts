@@ -132,7 +132,8 @@ export function useInicioNovo() {
     quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
     reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
     // o Recebido: a pessoa ainda precisa marcar? quem escreveu (e o Diretor) vê quem marcou e quem falta
-    precisaReceber: !!a.pedeConfirmacao && a.porUid !== uid && !tarefas.recebeu(a, uid) && tarefas.avisoParaMim(a, { uid, departamento: op.departamento }),
+    // no modo desenvolvedor, todo aviso pede o Recebido (Vitor, 18/11/2026: "todos vao ter confirmacao")
+    precisaReceber: (devPresenca ? a.tipo !== 'reuniao' : !!a.pedeConfirmacao) && a.porUid !== uid && !tarefas.recebeu(a, uid) && tarefas.avisoParaMim(a, { uid, departamento: op.departamento }),
     jaRecebi: tarefas.recebeu(a, uid),
     acompanha: !!a.pedeConfirmacao && (a.porUid === uid || veTodos),
     faltaReceber: tarefas.faltaReceber(a, equipeComSetor).map(p => p.nome),
@@ -277,9 +278,10 @@ export function useInicioNovo() {
     }),
     /**
      * os avisos (os que não são reunião) nos cards do Painel, junto das reuniões (Vitor, 18/11/2026: "deixa so os cards, tanto de
-     * aviso quanto de reuniao"): os fixados e os mais novos primeiro (a ordem do mural), até 4
+     * aviso quanto de reuniao"): os fixados e os que esperam o Recebido, na ordem do mural, até 6
      */
-    avisosNoQuadro: comunicados.filter(c => c.tipo !== 'reuniao').slice(0, 4).map(c => ({
+    // os fixados ficam sempre; os outros, até a pessoa marcar o Recebido (18/11/2026: o fixado "fica meio que permanente na tela inicial")
+    avisosNoQuadro: comunicados.filter(c => c.tipo !== 'reuniao' && (c.fixado || c.precisaReceber)).slice(0, 6).map(c => ({
       id: c.id, titulo: c.tituloNaLista, detalhe: [c.tipoRotulo, c.por, c.quandoFoi].filter(Boolean).join(' · '), em: c.em, fixado: !!c.fixado, precisaReceber: c.precisaReceber,
     })),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
@@ -343,6 +345,9 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const [publicando, setPublicando] = useState(false);
   // o Diretor e o Dono pedem o Recebido e escolhem para quem é (todos, setores ou pessoas)
   const [pedeConfirmacao, setPedeConfirmacao] = useState(false);
+  // no modo desenvolvedor todo aviso pede o Recebido e quem cria escolhe fixar na tela inicial (18/11/2026)
+  const [devAviso] = useModoDesenvolvedor();
+  const [fixarNoInicio, setFixarNoInicio] = useState(false);
   const [destino, setDestino] = useState<'todos' | 'setor' | 'pessoas'>('todos');
   const [setores, setSetores] = useState<string[]>([]);
   const [pessoas, setPessoas] = useState<tarefas.delegadas.Pessoa[]>([]);
@@ -351,7 +356,7 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const para: tarefas.DestinoDoAviso = destino === 'setor' ? { tipo: 'setor', setores } : destino === 'pessoas' ? { tipo: 'pessoas', pessoas } : { tipo: 'todos' };
   const dia = d.prazoDaTela(data);
   const norma = tipo === 'aviso' && jeito === 'norma';
-  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link: tipo === 'aviso' ? '' : link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao, para, jeito, comPdf: norma && !!pdf };
+  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link: tipo === 'aviso' ? '' : link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao: devAviso ? tipo !== 'reuniao' : pedeConfirmacao, para, jeito, comPdf: norma && !!pdf };
   // o menu do Tipo: os jeitos do aviso (o aviso não tem link; a norma leva o PDF), o estudo e o comunicado
   const opcoes = [
     ...tarefas.JEITOS_DO_AVISO.map(j => ({ tipo: 'aviso' as const, jeito: j.valor, rotulo: j.rotulo })),
@@ -372,7 +377,7 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
     problema, publicando,
     /** só o Diretor, o Dono e o admin pedem o Recebido */
     podePedirConfirmacao: op.admin || usuarios.nivelDeDiretor(nivel),
-    pedeConfirmacao, setPedeConfirmacao,
+    pedeConfirmacao, setPedeConfirmacao, devAviso, fixarNoInicio, setFixarNoInicio,
     destino, setDestino, setores, pessoas,
     opcoesDeSetor: usuarios.DEPARTAMENTOS,
     equipe: acesso.equipe().lista.filter(u => u.ativo && u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
@@ -382,7 +387,11 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
     async publicar() {
       if (problema) { aviso({ tom: 'erro', titulo: problema }); return; }
       setPublicando(true);
-      try { await repo.publicar(texto, op.nome, extras, uid || undefined, norma && pdf ? pdf : undefined); toast('Publicado nas Notificações.'); fechar(); }
+      try {
+        const id = await repo.publicar(texto, op.nome, extras, uid || undefined, norma && pdf ? pdf : undefined);
+        if (devAviso && fixarNoInicio && id) await repo.fixar(id, true);
+        toast('Publicado nas Notificações.'); fechar();
+      }
       catch (e) { aviso({ tom: 'erro', titulo: 'Não foi publicado', texto: e instanceof Error ? e.message : String(e) }); }
       finally { setPublicando(false); }
     },

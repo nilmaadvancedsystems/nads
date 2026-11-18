@@ -89,6 +89,7 @@ export function criarAvisosFirestore(): RepoAvisos {
         anexo = anexoDe(pdf, { id: arquivoId, em, por, partes: pedacos.length });
       }
       await setDoc(ref, { texto: t.limparAviso(textoDoAviso), por, em, fixado: false, ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}), ...(anexo ? { anexo } : {}) });
+      return ref.id;
     },
     async fixar(id, fixado) { await updateDoc(doc(db, 'nadsAvisos', id), { fixado }); },
     async marcarRecebido(id, quem) { await updateDoc(doc(db, 'nadsAvisos', id), { recebidos: arrayUnion({ uid: quem.uid, nome: quem.nome, em: new Date().toISOString() }) }); },

@@ -71,7 +71,9 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
                 {vm.destino === 'pessoas' && <EscolherPessoas equipe={vm.equipe} escolhidas={vm.pessoas} alternar={vm.alternarPessoa} />}
               </span>
             </Propriedade>
-            {vm.podePedirConfirmacao && <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.pedeConfirmacao} onChange={e => vm.setPedeConfirmacao(e.target.checked)} />Pedir confirmação (cada um marca "Recebido")</label>}
+            {/* no modo desenvolvedor todo aviso pede o Recebido; quem cria escolhe fixar na tela inicial (18/11/2026) */}
+            {vm.devAviso ? (vm.tipo !== 'reuniao' && <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.fixarNoInicio} onChange={e => vm.setFixarNoInicio(e.target.checked)} />Fixar na tela inicial (fica sempre no Painel)</label>)
+              : vm.podePedirConfirmacao && <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.pedeConfirmacao} onChange={e => vm.setPedeConfirmacao(e.target.checked)} />Pedir confirmação (cada um marca "Recebido")</label>}
             {vm.temLink && (
               <Propriedade icone="link" rotulo="Link">
                 <input type="url" value={vm.link} onChange={e => vm.setLink(e.target.value)} placeholder={vm.tipo === 'estudo' ? 'O link do estudo (https://…)' : 'Opcional (https://…)'} aria-label="Link" />

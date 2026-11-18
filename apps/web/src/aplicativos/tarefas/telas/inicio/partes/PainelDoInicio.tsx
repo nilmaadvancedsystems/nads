@@ -137,11 +137,15 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               </button>
             ))}
             {vm.avisosNoQuadro.map(a => (
-              <button key={'a' + a.id} type="button" className={'ini-quadro-item aviso' + (a.precisaReceber ? ' pendente' : '')} onClick={() => abrir(a.id)}>
+              <div key={'a' + a.id} className={'ini-quadro-item aviso' + (a.precisaReceber ? ' pendente' : '')} role="button" tabIndex={0}
+                onClick={() => abrir(a.id)} onKeyDown={e => { if (e.key === 'Enter') abrir(a.id); }}>
                 <span className="ini-quadro-dia" aria-hidden="true"><Icone nome={a.fixado ? 'mapaPin' : 'sino'} /></span>
                 <span className="ini-quadro-texto"><b>{a.titulo}</b><span className="hint">{a.detalhe}</span></span>
-                <Icone nome="chevronRight" />
-              </button>
+                {/* o Recebido ao passar o mouse (Vitor, 18/11/2026: "passando o mouse em cima, a pessoa pode marcar como recebido") */}
+                {a.precisaReceber
+                  ? <button type="button" className="btn btn-primary btn-sm ini-quadro-acao" onClick={e => { e.stopPropagation(); void vm.marcarRecebido(a.id); }}><Icone nome="check" />Recebido</button>
+                  : <Icone nome="chevronRight" />}
+              </div>
             ))}
           </div>
         )}
