@@ -247,11 +247,12 @@ interface LinhaDaLista { chave: string; id: string; tipo: Exclude<FiltroDaLista,
 
 /**
  * As Notificações em lista (modo desenvolvedor, 18/11/2026): as cobranças, as reuniões e os comunicados numa lista só, com os
- * filtros no alto (o tipo e "só pendentes"); clicar abre o detalhe logo embaixo da linha (a cobrança abre a tarefa).
+ * filtros do tipo no alto; clicar abre o detalhe logo embaixo da linha (a cobrança abre a tarefa).
  */
 function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
   const [filtro, setFiltro] = useState<FiltroDaLista>('todos');
-  const [soPendentes, setSoPendentes] = useState(false);
+  // o "Só pendentes" saiu (Vitor, 18/11/2026: "remove esse so pendentes")
+  const soPendentes = false;
   const [aberta, setAberta] = useState<string | null>(null);
   const linhas: LinhaDaLista[] = [
     ...vm.cobrancas.map(x => ({ chave: 'c' + x.id, id: x.id, tipo: 'cobrancas' as const, icone: x.icone, titulo: x.texto, rotulo: 'Cobrança', quem: '', quando: x.quando, pendente: !!x.aberta,
@@ -279,10 +280,6 @@ function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof u
             {f.rotulo} <span className="num">{conta(f.id)}</span>
           </button>
         ))}
-        <span className="notif-filtros-espaco" />
-        <button type="button" className={'chip-f' + (soPendentes ? ' on' : '')} aria-pressed={soPendentes} onClick={() => setSoPendentes(v => !v)}>
-          <Icone nome="alert" width={13} height={13} />Só pendentes
-        </button>
       </div>
       <section className="card notif-lista">
         {visiveis.length ? visiveis.map(l => {
