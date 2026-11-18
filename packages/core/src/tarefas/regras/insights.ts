@@ -214,3 +214,22 @@ export function resumoDeExemploDosInsights(agora: Date): ResumoDosInsights {
     equipe: { atrasadas: 5, pessoas: [{ nome: 'Fernando', atrasadas: 3 }, { nome: 'Clara', atrasadas: 2 }] },
   };
 }
+
+// ------------------------------- a equipe em cartões (o visual de 18/11/2026: "faz algo bonito") -------------------------------
+
+export type TomDoInsight = 'bom' | 'alerta' | 'ruim';
+export interface PessoaDaEquipe { nome: string; setor: 'Fiscal' | 'Contábil'; feitas: number; total: number; pct: number; tom: TomDoInsight; atrasadas: number }
+
+/** O tom do percentual concluído: 90% ou mais é bom; de 60% a 89%, alerta; abaixo, ruim. */
+export const tomDoPercentual = (pct: number): TomDoInsight => (pct >= 90 ? 'bom' : pct >= 60 ? 'alerta' : 'ruim');
+
+/** Cada pessoa das rotinas (Fiscal e Contábil) com o percentual concluído e as tarefas atrasadas dela; a mais atrasada antes. */
+export function equipeDosInsights(r: ResumoDosInsights): PessoaDaEquipe[] {
+  const atrasadas = new Map(r.equipe.pessoas.map(p => [p.nome.trim().toLowerCase(), p.atrasadas]));
+  const lista = r.rotinas.flatMap(s => s.pessoas.filter(p => p.nome !== SEM_RESPONSAVEL).map(p => {
+    const total = p.feitas + p.faltando;
+    const pct = total ? Math.round((p.feitas / total) * 100) : 100;
+    return { nome: p.nome, setor: s.setor === 'fiscal' ? 'Fiscal' as const : 'Contábil' as const, feitas: p.feitas, total, pct, tom: tomDoPercentual(pct), atrasadas: atrasadas.get(p.nome.trim().toLowerCase()) ?? 0 };
+  }));
+  return lista.sort((a, b) => a.pct - b.pct || b.atrasadas - a.atrasadas || a.nome.localeCompare(b.nome, 'pt-BR'));
+}

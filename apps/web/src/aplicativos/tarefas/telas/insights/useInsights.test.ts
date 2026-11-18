@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { tarefas as t } from '@nads/core';
 import { criarInsightsMemoria } from '../../dados/insights';
-import { idadeDosNumeros } from './useInsights';
+import { idadeDosNumeros, telaDosInsights } from './useInsights';
 
 describe('a Tela de Insights', () => {
   it('a idade dos números', () => {
@@ -16,5 +16,18 @@ describe('a Tela de Insights', () => {
     const e = criarInsightsMemoria(() => new Date(2026, 10, 18, 10, 0)).estado();
     expect(e.carregado).toBe(true);
     expect(t.paineisDosInsights(e.resumo!).length).toBe(6);
+  });
+});
+
+describe('o que a tela desenha', () => {
+  it('os seis destaques, a equipe com anel, o funil das guias e a barra do DP', () => {
+    const tela = telaDosInsights(t.resumoDeExemploDosInsights(new Date(2026, 10, 18)));
+    expect(tela.competencia).toBe('outubro de 2026');
+    expect(tela.destaques.map(d => d.id)).toEqual(['rotinas', 'dp', 'guias', 'nota', 'solicitacoes', 'tarefas']);
+    expect(tela.destaques[0]).toMatchObject({ valor: '85%', detalhe: '144 de 170 empresas', tom: 'alerta' });
+    expect(tela.equipe[0]).toMatchObject({ nome: 'Fernando', iniciais: 'F', pct: 57, texto: '12 de 21' });
+    expect(tela.guias.funil.map(f => f.pct)).toEqual([100, 70, 37]);
+    expect(tela.dp.segmentos.map(s => s.valor)).toEqual([96, 18, 3, 22]);
+    expect(tela.tarefas).toEqual([{ nome: 'Fernando', iniciais: 'F', atrasadas: 3, pct: 100 }, { nome: 'Clara', iniciais: 'C', atrasadas: 2, pct: 67 }]);
   });
 });

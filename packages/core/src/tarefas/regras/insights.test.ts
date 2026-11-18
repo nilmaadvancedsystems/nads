@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Execucao, Rotina } from '../tipos';
 import {
-  contarChamados, contarDp, contarEntregas, delegadasAtrasadas, lerResumoDosInsights, paineisDosInsights, resumoDeExemploDosInsights,
+  contarChamados, contarDp, contarEntregas, delegadasAtrasadas, equipeDosInsights, lerResumoDosInsights, paineisDosInsights, resumoDeExemploDosInsights,
   rotinasPorPessoa, situacaoDoClienteDp,
 } from './insights';
 
@@ -58,5 +58,14 @@ describe('os números da Tela de Insights', () => {
     expect(lerResumoDosInsights(JSON.parse(JSON.stringify(r)))).toEqual(r);
     expect(lerResumoDosInsights({ ...r, atualizadoEm: '' })).toBeNull();
     expect(lerResumoDosInsights({ atualizadoEm: 'x', dp: { atrasadas: -3 }, rotinas: [{ setor: 'outro' }] })?.dp.atrasadas).toBe(0);
+  });
+});
+
+describe('a equipe em cartões', () => {
+  it('o percentual de cada pessoa, o tom e as atrasadas dela; a pior primeiro', () => {
+    const e = equipeDosInsights(resumoDeExemploDosInsights(new Date(2026, 10, 18)));
+    expect(e[0]).toEqual({ nome: 'Fernando', setor: 'Contábil', feitas: 12, total: 21, pct: 57, tom: 'ruim', atrasadas: 3 });
+    expect(e.find(p => p.nome === 'Gustavo')).toMatchObject({ pct: 100, tom: 'bom' });
+    expect(e.find(p => p.nome === 'Heverton')).toMatchObject({ pct: 86, tom: 'alerta' });
   });
 });
