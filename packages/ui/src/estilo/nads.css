@@ -7351,3 +7351,27 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .vc-razao-linha .imp-robo-mini{min-width:140px;}
 .imp-robo-mini .imp-robo-barra{flex:1 1 60px;min-width:60px;}
 .imp-robo-cancelar{position:relative;z-index:61;}
+/* o detalhe do aviso nas Notificações, mais arrumado (18/11/2026) */
+.ini-detalhe-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-4px 0 14px;color:var(--ink-muted);font-size:var(--fs-14,14px);}
+.ini-detalhe-meta svg{width:14px;height:14px;}
+.ini-detalhe-meta > span[aria-hidden]{margin:0 4px;opacity:.6;}
+.ini-detalhe-corpo{padding:14px 16px;border-left:3px solid var(--accent);border-radius:6px;background:color-mix(in srgb,var(--accent) 7%,transparent);line-height:1.55;white-space:pre-wrap;margin:0 0 16px;}
+.ini-recebidos{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;}
+.ini-recebidos-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ini-recebidos-topo > span:first-child{display:inline-flex;align-items:center;gap:6px;}
+.ini-recebidos-topo svg{width:16px;height:16px;color:var(--ok,#3fb950);}
+.ini-recebidos-barra{height:6px;border-radius:99px;background:var(--border);overflow:hidden;}
+.ini-recebidos-barra > span{display:block;height:100%;background:var(--ok,#3fb950);border-radius:99px;}
+.ini-recebidos-pessoas{display:flex;flex-wrap:wrap;gap:6px;}
+.ini-pessoa{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:var(--fs-13,13px);border:1px solid var(--border);}
+.ini-pessoa svg{width:12px;height:12px;}
+.ini-pessoa.ok{border-color:color-mix(in srgb,var(--ok,#3fb950) 50%,transparent);background:color-mix(in srgb,var(--ok,#3fb950) 12%,transparent);color:var(--ok,#3fb950);}
+.ini-pessoa.falta{color:var(--ink-muted);}
+/* as Notificações quando as listas crescem (18/11/2026, Vitor: "quando vai crescendo parece que desorganiza"): cada lista rola
+   dentro do cartão, as linhas mantêm o texto numa linha e o selo à direita, e o detalhe fica parado à direita */
+.ini-lista-rolagem{max-height:420px;overflow-y:auto;overscroll-behavior:contain;margin-right:-6px;padding-right:6px;}
+.ini-comunicado{display:flex;align-items:center;gap:10px;}
+.ini-comunicado .popover-texto{flex:1;min-width:0;}
+.ini-comunicado .popover-texto > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-comunicado > .badge,.ini-comunicado > .selo-reuniao{flex:none;}
+@media (min-width:861px){.ini-notificacoes > .ini-detalhe{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;}}

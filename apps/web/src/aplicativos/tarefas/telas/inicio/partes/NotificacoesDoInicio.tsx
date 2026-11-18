@@ -111,7 +111,8 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
           {/* as cobranças das tarefas que a pessoa faz (16/11/2026: "faça aparecer em notificações que houve uma cobrança"): clicar abre a tarefa */}
           {vm.cobrancas.length > 0 && (
             <section className="card ini-cartao">
-              <div className="card-head"><h3>Cobranças</h3></div>
+              <div className="card-head"><h3>Cobranças <span className="fraco num">({vm.cobrancas.length})</span></h3></div>
+              <div className="ini-lista-rolagem">
               {vm.cobrancas.map(x => (
                 <button key={x.id} type="button" className="popover-item ini-comunicado" title="Abrir a tarefa" onClick={() => vm.abrir(x.tarefa)}>
                   <Icone nome={x.icone} />
@@ -119,11 +120,13 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                   {x.aberta && <span className="badge badge-suave badge-warn">Responder</span>}
                 </button>
               ))}
+              </div>
             </section>
           )}
           {vm.reunioesNaLista.length > 0 && (
             <section className="card ini-cartao">
-              <div className="card-head"><h3>Reuniões</h3></div>
+              <div className="card-head"><h3>Reuniões <span className="fraco num">({vm.reunioesNaLista.length})</span></h3></div>
+              <div className="ini-lista-rolagem">
               {vm.reunioesNaLista.map(x => (
                 <button key={x.id} type="button" className={'popover-item ini-comunicado' + (r?.id === x.id ? ' ativo' : '')} aria-pressed={r?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
                   <Icone nome="calendar" />
@@ -131,10 +134,12 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                   <SeloDaReuniao x={x} />
                 </button>
               ))}
+              </div>
             </section>
           )}
           <section className="card ini-cartao">
-            <div className="card-head"><h3>Comunicados da equipe</h3></div>
+            <div className="card-head"><h3>Comunicados da equipe <span className="fraco num">({vm.comunicados.length})</span></h3></div>
+            <div className="ini-lista-rolagem">
             {vm.comunicados.map(x => (
               <button key={x.id} type="button" className={'popover-item ini-comunicado' + (c?.id === x.id ? ' ativo' : '')} aria-pressed={c?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
                 <Icone nome={ICONE_DO_TIPO[x.tipo || 'aviso']} />
@@ -146,6 +151,7 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
               </button>
             ))}
             {!vm.comunicados.length && <Vazio compacto icone="sino" titulo="Nenhum comunicado" />}
+            </div>
           </section>
           </div>
           {r && <DetalheDaReuniao x={r} vm={vm.reunioesVm} />}
@@ -160,17 +166,40 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                   </span>
                 )}
               </div>
-              <div className="registro-props">
-                <Propriedade icone={ICONE_DO_TIPO[c.tipo || 'aviso']} rotulo="Tipo"><span>{c.tipoRotulo}{c.fixado && <span className="fraco"> · fixado</span>}</span></Propriedade>
-                <Propriedade icone="usuario" rotulo="Quem"><span>{c.por}</span></Propriedade>
-                <Propriedade icone="clock" rotulo="Publicado"><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span></Propriedade>
-                {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
-                {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
-                {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
-                {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
-                {c.acompanha && <Propriedade icone="checkCircle" rotulo="Recebido"><span>{(c.recebidos || []).map(x => x.nome).join(', ') || 'Ninguém ainda'}{c.faltaReceber.length > 0 && <><br /><span className="fraco">Falta: {c.faltaReceber.join(', ')}</span></>}</span></Propriedade>}
-              </div>
-              <p className="ini-detalhe-texto">{c.texto}</p>
+              {/* mais arrumado (Vitor, 18/11/2026: "textos muito embolados, da uma ajeitada"): quem, o tipo e quando numa linha só
+                  embaixo do título; o texto do aviso em destaque; o Recebido com a contagem, a barra e cada pessoa numa etiqueta */}
+              <p className="ini-detalhe-meta">
+                <Icone nome={ICONE_DO_TIPO[c.tipo || 'aviso']} />{c.tipoRotulo}{c.fixado && ' · fixado'}
+                <span aria-hidden="true">·</span><Icone nome="usuario" />{c.por}
+                <span aria-hidden="true">·</span><Icone nome="clock" /><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span>
+              </p>
+              {c.texto && <p className="ini-detalhe-texto ini-detalhe-corpo">{c.texto}</p>}
+              {(c.reuniao || c.link || c.anexo || c.para) && (
+                <div className="registro-props">
+                  {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
+                  {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
+                  {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
+                  {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
+                </div>
+              )}
+              {c.acompanha && (() => {
+                const recebidos = (c.recebidos || []).map(x => x.nome);
+                const total = recebidos.length + c.faltaReceber.length;
+                return (
+                  <div className="ini-recebidos">
+                    <div className="ini-recebidos-topo">
+                      <span><Icone nome="checkCircle" /><b>Recebido</b></span>
+                      <span className="hint num">{recebidos.length} de {total}</span>
+                    </div>
+                    <div className="ini-recebidos-barra" aria-hidden="true"><span style={{ width: (total ? Math.round(recebidos.length / total * 100) : 0) + '%' }} /></div>
+                    <div className="ini-recebidos-pessoas">
+                      {recebidos.map((n, i) => <span key={'r' + i} className="ini-pessoa ok"><Icone nome="check" />{n}</span>)}
+                      {c.faltaReceber.map((n, i) => <span key={'f' + i} className="ini-pessoa falta">{n}</span>)}
+                      {!total && <span className="hint">Ninguém ainda</span>}
+                    </div>
+                  </div>
+                );
+              })()}
               {c.pedeConfirmacao && !c.acompanha && (
                 <div className="ini-reuniao-linha">
                   {c.jaRecebi ? <span className="badge badge-suave badge-ok">Você marcou como recebido</span>
