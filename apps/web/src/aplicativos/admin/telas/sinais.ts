@@ -18,7 +18,8 @@ export function sinaisDoBanco(painel: entregas.DocsDoPainelRobo, saude: entregas
     // a leitura do Gmail (automática a cada 2 h; o cartão do robô já avisa depois de 26 h)
     { id: 'gmail', rotulo: 'Leitura do Gmail', em: txt(estado.ultimaExecucao), esperadoMin: 26 * 60 },
     { id: 'drive', rotulo: 'Mapa do Drive', em: txt(obj(saude?.raiz).atualizadoEm), esperadoMin: 26 * 60 },
-    { id: 'backup', rotulo: 'Backup do banco', em: txt(obj(estado.backup).em), esperadoMin: 30 * 60 },
+    // o retrato do backup, semanal desde 17/11/2026 (o diário é o agendado do Firestore)
+    { id: 'backup', rotulo: 'Backup do banco', em: txt(obj(estado.backup).em), esperadoMin: entregas.BACKUP_VELHO_HORAS * 60 },
     // o resumo diário (robo/saudeBanco)
     { id: 'resumo', rotulo: 'Resumo diário do banco', em: resumo?.em || '', esperadoMin: 26 * 60 },
   ], agora);

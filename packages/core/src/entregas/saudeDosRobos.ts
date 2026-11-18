@@ -4,7 +4,7 @@
 // último trabalho e o último erro de cada tipo), a atividade dos últimos 7 dias (roboAtividade) e o backup (robo/estado).
 // Aqui só as contas; quem lê o banco é o repositório do painel do robô (um ouvinte em dois documentos e na atividade).
 import { type AtividadeDoRobo, type BatimentoDoRobo, type DocsDoPainelRobo, type IdRobo, type TomDoPainel, NOMES_DOS_ROBOS, ONDE_RODA, quandoNoPainel } from './painelRobo';
-import { haQuanto } from './saude';
+import { BACKUP_VELHO_HORAS, haQuanto } from './saude';
 
 /** Um robô (um trabalho) de um dos dois processos: que módulo é, que tipos de atividade e que filas são dele. */
 /** chaves: o começo das chaves do "fazendo agora" do painel que são dele. */
@@ -56,8 +56,6 @@ export const ATRASO_APOS_MIN = 7;
 /** Pedido esperando há mais que isto = fila parada (atenção). */
 export const FILA_VELHA_MIN = 60;
 export const ERRO_RECENTE_HORAS = 24;
-/** O backup que passou disto é atenção. */
-export const BACKUP_VELHO_HORAS = 30;
 
 const MIN = 60 * 1000;
 const HORA = 60 * MIN;
@@ -145,7 +143,8 @@ export function cartaoDoRobo(def: DefDoRobo, pc: BatimentoDoRobo | null, vm: Bat
 }
 
 /**
- * O backup do dia (robo/estado.backup, roda no robô da nuvem): falhou = parado; sem backup bom há mais de 30 h = atenção;
+ * O retrato do backup (robo/estado.backup, roda no robô da nuvem, de 7 em 7 dias desde 17/11/2026): falhou = parado; sem
+ * retrato bom há mais de 8 dias = atenção;
  * com o robô da nuvem parado, no mínimo atenção (quem faz o backup é ele).
  */
 export function cartaoDoBackup(estado: Record<string, unknown> | null, vm: BatimentoDoRobo | null, agora = Date.now()): CartaoDaSaude {

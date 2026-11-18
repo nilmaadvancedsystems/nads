@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { estaOnline, mudouSoOPonto, atividadeAtual, rotuloDaPresenca, veAtividade, ehHoraDoPonto, PONTO_DA_PRESENCA_MS, type DocUsuario } from '.';
+import { estaOnline, mudouSoOPonto, atividadeAtual, rotuloDaPresenca, veAtividade, ehHoraDoPonto, PONTO_DA_PRESENCA_MS, comPresenca, lerUsuario, type DocUsuario } from '.';
+
+describe('o ponto em nadsPresenca (fora de usuarios, 17/11/2026)', () => {
+  const t0 = '2026-11-17T14:00:00.000Z', t1 = '2026-11-17T14:05:00.000Z';
+  const onde = { codigo: 12, empresa: 'Empresa Exemplo', etapa: 'Conciliação', competencia: '10/2026', em: t1 };
+  const pessoa = (d: Partial<DocUsuario> = {}) => lerUsuario('u1', { nome: 'Pessoa', ...d } as DocUsuario);
+
+  it('sem o documento novo, fica o ponto antigo de usuarios', () => {
+    const p = pessoa({ nadsVistoEm: t0 });
+    expect(comPresenca(p, undefined)).toBe(p);
+    expect(comPresenca(p, {})).toBe(p);
+  });
+  it('o documento novo, mais novo, traz o ponto e a etapa', () => {
+    const r = comPresenca(pessoa({ nadsVistoEm: t0 }), { vistoEm: t1, onde });
+    expect(r.vistoNoNads).toBe(t1);
+    expect(r.ondeNoNads).toEqual(onde);
+  });
+  it('quem nunca bateu o ponto antigo fica com o novo', () => {
+    expect(comPresenca(pessoa(), { vistoEm: t1 }).vistoNoNads).toBe(t1);
+  });
+  it('valendo o novo sem etapa, a pessoa está em nenhuma (mesmo com etapa velha em usuarios)', () => {
+    const r = comPresenca(pessoa({ nadsVistoEm: t0, nadsOnde: { ...onde, em: t0 } }), { vistoEm: t1 });
+    expect(r.ondeNoNads).toBeNull();
+  });
+  it('o ponto antigo mais novo (o nads aberto na versão de antes) ganha', () => {
+    const p = pessoa({ nadsVistoEm: t1, nadsOnde: onde });
+    expect(comPresenca(p, { vistoEm: t0 })).toBe(p);
+  });
+  it('etapa pela metade não conta', () => {
+    expect(comPresenca(pessoa(), { vistoEm: t1, onde: { empresa: 'X' } }).ondeNoNads).toBeNull();
+  });
+});
 
 describe('quem vê a atividade atual', () => {
   const contabil = { departamento: 'contabil' };
