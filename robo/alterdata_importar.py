@@ -7,9 +7,13 @@
 # planilha" → Avançar) → a empresa, "Criar novo Lote", a descrição do lote, o caminho da planilha, o layout
 # "Importação Personalizada - Excel" → Concluir.
 #
-# Travas (só importa o que foi pedido, num lote novo):
+# O lote (Vitor, 18/11/2026, gravou o caminho): sempre o lote "Importacao nads" (sem acento). Existe: "Importar em Lote já
+# existente" → a lupa → a Pesquisa de Seleção de lote → pesquisa o nome → a 1ª linha → Selecionar. Não existe: "Criar novo
+# Lote" com esse nome. No erro, a tela fica onde parou (Vitor: "deixe onde ele parou, porque ai eu ajudo voces").
+#
+# Travas (só importa o que foi pedido):
 # - só clica em Concluir com a empresa, a descrição, o arquivo e o layout conferidos na tela;
-# - nunca importa em lote já existente; nunca mexe no layout (Configurar Layout fica intocado);
+# - lote já existente só o "Importacao nads" (conferido na tela); nunca mexe no layout (Configurar Layout fica intocado);
 # - depois do Concluir: mensagem só com OK é lida e fechada; pergunta (Sim/Não) nunca leva Sim: o roteiro conta o que ela
 #   perguntava, responde Não e para;
 # - cada janela nova que aparecer vai para o log (DIAG:), para conferir o que o Alterdata mostrou.
@@ -23,6 +27,8 @@ from pywinauto import Desktop, mouse
 sys.stdout.reconfigure(encoding='utf-8')
 CODIGO, LOTE, PLANILHA = sys.argv[1], sys.argv[2], sys.argv[3]
 LAYOUT = 'Importação Personalizada - Excel'
+# o lote do nads no Contábil (18/11/2026): um só, sem acento (o "ó" do "Pró-labore" não entrava na descrição)
+LOTE_NADS = 'Importacao nads'
 d = Desktop(backend='win32')
 mensagens = []
 CLASSE = 'TfrmImportacaoLotes'   # a janela da importação (trocada pela que abrir de verdade)
@@ -143,11 +149,26 @@ def limpar():
 
 
 def falhar(motivo):
-    try:
-        limpar()
-    except Exception:
-        pass
-    fim(ok=False, erro=motivo)
+    # a tela fica onde parou (18/11/2026, Vitor: "nao faca ele fechar tudo e comecar do ponto zero, mas sim deixe onde ele parou,
+    # porque ai eu ajudo voces"); o próximo pedido começa limpando o que sobrou
+    fim(ok=False, erro=motivo + ' (a tela ficou onde o robô parou)')
+
+
+def norm(t):
+    import unicodedata
+    t = unicodedata.normalize('NFKD', t or '')
+    return ' '.join(''.join(ch for ch in t if not unicodedata.combining(ch)).lower().split())
+
+
+def textos_dos_campos(w):
+    r = []
+    for c in filhos(w):
+        try:
+            if c.class_name() in ('TcxTextEdit', 'TcxButtonEdit', 'TcxMaskEdit', 'TcxCustomInnerTextEdit', 'TcxLabel', 'TcxDBTextEdit') and (c.window_text() or '').strip():
+                r.append((c, (c.window_text() or '').strip()))
+        except Exception:
+            pass
+    return r
 
 
 def digitar(campo, valor):
@@ -279,27 +300,85 @@ try:
     if so_numeros(emp.window_text()) != int(CODIGO):
         falhar('o código na tela (' + emp.window_text() + ') não é o ' + CODIGO)
 
-    # ── Criar novo Lote (nunca o lote já existente)
-    novo = filhos(imp, 'TcxRadioButton', 'Criar novo Lote')
-    if not novo:
-        falhar('não achei "Criar novo Lote"')
-    clique('Criar novo Lote')
-    novo[0].click_input()
-    time.sleep(.4)
-
-    # ── a descrição do lote (o TcxTextEdit logo abaixo do rótulo "Descrição do lote")
-    passo('lote "' + LOTE + '"')
-    rot = filhos(imp, 'TcxLabel', 'Descrição do lote')
-    if not rot:
-        falhar('não achei o campo Descrição do lote')
-    rr = rot[0].rectangle()
-    desc = [c for c in filhos(imp, 'TcxTextEdit') if 0 <= c.rectangle().top - rr.bottom < 30]
-    if not desc:
-        falhar('não achei o campo Descrição do lote')
-    desc = desc[0]
-    clique('descrição do lote')
-    digitar(desc, LOTE)
-    time.sleep(.3)
+    # ── o lote "Importacao nads": existe, seleciona; não existe, cria (18/11/2026)
+    passo('lote "' + LOTE_NADS + '"')
+    if LOTE.strip() and norm(LOTE) != norm(LOTE_NADS):
+        print('DIAG: o pedido trouxe o lote "' + LOTE + '"; uso "' + LOTE_NADS + '"', flush=True)
+    lote_ok = False
+    existente = filhos(imp, 'TcxRadioButton', 'Importar em Lote já existente')
+    if existente:
+        clique('Importar em Lote já existente')
+        existente[0].click_input()
+        time.sleep(.6)
+        # a lupa do lote: o TcxButton sem texto mais perto de onde o Vitor clicou (239,147 na janela)
+        ri = imp.rectangle()
+        alvo = (ri.left + 239, ri.top + 147)
+        lupas = [b for b in filhos(imp, 'TcxButton') if not (b.window_text() or '').strip()]
+        def distancia(b):
+            r = b.rectangle()
+            return abs((r.left + r.right) // 2 - alvo[0]) + abs((r.top + r.bottom) // 2 - alvo[1])
+        lupas.sort(key=distancia)
+        print('DIAG: lupas do lote ' + str([(b.rectangle().left - ri.left, b.rectangle().top - ri.top) for b in lupas[:4]]), flush=True)
+        if lupas and distancia(lupas[0]) < 80:
+            antes_pesq = {w.handle for w in janelas('TPesquisaGeralView')}
+            clique('lupa do lote')
+            lupas[0].click_input()
+            pesq = esperar(lambda: [w for w in janelas('TPesquisaGeralView') if w.handle not in antes_pesq], 8)
+            if pesq:
+                pesq = pesq[0]
+                busca = filhos(pesq, 'TcxCustomInnerTextEdit')
+                if busca:
+                    clique('pesquisa do lote: ' + LOTE_NADS)
+                    digitar(busca[0], LOTE_NADS)
+                    time.sleep(1.2)
+                grade = sorted(filhos(pesq, 'TcxGridSite'), key=lambda c: c.rectangle().top)
+                sel = [b for b, t in botoes(pesq) if t == 'Selecionar']
+                if grade and sel:
+                    rg = grade[0].rectangle()
+                    clique('1ª linha da pesquisa')
+                    mouse.click(coords=(rg.left + 120, rg.top + 30))
+                    time.sleep(.4)
+                    clique('Selecionar')
+                    sel[0].click_input()
+                    time.sleep(1)
+                for w in mensagens_abertas():   # "nenhum registro selecionado" e afins: lê e fecha
+                    print('DIAG: mensagem na pesquisa do lote "' + texto_da_mensagem(w) + '"', flush=True)
+                    apertar(w, ('OK', 'Ok', 'Fechar'))
+                    time.sleep(.4)
+                if pesq.is_visible():   # não selecionou (o lote não existe): fecha a pesquisa
+                    print('DIAG: a pesquisa do lote ficou aberta: o lote não existe', flush=True)
+                    if not apertar(pesq, ('Fechar', 'Cancelar', 'Sair')):
+                        pesq.type_keys('{ESC}')
+                    time.sleep(.6)
+            else:
+                print('DIAG: a pesquisa do lote não abriu', flush=True)
+        campos = textos_dos_campos(imp)
+        print('DIAG: campos depois da pesquisa ' + str([t for _, t in campos][:20]), flush=True)
+        lote_ok = any(norm(t) == norm(LOTE_NADS) for _, t in campos)
+    if lote_ok:
+        print('DIAG: o lote "' + LOTE_NADS + '" já existia: selecionado', flush=True)
+    else:
+        novo = filhos(imp, 'TcxRadioButton', 'Criar novo Lote')
+        if not novo:
+            falhar('não achei "Criar novo Lote"')
+        clique('Criar novo Lote')
+        novo[0].click_input()
+        time.sleep(.4)
+        # a descrição do lote (o TcxTextEdit logo abaixo do rótulo "Descrição do lote")
+        rot = filhos(imp, 'TcxLabel', 'Descrição do lote')
+        if not rot:
+            falhar('não achei o campo Descrição do lote')
+        rr = rot[0].rectangle()
+        desc = [c for c in filhos(imp, 'TcxTextEdit') if 0 <= c.rectangle().top - rr.bottom < 30]
+        if not desc:
+            falhar('não achei o campo Descrição do lote')
+        desc = desc[0]
+        clique('descrição do lote')
+        digitar(desc, LOTE_NADS)
+        time.sleep(.3)
+        lote_ok = norm(desc.window_text()) == norm(LOTE_NADS)
+        if not lote_ok:
+            falhar('a descrição do lote na tela ficou "' + (desc.window_text() or '') + '", não "' + LOTE_NADS + '"')
 
     # ── o arquivo
     passo('planilha')
@@ -338,14 +417,14 @@ try:
     # ── tudo conferido antes do Concluir
     confere = {
         'empresa': so_numeros(emp.window_text()) == int(CODIGO),
-        'lote': (desc.window_text() or '').strip() == LOTE.strip(),
+        'lote': lote_ok,
         'arquivo': os.path.normcase((arq.window_text() or '').strip()) == os.path.normcase(PLANILHA),
         'layout': (lay.window_text() or '').strip() == LAYOUT,
     }
     errados = [k for k, v in confere.items() if not v]
     if errados:
         falhar('a tela não ficou como devia (' + ', '.join(errados) + '); não cliquei em Concluir · na tela: empresa "'
-               + (emp.window_text() or '') + '", lote "' + (desc.window_text() or '') + '", arquivo "' + (arq.window_text() or '')
+               + (emp.window_text() or '') + '", lote "' + LOTE_NADS + ('' if lote_ok else ' (não conferido)') + '", arquivo "' + (arq.window_text() or '')
                + '", layout "' + (lay.window_text() or '') + '"')
     for w in mensagens_abertas():
         falhar('apareceu uma mensagem antes do Concluir: ' + texto_da_mensagem(w))

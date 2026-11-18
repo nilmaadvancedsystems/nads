@@ -31,7 +31,7 @@ export { movimentoDoExtrato, TODOS_OS_MESES, extratosSemSaldoAnterior, definirSa
 export { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial, type ImportadosDaConferencia, type RequisitosDaImportacao } from './regras/requisitos';
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { chequeEspecialDoBanco, lancamentosDoChequeEspecial, type ChequeEspecialDoBanco } from './regras/chequeEspecial';
-export { lancamentosParaOSistema, lancamentosDoQueFaltaNoRazao, type PendenteDoBanco, type SugestaoDeLancamento } from './regras/lancamentosParaOSistema';
+export { lancamentosParaOSistema, sugestoesPorPendente, lancamentosDoQueFaltaNoRazao, type PendenteDoBanco, type SugestaoDeLancamento } from './regras/lancamentosParaOSistema';
 export { acharExtratoNoDrive, arquivosDoMesNoDrive, caminhoAtePasta, conteudoDaPasta, mensagemDaBuscaDoExtrato, pastaInicialDoMes, type ContaProcurada } from './regras/drive';
 export { bancoDoTexto, deOutroBanco, preVerificarExtrato, type NaoEExtrato, type OutroDocumento } from './regras/preVerificacao';
 export { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes, type ComprovanteNoDrive } from './regras/comprovantes';

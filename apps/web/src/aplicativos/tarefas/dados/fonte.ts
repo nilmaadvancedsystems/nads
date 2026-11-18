@@ -59,6 +59,8 @@ import { criarAreaClienteMemoria, type RepoAreaCliente } from './areaCliente';
 import { criarAreaClienteFirestore } from './areaCliente.firestore';
 import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
 import { criarLcdprFirestore } from './lcdpr.firestore';
+import { criarLancatudoMemoria, type RepoLancatudo } from './lancatudo';
+import { criarLancatudoFirestore } from './lancatudo.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarAvisosFirestore } from './avisos.firestore';
 import { criarAvisosMemoria, type RepoAvisos } from './avisos';
@@ -712,6 +714,14 @@ let lcdprRepo: RepoLcdpr | null = null;
 export function repoDoLcdpr(): RepoLcdpr {
   if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore(() => quemPede()?.nome || '') : criarLcdprMemoria();
   return lcdprRepo;
+}
+
+let lancatudoRepo: RepoLancatudo | null = null;
+
+/** O Lançatudo (17/11/2026): as regras e os meses de cada empresa, ao lado do Extrator (banco da Conferência); nos exemplos, na memória. */
+export function repoDoLancatudo(): RepoLancatudo {
+  if (!lancatudoRepo) lancatudoRepo = noBanco ? criarLancatudoFirestore(() => quemPede()?.nome || '') : criarLancatudoMemoria();
+  return lancatudoRepo;
 }
 
 export function repoDaIA(): RepoIA {

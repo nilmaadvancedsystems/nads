@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDosInsights, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -37,6 +37,7 @@ import type { RepoLegislacaoDp } from './legislacaoDp';
 import type { RepoInsights } from './insights';
 import type { RepoAreaCliente } from './areaCliente';
 import type { RepoLcdpr } from './lcdpr';
+import type { RepoLancatudo } from './lancatudo';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -369,6 +370,13 @@ export function useAreaCliente(): RepoAreaCliente {
 /** O Importador LCDPR (as regras e os cadastros do lcdpr/config), ao vivo. */
 export function useLcdpr(): RepoLcdpr {
   const repo = repoDoLcdpr();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O Lançatudo (as regras da empresa e as decisões do mês), ao vivo. */
+export function useRepoLancatudo(): RepoLancatudo {
+  const repo = repoDoLancatudo();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

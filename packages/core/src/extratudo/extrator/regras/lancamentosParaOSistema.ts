@@ -47,6 +47,11 @@ const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' +
  * `razaoInvertido`: o razão veio com os sinais trocados (o `sistemaInvertido` da conferência).
  */
 export function lancamentosParaOSistema(pendentes: readonly PendenteDoBanco[], razao: readonly Lancamento[], contaDoBanco: string, razaoInvertido = false): SugestaoDeLancamento[] {
+  return sugestoesPorPendente(pendentes, razao, contaDoBanco, razaoInvertido).filter((s): s is SugestaoDeLancamento => !!s);
+}
+
+/** O mesmo, uma posição por pendência (null = sem valor ou sem nenhuma contrapartida no razão): o Lançatudo casa pela posição. */
+export function sugestoesPorPendente(pendentes: readonly PendenteDoBanco[], razao: readonly Lancamento[], contaDoBanco: string, razaoInvertido = false): (SugestaoDeLancamento | null)[] {
   const modelos = razao.filter(l => l.conta && l.conta !== contaDoBanco)
     .map(l => ({ l: razaoInvertido ? { ...l, valor: -l.valor } : l, chave: chave(l.complemento || l.historico) }));
   // a mais usada em cada sentido (entrada / saída), para quando nada parece
@@ -57,9 +62,9 @@ export function lancamentosParaOSistema(pendentes: readonly PendenteDoBanco[], r
     return melhor ? { conta: melhor[0], nome: melhor[1].nome } : null;
   };
   const padrao = { entrada: maisUsada(true), saida: maisUsada(false) };
-  const out: SugestaoDeLancamento[] = [];
+  const out: (SugestaoDeLancamento | null)[] = [];
   for (const p of pendentes) {
-    if (!p.valor) continue;
+    if (!p.valor) { out.push(null); continue; }
     const entrada = p.valor > 0;
     const k = chave(p.historico);
     let melhor: { l: Lancamento; nota: number } | null = null;
@@ -70,7 +75,7 @@ export function lancamentosParaOSistema(pendentes: readonly PendenteDoBanco[], r
     }
     const achou = melhor && melhor.nota >= PARECIDO_MINIMO ? melhor.l : null;
     const contra = achou ? { conta: achou.conta!, nome: achou.historico } : entrada ? padrao.entrada : padrao.saida;
-    if (!contra) continue;
+    if (!contra) { out.push(null); continue; }
     // o histórico é sempre o do extrato, sem o "0" do documento (Vitor, 13/10/2026: nunca o nome da conta, como o "Caixa")
     const historico = (p.historico.split(/\s+/).filter(t => t && t !== '0').join(' ').trim() || p.historico.trim()).slice(0, 250);
     out.push({
