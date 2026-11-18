@@ -92,6 +92,8 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
       pago: m.pago ? reais(m.pago) : '', falta: m.falta ? reais(m.falta) : '', saldo: m.saldo === null ? '' : reais(m.saldo),
       pagoEm: m.pagoEm.map(dataBR).join(', '),
     })) : null,
+    /** tudo pago no período (com pró-labore em algum mês e nada faltando, nem do saldo de antes): o item marca sozinho (18/11/2026) */
+    tudoPago: !!porMes && porMes.meses.some(m => m.liquido > 0.005) && porMes.meses.every(m => m.falta <= 0.005) && porMes.anterior.falta <= 0.005,
     /** o saldo de antes do razão que ainda falta pagar ('' = nada) */
     faltaDeAntes: porMes && porMes.anterior.falta > 0.005 ? reais(porMes.anterior.falta) : '',
     /** quanto falta no período e em quantos meses */
