@@ -114,7 +114,14 @@ def apertar(w, nomes):
 
 
 def mensagens_abertas():
-    return janelas('TMessageForm') + [w for w in janelas('#32770') if w.window_text() != 'Salvar como']
+    """As perguntas e os avisos do Contábil (só os dele: a janela de outro programa no PC não conta; 18/11/2026)."""
+    ms = janelas('TMessageForm') + [w for w in janelas('#32770') if w.window_text() != 'Salvar como']
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import alterdata_processo
+        return [w for w in ms if alterdata_processo.do_contabil_certo(w.handle)]
+    except Exception:
+        return ms
 
 
 ENSAIO = '--ensaio' in sys.argv
