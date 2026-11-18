@@ -4,7 +4,7 @@
 // navegador (a pessoa volta e vê se importou).
 import { Icone, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { acompanharImportacao, pedirImportacao, type ImportacaoNoAlterdata } from './importarNoAlterdata';
+import { acompanharImportacao, IMPORTAR_DESLIGADO, MOTIVO_DESLIGADO, pedirImportacao, type ImportacaoNoAlterdata } from './importarNoAlterdata';
 
 export interface PropsImportarNoAlterdata {
   /** o código da empresa no Alterdata (sem ele, o botão fica desligado) */
@@ -48,8 +48,8 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
 
   const andando = !!estado && (estado.status === 'pendente' || estado.status === 'trabalhando');
   const semCodigo = !p.codigo;
-  const desligado = p.disabled || semCodigo || andando || mandando;
-  const titulo = semCodigo ? 'A empresa não tem o código do Alterdata' : p.disabled ? p.motivo : andando ? 'O robô está importando' : 'O robô do servidor importa estes lançamentos no Alterdata Contábil, num lote novo';
+  const desligado = IMPORTAR_DESLIGADO || p.disabled || semCodigo || andando || mandando;
+  const titulo = IMPORTAR_DESLIGADO ? MOTIVO_DESLIGADO : semCodigo ? 'A empresa não tem o código do Alterdata' : p.disabled ? p.motivo : andando ? 'O robô está importando' : 'O robô do servidor importa estes lançamentos no Alterdata Contábil, num lote novo';
 
   async function importar() {
     const pl = p.planilha();
