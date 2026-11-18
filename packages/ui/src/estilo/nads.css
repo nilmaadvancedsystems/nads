@@ -7457,6 +7457,12 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .receita-pe{flex:1;align-self:center;}
 @media (max-width:640px){.receita-tabela th:nth-child(3),.receita-tabela td.receita-antes{display:none;}}
 
-/* o Pró-labore mês a mês na Folha (18/11/2026): a grade dos meses embaixo da linha do razão */
-.prolabore-meses{display:flex;flex-direction:column;gap:6px;margin-top:10px;width:100%;}
+/* o Pró-labore mês a mês na Folha (18/11/2026): a grade dos meses numa linha própria, embaixo do item, com a largura toda; na tela
+   estreita, a grade rola para o lado (cada mês com o valor inteiro) */
+.folha-check-lista li:has(.prolabore-meses){flex-wrap:wrap;}
+.prolabore-meses{flex:1 0 100%;display:flex;flex-direction:column;gap:6px;margin:0 0 12px;min-width:0;}
 .prolabore-meses .hint{margin:0;}
+.prolabore-meses-rolar{overflow-x:auto;}
+.prolabore-meses .imp-meses{min-width:calc(84px + var(--meses, 9) * 66px);}
+.prolabore-meses .imp-meses td{font-size:var(--fs-12);}
+.prolabore-meses .badge{font-size:var(--fs-11);padding:0 6px;white-space:nowrap;}

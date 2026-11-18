@@ -81,14 +81,15 @@ const SITUACAO: Record<NonNullable<VmProLabore['meses']>[number]['situacao'], { 
  */
 function MesesDoProLabore({ vm }: { vm: VmProLabore }) {
   const meses = vm.meses!;
-  const grade = useColunaAjustavel('prolabore', '96px', meses.length);
+  const grade = useColunaAjustavel('prolabore', '84px', meses.length);
   const linha = (rotulo: string, valor: (m: (typeof meses)[number]) => string, titulo?: string, classe?: (m: (typeof meses)[number]) => string) => (
     <tr><th scope="row" title={titulo}>{rotulo}</th>{meses.map(m => <td key={m.mes} className={'num ' + (classe ? classe(m) : '')}>{valor(m) ? <ValorNaGrade texto={valor(m)} /> : '—'}</td>)}</tr>
   );
   return (
     <div className="prolabore-meses">
       <p className="hint">{vm.resumoDosMeses}{vm.faltaDeAntes && ' · de antes do razão falta ' + vm.faltaDeAntes}</p>
-      <table className="imp-meses" style={grade.tabela}>
+      <div className="prolabore-meses-rolar">
+      <table className="imp-meses" style={{ ...grade.tabela, ['--meses' as string]: meses.length }}>
         <colgroup><col style={{ width: grade.largura }} /></colgroup>
         <thead>
           <tr>
@@ -106,6 +107,7 @@ function MesesDoProLabore({ vm }: { vm: VmProLabore }) {
           {linha('Saldo', m => m.saldo, 'O saldo da conta no fim do mês, da coluna Saldo do razão')}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
