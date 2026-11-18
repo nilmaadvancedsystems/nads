@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { tarefas as t } from '@nads/core';
 import { criarInsightsMemoria } from '../../dados/insights';
-import { idadeDosNumeros, telaDosInsights } from './useInsights';
+import { fotoPeloNome, idadeDosNumeros, telaDosInsights } from './useInsights';
 
 describe('a Tela de Insights', () => {
   it('a idade dos números', () => {
@@ -29,5 +29,23 @@ describe('o que a tela desenha', () => {
     expect(tela.guias.funil.map(f => f.pct)).toEqual([100, 70, 37]);
     expect(tela.dp.segmentos.map(s => s.valor)).toEqual([96, 18, 3, 22]);
     expect(tela.tarefas).toEqual([{ nome: 'Fernando', iniciais: 'F', atrasadas: 3, pct: 100 }, { nome: 'Clara', iniciais: 'C', atrasadas: 2, pct: 67 }]);
+  });
+});
+
+describe('a foto de perfil pelo nome', () => {
+  const equipe = [
+    { nome: 'Fernando Souza', fotoPerfil: 'data:fernando', ativo: true },
+    { nome: 'Felipe Lima', fotoPerfil: 'data:felipe', ativo: true },
+    { nome: 'Clara Dias', fotoPerfil: null, ativo: true },
+    { nome: 'Clara Antiga', fotoPerfil: 'data:velha', ativo: false },
+    { nome: 'Gustavo Reis', fotoPerfil: 'data:g1', ativo: true },
+    { nome: 'Gustavo Alves', fotoPerfil: 'data:g2', ativo: true },
+  ];
+  it('o nome inteiro, ou o primeiro nome quando só uma pessoa ativa o tem; sem foto, nada', () => {
+    expect(fotoPeloNome(equipe, 'Fernando Souza')).toBe('data:fernando');
+    expect(fotoPeloNome(equipe, 'FELIPE')).toBe('data:felipe');
+    expect(fotoPeloNome(equipe, 'Clara')).toBeNull();
+    expect(fotoPeloNome(equipe, 'Gustavo')).toBeNull();
+    expect(fotoPeloNome(equipe, 'Ninguém')).toBeNull();
   });
 });

@@ -7,7 +7,7 @@
 import { tarefas as t } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { useInsightsDoBanco } from '../../dados/repo';
+import { useAcesso, useInsightsDoBanco } from '../../dados/repo';
 
 /** os números mais velhos que isto: o robô pode ter parado */
 const VELHO_MS = 60 * 60 * 1000;
@@ -103,13 +103,34 @@ export function visaoDaPessoa(p: ReturnType<typeof telaDosInsights>['equipe'][nu
   };
 }
 
+const simples = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+
+/**
+ * A foto de perfil de quem é da equipe pelo nome que vem no resumo (o do Cadastro: às vezes o nome inteiro, às vezes só o
+ * primeiro, em maiúsculas): o nome igual; senão, o primeiro nome, se só uma pessoa ativa tiver esse (18/11/2026: "preciso
+ * das fotos de perfil das pessoas"). Sem foto, a tela mostra as iniciais.
+ */
+export function fotoPeloNome(equipe: readonly { nome: string; fotoPerfil: string | null; ativo: boolean }[], nome: string): string | null {
+  const ativos = equipe.filter(p => p.ativo);
+  const alvo = simples(nome);
+  const igual = ativos.find(p => simples(p.nome) === alvo);
+  if (igual) return igual.fotoPerfil || null;
+  const primeiro = alvo.split(/\s+/)[0];
+  const mesmos = ativos.filter(p => simples(p.nome).split(/\s+/)[0] === primeiro);
+  return mesmos.length === 1 ? mesmos[0].fotoPerfil || null : null;
+}
+
 export function useInsights() {
   const repo = useInsightsDoBanco();
   const e = repo.estado();
   const [agora, setAgora] = useState(() => new Date());
   // a pessoa aberta (a chave setor|nome); o clique no cartão abre a visão dela (18/11/2026)
   const [aberta, setAberta] = useState('');
-  const tela = e.resumo ? telaDosInsights(e.resumo) : null;
+  // as fotos de perfil (a lista da equipe, que o Diretor e o admin já leem)
+  const equipe = useAcesso().equipe();
+  const base = e.resumo ? telaDosInsights(e.resumo) : null;
+  const foto = (nome: string) => fotoPeloNome(equipe.lista, nome);
+  const tela = base ? { ...base, equipe: base.equipe.map(p => ({ ...p, foto: foto(p.nome) })), tarefas: base.tarefas.map(p => ({ ...p, foto: foto(p.nome) })) } : null;
 
   // o relógio da idade dos números (a cada minuto)
   useEffect(() => { const i = setInterval(() => setAgora(new Date()), 60000); return () => clearInterval(i); }, []);
@@ -124,7 +145,7 @@ export function useInsights() {
     tela,
     atualizado: e.resumo ? idadeDosNumeros(e.resumo.atualizadoEm, agora) : '',
     velho,
-    pessoa: pessoa ? visaoDaPessoa(pessoa, agora) : null,
+    pessoa: pessoa ? { ...visaoDaPessoa(pessoa, agora), foto: pessoa.foto } : null,
     abrirPessoa: (setor: string, nome: string) => setAberta(setor + '|' + nome),
     fecharPessoa: useCallback(() => setAberta(''), []),
   };

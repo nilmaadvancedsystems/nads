@@ -119,3 +119,8 @@ button.ins-pessoa:focus-visible { outline: 2px solid var(--accent); outline-offs
   .ins-lista li { flex-direction: column; align-items: flex-start; }
   .ins-empresa-direita { grid-template-columns: auto 1fr; }
 }
+
+/* a foto de perfil no lugar das iniciais (18/11/2026: "preciso das fotos de perfil das pessoas") */
+.ins-foto { object-fit: cover; padding: 0; }
+.ins-janela-rosto { width: 76px; height: 76px; }
+.ins-janela-quem h3 .ins-janela-pct { font-size: 18px; margin-left: 6px; }

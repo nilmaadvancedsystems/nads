@@ -11,6 +11,11 @@ import './insights.css';
 type Vm = ReturnType<typeof useInsights>;
 type Tela = NonNullable<Vm['tela']>;
 
+/** a foto de perfil, ou as iniciais quando a pessoa não tem foto */
+function Rosto({ foto, iniciais, classe }: { foto: string | null; iniciais: string; classe: string }) {
+  return foto ? <img className={classe + ' ins-foto'} src={foto} alt="" /> : <span className={classe}>{iniciais}</span>;
+}
+
 /** o anel de progresso (0 a 100), com o conteúdo no meio */
 function Anel({ pct, tom, tamanho = 64, espessura = 6, children }: { pct: number; tom: Tom; tamanho?: number; espessura?: number; children?: ReactNode }) {
   const r = (tamanho - espessura) / 2;
@@ -67,7 +72,7 @@ function Equipe({ tela, vm }: { tela: Tela; vm: Vm }) {
         <div className="ins-equipe">
           {tela.equipe.map(p => (
             <button key={p.setor + p.nome} type="button" className="ins-pessoa" onClick={() => vm.abrirPessoa(p.setor, p.nome)} aria-label={'Ver o que ' + p.nome + ' está fazendo'}>
-              <Anel pct={p.pct} tom={p.tom} tamanho={84} espessura={7}><span className="ins-iniciais">{p.iniciais}</span></Anel>
+              <Anel pct={p.pct} tom={p.tom} tamanho={84} espessura={7}><Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-iniciais" /></Anel>
               <b className="ins-pessoa-nome">{p.nome}</b>
               <span className="hint">{p.setor}</span>
               <span className={'ins-pilula t-' + p.tom}>{p.pct}% · {p.texto}</span>
@@ -90,9 +95,9 @@ function JanelaDaPessoa({ vm }: { vm: Vm }) {
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.fecharPessoa(); }}>
       <div ref={janela} className="modal ins-janela" role="dialog" aria-modal="true" aria-label={'O que ' + p.nome + ' está fazendo'}>
         <header className="ins-janela-topo">
-          <Anel pct={p.pct} tom={p.tom} tamanho={96} espessura={8}><b className="ins-janela-pct">{p.pct}%</b></Anel>
+          <Anel pct={p.pct} tom={p.tom} tamanho={96} espessura={8}><Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-iniciais ins-janela-rosto" /></Anel>
           <div className="ins-janela-quem">
-            <h3>{p.nome}</h3>
+            <h3>{p.nome} <span className={'ins-janela-pct t-' + p.tom}>{p.pct}%</span></h3>
             <span className="hint">{p.setor} · {p.texto} empresas concluídas</span>
             <div className="ins-janela-pilulas">
               <span className="ins-pilula t-alerta">{p.faltando.length} {p.faltando.length === 1 ? 'faltando' : 'faltando'}</span>
@@ -186,7 +191,7 @@ function Tarefas({ tela }: { tela: Tela }) {
         <ul className="ins-atrasos">
           {tela.tarefas.map(p => (
             <li key={p.nome}>
-              <span className="ins-mini">{p.iniciais}</span><span className="ins-atraso-nome">{p.nome}</span>
+              <Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-mini" /><span className="ins-atraso-nome">{p.nome}</span>
               <span className="ins-trilho t-ruim"><span style={{ width: p.pct + '%' }} /></span><b>{p.atrasadas}</b>
             </li>
           ))}
