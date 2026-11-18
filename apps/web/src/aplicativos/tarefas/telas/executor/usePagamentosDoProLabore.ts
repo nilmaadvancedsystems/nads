@@ -39,6 +39,22 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   };
   const contas = useContasDoBalancete(empresa);
   const plano = useMemo(() => (contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [contas]);
+  // a conta do pagamento: só o caixa e os bancos conta movimento do plano (Vitor, 18/11/2026: "voce pega apenas o caixa e contas
+  // do banco movimento, do plano de contas para selecionar"): a analítica embaixo da sintética Caixa ou Bancos (na ordem do
+  // balancete), ou com caixa/banco no nome; aplicação, empréstimo e financiamento ficam de fora
+  const deDinheiro = useMemo(() => {
+    const fora = /aplica|empr[eé]stimo|financiamento|consórcio|consorcio|cap\.? de giro|capital de giro/i;
+    const ordem = [...(contas || [])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    let pai = '';
+    const achadas: { codigo: string; nome: string }[] = [];
+    for (const c of ordem) {
+      if (c.sintetica) { pai = c.nome; continue; }
+      const doPai = /^caixa\b|caixa geral|^bancos?\b|conta movimento/i.test(pai) && !fora.test(pai);
+      const doNome = /^caixa\b|banco|conta movimento/i.test(c.nome);
+      if ((doPai || doNome) && !fora.test(c.nome) && (!c.grupo || /ativo/i.test(c.grupo))) achadas.push({ codigo: c.codigo, nome: c.nome });
+    }
+    return achadas;
+  }, [contas]);
   const debito = contaDoItem.split(' — ')[0].trim();
   const modelos = useModelosDeHistorico();
   const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao, modelos) : []), [razao, modelos]);
@@ -85,7 +101,11 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
     remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     /** o Diário do pró-labore (a Importação preenche; o razão próprio desta etapa, se houver, sai) */
     usarDiario: () => { if (contabil.usarDiarioDoTipo('prolabore', 'Pró-labore a pagar')) setRazao(null); },
-    contas: plano, conta, digitarConta: (v: string) => setDigitada(v.replace(/\D/g, '')),
+    contas: plano, contasDePagamento: deDinheiro.length ? deDinheiro : plano,
+    nomeDaConta: (deDinheiro.find(c => c.codigo === conta) || plano.find(c => c.codigo === conta))?.nome || '',
+    /** escolheu no menu: grava na empresa */
+    escolherConta: (codigo: string) => { setDigitada(null); gravar({ contaCredito: codigo }); },
+    conta, digitarConta: (v: string) => setDigitada(v.replace(/\D/g, '')),
     /** ao sair do campo (ou no Enter): grava a conta na empresa */
     salvarConta: () => { if (digitada !== null) { gravar({ contaCredito: digitada }); setDigitada(null); } },
     diaUtil, escolherDiaUtil: (n: number) => gravar({ diaUtil: n }),
