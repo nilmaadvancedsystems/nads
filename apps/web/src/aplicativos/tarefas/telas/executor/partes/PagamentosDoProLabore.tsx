@@ -6,16 +6,14 @@ import { useId } from 'react';
 import { usePagamentosDoProLabore } from '../usePagamentosDoProLabore';
 import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../comum/BotaoDiario';
-import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { ComRoboDoRazao, MenuDeImportar } from '../../../etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
 
 /** travado: o item Pró-labore marcado no checklist — os botões ficam travados (Vitor, 14/10/2026) */
 export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, meses }: { empresa: string; codigo: number | null; contaDoItem: string; travado?: boolean; meses?: readonly string[] }) {
   const vm = usePagamentosDoProLabore(empresa, codigo, contaDoItem);
   const id = useId();
-  // o botão Vitor (18/11/2026: "coloca o botao vitor para o robo puxar o razao, modo desenvolvedor primeiro"): o ⬆ ganha o menu
-  // com o robô do PC dele (só para a conta dele) puxando o razão da conta do Pró-labore no período
-  const [dev] = useModoDesenvolvedor();
+  // o botão Vitor (18/11/2026: "coloca o botao vitor para o robo puxar o razao"; "puxou, pode publicar"): o ⬆ ganha o menu com
+  // o robô do PC dele (só para a conta dele) puxando o razão da conta do Pró-labore no período
   const contaDoRobo = contaDoItem.split(' — ')[0].trim();
   const doComputador = (
     <>
@@ -32,7 +30,7 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, m
       ) : (
         <>
           <BotaoDiario onClick={vm.usarDiario} />
-          {dev && meses && meses.length && contaDoRobo ? (
+          {meses && meses.length && contaDoRobo ? (
             <ComRoboDoRazao codigo={codigo} empresa={empresa} conta={contaDoRobo} meses={meses} importar={f => vm.importar(f)}>
               {robo => (robo
                 ? <MenuDeImportar titulo={'o razão do Pró-labore (' + contaDoRobo + ')'} aceitar=".xls,.xlsx,.ods" travado={!!travado} robo={robo} onArquivos={fs => { if (fs[0]) void vm.importar(fs[0]); }} />
