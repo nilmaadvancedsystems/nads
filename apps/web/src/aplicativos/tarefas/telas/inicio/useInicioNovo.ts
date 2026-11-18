@@ -144,8 +144,8 @@ export function useInicioNovo() {
   const [dia, setDia] = useState<string | null>(null);
   const doDia = dia ? abertas.filter(t => t.prazo === dia) : minhas;
   const horaDe = (q: string) => (q.length >= 16 ? q.slice(11, 16) : '');
-  // só no modo desenvolvedor por enquanto (18/11/2026: "so no desenvolvedor!!")
-  const reunioesDoDia = !dia || !devPresenca ? [] : [
+  // publicado para todos (18/11/2026: "pode publicar essa parte do inicio")
+  const reunioesDoDia = !dia ? [] : [
     ...reunioes.proximas.filter(x => x.quando.startsWith(dia)).map(x => ({ id: x.id, titulo: x.titulo, hora: horaDe(x.quando), duracao: x.duracaoTexto, quando: x.quando })),
     ...comunicados.filter(c => c.tipo === 'reuniao' && (c.quando || '').startsWith(dia)).map(c => ({ id: c.id, titulo: c.tituloNaLista, hora: horaDe(c.quando || ''), duracao: '', quando: c.quando || '' })),
   ].sort((a, b) => a.quando.localeCompare(b.quando));
@@ -348,8 +348,8 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const [publicando, setPublicando] = useState(false);
   // o Diretor e o Dono pedem o Recebido e escolhem para quem é (todos, setores ou pessoas)
   const [pedeConfirmacao, setPedeConfirmacao] = useState(false);
-  // no modo desenvolvedor todo aviso pede o Recebido e quem cria escolhe fixar na tela inicial (18/11/2026)
-  const [devAviso] = useModoDesenvolvedor();
+  // todo aviso novo pede o Recebido e quem cria escolhe fixar na tela inicial (18/11/2026; publicado para todos)
+  const devAviso = true;
   const [fixarNoInicio, setFixarNoInicio] = useState(false);
   const [destino, setDestino] = useState<'todos' | 'setor' | 'pessoas'>('todos');
   const [setores, setSetores] = useState<string[]>([]);
