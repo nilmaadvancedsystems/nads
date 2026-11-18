@@ -9,7 +9,7 @@ export const EMPRESAS_EXEMPLO: EmpresaDoEscritorio[] = [
   { codigo: 903, nome: 'EXEMPLO EMPRESA NOVA LTDA', regime: 'Simples' },
 ];
 
-const l = (dia: number, valor: number, historico: string): Lancamento => ({ data: '2026-08-' + String(dia).padStart(2, '0'), valor, historico });
+const l = (dia: number, valor: number, historico: string, conta?: string): Lancamento => ({ data: '2026-08-' + String(dia).padStart(2, '0'), valor, historico, ...(conta ? { conta } : {}) });
 
 export function empresasDeExemplo(): EmpresaExtrator[] {
   const quando = '2026-09-01T12:00:00.000Z';
@@ -26,10 +26,11 @@ export function empresasDeExemplo(): EmpresaExtrator[] {
       },
       {
         id: 'ex-sistema', lado: 'sistema', nome: 'razao-banco-agosto.xlsx', importadoEm: quando, modo: 'primeira', lancamentos: [
-          l(3, 450000, 'Recebimento cliente Alfa'), l(4, -128900, 'Pagamento energia elétrica'), l(4, -4590, 'Tarifa bancária'),
-          l(5, -350000, 'Pagamento salários'), l(10, -73500, 'Simples Nacional'), l(14, 89000, 'Recebimento Beta'),
-          l(20, -50500, 'Pagamento fornecedor Delta'), l(22, -125000, 'Depósito em dinheiro'), l(25, -21000, 'Internet'),
-          l(25, -21000, 'Internet'), l(28, -60000, 'Honorários contábeis'),
+          // com a contrapartida, como o razão da conciliação do Alterdata (o Lançatudo lê a conta do cliente por ela)
+          l(3, 450000, 'Recebimento cliente Alfa', '11201'), l(4, -128900, 'Pagamento energia elétrica', '81020'), l(4, -4590, 'Tarifa bancária', '81012'),
+          l(5, -350000, 'Pagamento salários', '20510'), l(10, -73500, 'Simples Nacional', '20501'), l(14, 89000, 'Recebimento Beta', '11202'),
+          l(20, -50500, 'Pagamento fornecedor Delta', '21101'), l(22, -125000, 'Depósito em dinheiro', '10101'), l(25, -21000, 'Internet', '81030'),
+          l(25, -21000, 'Internet', '81030'), l(28, -60000, 'Honorários contábeis', '81030'),
         ],
       },
     ],

@@ -19,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'desenvolvedor';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -53,6 +53,15 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
     // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
     // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
+  ] },
+  // o Lançatudo (17/11/2026: "um Mister dentro do nads"): o extrato do banco em lançamentos prontos para o Alterdata, com as
+  // regras da empresa; o Contábil e o admin, só no modo desenvolvedor até o Vitor aprovar (a novidade 'lancatudo')
+  // uma tela só, sem a barra lateral (18/11/2026: "remove essa barra lateral"): as Regras abrem em janela, pelo botão da barra
+  // de cima; o link antigo /tarefas/lancatudo/regras abre a tela com a janela das Regras
+  { id: 'lancatudo', nome: 'Lançatudo', icone: 'landmark', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'Lançamentos do extrato' },
+    // sem barra lateral, não aparece em lugar nenhum: só faz o link das Regras abrir a tela com a janela delas
+    { id: 'regras', rotulo: 'Regras', icone: 'settings', titulo: 'Lançamentos do extrato' },
   ] },
   // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
   // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
@@ -257,6 +266,7 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
+    (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&

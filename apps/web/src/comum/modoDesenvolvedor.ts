@@ -17,7 +17,9 @@ const EVENTO = 'nads-modo-desenvolvedor';
 /** O que pode gravar mesmo no modo desenvolvedor (não altera dado de ninguém). */
 // o pedido do balancete ao robô do Alterdata (Vitor, 14/10/2026: "não tem como pedir o balancete no modo dev"): o robô só
 // gera o relatório no Contábil e salva o arquivo; a importação que vem depois continua fingida (só na tela)
-const LIVRES = [/^aberturasDrive(\/|$)/, /^pedidosMapaDrive(\/|$)/, /^nadsSessoes(\/|$)/];
+// o Lançatudo (18/11/2026: "deixa apenas para dev, vou testar com uma empresa de verdade"): a tela só existe no modo
+// desenvolvedor; as regras, as contas aprendidas e as escolhas de cada mês ficam guardadas de verdade (só ela usa esse lugar)
+const LIVRES = [/^aberturasDrive(\/|$)/, /^pedidosMapaDrive(\/|$)/, /^nadsSessoes(\/|$)/, /^extrator\/[^/]+\/lancatudo(\/|$)/];
 
 export function modoDesenvolvedor(): boolean {
   return modoDevLigado();

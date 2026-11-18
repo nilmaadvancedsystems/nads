@@ -20,6 +20,7 @@ export * as mandei from './mandei';
 export * as areaCliente from './areaCliente';
 export * as nfse from './nfse';
 export * as lcdpr from './lcdpr';
+export * as lancatudo from './lancatudo';
 export * as financeiro from './financeiro';
 export * as suporte from './suporte';
 export * as uso from './uso';
