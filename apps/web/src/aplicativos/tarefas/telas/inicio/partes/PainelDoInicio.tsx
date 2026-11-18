@@ -129,7 +129,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             {/* ao passar o mouse, o card embaça e aparece o botão (Vitor, 18/11/2026): a presença, o Recebido ou o Abrir */}
             {vm.reunioes.map(r => (
               <CardDoQuadro key={'r' + r.id} abrir={() => abrir(r.id)}
-                acao={r.espera === 'presenca' ? { rotulo: 'Confirmar presença', fazer: () => vm.reunioesVm.confirmar(r.id, true) }
+                // o Recebido da reunião vale como "vou" (Vitor, 18/11/2026, a opção 2): só o nome do botão muda
+                acao={r.espera === 'presenca' ? { rotulo: 'Recebido', fazer: () => vm.reunioesVm.confirmar(r.id, true) }
                   : r.espera === 'recebido' ? { rotulo: 'Recebido', fazer: () => void vm.marcarRecebido(r.id) } : null}
                 marca={<span className="ini-quadro-dia" aria-hidden="true"><b>{r.quando ? r.quando.slice(8, 10) : '—'}</b><small>{r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small></span>}
                 titulo={r.tituloNaLista} detalhe={'Reunião · ' + r.reuniao} pendente={!!r.espera} />
@@ -187,7 +188,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
 
 /**
  * Um card do Quadro de avisos (modo desenvolvedor): ao passar o mouse (ou com o foco) o conteúdo embaça e aparece o botão no
- * meio — o que a pessoa precisa fazer (Confirmar presença, Recebido) ou, sem pendência, Abrir. No toque, o card só abre.
+ * meio — o Recebido (no aviso; na reunião, vale como "vou") ou, sem pendência, Abrir. No toque, o card só abre.
  */
 function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, acao, abrir }: { marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; acao: { rotulo: string; fazer: () => void } | null; abrir: () => void }) {
   return (
