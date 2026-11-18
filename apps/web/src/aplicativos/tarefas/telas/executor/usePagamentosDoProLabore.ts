@@ -13,7 +13,7 @@ import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 /** contaDoItem: a conta do item do checklist ("60005 — Pro-labore a Pagar"), a do débito. */
-export function usePagamentosDoProLabore(empresa: string, codigo: number | null, contaDoItem: string) {
+export function usePagamentosDoProLabore(empresa: string, codigo: number | null, contaDoItem: string, meses: readonly string[] = []) {
   const { aviso } = useRetorno();
   const [proprio, setRazao] = useState<{ arquivo: string; razao: t.RazaoDaConta } | null>(null);
   // o da Importação (o upload único dos razões; o Diário preenche ali), quando a etapa não tem o próprio
@@ -59,7 +59,27 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   }));
   const planilha = () => creditor.planilhaDeImportacao(linhasDoArquivo());
 
+  // o pró-labore mês a mês (18/11/2026: "coloca um saldo mensal embaixo para eu ver quais pagamentos faltam... pago ou nao pago")
+  const chaveDosMeses = meses.join(',');
+  const porMes = useMemo(() => (razao && meses.length ? t.mesesDoProLabore(razao.razao, meses) : null), [razao, chaveDosMeses]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const reais = (n: number) => formatos.reais(n);
+
   return {
+    /** a grade dos meses: pago, parcial, falta ou sem pró-labore, com os valores (null = sem razão) */
+    meses: porMes ? porMes.meses.map(m => ({
+      mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), situacao: m.situacao,
+      provisao: m.provisao ? reais(m.provisao) : '', inss: m.inss ? reais(m.inss) : '', liquido: m.liquido ? reais(m.liquido) : '',
+      pago: m.pago ? reais(m.pago) : '', falta: m.falta ? reais(m.falta) : '', saldo: m.saldo === null ? '' : reais(m.saldo),
+      pagoEm: m.pagoEm.map(dataBR).join(', '),
+    })) : null,
+    /** o saldo de antes do razão que ainda falta pagar ('' = nada) */
+    faltaDeAntes: porMes && porMes.anterior.falta > 0.005 ? reais(porMes.anterior.falta) : '',
+    /** quanto falta no período e em quantos meses */
+    resumoDosMeses: porMes ? (() => {
+      const abertos = porMes.meses.filter(m => m.falta > 0.005);
+      return abertos.length ? abertos.length + (abertos.length === 1 ? ' mês' : ' meses') + ' sem pagar tudo · falta ' + reais(abertos.reduce((x, m) => x + m.falta, 0)) : 'Tudo pago no período';
+    })() : '',
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar,
     remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },

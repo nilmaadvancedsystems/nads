@@ -7456,3 +7456,7 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .receita-igual td,.receita-vazio td{color:var(--ink-muted);}
 .receita-pe{flex:1;align-self:center;}
 @media (max-width:640px){.receita-tabela th:nth-child(3),.receita-tabela td.receita-antes{display:none;}}
+
+/* o Pró-labore mês a mês na Folha (18/11/2026): a grade dos meses embaixo da linha do razão */
+.prolabore-meses{display:flex;flex-direction:column;gap:6px;margin-top:10px;width:100%;}
+.prolabore-meses .hint{margin:0;}
