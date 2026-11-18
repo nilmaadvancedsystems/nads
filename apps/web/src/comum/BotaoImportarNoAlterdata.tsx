@@ -2,7 +2,7 @@
 // quantos lançamentos e o nome do lote), manda a planilha ao robô do servidor e mostra, no lugar, o andamento (a mesma
 // barra da página Alterdata da empresa) e o que o Alterdata respondeu. O último pedido de cada lugar fica lembrado neste
 // navegador (a pessoa volta e vê se importou).
-import { Icone, useRetorno } from '@nads/ui';
+import { Icone, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { acompanharImportacao, pedirImportacao, type ImportacaoNoAlterdata } from './importarNoAlterdata';
 
@@ -21,6 +21,11 @@ export interface PropsImportarNoAlterdata {
   motivo?: string;
   /** o nome de quem pede (vai no pedido) */
   quem?: string;
+  /**
+   * com o baixar, o botão vira um menu (Vitor, 18/11/2026: "clicando em baixar, vai aparecer a opcao, importar direto do alterdata
+   * daqui ou baixar planilha (voce importa)"): as duas saídas da mesma planilha num botão só
+   */
+  baixar?: () => void;
 }
 
 const chave = (p: PropsImportarNoAlterdata) => 'importarAlterdata|' + p.origem + '|' + p.codigo + '|' + p.lote;
@@ -65,6 +70,31 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não mandei ao robô', texto: (e as Error).message });
     } finally { setMandando(false); }
+  }
+
+  if (p.baixar) {
+    const baixar = p.baixar;
+    return (
+      <span className="importar-alterdata">
+        {mandando || andando ? (
+          <button type="button" className="btn btn-secondary" disabled aria-busy="true"><span className="btn-spinner" />Importando no Alterdata</button>
+        ) : (
+          <MenuSuspenso rotulo={<><Icone nome="download" width={16} height={16} />Lançamentos</>} className="btn btn-secondary" flutuante direita largura={290}
+            dica={p.disabled ? p.motivo : 'Importar no Alterdata daqui ou baixar a planilha'}
+            conteudo={fechar => (
+              <>
+                <button type="button" className="popover-item" role="menuitem" disabled={desligado} title={titulo} onClick={() => { fechar(); void importar(); }}>
+                  <Icone nome="upload" /><span className="popover-texto"><b>Importar direto no Alterdata</b><br /><span className="hint">O robô importa daqui, num lote novo</span></span>
+                </button>
+                <button type="button" className="popover-item" role="menuitem" disabled={p.disabled} title={p.disabled ? p.motivo : undefined} onClick={() => { fechar(); baixar(); }}>
+                  <Icone nome="download" /><span className="popover-texto"><b>Baixar a planilha</b><br /><span className="hint">Você importa no Alterdata</span></span>
+                </button>
+              </>
+            )} />
+        )}
+        {estado && <SituacaoDaImportacao e={estado} />}
+      </span>
+    );
   }
 
   return (

@@ -69,10 +69,15 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, m
             ? <button type="button" className="btn btn-outline" disabled>{vm.diaUtil}º dia útil</button>
             : <MenuSuspenso rotulo={vm.diaUtil + 'º dia útil'} className="btn btn-outline" dica="O dia útil do pagamento, no mês seguinte à competência" largura={160}
               itens={[1, 2, 3, 4, 5].map(n => ({ rotulo: n + 'º dia útil', marcado: vm.diaUtil === n, onClick: () => vm.escolherDiaUtil(n) }))} />}
-          <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" />
+          {dev ? (
+            /* um botão só: importar daqui ou baixar a planilha (18/11/2026) */
+            <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" baixar={vm.baixarXls} />
+          ) : (<>
+                    <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" />
           <button type="button" className="icon-btn icon-btn-sm" disabled={travado || !vm.podeExportar} onClick={vm.baixarXls}
             title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + vm.qtd + ' pagamentos (' + vm.total + ')' : 'Escolha a conta do crédito'}
             aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
+          </>)}
         </>
       ) : <span className="hint">O razão já zera</span>)}
     </div>
