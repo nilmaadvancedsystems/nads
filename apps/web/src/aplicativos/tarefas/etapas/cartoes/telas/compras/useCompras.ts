@@ -11,7 +11,6 @@ import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useGuardado } from '../../../../../../comum/guardado';
-import { useModoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useContasDoBalancete, useNotasDaConferencia } from '../../../conferencia/importadosNaEtapa';
 import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
@@ -206,9 +205,8 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   const faltaBanco = validas.some(f => !f.pagamento || !f.contaBanco);
   // só o pagamento da fatura, quebrado por gasto (Vitor, 18/11/2026: "so quero que ele pegue o valor total da fatura e quebre em
   // historicos de valores menores, os lancamentos que nao envolvem banco eu lancei na mao"): cada gasto D Cartão / C Banco no dia
-  // do débito; nada de fornecedor, caixa ou nota. Por enquanto no modo desenvolvedor; fora dele, o razão completo de 11/11
-  const [dev] = useModoDesenvolvedor();
-  const soPagamento = dev;
+  // do débito; nada de fornecedor, caixa ou nota. Para todos desde 18/11/2026 (o razão completo de 11/11 fica no código, desligado)
+  const soPagamento = true;
   const doPagamento = validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao || '?', f.bruto.contaBanco || '?'));
   const pronto = soPagamento
     ? validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate)
