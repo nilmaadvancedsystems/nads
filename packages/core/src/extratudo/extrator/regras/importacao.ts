@@ -28,9 +28,11 @@ import { dataBR } from './texto';
  * linha de duas alturas volta para a linha do valor (o lançamento ficava com o dia anterior; 16/11/2026); 21 = o ano cortado na
  * virada da página do BB ("16/01/202" e o "6" na página seguinte): o lançamento ficava com o dia anterior (16/11/2026); 22 = o
  * relatório de títulos do Sicoob (liquidação e baixa) com o título em desenho, reconhecido pelas colunas, não é extrato (entrou
- * como o extrato de 09/2026 da 292; 17/11/2026).
+ * como o extrato de 09/2026 da 292; 17/11/2026); 23 = esse relatório sai do Extrator na releitura (o 22 só dava o erro, e a releitura
+ * mantinha os "lançamentos" dele: na 292, o "SICOOB 09" do Drive seguia como o extrato de 10/2026, todo entrada e sem histórico;
+ * 18/11/2026: "tá puxando o cred liquidação ao invés do extrato").
  */
-export const VERSAO_DO_LEITOR = 22;
+export const VERSAO_DO_LEITOR = 23;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
