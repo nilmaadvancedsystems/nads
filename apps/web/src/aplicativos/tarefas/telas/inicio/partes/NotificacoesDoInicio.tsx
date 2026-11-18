@@ -7,7 +7,6 @@
 import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useInicio } from '../useInicio';
 import { useNovoComunicado, type useInicioNovo } from '../useInicioNovo';
@@ -103,71 +102,8 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
 /** podeMexer: fixar, soltar e apagar, só o Diretor e o Dono (Vitor, 13/11/2026: "Quem pode soltar aviso é só diretor e dono"; o nível
  * simulado do ⚡ vale); os outros só leem */
 export function NotificacoesDoInicio({ vm, mural, podeMexer, lugarDosFiltros }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean; lugarDosFiltros?: HTMLElement | null }) {
-  const c = vm.comunicado;
-  const r = vm.reuniao;
-  // o detalhe arrumado e as listas com rolagem (18/11/2026): só no modo desenvolvedor por enquanto
-  const [devNovo] = useModoDesenvolvedor();
-  // em lista, com os filtros no alto (Vitor, 18/11/2026: "deixa em modo lista... onde o usuario pode filtrar"): só no modo desenvolvedor
-  if (devNovo) return <section className="ini-lista"><ListaDeNotificacoes vm={vm} mural={mural} podeMexer={podeMexer} lugarDosFiltros={lugarDosFiltros} /></section>;
-  return (
-    <section className="ini-lista">
-      {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length && !vm.cobrancas.length ? (
-        <section className="card"><Vazio icone="sino" titulo="Nada por aqui" texto="Os avisos, as reuniões e os estudos da equipe aparecem aqui." /></section>
-      ) : (
-        <div className={'ini-notificacoes' + (devNovo ? ' nova' : '')}>
-          <div className="ini-coluna">
-          {/* as cobranças das tarefas que a pessoa faz (16/11/2026: "faça aparecer em notificações que houve uma cobrança"): clicar abre a tarefa */}
-          {vm.cobrancas.length > 0 && (
-            <section className="card ini-cartao">
-              <div className="card-head"><h3>Cobranças{devNovo && <> <span className="fraco num">({vm.cobrancas.length})</span></>}</h3></div>
-              <div className="ini-lista-rolagem">
-              {vm.cobrancas.map(x => (
-                <button key={x.id} type="button" className="popover-item ini-comunicado" title="Abrir a tarefa" onClick={() => vm.abrir(x.tarefa)}>
-                  <Icone nome={x.icone} />
-                  <span className="popover-texto"><b>{x.texto}</b><br /><span className="hint" title={x.quandoFoi}>{x.quando}</span></span>
-                  {x.aberta && <span className="badge badge-suave badge-warn">Responder</span>}
-                </button>
-              ))}
-              </div>
-            </section>
-          )}
-          {vm.reunioesNaLista.length > 0 && (
-            <section className="card ini-cartao">
-              <div className="card-head"><h3>Reuniões{devNovo && <> <span className="fraco num">({vm.reunioesNaLista.length})</span></>}</h3></div>
-              <div className="ini-lista-rolagem">
-              {vm.reunioesNaLista.map(x => (
-                <button key={x.id} type="button" className={'popover-item ini-comunicado' + (r?.id === x.id ? ' ativo' : '')} aria-pressed={r?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
-                  <Icone nome="calendar" />
-                  <span className="popover-texto"><b>{x.titulo}</b><br /><span className="hint">{x.quandoTexto} · {x.criadaPor.nome}</span></span>
-                  <SeloDaReuniao x={x} />
-                </button>
-              ))}
-              </div>
-            </section>
-          )}
-          <section className="card ini-cartao">
-            <div className="card-head"><h3>Comunicados da equipe{devNovo && <> <span className="fraco num">({vm.comunicados.length})</span></>}</h3></div>
-            <div className="ini-lista-rolagem">
-            {vm.comunicados.map(x => (
-              <button key={x.id} type="button" className={'popover-item ini-comunicado' + (c?.id === x.id ? ' ativo' : '')} aria-pressed={c?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
-                <Icone nome={ICONE_DO_TIPO[x.tipo || 'aviso']} />
-                <span className="popover-texto">
-                  <b>{x.tituloNaLista}</b>
-                  <br /><span className="hint">{x.fixado && <><Icone nome="mapaPin" width={12} height={12} /> Fixado · </>}{x.tipoRotulo} · {x.por} · {x.quandoFoi}</span>
-                </span>
-                {x.precisaReceber && <span className="badge badge-suave badge-warn">Marcar recebido</span>}
-              </button>
-            ))}
-            {!vm.comunicados.length && <Vazio compacto icone="sino" titulo="Nenhum comunicado" />}
-            </div>
-          </section>
-          </div>
-          {r && <DetalheDaReuniao x={r} vm={vm.reunioesVm} />}
-          {!r && c && <DetalheDoComunicado c={c} vm={vm} mural={mural} podeMexer={podeMexer} devNovo={devNovo} />}
-        </div>
-      )}
-    </section>
-  );
+  // em lista, com os filtros na fileira da busca (Vitor, 18/11/2026: "deixa em modo lista... onde o usuario pode filtrar"; publicada para todos)
+  return <section className="ini-lista"><ListaDeNotificacoes vm={vm} mural={mural} podeMexer={podeMexer} lugarDosFiltros={lugarDosFiltros} /></section>;
 }
 
 type Comunicado = NonNullable<ReturnType<typeof useInicioNovo>['comunicado']>;
