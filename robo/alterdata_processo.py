@@ -53,6 +53,14 @@ def do_contabil(h):
     return not exe or os.path.basename(exe) == os.path.basename(CONTABIL).lower()
 
 
+def do_contabil_certo(h):
+    """A janela é do Contábil, com certeza (o programa lido é o wcont.exe). Para as mensagens: uma janela de outro programa (ou
+    de um programa que o Windows não deixa ler) não é pergunta do Contábil (18/11/2026: uma janela vazia de outro programa no PC
+    do Vitor parava o Importar no Alterdata com "o Alterdata mostrou uma mensagem: ")."""
+    exe = exe_da_janela(h)
+    return bool(exe) and os.path.basename(exe) == os.path.basename(CONTABIL).lower()
+
+
 def do_fiscal(h):
     """A janela é de um programa do Alterdata cuja pasta ou nome fala de fiscal (Pack\\Diamond\\Fiscal…, wfiscal.exe…)."""
     exe = exe_da_janela(h)

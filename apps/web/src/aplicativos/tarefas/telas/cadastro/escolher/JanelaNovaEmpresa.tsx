@@ -51,6 +51,12 @@ export function JanelaNovaEmpresa({ fechar }: { fechar: () => void }) {
             <BotaoAcao className="btn btn-ghost" carregando={vm.consultando} textoCarregando="Buscando…" disabled={vm.cnpj.replace(/\D/g, '').length !== 14} onClick={() => { void vm.buscar(); }}>
               Buscar na Receita
             </BotaoAcao>
+            {/* o cartão CNPJ em PDF: lido aqui, nada fica guardado (18/11/2026) */}
+            <label className={'btn btn-ghost registro-cartao' + (vm.lendoCartao ? ' is-loading' : '')} title="Ler o cartão CNPJ (PDF): preenche o CNPJ e o nome; o arquivo não é guardado">
+              {vm.lendoCartao ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="upload" />}Cartão CNPJ
+              <input type="file" accept="application/pdf,.pdf" className="sr-only" aria-label="Ler o cartão CNPJ em PDF"
+                onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.lerCartao(f); }} />
+            </label>
           </div>
           {vm.avisoReceita && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.avisoReceita}</p>}
 

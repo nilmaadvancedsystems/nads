@@ -420,7 +420,8 @@ BOTOES = {}
 
 
 def preencher(h):
-    contar_tela(h, 'o balancete dinâmico')
+    # a tela é lida UMA vez, aqui (18/11/2026, Vitor: "ta com um delay antes de clicar em exportar": cada leitura da tela inteira pelo
+    # UI Automation leva segundos; a descrição completa da tela só vai para o log quando dá erro, no falhar)
     its = itens(h)
     # o Exportar guardado agora, com a tela vazia (17/11/2026, Vitor: "salvar rapido, que ta com um delay imenso": procurar o botão
     # na tela cheia lia cada célula da grade pelo UI Automation)
@@ -439,7 +440,6 @@ def preencher(h):
     time.sleep(1.5)
     mensagem_na_frente('ao escolher a empresa ' + CODIGO)
     passo('período ' + INICIO[3:] + ' a ' + FIM[3:])
-    its = itens(h)
     mascaras = sorted([e for e in its if classe(e) == 'TcxMaskEdit'], key=lambda e: (caixa(e)[1] // 20, caixa(e)[0]))
     if len(mascaras) < 2:
         falhar('não achei as duas caixas do período')
@@ -452,9 +452,11 @@ def preencher(h):
     if all(lidos) and not (INICIO[3:] in lidos[0] and FIM[3:] in lidos[1]):
         falhar('o período na tela (' + ' a '.join(lidos) + ') não é o pedido (' + INICIO[3:] + ' a ' + FIM[3:] + ')')
     mensagem_na_frente('ao preencher o período')
-    its = itens(h)
     passo('saldo por mês')
     r = next((e for e in its if tipo(e) == 'RadioButton' and norm(nome(e)) == 'saldo por mes'), None)
+    if not r:
+        its = itens(h)
+        r = next((e for e in its if tipo(e) == 'RadioButton' and norm(nome(e)) == 'saldo por mes'), None)
     if not r:
         falhar('não achei a opção "Saldo por mês"')
     clicar(r, 'Saldo por mês')

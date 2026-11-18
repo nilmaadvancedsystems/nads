@@ -3,8 +3,27 @@
 // O compasso era de 3 min (10/11/2026, consumo do banco): cada aba aberta escuta a coleção usuarios inteira, então cada
 // ponto de cada pessoa virava uma leitura em toda aba do escritório (pessoas × abas, o dia todo). Com 10 min, voltar para a
 // aba só bate de novo depois de 5 min, e o sinal da etapa (nadsOnde) leva o ponto junto, na mesma gravação.
-import { nivelDeDiretor } from './papeis';
-import type { DocUsuario, OndeNoNads } from '../tipos';
+// O ponto sai de usuarios (17/11/2026, consumo do banco): mesmo a cada 10 min, ele era a maior fonte de leitura dos
+// navegadores (26%), e o Entregas e o robô do login por nome também escutam usuarios inteira. O ponto e a etapa vão para
+// nadsPresenca/{uid}, que só a tela de Usuários escuta; usuarios fica com o cadastro. Até a regra de nadsPresenca estar no
+// ar (e para os nads abertos com a versão antiga), o ponto antigo em usuarios ainda vale: fica o mais novo dos dois.
+import { lerOndeNoNads, nivelDeDiretor } from './papeis';
+import type { DocUsuario, OndeNoNads, Usuario } from '../tipos';
+
+/** nadsPresenca/{uid}: o último ponto do nads aberto e a etapa do Contábil em que a pessoa está (sem o campo = em nenhuma). */
+export interface DocPresenca { vistoEm?: string; onde?: Partial<OndeNoNads> }
+
+/**
+ * A pessoa com o ponto de nadsPresenca, quando ele é mais novo que o antigo de usuarios (ou o antigo não existe). O
+ * documento novo traz o ponto e a etapa juntos: valendo ele, vale a etapa dele (inclusive "em nenhuma").
+ */
+export function comPresenca(p: Usuario, d: DocPresenca | null | undefined): Usuario {
+  const novo = d?.vistoEm ? Date.parse(d.vistoEm) : NaN;
+  if (isNaN(novo)) return p;
+  const antigo = p.vistoNoNads ? Date.parse(p.vistoNoNads) : NaN;
+  if (!isNaN(antigo) && antigo > novo) return p;
+  return { ...p, vistoNoNads: d!.vistoEm!, ondeNoNads: lerOndeNoNads(d!.onde) };
+}
 
 /** Quanto tempo sem sinal ainda conta como online (o ponto é a cada 10 min; sobra folga para um atraso). */
 export const MINUTOS_ONLINE = 12;

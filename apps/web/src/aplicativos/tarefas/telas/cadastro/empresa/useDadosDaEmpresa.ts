@@ -2,11 +2,13 @@
 // (Vitor, 30/09/2026: a regra fica no Cadastro): decide a aba Prestados na Importação e os serviços prestados
 // na Conferência. Grava na hora, com o registro no histórico.
 import { empresas, tarefas } from '@nads/core';
+import { useMemo } from 'react';
 import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { empresasNovas, regimeNoEntregas } from '../../../dados/fonte';
 import { useAcesso, useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
 import { useCadastroAberto } from '../useCadastroAberto';
+import { useConsultaNaReceita } from './useConsultaNaReceita';
 
 export function useDadosDaEmpresa(rota: string) {
   const c = useCadastroAberto(rota);
@@ -18,6 +20,13 @@ export function useDadosDaEmpresa(rota: string) {
   // os dados da empresa que o Entregas tem (o CNPJ, o cadastro de lá e a Receita; 14/10/2026)
   const identificacao = useDadosDaEmpresaNoEntregas(codigo);
   const regimeQueVale = (c.cadastro.regime as string | undefined) || padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '';
+  const cnpj = c.cadastro.cnpj || identificacao.dados?.documento || '';
+  // o que a Receita diz (17/11/2026): campo a campo, o gravado no nads pelo Consultar na Receita; sem ele, o do Entregas
+  const daReceitaNoEntregas = useMemo(() => empresas.cadastro.retratoDoEntregas(identificacao.dados, doEntregas), [identificacao.dados, doEntregas]);
+  const consulta = useConsultaNaReceita({
+    cadastro: c.cadastro, nomeDaLista: c.empresa?.nome || '', cnpj, doEntregas: daReceitaNoEntregas, regimeQueVale,
+    carregando: c.carregando, por: c.por, operador, salvar: c.salvar,
+  });
   const planilhaDoFiscal = empresas.parametrosFiscaisDaPlanilha(codigo);
   const fiscal = empresas.parametrosFiscaisQueValem(codigo, c.cadastro.fiscal);
   // quem cuida da empresa no Fiscal e no Contábil (17/11/2026: trocar aqui, pelo Dados da empresa): o escolhido no
@@ -59,7 +68,15 @@ export function useDadosDaEmpresa(rota: string) {
     empresa: c.empresa,
     /** a identificação (Entregas) e o CNPJ do cadastro do nads (as empresas novas, pela Receita) */
     entregas: identificacao,
-    cnpj: c.cadastro.cnpj || identificacao.dados?.documento || '',
+    cnpj,
+    /** o Consultar na Receita: a consulta na hora, o antes × depois e o gravar só o escolhido */
+    consulta,
+    /** o que a Receita diz, para mostrar: o gravado no nads; sem ele, o que o Entregas sabe */
+    naReceita: empresas.cadastro.retratoQueVale(c.cadastro.receita, daReceitaNoEntregas),
+    /** quando e por quem foi conferido (o do nads; sem ele, o vigia do Entregas) */
+    conferidoNaReceita: c.cadastro.receita
+      ? { em: c.cadastro.receita.conferidoEm, por: c.cadastro.receita.por }
+      : identificacao.dados?.receita?.conferidoEm ? { em: identificacao.dados.receita.conferidoEm, por: 'o Entregas' } : null,
     /** os sócios que a Receita lista e o cadastro ainda não tem (pelo nome) */
     sociosDaReceita: (identificacao.dados?.receita?.socios || []).filter((n: string) => !(c.cadastro.socios || []).some(so => so.nome.trim().toUpperCase() === n.trim().toUpperCase())),
     importarSociosDaReceita(nomes: string[]) {

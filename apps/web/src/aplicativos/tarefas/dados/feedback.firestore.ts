@@ -132,7 +132,9 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       return ouvirInsistindo(query(collection(db, 'feedbacks', id, 'mensagens'), limit(300)), s => {
         ultima = suporte.emOrdem(s.docs.map(d => suporte.lerMensagem(d.id, d.data())).filter(m => m !== null));
         aoMudar({ carregadas: true, lista: ultima });
-      }, () => aoMudar({ carregadas: true, lista: ultima }));
+      }, e => aoMudar({ carregadas: true, lista: ultima, erro: /permission|insufficient/i.test(e instanceof Error ? e.message : String(e))
+        ? 'O banco não deixou ler a conversa (a regra dos feedbacks no ar não tem a conversa). Vou tentar de novo sozinho a cada minuto.'
+        : 'Não consegui abrir a conversa: ' + (e instanceof Error ? e.message : String(e)) }));
     },
     // a mensagem e o resumo no mesmo lote: a regra confere quem escreve (o admin, ou o dono depois que o admin perguntou) e
     // que a contagem só sobe de um em um

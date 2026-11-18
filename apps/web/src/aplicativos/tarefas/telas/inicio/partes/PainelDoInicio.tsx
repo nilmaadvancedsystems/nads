@@ -26,6 +26,8 @@ function Cartao({ titulo, acao, children }: { titulo: ReactNode; acao?: ReactNod
   );
 }
 
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
 const quantas = (n: number) => n + (n === 1 ? ' tarefa' : ' tarefas');
 
 /** O tempo por extenso: "24 min", "6h", "6h 24min" (Vitor, 13/11/2026: o "06:24" sozinho não dizia o que era). */
@@ -76,7 +78,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             {p && (
               <div className="ini-calendario-aviso" role="alertdialog" aria-label={p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}>
                 <div className="card ini-calendario-cartao">
-                  <span className="badge badge-suave badge-warn">{p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}</span>
+                  {/* sem o "Aviso: confirme que leu", o Abrir e o "+1 esperando" (Vitor, 18/11/2026); a reunião mantém o selo */}
+                  {p.tipo === 'reuniao' && <span className="badge badge-suave badge-warn">Reunião: confirme a presença</span>}
                   <b>{p.titulo}</b>
                   <span className="hint">{p.quem} · {p.quando}</span>
                   {p.texto && <p className="ini-calendario-texto">{p.texto}</p>}
@@ -85,8 +88,6 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
                       <button type="button" className="btn btn-primary" onClick={() => vm.reunioesVm.confirmar(p.id, true)}><Icone nome="check" />Confirmar presença</button>
                       <button type="button" className="btn btn-outline" onClick={() => vm.reunioesVm.confirmar(p.id, false)}>Não vou</button>
                     </> : <button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(p.id)}><Icone nome="check" />Recebido</button>}
-                    <button type="button" className="btn btn-ghost" onClick={() => abrir(p.id)}>Abrir</button>
-                    {vm.paraConfirmar.length > 1 && <span className="hint">+{vm.paraConfirmar.length - 1} esperando</span>}
                   </div>
                 </div>
               </div>
@@ -104,19 +105,41 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             </ul>
           )}
         </Cartao>
-        <Cartao titulo="Quadro de avisos" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
-          {vm.reunioes.length ? vm.reunioes.map(r => (
-            <button key={r.id} type="button" className="popover-item" onClick={() => abrir(r.id)}>
-              <Icone nome="calendar" />
-              <span className="popover-texto"><b>{r.tituloNaLista}</b><br /><span className="hint">{r.reuniao}</span></span>
-            </button>
-          )) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
-        </Cartao>
       </div>
       <div className="ini-coluna">
+        {/* o Quadro de avisos sem a caixa: só os cards, das reuniões e dos avisos (Vitor, 18/11/2026: "tira essa box e deixa so os
+            cards, tanto de aviso quanto de reuniao"; publicado para todos em 18/11/2026) */}
+        {(vm.reunioes.length + vm.avisosNoQuadro.length > 0) && (
+          <div className="ini-quadro-lista ini-quadro-solto" aria-label="Quadro de avisos">
+            {/* ao passar o mouse, o card embaça e aparece o botão (Vitor, 18/11/2026): a presença, o Recebido ou o Abrir */}
+            {vm.reunioes.map(r => (
+              <CardDoQuadro key={'r' + r.id} abrir={() => abrir(r.id)}
+                // o Recebido da reunião vale como "vou" (Vitor, 18/11/2026, a opção 2): só o nome do botão muda
+                acao={r.espera === 'presenca' ? { rotulo: 'Recebido', fazer: () => vm.reunioesVm.confirmar(r.id, true) }
+                  : r.espera === 'recebido' ? { rotulo: 'Recebido', fazer: () => void vm.marcarRecebido(r.id) } : null}
+                marca={<span className="ini-quadro-dia" aria-hidden="true"><b>{r.quando ? r.quando.slice(8, 10) : '—'}</b><small>{r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small></span>}
+                titulo={r.tituloNaLista} detalhe={'Reunião · ' + r.reuniao} pendente={!!r.espera} />
+            ))}
+            {vm.avisosNoQuadro.map(a => (
+              <CardDoQuadro key={'a' + a.id} abrir={() => abrir(a.id)} aviso
+                acao={a.precisaReceber ? { rotulo: 'Recebido', fazer: () => void vm.marcarRecebido(a.id) } : null}
+                marca={<span className="ini-quadro-dia" aria-hidden="true"><Icone nome={a.fixado ? 'mapaPin' : 'sino'} /></span>}
+                titulo={a.titulo} detalhe={a.detalhe} pendente={a.precisaReceber} />
+            ))}
+          </div>
+        )}
+        {/* a dica, só por enquanto (Vitor, 18/11/2026: "coloca embaixo... so por enquanto, depois tiramos") */}
+        {(vm.reunioes.length + vm.avisosNoQuadro.length > 0) && <p className="hint ini-quadro-dica"><Icone nome="lampada" width={13} height={13} />Passe o mouse em cima do aviso e marque recebido</p>}
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>
+          {vm.proximas.reunioes.map(r => (
+            <div key={'reuniao-' + r.id} className="ini-linha ini-reuniao-do-dia">
+              <span className="ini-marca"><Icone nome="calendar" /></span>
+              <button type="button" className="ini-linha-texto ini-abrir" onClick={() => abrir(r.id)}><b>{r.titulo}</b><span className="hint"> · Reunião</span></button>
+              <span className="hint num">{[r.hora, r.duracao].filter(Boolean).join(' · ')}</span>
+            </div>
+          ))}
           {vm.proximas.linhas.length ? vm.proximas.linhas.map(t => (
             <div key={t.id} className="ini-linha">
               <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
@@ -124,7 +147,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               {cobrarLigado && t.cobrada && <span className="ini-sino" title={t.dicaDaCobranca}><Icone nome="sino" />{!discreta && 'Cobrada'}</span>}
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
-          )) : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}
+          )) : vm.proximas.reunioes.length ? null : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}
         </Cartao>
         <Cartao titulo="Delegadas por mim">
           {vm.delegadasPorMim.length ? vm.delegadasPorMim.map(t => (
@@ -144,6 +167,28 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
           )) : <Vazio compacto icone="aviao" titulo="Nada delegado em aberto" />}
         </Cartao>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Um card do Quadro de avisos (modo desenvolvedor): ao passar o mouse (ou com o foco) o conteúdo embaça e aparece o botão no
+ * meio — o Recebido (no aviso; na reunião, vale como "vou") ou, sem pendência, Abrir. No toque, o card só abre.
+ */
+function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, acao, abrir }: { marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; acao: { rotulo: string; fazer: () => void } | null; abrir: () => void }) {
+  return (
+    <div className={'ini-quadro-item' + (aviso ? ' aviso' : '') + (pendente ? ' pendente' : '')} role="button" tabIndex={0}
+      onClick={abrir} onKeyDown={e => { if (e.key === 'Enter') abrir(); }}>
+      <span className="ini-quadro-conteudo">
+        {marca}
+        <span className="ini-quadro-texto"><b>{titulo}</b><span className="hint">{detalhe}</span></span>
+        <Icone nome="chevronRight" />
+      </span>
+      <span className="ini-quadro-hover">
+        {acao
+          ? <button type="button" className="btn btn-primary" onClick={e => { e.stopPropagation(); acao.fazer(); }}><Icone nome="check" />{acao.rotulo}</button>
+          : <button type="button" className="btn btn-outline" onClick={e => { e.stopPropagation(); abrir(); }}>Abrir<Icone nome="chevronRight" /></button>}
+      </span>
     </div>
   );
 }

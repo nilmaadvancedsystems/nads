@@ -279,6 +279,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)) &&
     // o Administrativo: só o Diretor e o Dono (o nível, não o admin), e só no modo desenvolvedor até o Vitor aprovar
     (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
+    // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
+    // link direto não abre
+    (a.id !== 'carteira' || modoDesenvolvedor()) &&
     // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
     (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros

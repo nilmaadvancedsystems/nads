@@ -43,6 +43,11 @@ describe('reuniões', () => {
     expect(r.rotuloDaDuracao(90)).toBe('1 h 30 min');
   });
 
+  it('a confirmação de presença só quando quem marca pede (18/11/2026)', () => {
+    expect(r.nova(pedido(), { id: '1', por: SENIOR, em: EM, direta: false }).pedirPresenca).toBeUndefined();
+    expect(r.nova(pedido({ pedirPresenca: true }), { id: '2', por: SENIOR, em: EM, direta: false }).pedirPresenca).toBe(true);
+  });
+
   it('a recusa pede a justificativa', () => {
     const x = r.nova(pedido(), { id: '1', por: SENIOR, em: EM, direta: false });
     expect(() => r.decidir(x, false, ' ', 'Nilma', EM)).toThrow(/justificativa/);

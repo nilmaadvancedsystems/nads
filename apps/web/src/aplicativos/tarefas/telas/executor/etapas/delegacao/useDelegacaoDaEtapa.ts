@@ -114,6 +114,8 @@ export function useDelegacao(etapa: t.delegadas.EtapaQueDelega, contas: readonly
     },
     /** para quem pediu: a conta que a pessoa já fez fica ofuscada */
     ofuscada: (codigo: string) => { const x = enviadaDe(codigo); return !!x && feitaEm(x, codigo); },
+    /** para quem pediu: o nome de quem recebeu a conta ('' = não delegada) */
+    com: (codigo: string) => enviadaDe(codigo)?.responsavel.nome || '',
     /** para quem pediu: com quem a conta está ('' = não delegada) */
     para: (codigo: string) => { const x = enviadaDe(codigo); return x ? (feitaEm(x, codigo) ? 'Feito por ' : 'Com ') + x.responsavel.nome : ''; },
 

@@ -9,7 +9,8 @@ const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 const VISTOS = new Set<string>();
 const IMPORTADOS = new Set<string>();
 
-export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: string; conta: string; meses: readonly string[]; importar: (f: File) => unknown }) {
+/** retomar: a tela que não guarda o razão (o Pró-labore) usa o último que o robô puxou, ao abrir sem nenhum (uma vez) */
+export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: string; conta: string; meses: readonly string[]; importar: (f: File) => unknown; retomar?: boolean }) {
   const doPc = roboDePcDoUsuario();
   const ordenados = [...o.meses].sort();
   const competencia = ordenados[0] || '', ate = ordenados[ordenados.length - 1] || '';
@@ -19,6 +20,8 @@ export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: str
   const [falha, setFalha] = useState('');
   const importar = useRef(o.importar);
   importar.current = o.importar;
+  const retomar = useRef(!!o.retomar);
+  retomar.current = !!o.retomar;
   useEffect(() => {
     if (!disponivel || !o.codigo) return;
     return ouvirRazoesDaConta(o.codigo, setPedidos, e => setFalha(e.message));
@@ -27,7 +30,7 @@ export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: str
   useEffect(() => {
     if (!atual) return;
     if (ANDANDO.includes(atual.status)) { VISTOS.add(atual.id); return; }
-    if (atual.status !== 'pronto' || !atual.arquivo || !VISTOS.has(atual.id) || IMPORTADOS.has(atual.id)) return;
+    if (atual.status !== 'pronto' || !atual.arquivo || !(VISTOS.has(atual.id) || retomar.current) || IMPORTADOS.has(atual.id)) return;
     IMPORTADOS.add(atual.id);
     planilhaDoFiscal(atual).then(f => { void importar.current(f); }, e => setFalha('Não consegui baixar o razão do robô: ' + (e instanceof Error ? e.message : String(e))));
   }, [atual]);

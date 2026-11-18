@@ -119,6 +119,26 @@ export function Executor() {
   const itensDaFolha = naFolha && folha.itens ? folha.itens.map(i => ({ codigo: i.id, nome: i.nome })) : [];
   const delegacao = useDelegacao('dp', itensDaFolha, { codigo: vm.empresa?.codigo ?? null, nome: vm.empresa?.nome || '', meses: vm.meses.length ? vm.meses : [vm.competencia] });
   const itensDoChecklist = folha.itens && naFolha ? folha.itens.filter(i => delegacao.visivel(i.id)) : folha.itens;
+  // o item que a pessoa fez na delegação fica marcado na Folha de quem delegou (Vitor, 18/11/2026: "se ela deu concluida, tem que ficar
+  // concluida pra mim aqui na minha empresa! tem que ta com o check"): marca em ordem, um por vez, só se ainda não está (publicado
+  // para todos)
+  const feitoNaDelegacao = folha.itens && naFolha && !delegacao.recebida ? folha.itens.find(i => !i.marcado && i.liberado && delegacao.ofuscada(i.id)) || null : null;
+  const marcouDaDelegacao = useRef(new Set<string>());
+  useEffect(() => {
+    if (!feitoNaDelegacao || marcouDaDelegacao.current.has(feitoNaDelegacao.id)) return;
+    marcouDaDelegacao.current.add(feitoNaDelegacao.id);
+    folha.alternar(feitoNaDelegacao.id);
+  }, [feitoNaDelegacao?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // o item delegado fica travado para quem delegou (Vitor, 18/11/2026: "da check la e bloqueia pra mim, so clara pode desmarcar,
+  // porque foi ela que fez"): o check segue o da pessoa; ela desmarcou na delegação, desmarca aqui também. Para todos.
+  const travadoNaDelegacao = (id: string) => (naFolha && !delegacao.recebida ? delegacao.com(id) : '');
+  const desfeitoNaDelegacao = folha.itens && naFolha && !delegacao.recebida
+    ? folha.itens.find(i => i.marcado && i.liberado && !!delegacao.com(i.id) && !delegacao.ofuscada(i.id)) || null : null;
+  useEffect(() => {
+    if (!desfeitoNaDelegacao) return;
+    marcouDaDelegacao.current.delete(desfeitoNaDelegacao.id);
+    folha.alternar(desfeitoNaDelegacao.id);
+  }, [desfeitoNaDelegacao?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const faltamFerramenta = vm.tela && requisitos && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
@@ -398,8 +418,11 @@ export function Executor() {
                         <label>
                           {delegacao.recebida
                             ? <input type="checkbox" checked={delegacao.feita(i.id)} onChange={() => delegacao.alternar({ codigo: i.id, nome: i.nome })} title="Feito" />
-                            : <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
-                              title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />}
+                            : travadoNaDelegacao(i.id)
+                              ? <input type="checkbox" checked={i.marcado} disabled onChange={() => undefined}
+                                title={delegacao.ofuscada(i.id) ? 'Feito por ' + travadoNaDelegacao(i.id) + ': só ' + travadoNaDelegacao(i.id) + ' desmarca' : 'Com ' + travadoNaDelegacao(i.id) + ': marca quando ' + travadoNaDelegacao(i.id) + ' fizer'} />
+                              : <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
+                                title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />}
                           <span className="folha-check-texto">
                             <b>{i.nome}{naFolha && delegacao.para(i.id) && <> <span className="badge badge-neutral">{delegacao.para(i.id)}</span></>}</b>
                             {i.contas.length > 0 && <span className="hint">{i.contas.join(' · ')}</span>}
@@ -408,7 +431,7 @@ export function Executor() {
                         </label>
                         {i.link && <a className="btn folha-check-link" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
                         {/* o Pró-labore: os pagamentos que faltam para o razão zerar (Vitor, 14/10/2026) */}
-                        {vm.etapa?.checklistDaFolha && i.id === 'pro-labore' && vm.empresa && <PagamentosDoProLabore empresa={vm.empresa.nome} codigo={vm.empresa.codigo ?? null} contaDoItem={i.contas[0] || ''} travado={i.marcado} />}
+                        {vm.etapa?.checklistDaFolha && i.id === 'pro-labore' && vm.empresa && <PagamentosDoProLabore empresa={vm.empresa.nome} codigo={vm.empresa.codigo ?? null} contaDoItem={i.contas[0] || ''} travado={i.marcado} meses={vm.meses.length ? vm.meses : [vm.competencia]} />}
                       </li>
                     ))}
                   </ul>

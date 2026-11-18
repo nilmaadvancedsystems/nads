@@ -1,4 +1,5 @@
-// Backup de todo dia, disparado pelo vigia do robô.
+// Backup do banco em JSON, disparado pelo vigia do robô: desde 17/11/2026, o retrato completo de 7 em 7 dias (o de
+// todo dia é o backup agendado do próprio Firestore; ver RETRATO_A_CADA_DIAS).
 //
 // O backup-firestore.js já existia e já é seguro (só lê o banco, nunca apaga
 // nada, pula se o retrato de hoje já existe), mas dependia de alguém lembrar
@@ -33,7 +34,21 @@ const PRAZO_PLANILHA_MS = 30 * 60 * 1000;
 // A máquina do robô (e2-micro) tem 1 GB de memória + 1 GB de troca, e o vigia já ocupa parte: a planilha lê o
 // retrato em fluxo (backup-planilha.js) e cabe folgada em 512 MB.
 const MEMORIA_PLANILHA_MB = 512;
-const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const diaIso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const hojeIso = () => diaIso(new Date());
+
+// O retrato completo uma vez por semana (17/11/2026, consumo do banco): ele lia o banco inteiro todo dia (35.562 documentos,
+// ~38 mil leituras, 357 MB). O backup de todo dia passou a ser o do próprio Firestore (o agendamento do projeto, gcloud
+// firestore backups schedules: diário, 14 semanas, sem gastar leitura); este fica como a cópia fora do Google, no Drive,
+// de 7 em 7 dias. Conta em dias do calendário (o horário de cada vez varia dentro da janela das 12h às 20h).
+const RETRATO_A_CADA_DIAS = 7;
+/** Já é dia de um retrato novo? (sem retrato bom registrado, sim) */
+function retratoVence(estado, agora) {
+  const em = Date.parse((estado && estado.backup && estado.backup.em) || '');
+  if (!(em > 0)) return true;
+  const dia = d => { const x = new Date(d); return Date.UTC(x.getFullYear(), x.getMonth(), x.getDate()); };
+  return Math.round((dia(agora) - dia(em)) / 864e5) >= RETRATO_A_CADA_DIAS;
+}
 
 // Quantas tentativas o dia já gastou, lido do documento robo/estado (campo backupTentativas), que sobrevive a
 // reinício. Outro dia: tudo zerado.
@@ -112,6 +127,8 @@ function iniciarBackupDiario(db, log, avisos) {
       const estado = (await estadoRef.get()).data() || {};
       const t = tentativasDoDia(estado, dia);
       let backupBom = !!(estado.backup && estado.backup.dia === dia && estado.backup.ok);
+      // o retrato da semana ainda vale: hoje não lê o banco (o diário é o backup do Firestore)
+      if (!backupBom && !retratoVence(estado, Date.now())) { feitoNoDia = dia; return; }
 
       if (!backupBom) {
         if (t.backup >= MAX_TENTATIVAS) return;   // já leu o banco duas vezes hoje: fica pra amanhã
@@ -170,7 +187,7 @@ function iniciarBackupDiario(db, log, avisos) {
   }
   setTimeout(talvez, 10 * 60 * 1000);
   setInterval(talvez, 60 * 60 * 1000);
-  log('backup diário ligado (uma vez por dia, entre ' + HORA_MINIMA + 'h e ' + HORA_MAXIMA + 'h, prazo de ' + PRAZO_BACKUP_MS / 3600000 + ' h)');
+  log('backup ligado (o retrato completo de ' + RETRATO_A_CADA_DIAS + ' em ' + RETRATO_A_CADA_DIAS + ' dias, entre ' + HORA_MINIMA + 'h e ' + HORA_MAXIMA + 'h, prazo de ' + PRAZO_BACKUP_MS / 3600000 + ' h; o diário é o do Firestore)');
 }
 
-module.exports = { iniciarBackupDiario, rodarFilho, tentativasDoDia, PRAZO_BACKUP_MS, MAX_TENTATIVAS };
+module.exports = { iniciarBackupDiario, rodarFilho, tentativasDoDia, retratoVence, RETRATO_A_CADA_DIAS, PRAZO_BACKUP_MS, MAX_TENTATIVAS };

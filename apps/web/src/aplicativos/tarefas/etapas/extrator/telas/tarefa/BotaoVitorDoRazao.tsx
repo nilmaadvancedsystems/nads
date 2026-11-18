@@ -11,7 +11,7 @@ import { useDinamicoPeloRobo } from './useDinamicoPeloRobo';
 /** O robô para o menu do ⬆: o nome no item, se está puxando e o pedir. */
 export interface RoboDoImportar { rotulo: string; andando: boolean; pedir: () => void; titulo?: string; /** a barra (0 a 100) e o Cancelar */ pct?: number; cancelar?: () => void }
 
-export function ComRoboDoRazao(p: { codigo: number | null; empresa: string; conta: string; meses: readonly string[]; importar: (f: File) => unknown; children: (robo: RoboDoImportar | undefined) => ReactNode }) {
+export function ComRoboDoRazao(p: { codigo: number | null; empresa: string; conta: string; meses: readonly string[]; importar: (f: File) => unknown; retomar?: boolean; children: (robo: RoboDoImportar | undefined) => ReactNode }) {
   const r = useRazaoDaContaPeloRobo(p);
   const robo = r.disponivel ? { rotulo: r.rotulo, andando: r.andando, pct: r.pct, cancelar: r.cancelar, pedir: () => { void r.pedir(); }, titulo: 'Puxar o razão da conta ' + p.conta + ' do Alterdata' } : undefined;
   return (

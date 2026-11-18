@@ -89,6 +89,9 @@ export interface BugDoSuporte {
   arquivos: { nome: string; bytes: Uint8Array }[];
 }
 
+/** as mensagens da conversa aberta: carregadas, a lista e, se o banco recusou, o aviso */
+export interface LeituraDaConversa { carregadas: boolean; lista: suporte.MensagemDoFeedback[]; erro?: string }
+
 export interface RepoFeedback {
   exemplos: boolean;
   /** arquivos: os anexos além do print (Vitor, 26/10/2026: "deixa o usuário anexar mais de um arquivo, para enviar junto") */
@@ -106,9 +109,10 @@ export interface RepoFeedback {
   responderTeste(id: string, funcionou: boolean): Promise<void>;
   /**
    * as mensagens da conversa de um feedback (16/11/2026), da mais velha para a mais nova; ouve só enquanto a conversa está
-   * aberta (devolve o parar)
+   * aberta (devolve o parar). `erro`: o banco não deixou ler (18/11/2026: a regra publicada sem o bloco da conversa deixava as
+   * barras de carregar e depois "Nenhuma pergunta ainda", como se a conversa estivesse vazia)
    */
-  ouvirMensagens(id: string, aoMudar: (m: { carregadas: boolean; lista: suporte.MensagemDoFeedback[] }) => void): () => void;
+  ouvirMensagens(id: string, aoMudar: (m: LeituraDaConversa) => void): () => void;
   /** escreve na conversa: o admin pergunta; quem mandou responde (a regra do core: suporte.mensagemNova) */
   escrever(id: string, de: suporte.LadoDaConversa, texto: string): Promise<void>;
   /** os feedbacks de quem está usando (a regra deixa ler os seus); pedir já começa a ouvir */

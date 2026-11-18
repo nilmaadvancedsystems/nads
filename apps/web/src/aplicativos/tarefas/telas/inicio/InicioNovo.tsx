@@ -80,7 +80,7 @@ export function InicioNovo() {
       <div ref={conteudo} key={vm.aba} className="ini-conteudo" data-aba={vm.aba}>
         {vm.aba === 'painel' && <PainelDoInicio vm={vm} />}
         {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba + lista} lugarDosFiltros={lugarDosFiltros} lugarDoFim={lugarDoFim} documentos={vm.aba === 'documentos'} lista={lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
-        {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} podeMexer={vm.reunioesVm.papel === 'aprova'} />}
+        {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} podeMexer={vm.reunioesVm.papel === 'aprova'} lugarDosFiltros={lugarDosFiltros} />}
       </div>
       {vm.aberta && <TarefaAbertaNova key={vm.aberta} alvo={vm.aberta} voltar={vm.fechar} criada={vm.criada} saida={saida} />}
     </section>

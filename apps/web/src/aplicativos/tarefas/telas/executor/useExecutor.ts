@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
 import { useCadastro, useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo, useTarefasDelegadas } from '../../dados/repo';
+import { useConcluirComPergunta } from '../delegador/useConcluirComPergunta';
 import { caminhoDaEmpresa, caminhoDoExecutor, BASE } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -76,6 +77,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [paramsDaUrl] = useSearchParams();
   const idDelegada = paramsDaUrl.get('delegada');
   const repoDelegadas = useTarefasDelegadas();
+  const concluirComPergunta = useConcluirComPergunta();
   const listaDelegadas = repoDelegadas.lista();
   const euNaDelegacao = repoDelegadas.eu()?.uid || '';
   // a tarefa em conjunto (Vitor, 12/11/2026: "mais de uma pessoa delegada, aí você coloca todas as boxes, quando o usuário
@@ -85,8 +87,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const minhas = dev ? [] : t.delegadas.etapasDaPessoaEmConjunto(listaDelegadas.tarefas, rotaEmpresa, periodo, euNaDelegacao).filter(id => rotina.etapas.some(e => e.id === id));
   const soAsMinhas = minhas.length > 0;
   const minhaPendente = (id: string) => (soAsMinhas && minhas.includes(id) && meses.some(c => !concluidaEm(id, c)) ? rotina.etapas.find(e => e.id === id) || null : null);
-  // a primeira que falta em algum mês do período
-  const primeira = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  // as etapas delegadas a outra pessoa, em aberto: quem delegou segue para as próximas enquanto ela faz (Vitor, 18/11/2026: "deleguei
+  // a tarefa pra clara, tenho que fazer as outras coisas"; publicado para todos)
+  const comOutros = new Set(listaDelegadas.tarefas.filter(x => !!x.etapaDelegada && x.etapaDelegada.rota === rotaEmpresa && x.etapaDelegada.periodo === periodo
+    && x.status !== 'cancelada' && x.status !== 'concluida' && x.responsavel.uid !== euNaDelegacao).map(x => x.etapaDelegada!.etapa));
+  const falta = (e: t.Etapa) => meses.some(c => !concluidaEm(e.id, c));
+  // a primeira que falta em algum mês do período (a delegada a outra pessoa fica para depois)
+  const primeira = empresa && meses.length ? rotina.etapas.find(e => !comOutros.has(e.id) && falta(e)) || rotina.etapas.find(falta) || null : null;
   // a rotina concluída em todos os meses (o "Tudo pronto"): dá para rever as etapas e reabrir a empresa (11/11/2026)
   const tudoPronto = !!empresa && carregada && meses.length > 0 && !primeira;
   // a pendente do grupo que dá para abrir fora da ordem (t.etapaLivre)
@@ -187,6 +194,20 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       repo.gravar(a.execucao, a.evento, exc);
     }
   });
+  // o Creditor segue o lote (Vitor, 18/11/2026: "cade o creditor seguindo a regra do lote?"; "quero fazer o 09 do creditor"): no
+  // Em lote, entrou num mês (CRÉD.LIQ.COBRANÇA no caixa ou o Cadastro), entra também nos meses seguintes do período; os de antes
+  // ficam de fora (na 292: agosto feito, setembro para fazer)
+  useEffect(() => {
+    if (dev || !carregada || !empresa || !varios || !temEtapa('creditor')) return;
+    const primeiro = meses.findIndex(c => t.etapaNoMes(exDe[c] || null, 'creditor'));
+    if (primeiro < 0) return;
+    for (const c of meses.slice(primeiro + 1)) {
+      const exc = exDe[c];
+      if (!exc || t.etapaNoMes(exc, 'creditor') || !podePedir(c + '|creditor|lote')) continue;
+      const a = t.adicionarEtapa(exc, 'creditor', 'Em lote: o Creditor segue o período', op.nome, new Date());
+      repo.gravar(a.execucao, a.evento, exc);
+    }
+  });
   /**
    * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: os adiantamentos só com saldo no dinâmico). Só
    * os meses que ele cobre; a etapa já feita no mês não sai.
@@ -246,6 +267,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
   // (só os que faltam concluir; revendo a etapa já feita, todos em que ela entrou)
   const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
+  // no Em lote, o Creditor que entra num mês entra também nos seguintes do lote (o efeito "o Creditor segue o lote", acima)
   const mesesDaEtapa = revista ? entrouEm : entrouEm.filter(c => !concluidaEm(vista!.id, c));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!vista?.tela?.periodo;
@@ -607,7 +629,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     concluirDelegada: async () => {
       if (!recebida) return;
       try {
-        await repoDelegadas.salvar(recebida.id, { status: 'concluida' });
+        // "Mais algo que eu deva saber?" (18/11/2026)
+        if (!(await concluirComPergunta(recebida, () => repoDelegadas.salvar(recebida.id, { status: 'concluida' })))) return;
         toast('Tarefa concluída.');
         navegar(BASE + '/inicio?aba=minhas');
       } catch (e) { toast('Não concluí a tarefa: ' + (e instanceof Error ? e.message : String(e))); }
@@ -669,6 +692,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     ajustarCreditor: (comLiquidacao: readonly string[]): string[] => {
       if (carregando) return [];
       const entrou: string[] = [];
+      // no Em lote, o Creditor fica nos meses depois do primeiro com liquidação (ele segue o lote)
+      const primeiroDoCreditor = [...meses].find(c => comLiquidacao.includes(c) || t.etapaNoMes(exDe[c] || null, 'creditor')) || '9999-99';
       for (const c of meses) {
         const exc = exDe[c];
         if (!exc) continue;
@@ -678,7 +703,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           const a = t.adicionarEtapa(exc, 'creditor', 'CRÉD.LIQ.COBRANÇA no razão do caixa', op.nome, new Date());
           repo.gravar(a.execucao, a.evento, exc);
           entrou.push(c);
-        } else if (!tem && esta && !t.estadoDa(exc, 'creditor') && credLiquidacao !== true) {
+        } else if (!tem && esta && !t.estadoDa(exc, 'creditor') && credLiquidacao !== true && !(varios && c > primeiroDoCreditor)) {
           const r = t.retirarEtapa(exc, 'creditor', 'o razão do caixa não tem CRÉD.LIQ.COBRANÇA', op.nome, new Date());
           repo.gravar(r.execucao, r.evento, exc);
         }

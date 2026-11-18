@@ -11,7 +11,8 @@ export interface RepoAvisos {
   /** extras: o comunicado do Início novo (o tipo, o título, o link e o dia da reunião; 13/11/2026) */
   /** porUid: o login de quem escreveu (quem escreveu sempre vê o aviso e vê quem marcou o Recebido) */
   /** pdf: a norma da empresa (13/11/2026) */
-  publicar(texto: string, por: string, extras?: t.ExtrasDoComunicado, porUid?: string, pdf?: ArquivoParaAnexar): Promise<void>;
+  /** devolve o id do aviso novo */
+  publicar(texto: string, por: string, extras?: t.ExtrasDoComunicado, porUid?: string, pdf?: ArquivoParaAnexar): Promise<string>;
   /** os bytes do PDF da norma (null = não achou) */
   baixar(id: string): Promise<Uint8Array | null>;
   /** o Recebido de quem leu o aviso que pede confirmação (13/11/2026) */
@@ -59,8 +60,10 @@ export function criarAvisosMemoria(completo = false): RepoAvisos {
       const em = new Date().toISOString();
       const anexoId = 'ax-' + idNovo();
       if (pdf) bytes.set(anexoId, pdf.bytes);
-      avisos = [...avisos, { id: 'av-' + Date.now(), texto: t.limparAviso(texto), por, em, ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}), ...(pdf ? { anexo: anexoDe(pdf, { id: anexoId, em, por, partes: 1 }) } : {}) }];
+      const id = 'av-' + Date.now();
+      avisos = [...avisos, { id, texto: t.limparAviso(texto), por, em, ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}), ...(pdf ? { anexo: anexoDe(pdf, { id: anexoId, em, por, partes: 1 }) } : {}) }];
       mudou();
+      return id;
     },
     async fixar(id, fixado) { avisos = avisos.map(a => (a.id === id ? { ...a, fixado } : a)); mudou(); },
     async marcarRecebido(id, quem) { avisos = avisos.map(a => (a.id === id ? t.comRecebido(a, quem, new Date().toISOString()) : a)); mudou(); },

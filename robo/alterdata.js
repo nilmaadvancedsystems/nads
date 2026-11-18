@@ -31,7 +31,7 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py'), balancetePeriodo: path.join(__dirname, 'alterdata_balancete_periodo.py'), lancamentoPadrao: path.join(__dirname, 'alterdata_lancamento_padrao.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py'), balancetePeriodo: path.join(__dirname, 'alterdata_balancete_periodo.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
 // tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
@@ -108,7 +108,6 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
       : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]
         : relatorio === 'razaoConta' ? [String(a.codigo), a.conta, a.inicio, a.fim, a.destino]
           : relatorio === 'dinamicoPeriodo' ? [String(a.codigo), a.inicio, a.fim, a.destino]
-          : relatorio === 'lancamentoPadrao' ? [String(a.codigo), a.inicio, a.fim, a.cfops.join(','), a.atual, a.padrao, String(a.esperado), ...(a.ensaio ? ['--ensaio'] : [])]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
@@ -198,10 +197,13 @@ function iniciarAlterdata(db, log) {
       log('Alterdata: o Contábil deste ' + ONDE + ' está ' + ESTADOS[novo] + (porque ? ' (' + porque + ')' : ''));
       painel.modulo('alterdata', 'Alterdata', novo === 'ok', 'o Contábil está ' + ESTADOS[novo]);
     }
+    // o robô acabou de ligar e o Contábil já estava aberto e pronto: não é Contábil recém-aberto, não espera assentar (17/11/2026,
+    // Vitor: "nao ta puxando... ta chato": cada atualização do robô reiniciava e o primeiro pedido esperava 1 min parado)
+    const acabouDeLigar = estado === '';
     estado = novo;
     // pronto desde quando: logo depois de abrir (o login, o Guia) o Contábil ainda carrega e não responde (05/11/2026: o
     // pedido feito na hora deu "Window is not responding"); o pedido só é pego com ASSENTAR_MS de Contábil pronto
-    if (estado !== 'ok') okDesde = 0; else if (!okDesde) okDesde = Date.now();
+    if (estado !== 'ok') okDesde = 0; else if (!okDesde) okDesde = acabouDeLigar ? Date.now() - ASSENTAR_MS : Date.now();
     if (estado === 'ok') loginParado = '';   // alguém (ou o robô) entrou: se o login tinha falhado, vale tentar de novo depois
     // só quando o estado ou o login mudam ou, sem mudança, a cada 5 min (batimento.js; 10/11/2026, consumo do banco: era a
     // cada verificação, 1 por minuto; a página Alterdata da empresa dá o sinal por velho depois de 12 min)
@@ -336,7 +338,7 @@ function iniciarAlterdata(db, log) {
       // o robô de um PC sem dono no robosDePc.json não pega nada (ALTERDATA_SO_DONO, alterdata-no-pc.js)
       if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
       if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ped.data().tipo === 'fiscal')) return null;
-      const doFiscal = ped.exists && (ped.data().tipo === 'fiscal' || ped.data().tipo === 'lancamentoPadrao');
+      const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
       // o razão de uma conta usa o Contábil (o de sempre)
       if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
