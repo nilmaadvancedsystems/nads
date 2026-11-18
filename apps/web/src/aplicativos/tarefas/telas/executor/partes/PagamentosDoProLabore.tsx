@@ -7,18 +7,16 @@ import { usePagamentosDoProLabore } from '../usePagamentosDoProLabore';
 import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 import { ComRoboDoRazao, MenuDeImportar } from '../../../etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
-import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { PagamentosDoProLabore as VmProLabore } from '../usePagamentosDoProLabore';
 
 /** travado: o item Pró-labore marcado no checklist — os botões ficam travados (Vitor, 14/10/2026) */
 export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, meses }: { empresa: string; codigo: number | null; contaDoItem: string; travado?: boolean; meses?: readonly string[] }) {
   const vm = usePagamentosDoProLabore(empresa, codigo, contaDoItem, meses);
-  const [dev] = useModoDesenvolvedor();
   // gerar os lançamentos só se a pessoa quiser (18/11/2026: "so deixa a importacao se o cara quiser, nao deixa aparecer de cara"):
-  // no modo desenvolvedor, a conta, o dia útil e os botões de importar ficam atrás do "Gerar lançamentos"
+  // a conta, o dia útil e o Baixar ficam atrás do "Gerar lançamentos" (para todos desde 18/11/2026)
   const [gerar, setGerar] = useState(false);
-  const mostrarGerar = !dev || gerar;
+  const mostrarGerar = gerar;
   const id = useId();
   // o botão Vitor (18/11/2026: "coloca o botao vitor para o robo puxar o razao"; "puxou, pode publicar"): o ⬆ ganha o menu com
   // o robô do PC dele (só para a conta dele) puxando o razão da conta do Pró-labore no período
@@ -40,7 +38,7 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, m
         <>
           <BotaoDiario onClick={vm.usarDiario} />
           {meses && meses.length && contaDoRobo ? (
-            <ComRoboDoRazao codigo={codigo} empresa={empresa} conta={contaDoRobo} meses={meses} importar={f => vm.importar(f)} retomar={dev}>
+            <ComRoboDoRazao codigo={codigo} empresa={empresa} conta={contaDoRobo} meses={meses} importar={f => vm.importar(f)} retomar>
               {robo => (robo
                 ? <MenuDeImportar titulo={'o razão do Pró-labore (' + contaDoRobo + ')'} aceitar=".xls,.xlsx,.ods" travado={!!travado} robo={robo} onArquivos={fs => { if (fs[0]) void vm.importar(fs[0]); }} />
                 : doComputador)}
@@ -56,33 +54,19 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, m
       )}
       {vm.temRazao && (vm.qtd ? mostrarGerar && (
         <>
-{dev ? (
-            /* a conta do pagamento no menu (18/11/2026: só o caixa e os bancos conta movimento do plano, "deixa o dropdown bonitinho") */
-            <MenuDaContaDoPagamento valor={vm.conta} nome={vm.nomeDaConta} contas={vm.contasDePagamento} travado={!!travado} onEscolher={vm.escolherConta} />
-          ) : (<>
-                    {/* a conta do crédito digitada (Vitor, 14/10/2026: "não de selecionar, só o input") */}
-          <input type="text" inputMode="numeric" placeholder="Conta" aria-label="Conta do crédito" title="O código da conta do crédito (ex.: 10101)"
-            value={vm.conta} disabled={travado} onChange={e => vm.digitarConta(e.target.value)} onBlur={vm.salvarConta}
-            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 96 }} />
-          </>)}
+          {/* a conta do pagamento no menu (18/11/2026: só o caixa e os bancos conta movimento do plano, "deixa o dropdown bonitinho") */}
+          <MenuDaContaDoPagamento valor={vm.conta} nome={vm.nomeDaConta} contas={vm.contasDePagamento} travado={!!travado} onEscolher={vm.escolherConta} />
           {travado
             ? <button type="button" className="btn btn-outline" disabled>{vm.diaUtil}º dia útil</button>
             : <MenuSuspenso rotulo={vm.diaUtil + 'º dia útil'} className="btn btn-outline" dica="O dia útil do pagamento, no mês seguinte à competência" largura={160}
               itens={[1, 2, 3, 4, 5].map(n => ({ rotulo: n + 'º dia útil', marcado: vm.diaUtil === n, onClick: () => vm.escolherDiaUtil(n) }))} />}
-          {dev ? (
-            /* um botão só: importar daqui ou baixar a planilha (18/11/2026) */
-            <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" baixar={vm.baixarXls} />
-          ) : (<>
-                    <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" />
-          <button type="button" className="icon-btn icon-btn-sm" disabled={travado || !vm.podeExportar} onClick={vm.baixarXls}
-            title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + vm.qtd + ' pagamentos (' + vm.total + ')' : 'Escolha a conta do crédito'}
-            aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
-          </>)}
+          {/* um botão só: importar daqui ou baixar a planilha (18/11/2026; o importar está desligado, fica o Baixar) */}
+          <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" baixar={vm.baixarXls} />
         </>
       ) : <span className="hint">O razão já zera</span>)}
     </div>
-    {/* os meses, pago ou não (18/11/2026, modo desenvolvedor) */}
-    {dev && vm.meses && vm.meses.length > 0 && <MesesDoProLabore vm={vm} />}
+    {/* os meses, pago ou não (18/11/2026) */}
+    {vm.meses && vm.meses.length > 0 && <MesesDoProLabore vm={vm} />}
     </>
   );
 }
