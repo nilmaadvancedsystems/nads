@@ -40,7 +40,7 @@ const fontes = {
   execucoes: new Map([
     ['1|2026-10|fiscal', { codigo: 1, empresa: 'A', competencia: '2026-10', departamento: 'fiscal', etapas: {} }],
   ]),
-  cadastroPorCodigo: new Map([[1, { responsaveis: { fiscal: 'Heverton' } }], [2, { responsaveis: { contabil: 'Fernando' } }]]),
+  cadastroPorCodigo: new Map([[1, { nome: 'PADARIA BOA LTDA', responsaveis: { fiscal: 'Heverton' } }], [2, { nome: 'OFICINA DO ZÉ', responsaveis: { contabil: 'Fernando' } }]]),
   chamados: new Map([['c1', { situacao: 'aberto' }], ['c2', { situacao: 'concluido', avaliacao: { nota: 5, em: '2026-11-02T10:00:00Z' } }]]),
   ticketsAbertos: new Map(),
   guiasPagas: comp => (comp === '2026-10' ? 154 : 0),
@@ -61,7 +61,7 @@ const fontes = {
     ouvintes['Insights: ajuste']({ exists: true, get: () => ajusteLigado });
     assert.ok(ouvintes['Insights: tarefas delegadas'] && ouvintes['Insights: documentos do mês'], 'ligado ouve as delegadas e os documentos');
     ouvintes['Insights: tarefas delegadas']({ docs: [
-      { id: 't1', data: () => ({ status: 'pendente', prazo: '2026-11-10', responsavel: { nome: 'Clara' } }) },
+      { id: 't1', data: () => ({ status: 'pendente', prazo: '2026-11-10', titulo: 'Conferir o balancete', responsavel: { nome: 'Clara' } }) },
       { id: 't2', data: () => ({ status: 'andamento', prazo: '2026-12-10', responsavel: { nome: 'Felipe' } }) },
     ] });
     ouvintes['Insights: documentos do mês']({ docs: [
@@ -75,11 +75,14 @@ const fontes = {
     assert.deepStrictEqual(d.guias, { competencia: '2026-10', enviadas: 412, abertas: 287, pagas: 154 });
     assert.deepStrictEqual(d.entregas, { aEntregar: 14, noLink: 6, confirmadas: 132, falhas: 1 });
     assert.deepStrictEqual(d.clientes, { abertas: 1, respondidas: 0, nota: 5, avaliacoes: 1, documentosFaltando: 1, mandeiAbertos: 0 });
-    assert.deepStrictEqual(d.equipe, { atrasadas: 1, pessoas: [{ nome: 'Clara', atrasadas: 1 }] });
-    assert.deepStrictEqual(d.rotinas.find(x => x.setor === 'fiscal').pessoas, [{ nome: 'Heverton', feitas: 0, faltando: 1 }]);
-    assert.deepStrictEqual(d.rotinas.find(x => x.setor === 'contabil').pessoas, [{ nome: 'Fernando', feitas: 0, faltando: 1 }]);
+    assert.deepStrictEqual(d.equipe, { atrasadas: 1, pessoas: [{ nome: 'Clara', atrasadas: 1, tarefas: [{ titulo: 'Conferir o balancete', prazo: '2026-11-10' }] }] });
+    const fiscal = d.rotinas.find(x => x.setor === 'fiscal').pessoas;
+    assert.deepStrictEqual(fiscal.map(p => [p.nome, p.feitas, p.faltando]), [['Heverton', 0, 1]]);
+    assert.strictEqual(fiscal[0].empresas[0].nome, 'PADARIA BOA LTDA', 'a visão da pessoa leva o nome da empresa');
+    assert.strictEqual(fiscal[0].empresas[0].situacao, 'nao-iniciada');
+    assert.deepStrictEqual(d.rotinas.find(x => x.setor === 'contabil').pessoas.map(p => [p.nome, p.feitas, p.faltando]), [['Fernando', 0, 1]]);
     assert.ok(d.dp.atrasadas + d.dp.pendentes + d.dp.feitas + d.dp.sem === core().CLIENTES_DO_DP.length, 'o DP conta todos os clientes da tabela');
-    assert.ok(!JSON.stringify(d).match(/cli1|cli2/), 'nenhum cliente no resumo');
+    assert.ok(!JSON.stringify(d).match(/cli1|cli2/), 'nenhum id de cliente no resumo');
     assert.strictEqual(contagens.length, 7, 'sete contagens por volta');
 
     // os mesmos números: não grava de novo

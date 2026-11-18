@@ -6,7 +6,7 @@ import {
   rotinasPorPessoa, situacaoDoClienteDp,
 } from './insights';
 
-const rotina = { departamento: 'fiscal', etapas: [{ id: 'a', titulo: 'A' }, { id: 'b', titulo: 'B' }] } as unknown as Rotina;
+const rotina = { departamento: 'fiscal', etapas: [{ id: 'a', nome: 'A' }, { id: 'b', nome: 'B' }] } as unknown as Rotina;
 const ex = (codigo: number, etapas: Record<string, string>): Execucao => ({
   empresa: 'E' + codigo, codigo, competencia: '2026-10', departamento: 'fiscal',
   etapas: Object.fromEntries(Object.entries(etapas).map(([k, s]) => [k, { situacao: s, por: 'x', em: '2026-11-01T10:00:00Z' }])),
@@ -19,7 +19,12 @@ describe('os números da Tela de Insights', () => {
       [ex(1, { a: 'feita', b: 'dispensada' }), ex(2, { a: 'feita' }), ex(4, { a: 'feita', b: 'feita' })],
       () => rotina,
     );
-    expect(r).toEqual([{ nome: 'Heverton', feitas: 1, faltando: 1 }, { nome: 'Adivania', feitas: 1, faltando: 0 }, { nome: 'Sem responsável', feitas: 0, faltando: 1 }]);
+    expect(r.map(({ nome, feitas, faltando }) => ({ nome, feitas, faltando }))).toEqual([{ nome: 'Heverton', feitas: 1, faltando: 1 }, { nome: 'Adivania', feitas: 1, faltando: 0 }, { nome: 'Sem responsável', feitas: 0, faltando: 1 }]);
+    // a visão da pessoa: a empresa que falta primeiro, com a etapa em que está
+    expect(r[0].empresas).toEqual([
+      { nome: 'E2', situacao: 'em-andamento', etapa: 'B', feitas: 1, total: 2 },
+      { nome: 'E1', situacao: 'concluida', etapa: '', feitas: 2, total: 2 },
+    ]);
   });
   it('a tabela do DP: sem movimento, feita, atrasada e no prazo', () => {
     const base = { obrigacoes: ['folha'], reinfAutorizada: false, movimento: 'Folha' as const };
@@ -40,12 +45,15 @@ describe('os números da Tela de Insights', () => {
     expect(contarEntregas([{ status: 'pendente' }, { status: 'link' }, { status: 'confirmada' }, { status: 'confirmada' }, { status: 'falha' }, { status: 'x' }]))
       .toEqual({ aEntregar: 1, noLink: 1, confirmadas: 2, falhas: 1 });
     expect(delegadasAtrasadas([
-      { status: 'pendente', prazo: '2026-11-10', responsavel: { nome: 'Clara' } },
+      { status: 'pendente', prazo: '2026-11-10', titulo: 'Balancete', responsavel: { nome: 'Clara' } },
       { status: 'andamento', prazo: '2026-11-17', responsavel: { nome: 'Clara' } },
       { status: 'pendente', prazo: '2026-11-17', responsavel: { nome: 'Felipe' } },
       { status: 'concluida', prazo: '2026-11-01', responsavel: { nome: 'Felipe' } },
       { status: 'pendente', prazo: '2026-12-01', responsavel: { nome: 'Felipe' } },
-    ], '2026-11-18')).toEqual({ atrasadas: 3, pessoas: [{ nome: 'Clara', atrasadas: 2 }, { nome: 'Felipe', atrasadas: 1 }] });
+    ], '2026-11-18')).toEqual({ atrasadas: 3, pessoas: [
+      { nome: 'Clara', atrasadas: 2, tarefas: [{ titulo: 'Balancete', prazo: '2026-11-10' }, { titulo: 'Tarefa', prazo: '2026-11-17' }] },
+      { nome: 'Felipe', atrasadas: 1, tarefas: [{ titulo: 'Tarefa', prazo: '2026-11-17' }] },
+    ] });
   });
   it('os seis painéis, na ordem da TV', () => {
     const p = paineisDosInsights(resumoDeExemploDosInsights(new Date(2026, 10, 18)));
@@ -64,7 +72,9 @@ describe('os números da Tela de Insights', () => {
 describe('a equipe em cartões', () => {
   it('o percentual de cada pessoa, o tom e as atrasadas dela; a pior primeiro', () => {
     const e = equipeDosInsights(resumoDeExemploDosInsights(new Date(2026, 10, 18)));
-    expect(e[0]).toEqual({ nome: 'Fernando', setor: 'Contábil', feitas: 12, total: 21, pct: 57, tom: 'ruim', atrasadas: 3 });
+    expect(e[0]).toMatchObject({ nome: 'Fernando', setor: 'Contábil', feitas: 12, total: 21, pct: 57, tom: 'ruim', atrasadas: 3 });
+    expect(e[0].tarefas.map(t => t.titulo)[0]).toBe('Conferir o balancete de setembro');
+    expect(e[0].empresas[0]).toMatchObject({ situacao: 'parada', etapa: 'Importar o extrato' });
     expect(e.find(p => p.nome === 'Gustavo')).toMatchObject({ pct: 100, tom: 'bom' });
     expect(e.find(p => p.nome === 'Heverton')).toMatchObject({ pct: 86, tom: 'alerta' });
   });

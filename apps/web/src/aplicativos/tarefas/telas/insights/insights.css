@@ -1,13 +1,13 @@
 /* A Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; "faz algo bonito"): o visual é do NADS */
-.ins, .ins-tv { --ins-bom: var(--success); --ins-alerta: var(--warn); --ins-ruim: var(--danger); --ins-neutro: var(--accent); --ins-apagado: var(--border-strong); }
-.ins .t-bom, .ins-tv .t-bom { --ins-cor: var(--ins-bom); }
-.ins .t-alerta, .ins-tv .t-alerta { --ins-cor: var(--ins-alerta); }
-.ins .t-ruim, .ins-tv .t-ruim { --ins-cor: var(--ins-ruim); }
-.ins .t-neutro, .ins-tv .t-neutro { --ins-cor: var(--ins-neutro); }
-.ins .t-apagado, .ins-tv .t-apagado { --ins-cor: var(--ins-apagado); }
+.ins { --ins-bom: var(--success); --ins-alerta: var(--warn); --ins-ruim: var(--danger); --ins-neutro: var(--accent); --ins-apagado: var(--border-strong); }
+.ins .t-bom { --ins-cor: var(--ins-bom); }
+.ins .t-alerta { --ins-cor: var(--ins-alerta); }
+.ins .t-ruim { --ins-cor: var(--ins-ruim); }
+.ins .t-neutro { --ins-cor: var(--ins-neutro); }
+.ins .t-apagado { --ins-cor: var(--ins-apagado); }
 
 /* o topo */
-.ins-topo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0 16px; }
+.ins-topo { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 12px 0 16px; }
 .ins-topo h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
 .ins-ao-vivo { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; animation: ins-pulso 2s infinite; }
 @keyframes ins-pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
@@ -82,55 +82,40 @@
 .ins-atraso-nome { font-size: var(--fs-13); }
 .ins-tudo-certo { display: flex; gap: 8px; align-items: center; color: var(--success); margin: 0; }
 
-/* o Modo TV: tela cheia, tudo maior */
-.ins-tv { position: fixed; inset: 0; z-index: 1000; background: var(--surface); display: grid; grid-template-rows: auto 1fr auto; gap: 2vh; padding: 3vh 4vw 2vh; overflow: hidden; }
-.ins-tv-topo { display: flex; align-items: baseline; gap: 16px; }
-.ins-tv-topo h2 { margin: 0; font-size: clamp(20px, 2.2vw, 40px); }
-.ins-tv-corpo { display: grid; align-content: center; animation: ins-entra .6s ease; min-height: 0; }
-@keyframes ins-entra { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-.ins-tv .ins-cartao { border: 0; box-shadow: none; background: transparent; gap: 4vh; padding: 0; }
-.ins-tv .ins-cabeca h3 { font-size: clamp(28px, 3.6vw, 64px); }
-.ins-tv .ins-cabeca .hint { font-size: clamp(14px, 1.4vw, 26px); }
-.ins-tv .ins-icone { width: clamp(40px, 4vw, 72px); height: clamp(40px, 4vw, 72px); }
-.ins-tv .ins-equipe { grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 14vw, 260px), 1fr)); gap: 2vw; }
-.ins-tv .ins-pessoa-nome { font-size: clamp(16px, 1.5vw, 28px); }
-.ins-tv .ins-pilula { font-size: clamp(12px, 1.1vw, 20px); }
-.ins-tv .ins-barra { height: clamp(18px, 2.4vh, 36px); }
-.ins-tv .ins-legenda b { font-size: clamp(28px, 3.6vw, 72px); }
-.ins-tv .ins-legenda span, .ins-tv .ins-funil-topo, .ins-tv .ins-itens li, .ins-tv .ins-atraso-nome { font-size: clamp(16px, 1.6vw, 30px); }
-.ins-tv .ins-funil-topo b { font-size: clamp(24px, 2.6vw, 52px); }
-.ins-tv .ins-trilho { height: clamp(14px, 2vh, 28px); }
-.ins-tv .ins-nota > b { font-size: clamp(56px, 7vw, 140px); }
-.ins-tv .ins-estrelas { font-size: clamp(28px, 3vw, 60px); }
-.ins-tv .ins-itens li b { font-size: clamp(22px, 2.4vw, 46px); }
-.ins-tv .ins-atrasos li { grid-template-columns: clamp(36px, 3vw, 56px) minmax(120px, auto) 1fr clamp(40px, 3vw, 70px); }
-.ins-tv .ins-mini { width: clamp(36px, 3vw, 56px); height: clamp(36px, 3vw, 56px); font-size: clamp(14px, 1.2vw, 22px); }
-.ins-tv .ins-atrasos b { font-size: clamp(22px, 2.4vw, 46px); }
-.ins-tv-pe { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.ins-pontos { display: flex; gap: 8px; flex: 1; }
-.ins-pontos button { width: 12px; height: 12px; border-radius: 50%; border: 0; padding: 0; background: var(--border-strong); cursor: pointer; transition: width .2s ease; }
-.ins-pontos button.ativo { width: 28px; border-radius: 999px; background: var(--accent); }
 
 @media (max-width: 600px) {
   .ins-grade { grid-template-columns: 1fr; }
   .ins-legenda { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ins-ao-vivo, .ins-tv-corpo { animation: none; }
+  .ins-ao-vivo { animation: none; }
   .ins-anel-cheio, .ins-trilho > span, .ins-pessoa { transition: none; }
 }
-/* na TV, os anéis da equipe crescem junto com o texto (o SVG acompanha pelo viewBox) */
-.ins-tv .ins-pessoa .ins-anel { width: clamp(84px, 9vw, 170px) !important; height: clamp(84px, 9vw, 170px) !important; }
-.ins-tv .ins-anel > svg { width: 100%; height: 100%; }
-.ins-tv .ins-iniciais { width: clamp(62px, 6.6vw, 126px); height: clamp(62px, 6.6vw, 126px); font-size: clamp(20px, 2.2vw, 44px); }
 
-/* um assunto só, na página dele (o menu lateral): o cartão maior */
-.ins-sozinho .ins-cartao { padding: 22px 24px; gap: 20px; }
-.ins-sozinho .ins-cabeca h3 { font-size: 20px; }
-.ins-sozinho .ins-legenda b, .ins-sozinho .ins-funil-topo b, .ins-sozinho .ins-itens li b, .ins-sozinho .ins-atrasos b { font-size: 30px; }
-.ins-sozinho .ins-legenda span, .ins-sozinho .ins-funil-topo, .ins-sozinho .ins-itens li, .ins-sozinho .ins-atraso-nome { font-size: 15px; }
-.ins-sozinho .ins-barra { height: 20px; }
-.ins-sozinho .ins-trilho { height: 14px; }
-.ins-sozinho .ins-nota > b { font-size: 64px; }
-.ins-sozinho .ins-estrelas { font-size: 30px; }
-.ins-sozinho .ins-equipe { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+/* o cartão da pessoa é um botão: abre a visão dela */
+button.ins-pessoa { border: 1px solid transparent; font: inherit; color: inherit; cursor: pointer; }
+button.ins-pessoa:hover { border-color: var(--border-strong); }
+button.ins-pessoa:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* a visão da pessoa */
+.modal.ins-janela { max-width: none; width: min(780px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: grid; grid-template-rows: auto 1fr; padding: 0; overflow: hidden; }
+.ins-janela-topo { display: flex; align-items: center; gap: 18px; padding: 20px 22px; border-bottom: 1px solid var(--border-muted); }
+.ins-janela-topo > :last-child { margin-left: auto; align-self: flex-start; }
+.ins-janela-pct { font-size: 20px; color: var(--ins-cor); }
+.ins-janela-quem { display: grid; gap: 4px; }
+.ins-janela-quem h3 { margin: 0; font-size: 22px; }
+.ins-janela-pilulas { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.ins-janela-corpo { overflow: auto; padding: 16px 22px 22px; display: grid; gap: 20px; }
+.ins-janela-corpo h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 14px; color: var(--ink-muted); }
+.ins-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ins-lista li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--border-muted); font-size: var(--fs-13); }
+.ins-empresa-nome { display: grid; gap: 2px; min-width: 0; }
+.ins-empresa-nome b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-empresa-direita { display: grid; grid-template-columns: auto 90px auto; align-items: center; gap: 10px; flex: none; }
+.ins-empresa-direita .ins-trilho { height: 8px; }
+.ins-concluidas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ins-concluidas li { font-size: var(--fs-12); padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-muted); }
+@media (max-width: 600px) {
+  .ins-lista li { flex-direction: column; align-items: flex-start; }
+  .ins-empresa-direita { grid-template-columns: auto 1fr; }
+}
