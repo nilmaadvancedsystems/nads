@@ -23,6 +23,8 @@ export const PASSOS_DO_TUTORIAL: readonly PassoDoTutorial[] = [
     texto: 'Escolha a empresa, a competência e a conta bancária. Cada banco tem as suas regras.' },
   { id: 'extrato', alvo: '[data-tut="lt-extrato"]', icone: 'upload', titulo: 'O extrato e o razão',
     texto: 'Traga o extrato do mês do computador, do Drive ou do e-mail, e o razão do Alterdata: o razão ajuda a achar as contas.' },
+  { id: 'comprovantes', alvo: '[data-tut="lt-comprovantes"]', icone: 'clipe', titulo: 'Os comprovantes',
+    texto: 'Envie do computador ou puxe do Drive. O nads lê quem recebeu ou pagou e o CPF/CNPJ, acha a linha do extrato e usa isso para achar a conta.' },
   { id: 'progresso', alvo: '[data-tut="lt-progresso"]', icone: 'checkCircle', titulo: 'Quanto falta',
     texto: 'Quantos lançamentos já têm a conta certa. Quando não faltar nenhum, dá para exportar.' },
   { id: 'filtros', alvo: '[data-tut="lt-filtros"]', icone: 'filtro', titulo: 'Os filtros',

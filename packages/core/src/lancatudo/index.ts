@@ -9,8 +9,10 @@ export { historicoLimpo, documentoNoHistorico, chaveDoFavorecido, chaveLembrada,
 export { dadosDoBanco, mesesComExtrato, chavesDasLinhas, problemaDaConta, montarRegistro, totaisDoRegistro, percentualConciliado, type DadosDoBanco, type EntradaDoRegistro } from './regras/registro';
 export {
   configVazia, mesVazio, problemaDaRegra, criarRegra, editarRegra, excluirRegras, escolherConta, removerConta, voltarAoAutomatico, editarHistorico,
-  ignorarLinha, esquecerLembrada, registrarExportacao, gravarLinha, definirContaDoBanco, contaDoBancoNaConfig, type DadosDaRegra, type RascunhoDaLinha,
+  ignorarLinha, esquecerLembrada, registrarExportacao, gravarLinha, definirContaDoBanco, contaDoBancoNaConfig,
+  comprovantesDoMes, adicionarComprovantes, removerComprovante, ligarComprovante, type DadosDaRegra, type RascunhoDaLinha,
 } from './regras/mudancas';
 export { linhasParaExportar, lancamentoDaLinha, lancamentosParaImportar, planilhaDaConferencia, nomeDoArquivoDoLancatudo, TIPO_XLSX } from './regras/exportacao';
 export { linhasDoPlano, linhasVisiveisDoPlano, gruposFechadosNoInicio, type LinhaDoPlano } from './regras/plano';
+export { textoEmLinhas, lerComprovante, casarComprovantes, textoParaAsRegras, textoParaAprender, type ComprovanteDoLancatudo, type ComprovanteLido, type TipoDeComprovante } from './regras/comprovantes';
 export { configDoDocumento, mesDoDocumento, documentoDaConfig, documentoDoMes, idDaChave } from './regras/documento';

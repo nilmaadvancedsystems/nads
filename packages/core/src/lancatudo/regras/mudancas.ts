@@ -1,5 +1,6 @@
 // As mudanças do Lançatudo, como funções puras (o estado de antes → o novo): as regras da empresa, o que a pessoa decide
 // numa linha (e o que o nads aprende com isso) e o registro das exportações.
+import type { ComprovanteDoLancatudo } from './comprovantes';
 import type { ConfigDoLancatudo, DecisaoDaLinha, ExportacaoFeita, LinhaDoRegistro, MesDoLancatudo, RegraDoLancatudo } from '../tipos';
 import { chaveLembrada, historicoLimpo } from './motor';
 
@@ -62,15 +63,16 @@ function comDecisao(m: MesDoLancatudo, banco: string, chave: string, mudar: (d: 
 }
 
 /** A pessoa escolhe a conta das linhas (uma ou várias): grava a decisão e o nads aprende a conta do favorecido. */
-export function escolherConta(m: MesDoLancatudo, c: ConfigDoLancatudo, banco: string, linhas: readonly Pick<LinhaDoRegistro, 'chave' | 'historicoDoBanco' | 'valor'>[], conta: string, agora: Date, por: string):
+export function escolherConta(m: MesDoLancatudo, c: ConfigDoLancatudo, banco: string, linhas: readonly (Pick<LinhaDoRegistro, 'chave' | 'historicoDoBanco' | 'valor'> & { textoParaAprender?: string })[], conta: string, agora: Date, por: string):
   { mes: MesDoLancatudo; config: ConfigDoLancatudo } {
   const em = agora.toISOString();
   let mes = m;
   const lembradas = { ...c.lembradas };
   for (const l of linhas) {
     mes = comDecisao(mes, banco, l.chave, d => ({ ...d, conta, em, por }));
-    const k = chaveLembrada(l.historicoDoBanco, l.valor);
-    if (k && conta) lembradas[k] = { conta, exemplo: historicoLimpo(l.historicoDoBanco).slice(0, 120), em, por };
+    // com o comprovante, o CPF/CNPJ dele vira a chave (18/11/2026)
+    const k = chaveLembrada(l.textoParaAprender || l.historicoDoBanco, l.valor);
+    if (k && conta) lembradas[k] = { conta, exemplo: historicoLimpo(l.textoParaAprender || l.historicoDoBanco).slice(0, 120), em, por };
   }
   return { mes, config: { ...c, lembradas } };
 }
@@ -82,7 +84,7 @@ export interface RascunhoDaLinha { conta: string; historico: string; codHistoric
  * Grava a janela da linha: a conta (trocada, o nads aprende o favorecido; vazia, a linha fica sem conta), o histórico (igual
  * ao automático, não fica guardado) e o código do histórico padrão. Só o que mudou em relação à linha como estava.
  */
-export function gravarLinha(m: MesDoLancatudo, c: ConfigDoLancatudo, banco: string, linha: Pick<LinhaDoRegistro, 'chave' | 'historicoDoBanco' | 'valor' | 'conta' | 'historico' | 'codHistorico' | 'documento'> & { origem?: LinhaDoRegistro['origem'] },
+export function gravarLinha(m: MesDoLancatudo, c: ConfigDoLancatudo, banco: string, linha: Pick<LinhaDoRegistro, 'chave' | 'historicoDoBanco' | 'valor' | 'conta' | 'historico' | 'codHistorico' | 'documento'> & { origem?: LinhaDoRegistro['origem']; textoParaAprender?: string },
   r: RascunhoDaLinha, agora: Date, por: string): { mes: MesDoLancatudo; config: ConfigDoLancatudo } {
   let mes = m, config = c;
   const conta = r.conta.trim();
@@ -167,4 +169,35 @@ export function definirContaDoBanco(c: ConfigDoLancatudo, banco: string, conta: 
 /** O código contábil da conta bancária: o do Cadastro; sem ele, o escolhido no Lançatudo. */
 export function contaDoBancoNaConfig(c: ConfigDoLancatudo, banco: string, doCadastro: string | undefined): string {
   return (doCadastro || '').trim() || c.contasDosBancos?.[banco] || '';
+}
+
+/** Os comprovantes do banco no mês. */
+export function comprovantesDoMes(m: MesDoLancatudo, banco: string): ComprovanteDoLancatudo[] {
+  return m.comprovantes?.[banco] || [];
+}
+
+/**
+ * Guarda os comprovantes lidos (18/11/2026): o mesmo arquivo do Drive, ou o mesmo nome com o mesmo valor e data, não entra
+ * duas vezes. Devolve quantos entraram.
+ */
+export function adicionarComprovantes(m: MesDoLancatudo, banco: string, novos: readonly ComprovanteDoLancatudo[]): { mes: MesDoLancatudo; entraram: number } {
+  const atuais = comprovantesDoMes(m, banco);
+  const igual = (a: ComprovanteDoLancatudo, b: ComprovanteDoLancatudo) => (a.driveId && a.driveId === b.driveId) || (a.nome === b.nome && a.valor === b.valor && a.data === b.data);
+  const lista = [...atuais];
+  for (const c of novos) if (!lista.some(x => igual(x, c))) lista.push(c);
+  return { mes: { ...m, comprovantes: { ...(m.comprovantes || {}), [banco]: lista } }, entraram: lista.length - atuais.length };
+}
+
+export function removerComprovante(m: MesDoLancatudo, banco: string, id: string): MesDoLancatudo {
+  return { ...m, comprovantes: { ...(m.comprovantes || {}), [banco]: comprovantesDoMes(m, banco).filter(c => c.id !== id) } };
+}
+
+/** A pessoa diz de qual linha é o comprovante ('' = volta ao automático). */
+export function ligarComprovante(m: MesDoLancatudo, banco: string, id: string, chave: string): MesDoLancatudo {
+  return { ...m, comprovantes: { ...(m.comprovantes || {}), [banco]: comprovantesDoMes(m, banco).map(c => {
+    if (c.id !== id) return chave && c.linha === chave ? { ...c, linha: undefined } : c;
+    const x = { ...c };
+    if (chave) x.linha = chave; else delete x.linha;
+    return x;
+  }) } };
 }

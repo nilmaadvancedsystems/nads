@@ -2,6 +2,7 @@
 // a tela), e o que vai é só JSON simples (sem undefined, que o Firestore recusa).
 //   extrator/{slug}/lancatudo/config  → { regras, lembradas }
 //   extrator/{slug}/lancatudo/{aaaa-mm} → { competencia, decisoes, exportacoes }
+import type { ComprovanteDoLancatudo } from './comprovantes';
 import type { ConfigDoLancatudo, ContaLembrada, DecisaoDaLinha, ExportacaoFeita, MesDoLancatudo, RegraDoLancatudo, SentidoDaRegra, TipoDaRegra } from '../tipos';
 import { configVazia, mesVazio } from './mudancas';
 
@@ -64,14 +65,35 @@ export function mesDoDocumento(d: unknown, competencia: string): MesDoLancatudo 
     em: txt(e.em), por: txt(e.por), banco: txt(e.banco), quantidade: typeof e.quantidade === 'number' ? e.quantidade : 0,
     destino: DESTINOS.includes(e.destino as ExportacaoFeita['destino']) ? (e.destino as ExportacaoFeita['destino']) : 'arquivo',
   })) : [];
-  return { competencia, decisoes, exportacoes };
+  const comprovantes: Record<string, ComprovanteDoLancatudo[]> = {};
+  if (ehObj(d.comprovantes)) {
+    for (const [banco, lista] of Object.entries(d.comprovantes)) {
+      if (!Array.isArray(lista)) continue;
+      const doBanco = lista.map(comprovanteDoDocumento).filter((c): c is ComprovanteDoLancatudo => !!c);
+      if (doBanco.length) comprovantes[banco] = doBanco;
+    }
+  }
+  return Object.keys(comprovantes).length ? { competencia, decisoes, exportacoes, comprovantes } : { competencia, decisoes, exportacoes };
+}
+
+const TIPOS_DE_COMPROVANTE: readonly ComprovanteDoLancatudo['tipo'][] = ['pix', 'transferencia', 'boleto', 'guia', 'outro'];
+function comprovanteDoDocumento(v: unknown): ComprovanteDoLancatudo | null {
+  if (!ehObj(v) || !txt(v.id) || !txt(v.nome)) return null;
+  const c: ComprovanteDoLancatudo = {
+    id: txt(v.id), nome: txt(v.nome), data: txt(v.data), valor: typeof v.valor === 'number' ? v.valor : 0, favorecido: txt(v.favorecido),
+    documento: txt(v.documento), tipo: TIPOS_DE_COMPROVANTE.includes(v.tipo as ComprovanteDoLancatudo['tipo']) ? (v.tipo as ComprovanteDoLancatudo['tipo']) : 'outro', em: txt(v.em), por: txt(v.por),
+  };
+  if (txt(v.driveId)) c.driveId = txt(v.driveId);
+  if (v.recebido === true) c.recebido = true;
+  if (txt(v.linha)) c.linha = txt(v.linha);
+  return c;
 }
 
 /** Só JSON (sem undefined). */
 const json = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
 export const documentoDaConfig = (c: ConfigDoLancatudo) => json({ regras: c.regras, lembradas: c.lembradas, contasDosBancos: c.contasDosBancos || {} });
-export const documentoDoMes = (m: MesDoLancatudo) => json({ competencia: m.competencia, decisoes: m.decisoes, exportacoes: m.exportacoes });
+export const documentoDoMes = (m: MesDoLancatudo) => json({ competencia: m.competencia, decisoes: m.decisoes, exportacoes: m.exportacoes, comprovantes: m.comprovantes || {} });
 
 /**
  * O id da chave da linha no documento: o Firestore não aceita "." nem "/" no nome de um campo de mapa sem escapar, e a

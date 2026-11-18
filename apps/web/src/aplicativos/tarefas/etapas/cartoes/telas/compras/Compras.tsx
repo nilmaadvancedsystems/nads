@@ -109,6 +109,7 @@ function Fatura({ f, vm }: { f: VmCompras['faturas'][number]; vm: VmCompras }) {
 function RazaoDoCartao({ vm }: { vm: VmCompras }) {
   const r = vm.razao;
   if (!vm.faturas.length) return null;
+  if (vm.soPagamento) return <PagamentosDoCartao vm={vm} />;
   return (
     <div className="imp-bloco">
       <div className="imp-linha">
@@ -125,6 +126,35 @@ function RazaoDoCartao({ vm }: { vm: VmCompras }) {
               <tr><th scope="row">Compras (C)</th>{r.movimento.map(s => <td key={s.mes} className="num">{s.creditos}</td>)}</tr>
               <tr><th scope="row">Pagamentos (D)</th>{r.movimento.map(s => <td key={s.mes} className="num">{s.debitos}</td>)}</tr>
               <tr><th scope="row">Acumulado</th>{r.movimento.map(s => <td key={s.mes} className="num" title="O movimento do período, sem o saldo de antes dele">{s.acumulado}</td>)}</tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Só o pagamento da fatura (Vitor, 18/11/2026: "so quero que ele pegue o valor total da fatura e quebre em historicos de valores
+ * menores"): por mês, o dia em que o banco pagou, quantos lançamentos (um por gasto, D Cartão / C Banco) e o total que saiu.
+ */
+function PagamentosDoCartao({ vm }: { vm: VmCompras }) {
+  const ms = vm.pagamentosPorMes;
+  return (
+    <div className="imp-bloco">
+      <div className="imp-linha">
+        <span className="imp-ico"><Icone nome="landmark" /></span>
+        <div className="imp-txt"><span><b>Pagamento das faturas</b><span className="imp-conta">cada gasto D Cartão / C Banco, no dia do débito</span></span></div>
+        <div className="imp-resumo"><div><span>{vm.qtdLancamentos} lançamentos</span><span>fornecedor e caixa ficam com você</span></div></div>
+      </div>
+      {ms.length > 0 && (
+        <div className="imp-periodo-linha">
+          <table className="imp-meses">
+            <thead><tr><th scope="col"><span className="sr-only">Mês</span></th>{ms.map(s => <th key={s.mes} scope="col">{s.rotulo}</th>)}</tr></thead>
+            <tbody>
+              <tr><th scope="row">Pago em</th>{ms.map(s => <td key={s.mes} className="num">{s.dia || '—'}</td>)}</tr>
+              <tr><th scope="row">Lançamentos</th>{ms.map(s => <td key={s.mes} className="num">{s.qtd || '—'}</td>)}</tr>
+              <tr><th scope="row">Total</th>{ms.map(s => <td key={s.mes} className="num">{s.total}</td>)}</tr>
             </tbody>
           </table>
         </div>
@@ -180,17 +210,17 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
               <MenuDeConta valor={vm.contaCartao} contas={vm.opcoes} onEscolher={vm.escolherContaCartao} travado={!vm.cadastroCarregado} />
             </div>
           </div>
-          {/* a conta do caixa: as compras sem nota (Vitor, 11/11/2026: "Caixa") */}
-          <div className="imp-linha">
+          {/* a conta do caixa: as compras sem nota (Vitor, 11/11/2026: "Caixa"); no só o pagamento (18/11/2026) não precisa */}
+          {!vm.soPagamento && <div className="imp-linha">
             <span className="imp-ico"><Icone nome="dinheiro" /></span>
             <div className="imp-txt"><span><b>Conta do caixa</b><span className="imp-conta">compras sem nota</span></span></div>
             <div className="imp-resumo">{vm.nomeContaCaixa && <div><span>{vm.nomeContaCaixa}</span></div>}</div>
             <div className="imp-grupos">
               <MenuDeConta valor={vm.contaCaixa} contas={vm.opcoes} onEscolher={vm.escolherContaCaixa} />
             </div>
-          </div>
+          </div>}
           {/* a nota de entrada que veio sem a conta do fornecedor: a conta escolhida aqui */}
-          {vm.notaSemConta && (
+          {!vm.soPagamento && vm.notaSemConta && (
             <div className="imp-linha">
               <span className="imp-ico"><Icone nome="briefcase" /></span>
               <div className="imp-txt"><span><b>Conta do fornecedor</b><span className="imp-conta">nota sem a conta</span></span></div>
