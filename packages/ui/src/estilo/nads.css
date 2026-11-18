@@ -7373,5 +7373,6 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-comunicado{display:flex;align-items:center;gap:10px;}
 .ini-comunicado .popover-texto{flex:1;min-width:0;}
 .ini-comunicado .popover-texto > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-comunicado .popover-texto > br{display:none;}
 .ini-comunicado > .badge,.ini-comunicado > .selo-reuniao{flex:none;}
 @media (min-width:861px){.ini-notificacoes > .ini-detalhe{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;}}
