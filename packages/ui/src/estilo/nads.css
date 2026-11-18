@@ -7428,3 +7428,31 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 @media (max-width:720px){.notif-linha{grid-template-columns:32px minmax(0,1fr) auto 16px;}.notif-quem,.notif-quando{display:none;}}
 /* a paginação das tabelas longas (o Creditor, 18/11/2026) */
 .paginacao{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;}
+/* o Consultar na Receita do Cadastro › Empresa (17/11/2026): a janela do antes × depois; o que mudou em destaque, a caixa
+   de marcar à esquerda (só o marcado é gravado) */
+.modal.receita-modal{max-width:min(920px,96vw);width:100%;display:flex;flex-direction:column;max-height:min(88vh,860px);}
+.receita-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px;border-bottom:1px solid var(--border);}
+.receita-topo h3{border:0;padding:0;margin:0 0 2px;}
+.modal p.receita-alerta,.modal p.receita-ok{display:flex;align-items:center;gap:8px;margin:12px 16px 0;padding:10px 12px;border-radius:8px;font-size:var(--fs-13);}
+.modal p.receita-alerta{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger);}
+.modal p.receita-ok{background:color-mix(in srgb,var(--success) 10%,transparent);color:var(--success);}
+.receita-alerta svg,.receita-ok svg{width:16px;height:16px;flex:none;}
+.receita-corpo{overflow:auto;padding:4px 16px 12px;flex:1;min-height:0;}
+.receita-tabela{width:100%;border-collapse:collapse;font-size:var(--fs-13);}
+.receita-tabela th{position:sticky;top:0;background:var(--surface);text-align:left;font-weight:600;color:var(--ink-muted);padding:10px 8px;border-bottom:1px solid var(--border);}
+.receita-tabela td{vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--border);color:var(--ink);}
+.receita-tabela td b{font-weight:600;display:block;}
+.receita-marcar{width:28px;}
+.receita-valor-linha{display:block;}
+.receita-tabela .vazio{color:var(--ink-muted);}
+.receita-estado{display:inline-block;margin-top:4px;padding:1px 8px;border-radius:999px;font-size:var(--fs-12);color:var(--ink-muted);background:color-mix(in srgb,var(--ink) 6%,transparent);}
+.receita-estado-mudou{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);}
+.receita-estado-novo{color:var(--info);background:color-mix(in srgb,var(--info) 12%,transparent);}
+.receita-nota{display:block;margin-top:4px;font-size:var(--fs-12);color:var(--ink-muted);}
+.receita-mudou td{background:color-mix(in srgb,var(--warn) 6%,transparent);}
+.receita-mudou .receita-antes{text-decoration:line-through;color:var(--ink-muted);}
+.receita-mudou .receita-depois{font-weight:600;}
+.receita-grave .receita-depois{color:var(--danger);}
+.receita-igual td,.receita-vazio td{color:var(--ink-muted);}
+.receita-pe{flex:1;align-self:center;}
+@media (max-width:640px){.receita-tabela th:nth-child(3),.receita-tabela td.receita-antes{display:none;}}

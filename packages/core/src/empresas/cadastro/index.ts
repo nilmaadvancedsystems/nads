@@ -10,3 +10,5 @@ export * from './cartaoCnpj';
 export * from './repo';
 export { criarRepoCadastroMemoria, portaCadastroMemoria } from './repo.memoria';
 export * from './razaoSocial';
+export * from './receitaNoCadastro';
+export * from './situacaoNaReceita';
