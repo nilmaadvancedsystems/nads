@@ -37,6 +37,25 @@ describe('os pagamentos do pró-labore', () => {
   });
 });
 
+describe('os pagamentos batem com a grade dos meses (18/11/2026)', () => {
+  it('o pagamento com o nome do sócio diferente e o "mm/aaaa" sem sócio abatem a competência; o mês seguinte fica de fora', () => {
+    const r = lerRazao(linhas(0, [
+      ['31/08/2026', '52003', -100, INSS('08/2026', 'CARLOS HUMBERTO')],
+      ['31/08/2026', '87002', 1000, PROV('08/2026', 'CARLOS HUMBERTO')],
+      ['05/09/2026', '10501', -900, 'Pagamento de pro-labore <08/2026> CARLOS H.'],
+      ['30/09/2026', '52003', -100, INSS('09/2026', 'CARLOS HUMBERTO')],
+      ['30/09/2026', '87002', 1000, PROV('09/2026', 'CARLOS HUMBERTO')],
+      ['05/10/2026', '10101', -900, 'Pagamento de pro-labore 09/2026 CARLOS HUMBERTO'],
+      ['31/10/2026', '52003', -100, INSS('10/2026', 'CARLOS HUMBERTO')],
+      ['31/10/2026', '87002', 1000, PROV('10/2026', 'CARLOS HUMBERTO')],
+    ]));
+    expect(pagamentosDoProLabore(r, undefined, '2026-09')).toEqual([]);
+    expect(pagamentosDoProLabore(r).map(p => [p.competencia, p.valor])).toEqual([['2026-10', 900]]);
+    const { meses } = mesesDoProLabore(r, ['2026-08', '2026-09']);
+    expect(meses.map(m => m.situacao)).toEqual(['pago', 'pago']);
+  });
+});
+
 describe('dataDoPagamentoDoProLabore (o 5º dia útil do mês seguinte)', () => {
   it('sem sábado, domingo e feriado', () => {
     expect(dataDoPagamentoDoProLabore('2026-01')).toBe('06/02/2026'); // fev/26: 2, 3, 4, 5, 6
