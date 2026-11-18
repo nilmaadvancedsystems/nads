@@ -69,8 +69,16 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
         <span className="tdl-prazo-escolhas">
           <input type="date" value={iso} aria-label="A data do prazo" onChange={e => vm.setPrazo(d.prazoParaTela(e.target.value))} />
           <input type="time" value={vm.prazoHora} aria-label="A hora do prazo" onChange={e => vm.setPrazoHora(e.target.value)} />
+          {/* repetir (18/11/2026, modo desenvolvedor): concluída, nasce a próxima; dia não útil vai para o próximo dia útil */}
+          {vm.podeRepetir && (
+            <select value={vm.repete} aria-label="Repetir a tarefa" onChange={e => vm.setRepete(e.target.value as typeof vm.repete)}>
+              <option value="">Não repete</option>
+              {vm.opcoesDeRepeticao.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
+            </select>
+          )}
         </span>
       )}
+      {ligado && vm.prazoNoDiaUtil && <span className="hint tdl-prazo-util">Não é dia útil: vai para {vm.prazoNoDiaUtil}</span>}
     </span>
   );
 }

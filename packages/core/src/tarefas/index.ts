@@ -53,6 +53,8 @@ export * as delegadas from './regras/delegadas';
 export * as agenda from './regras/agenda';
 // os feriados e os pontos facultativos de Taiobeiras (o calendário do Início; 15/11/2026): tarefas.feriados.*
 export * as feriados from './regras/feriados';
+// a tarefa recorrente e o próximo dia útil (18/11/2026): tarefas.recorrencia.*
+export * as recorrencia from './regras/recorrencia';
 // a saudação do Início novo (13/11/2026): pelo turno, a segunda-feira, o aniversário e as frases personalizadas
 export * as saudacao from './regras/saudacao';
 // as reuniões das Notificações do Início novo (13/11/2026): o Sênior pede, o Diretor e o Dono aprovam e marcam direto

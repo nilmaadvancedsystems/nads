@@ -15,6 +15,7 @@ import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
+import { useRecorrentes } from './useRecorrentes';
 import { useNovidade } from '../../../../comum/novidades';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
@@ -80,6 +81,8 @@ export function useInicioNovo() {
   const mudarAba = (a: AbaDoInicio) => setParams(p => { const n = new URLSearchParams(p); n.set('aba', a); return n; }, { replace: true });
 
   const repo = useTarefasDelegadas();
+  // as tarefas recorrentes concluídas ganham a próxima (18/11/2026; modo desenvolvedor)
+  useRecorrentes();
   const acesso = useAcesso();
   const docs = acesso.equipe().docs;
   const comFoto = (p: tarefas.delegadas.Pessoa): PessoaComFoto => ({ uid: p.uid, nome: p.nome, foto: String(docs[p.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(p.nome) });
