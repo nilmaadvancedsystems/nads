@@ -6,6 +6,7 @@
 // que pede confirmação tem o Recebido; quem escreveu vê quem marcou e quem falta. Só os destinatários veem o aviso.
 import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useRef } from 'react';
+import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useInicio } from '../useInicio';
 import { useNovoComunicado, type useInicioNovo } from '../useInicioNovo';
@@ -101,17 +102,19 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
 export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
   const c = vm.comunicado;
   const r = vm.reuniao;
+  // o detalhe arrumado e as listas com rolagem (18/11/2026): só no modo desenvolvedor por enquanto
+  const [devNovo] = useModoDesenvolvedor();
   return (
     <section className="ini-lista">
       {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length && !vm.cobrancas.length ? (
         <section className="card"><Vazio icone="sino" titulo="Nada por aqui" texto="Os avisos, as reuniões e os estudos da equipe aparecem aqui." /></section>
       ) : (
-        <div className="ini-notificacoes">
+        <div className={'ini-notificacoes' + (devNovo ? ' nova' : '')}>
           <div className="ini-coluna">
           {/* as cobranças das tarefas que a pessoa faz (16/11/2026: "faça aparecer em notificações que houve uma cobrança"): clicar abre a tarefa */}
           {vm.cobrancas.length > 0 && (
             <section className="card ini-cartao">
-              <div className="card-head"><h3>Cobranças <span className="fraco num">({vm.cobrancas.length})</span></h3></div>
+              <div className="card-head"><h3>Cobranças{devNovo && <> <span className="fraco num">({vm.cobrancas.length})</span></>}</h3></div>
               <div className="ini-lista-rolagem">
               {vm.cobrancas.map(x => (
                 <button key={x.id} type="button" className="popover-item ini-comunicado" title="Abrir a tarefa" onClick={() => vm.abrir(x.tarefa)}>
@@ -125,7 +128,7 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
           )}
           {vm.reunioesNaLista.length > 0 && (
             <section className="card ini-cartao">
-              <div className="card-head"><h3>Reuniões <span className="fraco num">({vm.reunioesNaLista.length})</span></h3></div>
+              <div className="card-head"><h3>Reuniões{devNovo && <> <span className="fraco num">({vm.reunioesNaLista.length})</span></>}</h3></div>
               <div className="ini-lista-rolagem">
               {vm.reunioesNaLista.map(x => (
                 <button key={x.id} type="button" className={'popover-item ini-comunicado' + (r?.id === x.id ? ' ativo' : '')} aria-pressed={r?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
@@ -138,7 +141,7 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
             </section>
           )}
           <section className="card ini-cartao">
-            <div className="card-head"><h3>Comunicados da equipe <span className="fraco num">({vm.comunicados.length})</span></h3></div>
+            <div className="card-head"><h3>Comunicados da equipe{devNovo && <> <span className="fraco num">({vm.comunicados.length})</span></>}</h3></div>
             <div className="ini-lista-rolagem">
             {vm.comunicados.map(x => (
               <button key={x.id} type="button" className={'popover-item ini-comunicado' + (c?.id === x.id ? ' ativo' : '')} aria-pressed={c?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
@@ -166,6 +169,7 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                   </span>
                 )}
               </div>
+              {devNovo ? <>
               {/* mais arrumado (Vitor, 18/11/2026: "textos muito embolados, da uma ajeitada"): quem, o tipo e quando numa linha só
                   embaixo do título; o texto do aviso em destaque; o Recebido com a contagem, a barra e cada pessoa numa etiqueta */}
               <p className="ini-detalhe-meta">
@@ -200,6 +204,19 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                   </div>
                 );
               })()}
+              </> : <>
+              <div className="registro-props">
+                <Propriedade icone={ICONE_DO_TIPO[c.tipo || 'aviso']} rotulo="Tipo"><span>{c.tipoRotulo}{c.fixado && <span className="fraco"> · fixado</span>}</span></Propriedade>
+                <Propriedade icone="usuario" rotulo="Quem"><span>{c.por}</span></Propriedade>
+                <Propriedade icone="clock" rotulo="Publicado"><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span></Propriedade>
+                {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
+                {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
+                {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
+                {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
+                {c.acompanha && <Propriedade icone="checkCircle" rotulo="Recebido"><span>{(c.recebidos || []).map(x => x.nome).join(', ') || 'Ninguém ainda'}{c.faltaReceber.length > 0 && <><br /><span className="fraco">Falta: {c.faltaReceber.join(', ')}</span></>}</span></Propriedade>}
+              </div>
+              <p className="ini-detalhe-texto">{c.texto}</p>
+              </>}
               {c.pedeConfirmacao && !c.acompanha && (
                 <div className="ini-reuniao-linha">
                   {c.jaRecebi ? <span className="badge badge-suave badge-ok">Você marcou como recebido</span>

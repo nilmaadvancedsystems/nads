@@ -143,7 +143,8 @@ export function useInicioNovo() {
   const [dia, setDia] = useState<string | null>(null);
   const doDia = dia ? abertas.filter(t => t.prazo === dia) : minhas;
   const horaDe = (q: string) => (q.length >= 16 ? q.slice(11, 16) : '');
-  const reunioesDoDia = !dia ? [] : [
+  // só no modo desenvolvedor por enquanto (18/11/2026: "so no desenvolvedor!!")
+  const reunioesDoDia = !dia || !devPresenca ? [] : [
     ...reunioes.proximas.filter(x => x.quando.startsWith(dia)).map(x => ({ id: x.id, titulo: x.titulo, hora: horaDe(x.quando), duracao: x.duracaoTexto, quando: x.quando })),
     ...comunicados.filter(c => c.tipo === 'reuniao' && (c.quando || '').startsWith(dia)).map(c => ({ id: c.id, titulo: c.tituloNaLista, hora: horaDe(c.quando || ''), duracao: '', quando: c.quando || '' })),
   ].sort((a, b) => a.quando.localeCompare(b.quando));

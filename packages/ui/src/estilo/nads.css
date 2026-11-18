@@ -7374,10 +7374,10 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-pessoa.falta{color:var(--ink-muted);}
 /* as Notificações quando as listas crescem (18/11/2026, Vitor: "quando vai crescendo parece que desorganiza"): cada lista rola
    dentro do cartão, as linhas mantêm o texto numa linha e o selo à direita, e o detalhe fica parado à direita */
-.ini-lista-rolagem{max-height:420px;overflow-y:auto;overscroll-behavior:contain;margin-right:-6px;padding-right:6px;}
-.ini-comunicado{display:flex;align-items:center;gap:10px;}
-.ini-comunicado .popover-texto{flex:1;min-width:0;}
-.ini-comunicado .popover-texto > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ini-comunicado .popover-texto > br{display:none;}
-.ini-comunicado > .badge,.ini-comunicado > .selo-reuniao{flex:none;}
-@media (min-width:861px){.ini-notificacoes > .ini-detalhe{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;}}
+.ini-notificacoes.nova .ini-lista-rolagem{max-height:420px;overflow-y:auto;overscroll-behavior:contain;margin-right:-6px;padding-right:6px;}
+.ini-notificacoes.nova .ini-comunicado{display:flex;align-items:center;gap:10px;}
+.ini-notificacoes.nova .ini-comunicado .popover-texto{flex:1;min-width:0;}
+.ini-notificacoes.nova .ini-comunicado .popover-texto > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-notificacoes.nova .ini-comunicado .popover-texto > br{display:none;}
+.ini-notificacoes.nova .ini-comunicado > .badge,.ini-notificacoes.nova .ini-comunicado > .selo-reuniao{flex:none;}
+@media (min-width:861px){.ini-notificacoes.nova > .ini-detalhe{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;}}

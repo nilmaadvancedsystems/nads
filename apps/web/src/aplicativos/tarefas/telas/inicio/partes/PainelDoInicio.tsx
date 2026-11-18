@@ -6,6 +6,7 @@
 // "Comentários novos" saíram (Vitor, 13/11/2026: "Pode deletar essas duas sessoes").
 import { BotaoIcone, CalendarioDoMes, Icone, Vazio } from '@nads/ui';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../../comum/novidades';
 import { SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import type { PessoaComFoto, useInicioNovo } from '../useInicioNovo';
@@ -66,6 +67,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
   // com a janela grande da cobrança (16/11/2026), o Cobrada da lista fica só o sino
   const discreta = useNovidade('cobranca-notificada');
   const p = vm.paraConfirmar[0];
+  // o que mudou em 18/11/2026 (o Quadro no alto e destacado, o aviso enxuto, a reunião do dia nos prazos): só no modo desenvolvedor
+  const [dev] = useModoDesenvolvedor();
   const abrir = (id: string) => { vm.escolherComunicado(id); vm.mudarAba('notificacoes'); };
   return (
     <div className="ini-painel">
@@ -79,7 +82,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               <div className="ini-calendario-aviso" role="alertdialog" aria-label={p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}>
                 <div className="card ini-calendario-cartao">
                   {/* sem o "Aviso: confirme que leu", o Abrir e o "+1 esperando" (Vitor, 18/11/2026); a reunião mantém o selo */}
-                  {p.tipo === 'reuniao' && <span className="badge badge-suave badge-warn">Reunião: confirme a presença</span>}
+                  {(p.tipo === 'reuniao' || !dev) && <span className="badge badge-suave badge-warn">{p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}</span>}
                   <b>{p.titulo}</b>
                   <span className="hint">{p.quem} · {p.quando}</span>
                   {p.texto && <p className="ini-calendario-texto">{p.texto}</p>}
@@ -88,6 +91,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
                       <button type="button" className="btn btn-primary" onClick={() => vm.reunioesVm.confirmar(p.id, true)}><Icone nome="check" />Confirmar presença</button>
                       <button type="button" className="btn btn-outline" onClick={() => vm.reunioesVm.confirmar(p.id, false)}>Não vou</button>
                     </> : <button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(p.id)}><Icone nome="check" />Recebido</button>}
+                    {!dev && <button type="button" className="btn btn-ghost" onClick={() => abrir(p.id)}>Abrir</button>}
+                    {!dev && vm.paraConfirmar.length > 1 && <span className="hint">+{vm.paraConfirmar.length - 1} esperando</span>}
                   </div>
                 </div>
               </div>
@@ -105,11 +110,21 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             </ul>
           )}
         </Cartao>
+        {!dev && (
+          <Cartao titulo="Quadro de avisos" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
+            {vm.reunioes.length ? vm.reunioes.map(r => (
+              <button key={r.id} type="button" className="popover-item" onClick={() => abrir(r.id)}>
+                <Icone nome="calendar" />
+                <span className="popover-texto"><b>{r.tituloNaLista}</b><br /><span className="hint">{r.reuniao}</span></span>
+              </button>
+            )) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
+          </Cartao>
+        )}
       </div>
       <div className="ini-coluna">
         {/* o Quadro de avisos no alto da coluna da direita e destacado (Vitor, 18/11/2026: "muito apagado da tela inicial... seja
             mais superior"): cada reunião com o dia em destaque à esquerda */}
-        <section className="card ini-cartao ini-quadro">
+        {dev && <section className="card ini-cartao ini-quadro">
           <div className="card-head"><h3><Icone nome="sino" />Quadro de avisos</h3>
             <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button></div>
           {vm.reunioes.length ? (
@@ -126,7 +141,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               ))}
             </div>
           ) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
-        </section>
+        </section>}
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>
