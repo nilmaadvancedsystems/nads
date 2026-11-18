@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { areaCliente as ac } from '@nads/core';
 import { SECOES_DO_BANCO, TODAS_AS_SECOES, type EstadoDaArea } from './areaCliente';
 import { areaComoNoBanco, criarRepoAreaClienteMemoria, TOKEN_COMO_NO_BANCO, TOKEN_COMO_NO_BANCO_VAZIO, TOKEN_DE_EXEMPLO } from './areaCliente.memoria';
 
@@ -42,5 +43,34 @@ describe('a Área do Cliente como o cliente real vê (exemplo-real)', () => {
     expect(await repo.abrirChamado(TOKEN_COMO_NO_BANCO_VAZIO, { tipo: 'duvida', texto: 'Como mando o extrato?' })).not.toBe('');
     expect(vistos).toEqual({ vazio: 1, exemplo: antes });
     paraA(); paraB();
+  });
+});
+
+// "Já paguei: mandar o comprovante" (plano do Acessórias, 17/11/2026, ficha comprovante-da-guia, parte A)
+describe('o comprovante da guia no exemplo', () => {
+  it('enviar com o prefixo gera o recibo com o nome prefixado, e a guia acha o comprovante', async () => {
+    const repo = criarRepoAreaClienteMemoria(() => HOJE);
+    let estado: EstadoDaArea | null = null;
+    const parar = repo.assinar(TOKEN_DE_EXEMPLO, e => { estado = e; });
+    const g = { tipo: 'FGTS' as const, competencia: '2026-09' };
+    const nome = ac.nomeComPrefixo(ac.prefixoDoComprovante(g), 'pix.pdf');
+    await repo.enviar(TOKEN_DE_EXEMPLO, 'comprovante', [new File(['x'], nome, { type: 'application/pdf' })]);
+    const recibo = ac.comprovanteDaGuia(g, estado!.envios);
+    parar();
+    expect(recibo?.nome).toBe('Comprovante FGTS 09-2026 - pix.pdf');
+    expect(recibo?.tipo).toBe('comprovante');
+  });
+});
+
+// a entrega confirmada sai da lista (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
+describe('confirmar a entrega no exemplo', () => {
+  it('a entrega confirmada sai da lista', async () => {
+    const repo = criarRepoAreaClienteMemoria(() => HOJE);
+    let estado: EstadoDaArea | null = null;
+    const parar = repo.assinar(TOKEN_DE_EXEMPLO, e => { estado = e; });
+    expect(estado!.entregas.map(x => x.id)).toEqual(['exemplo-entrega-1']);
+    await repo.confirmarRecebido(TOKEN_DE_EXEMPLO, 'exemplo-entrega-1');
+    parar();
+    expect(estado!.entregas).toEqual([]);
   });
 });

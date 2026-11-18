@@ -56,6 +56,14 @@ describe('notificacoes', () => {
     }, hoje, g => g.tipo);
     expect(n.map(x => x.titulo)).toEqual(['DAS vencida', 'Documento novo', 'O escritório respondeu', 'Certificado digital perto de vencer']);
   });
+  // o lido do sino guarda os ids (ficha aviso-de-resposta, 17/11/2026): uma resposta nova no mesmo pedido tem de mudar o id
+  it('o aviso de resposta muda de id quando chega mensagem nova no mesmo pedido', () => {
+    const msg = {} as never;
+    const id = (mensagens: never[]) => notificacoes({ guias: [], documentos: [], certificado: null,
+      chamados: [{ id: 'c1', tipo: 'duvida', titulo: 'Férias', situacao: 'respondido', mensagens }] }, hoje, g => g.tipo)[0].id;
+    expect(id([msg])).toBe('c-c1-1');
+    expect(id([msg, msg])).toBe('c-c1-2');
+  });
 });
 
 describe('pedidos do pessoal', () => {
@@ -339,5 +347,37 @@ describe('legendaDoCalendario (só as cores que aparecem no mês)', () => {
     const r = legendaDoCalendario([{ tipo: 'entrega', tom: 'feita' }, { tipo: 'guia', tom: 'vencida' }, { tipo: 'entrega', tom: 'aberta' }, { tipo: 'guia', tom: 'hoje' }]);
     expect(r).toEqual([{ classe: 'guia-hoje', rotulo: 'vence hoje' }, { classe: 'guia-vencida', rotulo: 'vencida' }, { classe: 'entrega-aberta', rotulo: 'do escritório' }]);
     expect(legendaDoCalendario([{ tipo: 'paga', tom: 'feita' }, { tipo: 'guia', tom: 'aberta' }]).map(x => x.rotulo)).toEqual(['a pagar', 'paga']);
+  });
+});
+
+// o que o escritório espera do cliente, no sino (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei)
+describe('os pedidos do escritório no sino', () => {
+  it('o documento que falta abre o envio no tipo; o pedido do Mandei abre o formulário', () => {
+    const n = notificacoes({ guias: [], documentos: [], chamados: [], certificado: null,
+      avisos: [{ id: 'extrato-2026-10', titulo: 'Extrato bancário de outubro', texto: '', ir: 'documentos', tipo: 'extrato' }],
+      tickets: [{ codigo: 'AAAAAAAAAAAAAAAAAAAAAAAA', numero: '#0003', assunto: 'Saldos', validoAte: '2026-11-25T00:00:00.000Z', total: 3, faltam: 2, refazer: 0 }] }, hoje, g => g.tipo);
+    expect(n).toEqual([
+      { id: 'p-extrato-2026-10', titulo: 'Falta mandar', texto: 'Extrato bancário de outubro', ir: 'documentos', enviar: 'extrato' },
+      { id: 't-AAAAAAAAAAAAAAAAAAAAAAAA-2-0', titulo: 'O escritório pediu', texto: 'Saldos · até 25/11', ir: 'mandei', codigo: 'AAAAAAAAAAAAAAAAAAAAAAAA' },
+    ]);
+  });
+});
+
+// a certidão no sino (plano do Acessórias, 18/11/2026, ficha certidoes)
+describe('a certidão no sino', () => {
+  const doc = (validoAte: string) => ({ id: 'cert-58-federal', nome: 'Certidão Federal', descricao: '', area: 'societario' as const, competencia: '', enviadoEm: '', novo: false, formato: 'PDF' as const, pasta: 'certidoes' as const, validoAte });
+  it('avisa a vencida e a que vence em até 15 dias; a longe não', () => {
+    const n = (v: string) => notificacoes({ guias: [], documentos: [doc(v)], chamados: [], certificado: null }, new Date(2026, 10, 18), g => g.tipo);
+    expect(n('2026-11-10').map(x => x.titulo)).toEqual(['Certidão Federal vencida']);
+    expect(n('2026-11-30').map(x => x.titulo)).toEqual(['Certidão Federal perto de vencer']);
+    expect(n('2027-03-01')).toEqual([]);
+  });
+});
+
+// a entrega a confirmar no sino (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
+describe('a entrega no sino', () => {
+  it('cada entrega que espera vira um aviso que abre a confirmação', () => {
+    const n = notificacoes({ guias: [], documentos: [], chamados: [], certificado: null, entregas: [{ id: 'ent000001', titulo: 'DAS de outubro', competencia: '2026-10' }] }, hoje, g => g.tipo);
+    expect(n).toEqual([{ id: 'ent-ent000001', titulo: 'Entrega para confirmar', texto: 'DAS de outubro: toque para confirmar que recebeu', ir: 'documentos', confirmarEntrega: 'ent000001' }]);
   });
 });

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error: o robô é CommonJS sem tipos (robo/ fica fora do app)
 import roboImportado from '../../../../../../robo/area-cliente-regras.js';
 import {
-  base64DosBytes, comPendentes, documentoFormatado, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerGuia, lerRecibo, lerResumo,
+  base64DosBytes, comPendentes, documentoFormatado, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerCertidao, lerCertificado, lerDocumentoDoEscritorio, lerEntregas, lerFicha, lerParcelamentos, lerPendencias, lerTickets, lerChamado, lerGuia, lerRecibo, lerResumo,
   nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou, lerExtratoDoMes,
 } from './espelho';
 
@@ -41,6 +41,14 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
     const das = { id: 'das-2026-09-58', tipo: 'DAS', competencia: '2026-09', vencimento: '20/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true };
     R.conferirListaBranca('guia', das);
     expect(lerGuia(das.id, das)).toEqual(das);
+  });
+  it('a DARF dos lotes com o tributo (ficha todas-as-guias, 17/11/2026); tributo torto não passa', () => {
+    const darf = { id: 'darf-inss-2026-10-58', tipo: 'DARF', competencia: '2026-10', vencimento: '19/11/2026', valor: 900, tributo: 'INSS', situacao: 'a vencer', temPdf: true };
+    R.conferirListaBranca('guia', darf);
+    expect(lerGuia(darf.id, darf)).toEqual(darf);
+    expect(lerGuia('x', { ...darf, tributo: '<script>' })).not.toHaveProperty('tributo');
+    expect(lerGuia('x', { ...darf, tipo: 'DAM', tributo: undefined })).toMatchObject({ tipo: 'DAM' });
+    expect(lerGuia('x', { ...darf, vencimento: '' })).toBeNull();
   });
   it('a guia torta fica de fora (sem valor, data quebrada, competência ruim)', () => {
     const boa = { tipo: 'DAS', competencia: '2026-09', vencimento: '20/10/2026', valor: 1, situacao: 'a vencer', temPdf: true };
@@ -79,7 +87,7 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
   it('os campos lidos são exatamente os que o robô pode gravar (lista branca)', () => {
     const C = R.CAMPOS_DO_ESPELHO;
     expect(C.resumo).toEqual(['empresas', 'escritorio', 'atualizadoEm']);
-    expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'situacao', 'temPdf']);
+    expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm']); // o tributo da DARF (17/11/2026, ficha todas-as-guias); pagoEm (18/11/2026, ficha guia-paga-confirmada)
     expect(C.agenda).toEqual(['mes', 'itens', 'atualizadoEm']);
     expect(C.item).toEqual(['id', 'nome', 'vence', 'situacao', 'feitoEm']);
     expect(C.chamado).toEqual(['id', 'tipo', 'titulo', 'situacao', 'mensagens']);
@@ -202,5 +210,169 @@ describe('o Registro com a folha de verdade (13/11/2026)', () => {
     expect(torto?.funcionarios[0]).not.toHaveProperty('admissao');
     expect(torto?.funcionarios[0]).not.toHaveProperty('liquido');
     expect(torto?.funcionarios[0]).not.toHaveProperty('periodosDeFerias');
+  });
+});
+
+// o certificado A1 do cofre (plano do Acessórias, 17/11/2026, ficha certificado-digital)
+describe('o certificado no espelho', () => {
+  const bom = { tipo: 'A1', titular: 'Padaria X Ltda', validoAte: '2026-12-10', atualizadoEm: '2026-11-17T10:00:00.000Z' };
+  it('o robô só pode gravar a validade e a razão social (a lista branca corta o resto)', () => {
+    expect(() => R.conferirListaBranca('certificado', bom)).not.toThrow();
+    expect(() => R.conferirListaBranca('certificado', { ...bom, senha: 'x' })).toThrow(/senha/);
+    expect(() => R.conferirListaBranca('certificado', { ...bom, pfx: 'x' })).toThrow(/pfx/);
+  });
+  it('lerCertificado: o bom passa; data torta e tipo estranho não', () => {
+    expect(lerCertificado(bom)).toEqual({ tipo: 'A1', titular: 'Padaria X Ltda', validoAte: '2026-12-10' });
+    expect(lerCertificado({ ...bom, validoAte: '10/12/2026' })).toBeNull();
+    expect(lerCertificado({ ...bom, validoAte: '2026-13-40' })).toBeNull();
+    expect(lerCertificado({ ...bom, tipo: 'gov' })).toBeNull();
+    expect(lerCertificado({ ...bom, titular: '' })).toBeNull();
+  });
+  it('estadoDoEspelho com e sem certificado', () => {
+    const base = { resumo: null, nomeDoLink: 'Padaria', guias: [], agenda: [], envios: [], chamados: [] };
+    expect(estadoDoEspelho(base).certificado).toBeNull();
+    expect(estadoDoEspelho({ ...base, certificado: lerCertificado(bom) }).certificado?.validoAte).toBe('2026-12-10');
+  });
+});
+
+// o que falta mandar e os pedidos do Mandei, no sino (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei)
+describe('o que o escritório espera do cliente', () => {
+  const pend = { itens: [{ id: 'extrato-2026-10', titulo: 'Extrato bancário de outubro', tipo: 'extrato', competencia: '2026-10' }], competencia: '2026-10', atualizadoEm: 'x' };
+  const tick = { tickets: [{ codigo: 'AAAAAAAAAAAAAAAAAAAAAAAA', numero: '#0003', assunto: 'Saldos de outubro', validoAte: '2026-11-25T00:00:00.000Z', total: 3, faltam: 2, refazer: 0 }], atualizadoEm: 'x' };
+  it('as listas brancas do robô cortam o que não pode sair', () => {
+    expect(() => R.conferirListaBranca('pendencias', pend)).not.toThrow();
+    expect(() => R.conferirListaBranca('pendencias', { ...pend, cobradoPor: 'Clara' })).toThrow(/cobradoPor/);
+    expect(() => R.conferirListaBranca('pendencias', { ...pend, itens: [{ ...pend.itens[0], email: 'x' }] })).toThrow(/email/);
+    expect(() => R.conferirListaBranca('tickets', tick)).not.toThrow();
+    expect(() => R.conferirListaBranca('tickets', { ...tick, tickets: [{ ...tick.tickets[0], para: 'x' }] })).toThrow(/para/);
+  });
+  it('lerPendencias vira aviso com o tipo do envio; o torto fica de fora', () => {
+    expect(lerPendencias(pend)).toEqual([{ id: 'extrato-2026-10', titulo: 'Extrato bancário de outubro', texto: '', ir: 'documentos', tipo: 'extrato' }]);
+    expect(lerPendencias({ itens: [{ id: '../x', titulo: 'y' }, { id: 'extrato-2026-10', titulo: '' }] })).toEqual([]);
+    expect(lerPendencias(null)).toEqual([]);
+  });
+  it('lerTickets: o bom passa; código torto e número negativo não', () => {
+    expect(lerTickets(tick)).toEqual(tick.tickets);
+    expect(lerTickets({ tickets: [{ ...tick.tickets[0], codigo: 'a/b' }] })).toEqual([]);
+    expect(lerTickets({ tickets: [{ ...tick.tickets[0], faltam: -1 }] })).toEqual([]);
+  });
+  it('o estado leva os avisos e os tickets', () => {
+    const base = { resumo: null, nomeDoLink: 'Padaria', guias: [], agenda: [], envios: [], chamados: [] };
+    const e = estadoDoEspelho({ ...base, avisos: lerPendencias(pend), tickets: lerTickets(tick) });
+    expect([e.avisos.length, e.tickets.length]).toEqual([1, 1]);
+    expect(estadoDoEspelho(base).avisos).toEqual([]);
+  });
+});
+
+// o acervo do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio)
+describe('os documentos do escritório', () => {
+  const bom = { tipo: 'escritorio', id: 'esc-58-contrato-pdf-abc', nome: 'Contrato social.pdf', area: 'societario', enviadoEm: '2026-11-17T10:00:00.000Z', tamanho: 1000, partes: 1 };
+  it('a lista branca do robô corta o que não pode sair', () => {
+    expect(() => R.conferirListaBranca('documentoEscritorio', bom)).not.toThrow();
+    expect(() => R.conferirListaBranca('documentoEscritorio', { ...bom, caminho: 'G:/2026/58' })).toThrow(/caminho/);
+  });
+  it('lê o documento; o Novo some quando foi baixado neste aparelho; o torto fica de fora', () => {
+    expect(lerDocumentoDoEscritorio(bom.id, bom)).toMatchObject({ id: bom.id, nome: 'Contrato social.pdf', area: 'societario', novo: true, formato: 'PDF', partes: 1 });
+    expect(lerDocumentoDoEscritorio(bom.id, bom, new Set([bom.id]))?.novo).toBe(false);
+    expect(lerDocumentoDoEscritorio(bom.id, { ...bom, tipo: 'dp' })).toBeNull();
+    expect(lerDocumentoDoEscritorio(bom.id, { ...bom, area: 'outra' })).toBeNull();
+    expect(lerDocumentoDoEscritorio('../x', bom)).toBeNull();
+  });
+  it('a Central só aparece com documento', () => {
+    const base = { resumo: null, nomeDoLink: 'Padaria', guias: [], agenda: [], envios: [], chamados: [] };
+    expect(estadoDoEspelho(base).secoes.documentos).toBe(false);
+    const e = estadoDoEspelho({ ...base, documentos: [lerDocumentoDoEscritorio(bom.id, bom)!] });
+    expect(e.secoes.documentos).toBe(true);
+    expect(e.documentos.map(d => d.nome)).toEqual(['Contrato social.pdf']);
+    expect('partes' in e.documentos[0]).toBe(false);
+  });
+});
+
+// a ficha cadastral da empresa (plano do Acessórias, 18/11/2026, ficha dados-cadastrais)
+describe('a ficha da empresa no espelho', () => {
+  const bom = { razaoSocial: 'PADARIA BOA LTDA', cnpj: '12345678000190', regime: 'Simples', cnae: '1091-1/02 - Padaria', abertura: '2015-03-02', endereco: 'RUA A, 10', socios: [{ nome: 'MARIA SOUZA' }], atualizadoEm: 'x' };
+  it('a lista branca do robô: os sócios só pelo nome', () => {
+    expect(() => R.conferirListaBranca('ficha', bom)).not.toThrow();
+    expect(() => R.conferirListaBranca('ficha', { ...bom, socios: [{ nome: 'MARIA', cpf: '123' }] })).toThrow(/cpf/);
+    expect(() => R.conferirListaBranca('ficha', { ...bom, situacao: 'ATIVA' })).toThrow(/situacao/);
+  });
+  it('lerFicha: o CNPJ formatado e os sócios; sem razão social ou CNPJ, nada', () => {
+    expect(lerFicha(bom)).toMatchObject({ razaoSocial: 'PADARIA BOA LTDA', cnpj: '12.345.678/0001-90', socios: [{ nome: 'MARIA SOUZA' }] });
+    expect(lerFicha({ ...bom, cnpj: '123' })).toBeNull();
+    expect(lerFicha({ ...bom, razaoSocial: '' })).toBeNull();
+  });
+  it('o estado leva a ficha', () => {
+    const base = { resumo: null, nomeDoLink: 'Padaria', guias: [], agenda: [], envios: [], chamados: [] };
+    expect(estadoDoEspelho(base).ficha).toBeNull();
+    expect(estadoDoEspelho({ ...base, ficha: lerFicha(bom) }).ficha?.razaoSocial).toBe('PADARIA BOA LTDA');
+  });
+});
+
+// as certidões (plano do Acessórias, 18/11/2026, ficha certidoes)
+describe('as certidões no espelho', () => {
+  const bom = { tipo: 'certidao', id: 'cert-58-federal', nome: 'Certidão Federal.pdf', orgao: 'Federal', validoAte: '2026-12-15', tamanho: 1000, partes: 1 };
+  it('a lista branca do robô', () => {
+    expect(() => R.conferirListaBranca('documentoCertidao', bom)).not.toThrow();
+    expect(() => R.conferirListaBranca('documentoCertidao', { ...bom, observacao: 'x' })).toThrow(/observacao/);
+  });
+  it('lerCertidao: na pasta Certidões, com a validade; o torto fica de fora', () => {
+    expect(lerCertidao(bom.id, bom)).toMatchObject({ nome: 'Certidão Federal', descricao: 'válida até 15/12/2026', pasta: 'certidoes', validoAte: '2026-12-15', novo: true });
+    expect(lerCertidao(bom.id, { ...bom, validoAte: '' })?.descricao).toBe('sem a validade no nome do arquivo');
+    expect(lerCertidao(bom.id, { ...bom, tipo: 'escritorio' })).toBeNull();
+    expect(lerCertidao(bom.id, { ...bom, orgao: '' })).toBeNull();
+  });
+});
+
+// as entregas a confirmar (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
+describe('as entregas a confirmar no espelho', () => {
+  const bom = { itens: [{ id: 'ent000001', titulo: 'DAS de outubro', competencia: '2026-10' }], atualizadoEm: '2026-11-18T10:00:00Z' };
+  it('a lista branca do robô: sem quem levou nem valores', () => {
+    expect(() => R.conferirListaBranca('entregas', bom)).not.toThrow();
+    expect(() => R.conferirListaBranca('entregas', { itens: [{ ...bom.itens[0], entregadoPor: 'x' }] })).toThrow(/entregadoPor/);
+  });
+  it('lerEntregas: o item torto fica de fora', () => {
+    expect(lerEntregas(bom)).toEqual(bom.itens);
+    expect(lerEntregas({ itens: [{ id: '../x', titulo: 'a' }, { id: 'ent000002', titulo: '' }, { id: 'ent000003', titulo: 'FGTS', competencia: 'out' }] })).toEqual([{ id: 'ent000003', titulo: 'FGTS', competencia: '' }]);
+    expect(lerEntregas(null)).toEqual([]);
+  });
+  it('o estado leva as entregas', () => {
+    const base = { resumo: null, nomeDoLink: 'Padaria', guias: [], agenda: [], envios: [], chamados: [] };
+    expect(estadoDoEspelho(base).entregas).toEqual([]);
+    expect(estadoDoEspelho({ ...base, entregas: bom.itens }).entregas).toEqual(bom.itens);
+  });
+});
+
+// a guia paga pelo extrato (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada)
+describe('a guia paga no espelho', () => {
+  const guia = { id: 'das-2026-10-58', tipo: 'DAS', competencia: '2026-10', vencimento: '20/11/2026', valor: 917.42, situacao: 'a vencer', temPdf: true };
+  it('a lista branca do robô aceita o pagoEm; lerGuia lê a data e ignora a torta', () => {
+    expect(() => R.conferirListaBranca('guia', { ...guia, pagoEm: '18/11/2026' })).not.toThrow();
+    expect(lerGuia(guia.id, { ...guia, pagoEm: '18/11/2026' })?.pagoEm).toBe('18/11/2026');
+    expect(lerGuia(guia.id, { ...guia, pagoEm: 'ontem' })).not.toHaveProperty('pagoEm');
+  });
+  it('a paga sai de "a pagar", vai para Pagas e a aba aparece', () => {
+    const base = { resumo: null, nomeDoLink: 'Padaria', agenda: [], envios: [], chamados: [] };
+    const paga = lerGuia(guia.id, { ...guia, pagoEm: '18/11/2026' })!;
+    const aberta = lerGuia('fgts-2026-10-58', { ...guia, tipo: 'FGTS' })!;
+    const e = estadoDoEspelho({ ...base, guias: [paga, aberta] });
+    expect(e.guias.map(g => g.id)).toEqual(['fgts-2026-10-58']);
+    expect(e.pagas).toEqual([{ id: 'das-2026-10-58', tipo: 'DAS', nome: 'DAS (Simples Nacional)', competencia: '2026-10', valor: 917.42, pagoEm: '18/11/2026', temComprovante: false }]);
+    expect(e.secoes.pagas).toBe(true);
+    expect(estadoDoEspelho({ ...base, guias: [aberta] }).secoes.pagas).toBe(false);
+  });
+});
+
+// os parcelamentos (plano do Acessórias, 18/11/2026, ficha parcelamentos)
+describe('os parcelamentos no espelho', () => {
+  const item = { id: 'pgfn-1', orgao: 'PGFN · Dívida ativa', modalidade: 'Transação', parcela: 12, parcelas: 60, valorParcela: 350.5, vencimento: '20/11/2026' };
+  it('a lista branca do robô: sem obs nem número do processo', () => {
+    expect(() => R.conferirListaBranca('parcelamentos', { itens: [item], atualizadoEm: 'x' })).not.toThrow();
+    expect(() => R.conferirListaBranca('parcelamentos', { itens: [{ ...item, obs: 'x' }] })).toThrow(/obs/);
+    expect(() => R.conferirListaBranca('parcelamentos', { itens: [{ ...item, numero: '1' }] })).toThrow(/numero/);
+  });
+  it('lerParcelamentos: o torto fica de fora', () => {
+    expect(lerParcelamentos({ itens: [item] })).toEqual([item]);
+    expect(lerParcelamentos({ itens: [{ ...item, parcela: 61 }, { ...item, vencimento: 'x' }, { ...item, valorParcela: 0 }] })).toEqual([]);
+    expect(lerParcelamentos(null)).toEqual([]);
   });
 });

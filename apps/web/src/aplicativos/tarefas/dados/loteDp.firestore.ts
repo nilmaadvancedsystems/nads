@@ -4,7 +4,7 @@
 //     resultados.<código>_<AAAA-MM> };
 //   - lotesDp/{lote}/arquivos/{k}: { nome, tamanho, partes, status: 'enviando' → 'pendente' }, com os pedaços em
 //     .../partes/{n} { dados: Bytes } (como o enviosSecretario); o robô grava a leitura (ou o erro); a tela, a escolha e o fora.
-import { addDoc as addDocBruto, Bytes, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, deleteField, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { entregas as e } from '@nads/core';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -45,7 +45,7 @@ export function loteDoBanco(id: string, d: Record<string, unknown>): LoteDp {
   })).sort((a, b) => a.codigo - b.codigo);
   return {
     id, status: texto(d.status), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), total: Number(d.total) || 0, lidos: Number(d.lidos) || 0,
-    erro: texto(d.erro), disparadoPor: texto(d.disparadoPor), resultados,
+    erro: texto(d.erro), disparadoPor: texto(d.disparadoPor), agendadoPara: texto(d.agendadoPara), resultados,
   };
 }
 
@@ -98,10 +98,15 @@ export function criarLoteDpFirestore(quem: () => e.Quem | null): RepoLoteDp {
     async tirar(lote, arquivo, fora) {
       await updateDoc(doc(db, 'lotesDp', lote, 'arquivos', arquivo), { fora });
     },
-    async disparar(lote) {
+    async disparar(lote, agendadoPara) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
-      await updateDoc(doc(db, 'lotesDp', lote), { status: 'disparar', disparadoPor: q.nome, disparadoPorUid: q.uid, pedidoEm: new Date().toISOString() });
+      // o envio agendado (plano do Acessórias, 17/11/2026, ficha E17): o robô só dispara depois de agendadoPara (precisa da regra do Vitor:
+      // docs/acessorias/regra-envio-agendado.md); sem ele, o pedido é o de sempre
+      await updateDoc(doc(db, 'lotesDp', lote), { status: 'disparar', disparadoPor: q.nome, disparadoPorUid: q.uid, pedidoEm: new Date().toISOString(), ...(agendadoPara ? { agendadoPara } : {}) });
+    },
+    async cancelarAgendamento(lote) {
+      await updateDoc(doc(db, 'lotesDp', lote), { status: 'lido', agendadoPara: deleteField() });
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

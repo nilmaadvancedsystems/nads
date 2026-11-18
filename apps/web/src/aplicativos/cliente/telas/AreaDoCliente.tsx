@@ -27,7 +27,7 @@ import { Documentos } from './Documentos';
 import { Contato, Empresa, Faturamento } from './Administrativo';
 import { Guias } from './Guias';
 import { Inicio } from './Inicio';
-import { useJanelaDeEnvio } from './JanelaDeEnvio';
+import { useJanelaDeEnvio, useJanelaDeEnvioDoTipo } from './JanelaDeEnvio';
 import { useAreaCliente } from './useAreaCliente';
 import '../cliente.css';
 
@@ -66,10 +66,12 @@ function Area() {
   const { area } = vm;
   // a tela recriada a cada navegação: o que a busca geral pede (a busca preenchida, a solicitação) vale de novo
   const { key: chaveDaTela } = useLocation();
-  const daCasca = { token: vm.token, area, hoje: vm.hoje, irPara: vm.irPara, copiar: vm.copiar, exemplos: vm.exemplos };
+  const daCasca = { token: vm.token, area, hoje: vm.hoje, irPara: vm.irPara, copiar: vm.copiar, exemplos: vm.exemplos, marcarLida: vm.marcarLida };
   const valido = area.carregado && area.valido;
   const c = vm.contato;
   const abrirEnvio = useJanelaDeEnvio(daCasca);
+  // o aviso "Falta mandar" do sino abre o envio já no tipo (17/11/2026, ficha o-que-falta-mandar)
+  const abrirEnvioDoTipo = useJanelaDeEnvioDoTipo(daCasca);
   // a gaveta (celular): o foco vai para o ✕ quando abre e volta para o ☰ quando fecha
   const xDaGaveta = useRef<HTMLButtonElement>(null);
   const botaoDoMenu = useRef<HTMLButtonElement>(null);
@@ -218,7 +220,7 @@ function Area() {
                       {vm.naoLidas > 0 && <button type="button" className="btn btn-ghost" onClick={vm.marcarLidas}>Marcar como lidas</button>}
                     </div>
                     {vm.avisos.length ? vm.avisos.map(n => (
-                      <button key={n.id} type="button" className={'cli-aviso-item' + (vm.lida(n.id) ? ' lida' : '')} onClick={() => { fecharMenu(); vm.irPara(n.ir); }}>
+                      <button key={n.id} type="button" className={'cli-aviso-item' + (vm.lida(n.id) ? ' lida' : '')} onClick={() => { fecharMenu(); if (n.confirmarEntrega) { vm.marcarLida(n.id); void vm.confirmarEntrega(n.confirmarEntrega, n.texto.split(':')[0]); } else if (n.enviar) { vm.marcarLida(n.id); abrirEnvioDoTipo(n.enviar); } else vm.abrirAviso(n); }}>
                         <span className={'cli-notif-ico t-' + n.tom} aria-hidden="true"><Icone nome={n.icone} width={16} height={16} /></span>
                         <span className="cli-notif-txt"><b>{n.titulo}</b><span>{n.texto}</span></span>
                         <Icone nome="chevronRight" width={16} height={16} className="cli-notif-seta" />

@@ -4,13 +4,14 @@
 // (/agenda e /enviar) continuam abrindo a aba nova certa. Com o banco (17/10/2026), as abas sem fonte (Central de
 // documentos e Departamento pessoal) somem do menu, e o link antigo delas cai numa aba que existe.
 import { areaCliente as ac } from '@nads/core';
-import { definirLateralOculta, lerLateralOculta, type NomeIcone } from '@nads/ui';
+import { definirLateralOculta, lerLateralOculta, useRetorno, type NomeIcone } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AREA_VAZIA, type EstadoDaArea } from '../dados/areaCliente';
 import { repoAreaCliente } from '../dados/repo';
 import { abasDoCelular, diaRelativo, seloDoRegime, tokenDoLink, iniciaisDaEmpresa, linkDoWhatsapp, nomeDaPessoa, notificacoes, perfisComEste, ultimaEmpresa, type PerfilGuardado } from '../dados/regras';
 import { guardarPerfis, lerPerfis } from '../dados/perfis';
+import { guardarLidas, lidasDoSino, soAsQueAindaExistem } from '../dados/sinoLido';
 import { TOKEN_COMO_NO_BANCO, TOKEN_DE_EXEMPLO } from '../dados/areaCliente.memoria';
 import { guiasDoMomento } from '../dados/visaoGeral';
 import { bibliotecaDoCliente, PASTAS_DA_BIBLIOTECA } from '../dados/biblioteca';
@@ -41,6 +42,8 @@ const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias',
 export function useAreaCliente() {
   const { token = '', aba } = useParams();
   const navegar = useNavigate();
+  // a pergunta e o aviso do "Confirmar que recebi" (18/11/2026, ficha confirmar-entrega)
+  const { modal, toast: toastDoRetorno } = useRetorno();
   const copiar = useCopiar();
   const [area, setArea] = useState<EstadoDaArea>(AREA_VAZIA);
   // o dia de hoje fixo enquanto a página está aberta (a situação das guias vem dele)
@@ -115,7 +118,7 @@ export function useAreaCliente() {
   const [buscaAberta, setBuscaAberta] = useState(false);
   const indiceDaArea = useMemo(() => indiceDaBusca({
     abas: abas.map(a => ({ id: a.id, rotulo: a.rotulo, icone: a.icone })),
-    guias: guias.map(g => ({ id: g.id, nome: ac.ROTULO_DA_GUIA[g.tipo], competencia: g.competencia, vencimento: g.vencimento, situacao: ac.ROTULO_DA_SITUACAO_DA_GUIA[g.situacao].toLowerCase() })),
+    guias: guias.map(g => ({ id: g.id, nome: ac.rotuloDaGuia(g), competencia: g.competencia, vencimento: g.vencimento, situacao: ac.ROTULO_DA_SITUACAO_DA_GUIA[g.situacao].toLowerCase() })),
     documentos: area.secoes.documentos || area.documentosDp.length || area.guias.length
       ? bibliotecaDoCliente({ guias: area.guias, documentosDp: area.documentosDp, danfes: area.danfes, documentos: area.secoes.documentos ? area.documentos : [], envios: area.envios })
         .map(i => ({ chave: i.chave, nome: i.nome, detalhe: i.detalhe, pasta: PASTAS_DA_BIBLIOTECA.find(p => p.id === i.pasta)?.rotulo ?? '' }))
@@ -158,15 +161,19 @@ export function useAreaCliente() {
     if (area.carregado && area.valido && token && !jaViuOTutorial(token)) setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
   }, [area.carregado, area.valido, token]);
 
-  // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá (nesta página)
-  const [lidas, setLidas] = useState<Set<string>>(() => new Set());
+  // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá. Desde 17/11/2026 (ficha
+  // aviso-de-resposta do plano do Acessórias) o lido fica guardado neste aparelho e não volta a cada visita (sinoLido.ts)
+  const [lidas, setLidas] = useState<Set<string>>(() => lidasDoSino(token));
+  useEffect(() => { setLidas(lidasDoSino(token)); }, [token]);
   // cada notificação com o ícone e o tom pelo que é (12/11/2026: o sino refeito): a guia, os documentos, a resposta, o certificado
-  const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo).map(n => ({
+  const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo === 'DARF' && g.tributo ? 'DARF ' + g.tributo : g.tipo).map(n => ({
     ...n,
-    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : 'mensagem') as NomeIcone,
-    tom: n.id.startsWith('g-') && n.titulo.endsWith('vencida') ? 'ruim' : n.id.startsWith('g-') || n.id.startsWith('cert-') ? 'atencao' : n.id.startsWith('c-') ? 'bom' : 'neutro',
+    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : n.id.startsWith('p-') ? 'upload' : 'mensagem') as NomeIcone,
+    tom: n.id.startsWith('g-') && n.titulo.endsWith('vencida') ? 'ruim' : n.id.startsWith('g-') || n.id.startsWith('cert-') || n.id.startsWith('p-') || n.id.startsWith('t-') ? 'atencao' : n.id.startsWith('c-') ? 'bom' : 'neutro',
   }));
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
+  /** marca como lidos e guarda (só os que ainda estão no sino, para a lista não crescer à toa) */
+  const guardar = (novas: Set<string>) => { setLidas(novas); guardarLidas(token, soAsQueAindaExistem(novas, avisos)); };
 
   return {
     token, area, hoje, logo: area.logo, aba: atual, abas,
@@ -178,7 +185,22 @@ export function useAreaCliente() {
     maisAtivo: !abasDoCelular(abas.map(a => a.id)).includes(atual),
     outrasEmpresas, trocarDeEmpresa, esquecerEmpresa, iniciais: iniciaisDaEmpresa(empresa), contadores, menuAberto, setMenuAberto, recolhida, alternarLateral, irPara, empresa, cnpj, rotuloDoDocumento, exemplos: area.exemplos,
     secoes: area.secoes, temFicha: !!area.ficha,
-    avisos, naoLidas: naoLidas.length, lida: (id: string) => lidas.has(id), marcarLidas: () => setLidas(new Set(avisos.map(n => n.id))),
+    avisos, naoLidas: naoLidas.length, lida: (id: string) => lidas.has(id), marcarLidas: () => guardar(new Set(avisos.map(n => n.id))),
+    /** um aviso lido (o cliente abriu a solicitação respondida) */
+    /** abre o que o aviso pede: o formulário do Mandei, ou a aba (o envio do tipo certo a tela abre) (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino") */
+    /** "Confirmar que recebi" a entrega (plano do Acessórias, 18/11/2026, ficha confirmar-entrega): pergunta antes e manda o pedido ao robô */
+    async confirmarEntrega(entregaId: string, titulo: string) {
+      const ok = await modal({ titulo: 'Confirma que recebeu?', texto: titulo + '. Ao confirmar, o escritório fica sabendo que chegou.',
+        botoes: [{ rotulo: 'Confirmar que recebi', valor: true, variante: 'btn-primary' }, { rotulo: 'Ainda não', valor: false, variante: 'btn-outline' }] });
+      if (!ok) return;
+      try { await repoAreaCliente.confirmarRecebido(token, entregaId); toastDoRetorno('Obrigado, anotamos que chegou.'); }
+      catch (e) { toastDoRetorno(e instanceof Error ? e.message : 'Não deu para confirmar agora. Tente de novo.'); }
+    },
+    abrirAviso: (n: { ir: string; codigo?: string; id: string }) => {
+      if (n.ir === 'mandei' && n.codigo) { setMenuAberto(false); navegar('/mandei/' + encodeURIComponent(n.codigo)); return; }
+      if (n.ir !== 'mandei') irPara(n.ir as IdAba);
+    },
+    marcarLida: (id: string) => { if (!lidas.has(id)) guardar(new Set([...lidas, id])); },
     copiar,
     // a troca de empresa mais completa (13/11/2026: "muito simples"): o regime no selo e o link desta área para copiar
     regime: area.ficha?.regime ?? area.faturamento?.empresas?.[0]?.regime ?? '',
@@ -210,4 +232,7 @@ const ROTULO_CURTO: Partial<Record<IdAba, string>> = { inicio: 'Guias e docs', d
 
 export type AreaCliente = ReturnType<typeof useAreaCliente>;
 /** o que cada aba recebe da casca */
-export type DaCasca = Pick<AreaCliente, 'token' | 'area' | 'hoje' | 'irPara' | 'copiar'>;
+export type DaCasca = Pick<AreaCliente, 'token' | 'area' | 'hoje' | 'irPara' | 'copiar'> & {
+  /** marca um aviso do sino como lido (as Solicitações, ao abrir uma respondida; ficha aviso-de-resposta, 17/11/2026) */
+  marcarLida?: AreaCliente['marcarLida'];
+};

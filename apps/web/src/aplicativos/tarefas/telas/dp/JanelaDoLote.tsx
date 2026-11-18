@@ -5,6 +5,7 @@
 // identificados com o cliente, o tipo e a competência para escolher, ou Tirar do lote) e o Disparar (um e-mail por cliente;
 // depois, o resultado de cada um: enviado para quem, gravado em que pasta do Drive, ou o erro). "Salvos" (29/10/2026: "tenha a
 // opção só de salvar para enviar posteriormente"): os lotes ainda não disparados, para abrir, revisar e disparar depois.
+import { AgendarEnvio } from '../janela/AgendarEnvio';
 import { BotaoAcao, CampoArquivos, Esqueleto, Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useState } from 'react';
 import type { ArquivoDoLote } from '../../dados/loteDp';
@@ -119,13 +120,18 @@ export function JanelaDoLote({ fechar }: { fechar: () => void }) {
               {vm.podeSalvar && (
                 <button type="button" className="btn btn-outline" onClick={() => { vm.salvar(); setTopico('salvos'); }}><Icone nome="clock" />Salvar para enviar depois</button>
               )}
-              {mexe && (
+              {mexe && (<>
                 <BotaoAcao carregando={vm.disparando} textoCarregando="Pedindo…" disabled={!vm.paraDisparar} onClick={() => void vm.disparar()}>
                   <Icone nome="aviao" />Disparar{vm.paraDisparar ? ' · ' + vm.paraDisparar + (vm.paraDisparar === 1 ? ' cliente' : ' clientes') : ''}
                 </BotaoAcao>
+                {/* o envio agendado (17/11/2026, ficha E17): o dia e a hora, e o robô só dispara depois */}
+                <AgendarEnvio desabilitado={!vm.paraDisparar || vm.disparando} agendar={(data, hora) => void vm.disparar({ data, hora })} /></>
               )}
             </div>
-            {andando && (
+            {vm.agendado && (
+              <p className="hint"><span className="badge badge-info">Agendado</span> Sai {vm.agendado}, na primeira vez que o robô passar depois dessa hora. <button type="button" className="btn btn-ghost" onClick={() => void vm.cancelarAgendamento()}>Cancelar agendamento</button></p>
+            )}
+            {andando && !vm.agendado && (
               <span className="tarefas-barra fgts-barra dp-lote-barra" role="progressbar" aria-valuemin={0} aria-valuemax={lote.total} aria-valuenow={lote.lidos} aria-label="Arquivos lidos">
                 <span style={{ width: (lote.status === 'lendo' ? Math.max(5, (lote.lidos / Math.max(1, lote.total)) * 100) : lote.status === 'pendente' ? 3 : 100) + '%' }} />
               </span>

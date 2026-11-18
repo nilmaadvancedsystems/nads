@@ -26,6 +26,7 @@ const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), '
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
 const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
 const Administrativo = pedaco(() => import('../telas/administrativo/Administrativo'), 'Administrativo');
+const Insights = pedaco(() => import('../telas/insights/Insights'), 'Insights');
 const OutrosSites = pedaco(() => import('../telas/desenvolvedor/OutrosSites'), 'OutrosSites');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
@@ -90,6 +91,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     // a Carteira (12/11/2026): por enquanto só o Vitor; os outros, a tela "em desenvolvimento"
     case 'carteira': return <Carteira pagina={pagina} />;
     case 'administrativo': return <Administrativo pagina={pagina} />;
+    // a Tela de Insights (18/11/2026, ficha tela-de-insights): só Diretor e admin
+    case 'insights': return <Insights />;
     // o Desenvolvedor (13/11/2026): a Área do Cliente e a Central dos robôs, só no modo desenvolvedor
     case 'desenvolvedor': return <OutrosSites />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;

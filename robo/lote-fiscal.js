@@ -28,11 +28,15 @@ const dp = require('./envios-do-dp');
 const L = require('./lote-dp');
 const EC = require('./econtador');
 const painel = require('./painel');
+// as guias na Área do Cliente (17/11/2026, ficha todas-as-guias): a mesma gravação do envio pelo nads
+const NADS = require('./envios-do-nads');
 
 const COLECAO = 'lotesFiscal';
 const MAX_ARQUIVOS = 150;
 // lote esquecido (a pessoa fechou a tela no meio, ou não disparou): some do banco, com os pedaços, como o do DP
 const ESQUECIDO_MS = 3 * 24 * 36e5;
+// o envio agendado (plano do Acessórias, 17/11/2026, ficha E17; frase do dono: "Seguir"): o mesmo do lote do DP
+const AGENDADO = lote => L.agendadoNoFuturo(lote);
 const COMPETENCIA = /^20\d{2}-(0[1-9]|1[0-2])$/;
 const GUIAS = ['DAS', 'DARF', 'DAE', 'DAM'];
 // o PDF da guia vai no anexo da entrega até este tamanho (o mesmo LIMITE_PDF_ANEXO do Entregas); maior, só o id no Drive
@@ -331,7 +335,7 @@ async function dataDaEntregaDoImpresso(db, entrega) {
 }
 
 // 2. a leitura
-async function lerLote(db, ref, lote, log) {
+async function lerLote(db, ref, lote, log, deps) {
   if (!(await quemPode(db, lote.criadoPorUid))) throw new Error('só o Fiscal e o administrador sobem lote de guias');
   const grupo = lote.grupo === 'lp' ? 'lp' : lote.grupo === 'sn' ? 'sn' : null;
   if (!grupo) throw new Error('o lote veio sem o grupo do Relatório (Simples ou Presumido)');
@@ -345,7 +349,7 @@ async function lerLote(db, ref, lote, log) {
     const a = doc.data();
     if (a.status !== 'pendente') continue;
     try {
-      const buffer = await L.bufferDoArquivo(doc.ref, a);
+      const buffer = await L.bufferDoArquivo(doc.ref, a, deps);   // a guia da pasta vem do Drive (ficha E15)
       const entrada = await novo.montarEntrada(String(a.nome || 'arquivo.pdf'), String(a.nome || ''), buffer);
       const d = R.decidir(entrada, { cadastro: ctx.cadastro, hoje: new Date() });
       const u = R.norm((entrada.texto || []).slice(0, 3).join('\n'));
@@ -362,13 +366,13 @@ async function lerLote(db, ref, lote, log) {
 }
 
 // 5. o impresso: o Drive, a entrega na rota do Entregas com as guias anexadas, o registro e o Relatório (Entregue = Impresso)
-async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }) {
+async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, deps }) {
   let doc = null;
   ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
   if (!doc) throw new Error('o cliente ' + codigo + ' não está no cadastro do Entregas (ou está inativo)');
   const cliente = Object.assign({ id: doc.id }, doc.data());
   const buffers = [];
-  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i));
+  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i, deps));
   const salvos = await salvarNoDrive(itens, buffers);
   const u = lote.disparadoPorUid ? ((await db.collection('usuarios').doc(String(lote.disparadoPorUid)).get()).data() || {}) : {};
   const quem = { email: String(u.email || ''), nome: String(lote.disparadoPor || u.nome || '') };
@@ -422,12 +426,12 @@ async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, gru
 // e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o mesmo, com via e Entregue = 'scireport'
 // e o WhatsApp (12/11/2026, ticket 1ORUBY: "Inserir tipo de envio 'Whastapp'"): o mesmo, com via e Entregue = 'zap'; quem manda
 // é a pessoa, pela tela (o wa.me com a mensagem do modelo e as guias baixadas para anexar)
-async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via = 'econtador' }) {
+async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via = 'econtador', deps }) {
   let doc = null;
   ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
   const nome = doc ? String(doc.data().nome || '').trim() : '';
   const buffers = [];
-  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i));
+  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i, deps));
   const salvos = await salvarNoDrive(itens, buffers);
   const agora = new Date().toISOString();
   const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: '', preenchidos: [], erroNoRelatorio: '' };
@@ -469,6 +473,8 @@ async function dispararLote(db, ref, lote, deps) {
     const salvos = [];
     for (let k = 0; k < itens.length; k++) {
       const v = itens[k].vai;
+      // a guia que veio da pasta já está no Drive (ficha E15): não grava de novo
+      if (itens[k].driveId) { salvos.push({ nome: v.nome, pasta: (itens[k].origem && itens[k].origem.pasta) || '', jaEstava: true, id: itens[k].driveId }); continue; }
       if (!v.destino.length) { salvos.push({ nome: v.nome, erro: 'sem a pasta no Drive (o tipo da guia não tem pasta na árvore do Fiscal ou o cadastro não deu o destino)' }); continue; }
       try {
         const pastaId = await DA.garantirCaminho(drive, v.destino.map(p => String(p).normalize('NFC')));
@@ -477,6 +483,19 @@ async function dispararLote(db, ref, lote, deps) {
       } catch (err) { salvos.push({ nome: v.nome, erro: String(err.message || err).slice(0, 200) }); }
     }
     return salvos;
+  }
+  /**
+   * As guias do cliente na Área do Cliente (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)"): em todas as vias, antes de apagar os pedaços; sem
+   * os buffers (as vias sem e-mail), lê de novo. Nunca derruba o envio: o que não foi fica anotado no resultado.
+   */
+  async function naAreaDoCliente(itens, buffers, resultado) {
+    try {
+      const bufs = buffers || [];
+      if (!buffers) for (const i of itens) bufs.push(await L.bufferDoArquivo(i.ref, i, deps));
+      const r = await NADS.guiasDoLoteNaArea(db, itens, bufs, log);
+      if (r.gravadas) resultado.areaDoCliente = r.gravadas;
+      if (r.semArea.length) resultado.semAreaDoCliente = r.semArea;
+    } catch (err) { resultado.semAreaDoCliente = ['erro: ' + String(err.message || err).slice(0, 160)]; }
   }
   let enviados = 0;
   let erros = 0;
@@ -488,7 +507,9 @@ async function dispararLote(db, ref, lote, deps) {
     const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
       if (via !== 'email') {
-        Object.assign(resultado, await (via === 'impresso' ? impresso : econtador)(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via }));
+        Object.assign(resultado, await (via === 'impresso' ? impresso : econtador)(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via, deps }));
+        // as guias na Área do Cliente, antes de apagar os pedaços (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)")
+        await naAreaDoCliente(itens, null, resultado);
         for (const i of itens) await L.apagarPartes(i.ref).catch(() => {});
         enviados++;
         await ref.update({ ['resultados.' + chave]: resultado });
@@ -497,7 +518,7 @@ async function dispararLote(db, ref, lote, deps) {
       const { cliente, para } = await dp.destinatarios(db, codigo, ativos);
       const nome = String(cliente.nome || '').trim();
       const anexos = [];
-      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await L.bufferDoArquivo(i.ref, i), rotulo: [i.vai.tipo === 'OUTRO' ? '' : i.vai.tipo, i.vai.tributo].filter(Boolean).join(' '), valor: i.vai.valor, vencimento: ((i.leitura || {}).vencimento) || '' });
+      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await L.bufferDoArquivo(i.ref, i, deps), rotulo: [i.vai.tipo === 'OUTRO' ? '' : i.vai.tipo, i.vai.tributo].filter(Boolean).join(' '), valor: i.vai.valor, vencimento: ((i.leitura || {}).vencimento) || '' });
       if (anexos.reduce((s, a) => s + a.buffer.length, 0) > dp.MAX_BYTES) throw new Error('as guias do cliente passam de 18 MB juntas');
       const cfg = deps.config ? await deps.config().catch(() => ({})) : {};
       const { gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade', modelo: MODELO });
@@ -519,6 +540,7 @@ async function dispararLote(db, ref, lote, deps) {
       const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
       if (guiasDrive.length) await registro.update({ guiasDrive }).catch(() => {});
       Object.assign(resultado, { status: 'enviado', para, enviadoEm: agora, salvos });
+      await naAreaDoCliente(itens, anexos.map(a => a.buffer), resultado);
       for (const i of itens) await L.apagarPartes(i.ref).catch(() => {});
       enviados++;
     } catch (err) {
@@ -551,7 +573,8 @@ function iniciarLoteFiscal(db, deps) {
           try {
             // excluído na tela (04/11/2026): some do banco, com as guias e os pedaços
             if (lote.status === 'cancelado') { await db.recursiveDelete(doc.ref); log('lote do Fiscal', doc.id, 'excluído por', lote.canceladoPor || '?'); }
-            else if (lote.status === 'pendente') await lerLote(db, doc.ref, lote, log);
+            else if (lote.status === 'pendente') await lerLote(db, doc.ref, lote, log, deps);
+            else if (AGENDADO(lote)) continue;   // agendado: espera a hora (ficha E17)
             else await dispararLote(db, doc.ref, lote, deps);
           } catch (err) {
             log('lote do Fiscal', doc.id, 'deu erro:', err.message);
@@ -563,11 +586,14 @@ function iniciarLoteFiscal(db, deps) {
     } catch (err) { log('lote do Fiscal: não li a fila:', err.message); } finally { ocupado = false; require('./ocupado').marcar('lote-fiscal', null); }
   }
   ouvir('Lote do Fiscal', () => db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar', 'cancelado']), () => { void atender(); }, log);
+  // o agendado não muda nada no banco na hora marcada: o robô olha a fila de novo de tempo em tempo (ficha E17)
+  setInterval(() => { void atender(); }, L.OLHAR_AGENDADOS_MS);
   // o lote esquecido some, com os arquivos e os pedaços
   setInterval(async () => {
     try {
       const velhos = await db.collection(COLECAO).where('criadoEm', '<', new Date(Date.now() - ESQUECIDO_MS).toISOString()).limit(10).get();
-      for (const d of velhos.docs) await db.recursiveDelete(d.ref);
+      // o lote agendado espera a hora dele, mesmo depois dos 3 dias (o envio agendado, 17/11/2026, ficha E17)
+      for (const d of velhos.docs) if (!(d.get('status') === 'disparar' && AGENDADO(d.data()))) await db.recursiveDelete(d.ref);
     } catch (e) { /* tenta de novo depois */ }
   }, 6 * 36e5);
   log('lote do Fiscal: ligado');

@@ -11,12 +11,12 @@
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
 import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type Firestore, type FirestoreError } from 'firebase/firestore';
-import { areaCliente as ac, demo } from '@nads/core';
+import { areaCliente as ac, demo, type mandei } from '@nads/core';
 import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModoDev';
-import { AREA_VAZIA, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
+import { AREA_VAZIA, type AvisoDoEscritorio, type CertificadoDigital, type EstadoDaArea, type FichaDaEmpresa, type RepoAreaCliente } from './areaCliente';
 import type { DanfeNoEspelho } from './biblioteca';
 import {
-  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerFaturamento, lerDanfe, lerGuia, lerListaDeNotas, lerExtratoDoMes, lerMarca, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
+  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerFaturamento, lerDanfe, lerGuia, lerListaDeNotas, lerExtratoDoMes, lerMarca, lerCertificado, lerCertidao, lerEntregas, lerParcelamentos, lerDocumentoDoEscritorio, lerFicha, lerPendencias, lerTickets, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
   type ChamadoPendente, type PartesDoEspelho, type RespostaPendente,
 } from './espelho';
 import { juntarPedacosDoPdf, mimeDoArquivo, type PedacoDoPdf } from './regras';
@@ -67,6 +67,25 @@ export interface AreaDeTeste { repo: RepoAreaCliente; token: string }
 /** O link é da empresa de teste? (os códigos do documento do link) */
 export const linkDaEmpresaDeTeste = (codigos: unknown) => Array.isArray(codigos) && codigos.includes(demo.EMPRESA_DEMO.codigo);
 
+// o "Novo" do acervo do escritório até baixar (17/11/2026, ficha documentos-do-escritorio): guardado neste aparelho, por
+// link (no máximo 300 por link e 30 links); sem armazenamento, o selo fica até a página fechar
+const CHAVE_DOS_BAIXADOS = 'nads-area-cliente|baixados';
+function lerBaixados(): Record<string, string[]> {
+  try { const x: unknown = JSON.parse(localStorage.getItem(CHAVE_DOS_BAIXADOS) || '{}'); return x && typeof x === 'object' ? x as Record<string, string[]> : {}; } catch { return {}; }
+}
+function baixadosDoEscritorio(token: string): Set<string> {
+  const l = lerBaixados()[token];
+  return new Set(Array.isArray(l) ? l.filter(i => typeof i === 'string') : []);
+}
+function marcarBaixado(token: string, id: string): void {
+  try {
+    const todos = lerBaixados();
+    const deste = [...new Set([...(Array.isArray(todos[token]) ? todos[token] : []), id])].slice(-300);
+    const outros = Object.entries(todos).filter(([t]) => t !== token).slice(-29);
+    localStorage.setItem(CHAVE_DOS_BAIXADOS, JSON.stringify(Object.fromEntries([...outros, [token, deste]])));
+  } catch { /* sem armazenamento */ }
+}
+
 export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCliente, teste?: AreaDeTeste): RepoAreaCliente {
   // os links abertos nesta página que são da empresa de teste: dali em diante, tudo deles vai para o exemplo
   const deTeste = new Set<string>();
@@ -91,7 +110,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       let nomeDoLink = '';
       // undefined = ainda não chegou
       const partes: { resumo?: ac.ResumoDoCliente | null; guias?: ac.GuiaDoCliente[]; agenda?: ac.AgendaDoMes[]; envios?: ac.ReciboDeEnvio[]; chamados?: ac.ChamadoDoCliente[];
-        pessoal?: ac.ResumoDoPessoal | null; documentosDp?: ac.DocumentoDoDp[]; faturamento?: ac.ResumoDoFaturamento | null; logo?: string | null; danfes?: DanfeNoEspelho[] } = {};
+        pessoal?: ac.ResumoDoPessoal | null; documentosDp?: ac.DocumentoDoDp[]; faturamento?: ac.ResumoDoFaturamento | null; logo?: string | null; danfes?: DanfeNoEspelho[]; certificado?: CertificadoDigital | null; avisos?: AvisoDoEscritorio[]; tickets?: mandei.TicketNaArea[]; documentos?: PartesDoEspelho['documentos']; certidoes?: PartesDoEspelho['documentos']; ficha?: FichaDaEmpresa | null; entregas?: ac.EntregaParaConfirmar[]; parcelamentos?: ac.ParcelamentoNaArea[] } = {};
 
       const parar = () => { parado = true; paradas.splice(0).forEach(f => f()); redesenhar.get(token)?.delete(desenhar); };
       const mostrar = (e: EstadoDaArea) => { if (!parado) aoMudar(e); };
@@ -106,7 +125,10 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       function desenhar() {
         const { resumo, guias, agenda, envios, chamados, pessoal, documentosDp, faturamento, logo } = partes;
         if (resumo === undefined || !guias || !agenda || !envios || !chamados || pessoal === undefined || !documentosDp || faturamento === undefined || logo === undefined) return;
-        const p: PartesDoEspelho = { resumo, nomeDoLink, guias, agenda, envios, chamados, pessoal, documentosDp, faturamento, logo, danfes: partes.danfes ?? [] };
+        // (17/11/2026) as partes que não seguram a tela vão junto: o certificado, o que falta mandar, os pedidos do Mandei e o
+        // acervo do escritório (antes ficavam lidas e não chegavam à tela)
+        const p: PartesDoEspelho = { resumo, nomeDoLink, guias, agenda, envios, chamados, pessoal, documentosDp, faturamento, logo, danfes: partes.danfes ?? [],
+          certificado: partes.certificado ?? null, avisos: partes.avisos ?? [], tickets: partes.tickets ?? [], documentos: [...(partes.documentos ?? []), ...(partes.certidoes ?? [])], ficha: partes.ficha ?? null, entregas: partes.entregas ?? [], parcelamentos: partes.parcelamentos ?? [] };
         ultimo.set(token, p);
         // o que já voltou pelo espelho sai da lista dos pendentes
         novos.set(token, (novos.get(token) ?? []).filter(n => !chamados.some(c => c.id === n.id)));
@@ -152,10 +174,33 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'faturamento'), r => { partes.faturamento = r.exists() ? lerFaturamento(r.data()) : null; desenhar(); }, falhou));
         // a logo da empresa (12/11/2026), que o gestor põe no nads
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'marca'), r => { partes.logo = r.exists() ? lerMarca(r.data()) : null; desenhar(); }, falhou));
+        // o que falta mandar e os pedidos do Mandei, no sino (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): não seguram a tela
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'pendencias'), r => { partes.avisos = r.exists() ? lerPendencias(r.data()) : []; desenhar(); }, () => { partes.avisos = []; desenhar(); }));
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'tickets'), r => { partes.tickets = r.exists() ? lerTickets(r.data()) : []; desenhar(); }, () => { partes.tickets = []; desenhar(); }));
+        // o certificado A1 do cofre (17/11/2026, ficha certificado-digital): não segura a tela
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'certificado'), r => { partes.certificado = r.exists() ? lerCertificado(r.data()) : null; desenhar(); }, () => { partes.certificado = null; desenhar(); }));
         paradas.push(onSnapshot(query(collection(espelho, 'documentos'), where('tipo', '==', 'dp')), s => {
           partes.documentosDp = s.docs.map(d => lerDocumentoDp(d.id, d.data())).filter((x): x is ac.DocumentoDoDp => x != null);
           desenhar();
         }, falhou));
+        // a ficha cadastral (plano do Acessórias, 18/11/2026, ficha dados-cadastrais; frase do dono: "Sim, comece assim"): não segura a tela
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'ficha'), r => { partes.ficha = r.exists() ? lerFicha(r.data()) : null; desenhar(); }, () => { partes.ficha = null; desenhar(); }));
+        // as entregas a confirmar (plano do Acessórias, 18/11/2026, ficha confirmar-entrega): não seguram a tela
+        // os parcelamentos (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir"): não seguram a tela
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'parcelamentos'), r => { partes.parcelamentos = r.exists() ? lerParcelamentos(r.data()) : []; desenhar(); }, () => { partes.parcelamentos = []; desenhar(); }));
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'entregas'), r => { partes.entregas = r.exists() ? lerEntregas(r.data()) : []; desenhar(); }, () => { partes.entregas = []; desenhar(); }));
+        // as certidões (plano do Acessórias, 18/11/2026, ficha certidoes): não seguram a tela
+        paradas.push(onSnapshot(query(collection(espelho, 'documentos'), where('tipo', '==', 'certidao')), s => {
+          const baixados = baixadosDoEscritorio(token);
+          partes.certidoes = s.docs.map(d => lerCertidao(d.id, d.data(), baixados)).filter((x): x is NonNullable<typeof x> => x != null);
+          desenhar();
+        }, () => { partes.certidoes = []; desenhar(); }));
+        // o acervo do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio; frase do dono: "Pasta fixa"): não segura a tela
+        paradas.push(onSnapshot(query(collection(espelho, 'documentos'), where('tipo', '==', 'escritorio')), s => {
+          const baixados = baixadosDoEscritorio(token);
+          partes.documentos = s.docs.map(d => lerDocumentoDoEscritorio(d.id, d.data(), baixados)).filter((x): x is NonNullable<typeof x> => x != null);
+          desenhar();
+        }, () => { partes.documentos = []; desenhar(); }));
         // as DANFEs prontas (12/11/2026, a pasta Notas da Central): não seguram a tela (chegam quando chegarem)
         paradas.push(onSnapshot(query(collection(espelho, 'documentos'), where('tipo', '==', 'danfe')), s => {
           partes.danfes = s.docs.map(d => lerDanfe(d.id, d.data())).filter((x): x is DanfeNoEspelho => x != null);
@@ -207,12 +252,33 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     },
 
     async baixarGuia(token, id) {
+      /**
+       * o registro de abertura (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura; frase do dono: "vamos continuar"): baixou a guia, o pedido
+       * marcado vai para o robô uma vez por guia, por aparelho, por dia; o erro do pedido não atrapalha o download
+       */
+      async function registrarLeitura(t: string, guiaId: string) {
+        try {
+          const pedido = ac.pedidoDeLeitura(guiaId);
+          if (!pedido) return;
+          const CHAVE = 'nads-area-cliente|lidas';
+          const hoje = new Date().toISOString().slice(0, 10);
+          let registros: Record<string, string> = {};
+          try { const x: unknown = JSON.parse(localStorage.getItem(CHAVE) || '{}'); if (x && typeof x === 'object') registros = x as Record<string, string>; } catch { /* sem armazenamento */ }
+          const chave = t + '|' + guiaId;
+          if (ac.jaRegistrouHoje(registros, chave, hoje)) return;
+          await addDoc(collection(abrir(), 'areaClienteChamados'), { token: t, ...pedido, criadoEm: serverTimestamp() });
+          // guarda só os de hoje (a lista não cresce)
+          const deHoje = Object.fromEntries(Object.entries(registros).filter(([, d]) => d === hoje));
+          try { localStorage.setItem(CHAVE, JSON.stringify({ ...deHoje, [chave]: hoje })); } catch { /* sem armazenamento */ }
+        } catch { /* o registro é um extra: o download continua */ }
+      }
       if (!ehTokenDoLink(token) || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
       try {
         const s = await getDocs(collection(abrir(), 'areasCliente', token, 'guias', id, 'pdf'));
         const pedacos: PedacoDoPdf[] = s.docs.map(d => d.data()).filter(x => typeof x.base64 === 'string' && typeof x.n === 'number' && typeof x.total === 'number')
           .map(x => ({ base64: x.base64 as string, n: x.n as number, total: x.total as number }));
         const arquivo = juntarPedacosDoPdf(pedacos);
+        if (arquivo) void registrarLeitura(token, id);
         return arquivo ? { nome: nomeDoPdfDaGuia(ultimo.get(token)?.guias.find(g => g.id === id) ?? null), arquivo } : null;
       } catch {
         return null;
@@ -220,11 +286,37 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     },
 
     // sem fonte no banco por enquanto (as seções estão escondidas): nada a baixar
-    async baixarDocumento() { return null; },
+    // o acervo do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio; frase do dono: "Pasta fixa"): os pedaços, como o documento do DP; baixou, sai o "Novo"
+    async baixarDocumento(token, id) {
+      if (!ehTokenDoLink(token) || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
+      try {
+        const s = await getDocs(query(collection(abrir(), 'areasCliente', token, 'documentos'), where('de', '==', id)));
+        const pedacos: PedacoDoPdf[] = s.docs.map(d => d.data()).filter(x => typeof x.base64 === 'string' && typeof x.n === 'number' && typeof x.total === 'number')
+          .map(x => ({ base64: x.base64 as string, n: x.n as number, total: x.total as number }));
+        const nome = ultimo.get(token)?.documentos?.find(d => d.id === id)?.nome || 'documento';
+        const arquivo = juntarPedacosDoPdf(pedacos, mimeDoArquivo(nome));
+        if (arquivo) marcarBaixado(token, id);
+        return arquivo ? { nome, arquivo } : null;
+      } catch {
+        return null;
+      }
+    },
     async baixarComprovante() { return null; },
 
     // a DANFE (12/11/2026): se já está no espelho (documentos/danfe-<chave>), baixa; senão pede pela caixa dos chamados
     // (o pedido marcado que o robô reconhece) e espera o documento chegar, até 3 min
+    // a avaliação da solicitação concluída (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir"): o pedido marcado, pelo addDoc travado
+    async avaliarChamado(token, chamadoId, nota, comentario) {
+      const pedido = ac.pedidoDeAvaliacao(chamadoId, nota, comentario);
+      if (!ehTokenDoLink(token) || !pedido) throw new Error('Esta avaliação não pode ser enviada.');
+      await addDoc(collection(abrir(), 'areaClienteChamados'), { token, ...pedido, criadoEm: serverTimestamp() });
+    },
+    // "Confirmar que recebi" (plano do Acessórias, 18/11/2026, ficha confirmar-entrega): o pedido marcado, pelo addDoc travado (modo desenvolvedor recusa)
+    async confirmarRecebido(token, entregaId) {
+      const pedido = ac.pedidoDeRecebido(entregaId);
+      if (!ehTokenDoLink(token) || !pedido) throw new Error('Esta entrega não pode ser confirmada.');
+      await addDoc(collection(abrir(), 'areaClienteChamados'), { token, ...pedido, criadoEm: serverTimestamp() });
+    },
     async pedirDanfe(token, chave) {
       const pedido = ac.pedidoDeDanfe(chave);
       if (!ehTokenDoLink(token) || !pedido) return { erro: 'Esta nota não tem DANFE.' };
@@ -311,5 +403,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     notasDoMes: (token, codigo, mes) => de(token).notasDoMes(tk(token), codigo, mes),
     extratoDoMes: (token, codigo, mes) => de(token).extratoDoMes(tk(token), codigo, mes),
     pedirDanfe: (token, chave) => de(token).pedirDanfe(tk(token), chave),
+    confirmarRecebido: (token, id) => de(token).confirmarRecebido(tk(token), id),
+    avaliarChamado: (token, id, nota, comentario) => de(token).avaliarChamado(tk(token), id, nota, comentario),
   };
 }

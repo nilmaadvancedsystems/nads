@@ -32,7 +32,7 @@ describe('a biblioteca da Central de documentos', () => {
   });
 
   it('as pastas contam; o filtro por pasta, mês e busca (sem acento)', () => {
-    expect(contagemDasPastas(itens)).toEqual({ tudo: 5, guias: 1, dp: 2, notas: 1, escritorio: 0, enviados: 1 });
+    expect(contagemDasPastas(itens)).toEqual({ tudo: 5, guias: 1, dp: 2, notas: 1, escritorio: 0, certidoes: 0, enviados: 1 });
     expect(filtrarBiblioteca(itens, { pasta: 'dp', mes: '', busca: '' }).length).toBe(2);
     expect(filtrarBiblioteca(itens, { pasta: '', mes: '2026-10', busca: '' }).length).toBe(3);
     expect(filtrarBiblioteca(itens, { pasta: '', mes: '', busca: 'FOLHA' }).map(i => i.nome)).toEqual(['Folha de pagamento 10-2026', 'Ponto setembro']);

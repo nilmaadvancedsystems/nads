@@ -13,3 +13,15 @@
   .cli-app .cli-sc .cli-sc-filtros{padding:8px 4px 0;}
   .cli-app .cli-sc .cli-sc-filtros .cli-sc-filtro{padding:8px 6px 11px;gap:5px;}
 }
+
+/* a avaliação da concluída (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento) */
+.cli-sol-avaliar { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--borda, rgba(127,127,127,.25)); border-radius: 12px; display: grid; gap: 10px; }
+.cli-sol-avaliar-titulo { margin: 0; display: flex; gap: 8px; align-items: baseline; }
+.cli-sol-estrelas { display: flex; gap: 4px; }
+.cli-sol-estrelas button { background: none; border: 0; padding: 2px; font-size: 28px; line-height: 1; cursor: pointer; color: var(--texto-fraco, #9a9a9a); opacity: .45; }
+.cli-sol-estrelas button.on { color: #e5a400; opacity: 1; }
+.cli-sol-estrelas button:focus-visible { outline: 2px solid currentColor; border-radius: 6px; }
+.cli-sol-avaliar textarea { width: 100%; resize: vertical; }
+.cli-sol-avaliar-feito { margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cli-sol-estrelas-fixas { color: #e5a400; letter-spacing: 2px; }
+.cli-sol-estrelas-fixas .apagada { opacity: .3; }

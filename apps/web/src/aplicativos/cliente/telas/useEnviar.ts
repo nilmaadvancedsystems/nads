@@ -9,9 +9,13 @@ import type { DaCasca } from './useAreaCliente';
 /** o mesmo arquivo com o tipo certo pela extensão */
 export const comMime = (a: File) => new File([a], a.name, { type: ac.mimeDoEnvio(a.name), lastModified: a.lastModified });
 
-export function useEnviar({ token, area }: DaCasca) {
+/** O que a janela já traz marcado: o "Já paguei" da guia abre com o tipo Comprovante e o prefixo do nome (plano do Acessórias, 17/11/2026, ficha comprovante-da-guia, parte A). */
+export interface InicialDoEnvio { tipo?: ac.TipoDeEnvio; prefixo?: string }
+
+export function useEnviar({ token, area }: DaCasca, inicial?: InicialDoEnvio) {
   const { toast } = useRetorno();
-  const [tipo, setTipo] = useState<ac.TipoDeEnvio>('extrato');
+  // o envio do topo continua começando em "extrato"
+  const [tipo, setTipo] = useState<ac.TipoDeEnvio>(inicial?.tipo ?? 'extrato');
   const [enviando, setEnviando] = useState(false);
   const [erros, setErros] = useState<string[]>([]);
   // o que foi enviado nesta janela (a lista do escritório chega pelo espelho)
@@ -25,7 +29,9 @@ export function useEnviar({ token, area }: DaCasca) {
     setEnviando(true);
     try {
       // o tipo vem da extensão: o navegador às vezes manda vazio ou octet-stream e a regra do banco recusa
-      await repoAreaCliente.enviar(token, tipo, bons.map(comMime));
+      // com o prefixo da guia, cada arquivo vai com o nome "Comprovante FGTS 10-2026 - <nome>" (até 200 caracteres)
+      const comNome = inicial?.prefixo ? bons.map(a => new File([a], ac.nomeComPrefixo(inicial.prefixo as string, a.name), { type: a.type, lastModified: a.lastModified })) : bons;
+      await repoAreaCliente.enviar(token, tipo, comNome.map(comMime));
       setEnviados(e => [...e, ...bons.map(b => b.name)]);
       toast(bons.length === 1 ? 'Recebemos o arquivo.' : 'Recebemos os ' + bons.length + ' arquivos.');
     } catch (e) {

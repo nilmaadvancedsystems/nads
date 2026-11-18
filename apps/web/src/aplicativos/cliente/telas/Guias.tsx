@@ -75,11 +75,22 @@ export function Guias(props: DaCasca) {
               <ul className="cli-gu-itens">
                 {vm.guias.map(x => (
                   <LinhaGuiaDoMes key={x.guia.id} guia={x.guia} codigo={x.codigo} quando={x.quando} destaque={x.destaque} escolhida={x.escolhida} dia={x.dia}
-                    ocupado={vm.baixando === x.guia.id || vm.vista.abrindo === x.guia.id} onVer={vm.verGuia} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova} />
+                    ocupado={vm.baixando === x.guia.id || vm.vista.abrindo === x.guia.id} onVer={vm.verGuia} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova}
+                    onComprovante={vm.mandarComprovante} comprovanteEm={vm.comprovanteEm(x.guia)} />
                 ))}
               </ul>
             ) : <p className="cli-gu-vazio"><Icone nome="checkCircle" width={18} height={18} />{vm.vazio}</p>}
           </section>
+          {/* os parcelamentos ativos, discretos (ficha parcelamentos, 18/11/2026): só aparece se houver */}
+          {vm.parcelamentos.length > 0 && (
+            <section className="card cli-gu-parcelamentos" aria-label="Parcelamentos">
+              <ul>
+                {vm.parcelamentos.map(p => (
+                  <li key={p.id}><Icone nome="calendar" width={16} height={16} /><span><b>{p.nome}</b><span className="hint">{p.texto}</span></span></li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         {temLado && (

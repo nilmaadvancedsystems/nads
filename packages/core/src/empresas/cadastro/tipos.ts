@@ -80,6 +80,9 @@ export interface RegistroCadastro {
 /** Um sócio da empresa: o nome e o CPF (só os dígitos). */
 export interface Socio { nome: string; cpf: string }
 
+/** A escolha do lembrete de vencimento de uma empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"). */
+export interface LembreteDaEmpresa { modo: 'sim' | 'nao'; /** 0 a 10; sem = os dias do escritório */ diasAntes?: number }
+
 /**
  * Um arquivo do Fiscal da empresa no Drive (Heverton, 20/10/2026: "Cadastro = Fiscal (inserir)": a planilha da DEFIS, a
  * da projeção do Fator R, a de rateio e os documentos da empresa): o nome, o link e quando foi posto ou trocado (e por
@@ -151,6 +154,12 @@ export interface CadastroDaEmpresa {
    * Alterdata. Sem = ainda não informado.
    */
   emiteNotaHonorario?: boolean;
+  /**
+   * O lembrete de vencimento ao cliente desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'sim' manda mesmo com o
+   * lembrete geral desligado, 'nao' nunca manda; diasAntes troca os dias do escritório. Sem = como o escritório
+   * (Robôs › Ajustes).
+   */
+  lembreteVencimento?: LembreteDaEmpresa;
   /**
    * O pagamento do pró-labore (Vitor, 14/10/2026: "deixa ele salvo na empresa"): a conta do crédito (o código digitado) e
    * o dia útil do mês seguinte (1 a 5). Sem = ainda não informado (o dia útil fica o 5º).

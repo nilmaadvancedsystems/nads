@@ -16,11 +16,11 @@ describe('o token do link', () => {
 
 describe('a Área do Cliente de exemplo (memória)', () => {
   const repo = () => criarAreaClienteMemoria(() => 'Vitor');
-  it('começa com links válidos, 2 chamados com conversa e 3 recebidos', () => {
+  it('começa com links válidos, 3 chamados com conversa e 3 recebidos', () => {
     const r = repo();
     expect(r.links().lista.length).toBeGreaterThanOrEqual(3);
     expect(r.links().lista.every(l => tokenValido(l.token))).toBe(true);
-    expect(r.chamados().lista).toHaveLength(2);
+    expect(r.chamados().lista).toHaveLength(3); // a 3ª é a concluída e avaliada (ficha avaliacao-do-atendimento)
     expect(r.chamados().lista.every(c => c.mensagens.length >= 2)).toBe(true);
     expect(r.recebidos().lista).toHaveLength(3);
   });

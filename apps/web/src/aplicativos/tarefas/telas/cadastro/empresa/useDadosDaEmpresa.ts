@@ -136,6 +136,14 @@ export function useDadosDaEmpresa(rota: string) {
       const novo = empresas.cadastro.definirNotaDeHonorario(c.cadastro, atual === sim ? null : sim, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
+    /** o lembrete de vencimento desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'padrao' = como o escritório */
+    lembrete: { modo: (c.cadastro.lembreteVencimento?.modo ?? 'padrao') as 'padrao' | 'sim' | 'nao', diasAntes: c.cadastro.lembreteVencimento?.diasAntes ?? null },
+    definirLembrete(modo: 'padrao' | 'sim' | 'nao', diasAntes: number | null = null) {
+      if (c.carregando) return;
+      const escolha = modo === 'padrao' ? null : { modo, ...(modo === 'sim' && diasAntes != null ? { diasAntes } : {}) };
+      const novo = empresas.cadastro.definirLembreteDeVencimento(c.cadastro, escolha, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     /** o e-mail e o WhatsApp da empresa (Vitor, 07/10/2026): para onde o Mandei manda as perguntas de Clientes e Fornecedores */
     email: c.cadastro.contato?.email || '',
     whatsapp: c.cadastro.contato?.whatsapp || '',

@@ -6,11 +6,15 @@
 //   logosDasEmpresas/{codigo}       { logo, atualizadoEm, por } (12/11/2026): o admin e os diretores gravam; o robô leva a
 //                                   logo para o espelho do link (resumo/marca). PRECISA da regra nova no banco (Vitor):
 //                                   docs/area-do-cliente/contrato.md, "A logo da empresa".
+//   areaClienteLeituras/{token}_{guia} { token, guiaId, codigos, tipo, competencia, primeiraEm, ultimaEm, vezes } (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura):
+//                                   quando o cliente abriu cada guia; só o robô grava, a equipe lê. PRECISA da regra nova
+//                                   (Vitor): docs/acessorias/regra-leitura-das-guias.md.
 // O cliente nunca lê estas coleções: só o espelho por token, que o robô grava.
 import { arrayUnion, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, type Query } from 'firebase/firestore';
+import { areaCliente as ac } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
-import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LinkDaEmpresa, type ListaAoVivo, type LogoDaEmpresa, type MensagemNaEquipe, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
+import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LeituraDaGuia, type LinkDaEmpresa, type ListaAoVivo, type LogoDaEmpresa, type MensagemNaEquipe, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
 
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
@@ -66,22 +70,38 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     return Number.isFinite(codigo) && token ? { codigo, token, atualizadoEm: instante(x.atualizadoEm) } : null;
   });
 
+  // a nota que o cliente deu (o robô grava) (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir"); a torta fica de fora
+  const avaliacaoDe = (a: unknown): ChamadoNaEquipe['avaliacao'] => {
+    const o = a && typeof a === 'object' ? (a as Record<string, unknown>) : null;
+    const nota = Number(o?.nota);
+    return o && Number.isInteger(nota) && nota >= 1 && nota <= 5 ? { nota, comentario: texto(o.comentario).slice(0, 500), em: instante(o.em) } : null;
+  };
   const chamados = aoVivo<ChamadoNaEquipe>(() => query(collection(db, 'chamados'), orderBy('atualizadoEm', 'desc'), limit(400)), (id, x) => ({
     id, token: texto(x.token), codigos: codigos(x.codigos), empresa: texto(x.empresa),
     tipo: dentro(TIPOS_DE_CHAMADO, x.tipo, 'outro'), titulo: texto(x.titulo), situacao: dentro(SITUACOES_DO_CHAMADO, x.situacao, 'aberto'),
     mensagens: (Array.isArray(x.mensagens) ? x.mensagens : []).map(mensagem).filter((m): m is MensagemNaEquipe => m != null),
     criadoEm: instante(x.criadoEm), atualizadoEm: instante(x.atualizadoEm),
+    avaliacao: avaliacaoDe(x.avaliacao),
   }), maisRecente);
 
+  // o comprovante mandado pela guia: a guia sai do nome (vale também para os que chegaram antes do robô novo) (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir")
+  const guiaDoRecebido = (tipo: string, nome: string) => { const g = tipo === 'comprovante' ? ac.guiaDoComprovante(nome) : null; return g ? ac.rotuloDoComprovante(g) : ''; };
   const recebidos = aoVivo<RecebidoDoCliente>(() => query(collection(db, 'areaClienteRecebidos'), orderBy('recebidoEm', 'desc'), limit(400)), (id, x) => ({
     id, token: texto(x.token), codigo: numero(x.codigo), empresa: texto(x.empresa), nome: texto(x.nome),
     tipo: dentro(TIPOS_DE_ENVIO, x.tipo, 'outro'), tamanho: numero(x.tamanho), pastaDrive: texto(x.pastaDrive), recebidoEm: instante(x.recebidoEm),
+    guia: guiaDoRecebido(texto(x.tipo), texto(x.nome)),
   }));
 
   const logos = aoVivo<LogoDaEmpresa>(() => collection(db, 'logosDasEmpresas'), (id, x) => {
     const codigo = Number(id);
     const logo = texto(x.logo);
     return Number.isFinite(codigo) && logo.startsWith('data:image/') ? { codigo, logo, atualizadoEm: instante(x.atualizadoEm) } : null;
+  });
+
+  // as guias abertas dos últimos 4 meses (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura)
+  const leituras = aoVivo<LeituraDaGuia>(() => query(collection(db, 'areaClienteLeituras'), orderBy('ultimaEm', 'desc'), limit(400)), (_id, x) => {
+    const token = texto(x.token), guiaId = texto(x.guiaId);
+    return token && guiaId ? { token, guiaId, tipo: texto(x.tipo), competencia: texto(x.competencia), primeiraEm: instante(x.primeiraEm), ultimaEm: instante(x.ultimaEm), vezes: numero(x.vezes) } : null;
   });
 
   /** Grava o token novo para as empresas do link: primeiro o link, depois os ponteiros (o ponteiro nunca aponta para nada). */
@@ -94,7 +114,7 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
 
   return {
     exemplos: false,
-    links, chamados, recebidos, logos,
+    links, chamados, recebidos, logos, leituras,
     async gravarLogo(codigo, logo) {
       await setDoc(doc(db, 'logosDasEmpresas', String(codigo)), { logo, atualizadoEm: new Date().toISOString(), por: quem() || 'Escritório' });
     },

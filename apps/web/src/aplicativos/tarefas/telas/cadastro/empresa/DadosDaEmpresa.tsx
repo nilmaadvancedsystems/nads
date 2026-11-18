@@ -150,6 +150,19 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
           </div>
         ))}
       </ConfigSecao>
+      <ConfigSecao titulo="Área do Cliente">
+        {/* o lembrete de vencimento por cliente (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente") */}
+        <ConfigLinha titulo="Lembrete de vencimento" descricao="E-mail ao cliente das guias que vencem logo e que ele ainda não abriu na Área do Cliente.">
+          <MenuSuspenso className="btn btn-outline" titulo="Lembrete de vencimento"
+            rotulo={vm.lembrete.modo === 'sim' ? 'Mandar' + (vm.lembrete.diasAntes != null ? ' · ' + (vm.lembrete.diasAntes === 0 ? 'só no dia' : vm.lembrete.diasAntes + ' dia(s) antes') : '') : vm.lembrete.modo === 'nao' ? 'Não mandar' : 'Como o escritório'}
+            itens={[
+              { rotulo: 'Como o escritório (Robôs › Ajustes)', marcado: vm.lembrete.modo === 'padrao', onClick: () => vm.definirLembrete('padrao') },
+              { rotulo: 'Mandar, nos dias do escritório', marcado: vm.lembrete.modo === 'sim' && vm.lembrete.diasAntes == null, onClick: () => vm.definirLembrete('sim') },
+              ...[0, 1, 2, 3, 5].map(n => ({ rotulo: 'Mandar, ' + (n === 0 ? 'só no dia do vencimento' : 'de ' + n + ' dia(s) antes até o dia'), marcado: vm.lembrete.modo === 'sim' && vm.lembrete.diasAntes === n, onClick: () => vm.definirLembrete('sim', n) })),
+              { rotulo: 'Não mandar', marcado: vm.lembrete.modo === 'nao', onClick: () => vm.definirLembrete('nao') },
+            ]} />
+        </ConfigLinha>
+      </ConfigSecao>
     </>
   );
 }

@@ -3,11 +3,29 @@
 // Guia pronta aparece sozinha; a que tem aviso (filial na guia da matriz, débito antigo, emitida depois do vencimento…)
 // espera o "Liberar" no escritório.
 
-export type TipoDeGuia = 'FGTS' | 'DAS' | 'DAE' | 'outra';
+// a DARF e o DAM do ISS (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)"): as guias do lote do Fiscal e a DARF do lote do DP
+export type TipoDeGuia = 'FGTS' | 'DAS' | 'DAE' | 'DARF' | 'DAM' | 'outra';
 export type SituacaoDaGuia = 'a vencer' | 'vence hoje' | 'vencida';
 
 /** O nome da guia para o cliente, sem sigla solta. */
-export const ROTULO_DA_GUIA: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS (Simples Nacional)', DAE: 'DAE (imposto estadual)', outra: 'Guia' };
+export const ROTULO_DA_GUIA: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS (Simples Nacional)', DAE: 'DAE (imposto estadual)', DARF: 'DARF', DAM: 'DAM (ISS)', outra: 'Guia' };
+
+/** O nome da guia para o cliente: a DARF com o tributo ("DARF INSS"); as outras, o ROTULO_DA_GUIA. */
+export function rotuloDaGuia(g: Pick<GuiaDoCliente, 'tipo' | 'tributo'>): string {
+  return g.tipo === 'DARF' && g.tributo ? 'DARF ' + g.tributo : ROTULO_DA_GUIA[g.tipo];
+}
+
+/** O tributo no id: "INSS" -> "inss", "PIS/COFINS" -> "pis-cofins". */
+const tributoNoId = (t: string | undefined) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/**
+ * O id da guia no espelho: "das-2026-10-58", "darf-inss-2026-10-58". Sem tributo, igual ao do envio pelo nads
+ * (robo/envios-do-nads.js, idDaGuiaDoCliente): o DAS do lote e o do envio caem no mesmo id. O tributo no id deixa duas
+ * DARFs do mesmo mês (INSS e IRRF) uma ao lado da outra, sem uma apagar a outra.
+ */
+export function idDaGuiaNoEspelho(g: { tipo: string; tributo?: string; competencia: string; codigo: number | string }): string {
+  return [g.tipo.toLowerCase(), tributoNoId(g.tributo)].filter(Boolean).join('-') + '-' + g.competencia + '-' + g.codigo;
+}
 export const ROTULO_DA_SITUACAO_DA_GUIA: Record<SituacaoDaGuia, string> = { 'a vencer': 'A vencer', 'vence hoje': 'Vence hoje', vencida: 'Vencida' };
 
 export interface GuiaDoCliente {
@@ -21,10 +39,14 @@ export interface GuiaDoCliente {
   valor: number;
   /** o número da guia (quando tem) */
   numero?: string;
+  /** o tributo da DARF ('INSS', 'IRRF', 'PIS'…); sem = a guia tem um tributo só (DAS, FGTS, DAE, DAM) */
+  tributo?: string;
   /** calculada pela data de hoje; quem mostra recalcula com situacaoDaGuia */
   situacao: SituacaoDaGuia;
   /** o PDF está no espelho (guias/{id}/pdf/{n}) */
   temPdf: boolean;
+  /** 'dd/mm/aaaa': a saída do extrato que pagou a guia (o robô grava; sem = a pagar) (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir") */
+  pagoEm?: string;
 }
 
 /**

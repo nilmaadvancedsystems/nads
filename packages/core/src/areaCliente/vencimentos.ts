@@ -6,8 +6,18 @@
 // A chave é o id REAL da etapa em tarefas/rotinas/{fiscal,dp}.ts; o id que sai para o cliente é o `id` da linha (o da etapa
 // é interno e não sai).
 //
-// FERIADOS NÃO ENTRAM: o dia útil aqui é só segunda a sexta. Um feriado nacional/estadual/municipal em cima do vencimento
-// não desloca nada nesta tabela; quem manda no prazo de verdade é o escritório (a agenda é um lembrete, não a lei).
+// OS FERIADOS ENTRAM desde 17/11/2026 (plano do Acessórias, ficha E01; frase do dono: "Fazer site e robô"): o dia útil vem
+// do calendário único (tarefas/regras/diasUteis.ts), na esfera de cada linha. Tributo federal (DAS, DARF, PIS/COFINS,
+// IRPJ/CSLL, eSocial, DCTFWeb, FGTS) pula só os feriados nacionais; o ICMS, os de MG (lista a confirmar); o ISS, também os
+// de Taiobeiras. Antes era só segunda a sexta. Quem manda no prazo de verdade continua sendo o escritório (a agenda é um
+// lembrete, não a lei). O robô usa esta mesma conta pelo robo/gerado/danfse.js (robo/area-cliente-regras.js).
+//
+// O DIA, O AJUSTE E A ESFERA vêm da tabela única de prazos desde 17/11/2026 (ficha E02; frase do dono: "Seguir para a
+// E02"): tarefas/regras/prazos.ts, pela etapa. Aqui fica só o que é do cliente: quais etapas ele vê, o id e o nome.
+// A única exceção é a DCTFWeb: o cliente vê o dia 15 (o dono, 17/11/2026: "Voltar para o 15"), enquanto o DP conta o 20,
+// o do DARF dela (prazos.ts). A linha do cliente leva o `dia` próprio; o ajuste e a esfera continuam vindo da tabela.
+import { ajustar, dataDe, type Esfera, isoDe, ultimoDiaUtil } from '../tarefas/regras/diasUteis';
+import { PRAZOS, prazoLegal } from '../tarefas/regras/prazos';
 
 /** O que fazer quando o dia do vencimento cai em sábado ou domingo. */
 export type AjusteDeFimDeSemana = 'antecipa' | 'posterga';
@@ -24,33 +34,43 @@ export interface Vencimento {
   /** quantos meses depois do mês da competência (1 = o mês seguinte) */
   mesesDepois: number;
   ajuste: AjusteDeFimDeSemana;
+  /** de quem é o tributo: decide quais feriados pulam o dia (federal só os nacionais; municipal também os de Taiobeiras) */
+  esfera: Esfera;
   /** o que o escritório precisa conferir nesta linha */
   conferir?: string;
 }
 
-export const VENCIMENTOS: Vencimento[] = [
+/** O que o cliente vê de cada etapa (o dia, o ajuste e a esfera vêm de PRAZOS). */
+const DO_CLIENTE: readonly (Pick<Vencimento, 'id' | 'etapa' | 'nome' | 'conferir'> & { dia?: number })[] = [
   // ─── Fiscal ───────────────────────────────────────────────────────────────
-  // DAS do Simples: dia 20 do mês seguinte; antecipa (regra pedida pelo Vitor; a lei do Simples prorroga para o dia útil seguinte — PRECISA CONFERIR)
-  { id: 'das', etapa: 'fiscal-simples', nome: 'DAS do Simples Nacional', dia: 20, mesesDepois: 1, ajuste: 'antecipa', conferir: 'DAS: o escritório antecipa; a regra oficial prorroga para o dia útil seguinte' },
-  { id: 'das-mei', etapa: 'fiscal-mei', nome: 'DAS do MEI', dia: 20, mesesDepois: 1, ajuste: 'antecipa', conferir: 'PRECISA CONFERIR: o DAS-MEI não estava na lista do Vitor; mesma regra do DAS' },
-  // ICMS de MG: dia 9 (PRECISA CONFERIR: o prazo depende da atividade/CNAE e do regime; MG também tem prazos em outros dias)
-  { id: 'icms', etapa: 'fiscal-icms', nome: 'ICMS (imposto estadual)', dia: 9, mesesDepois: 1, ajuste: 'posterga', conferir: 'PRECISA CONFERIR: dia 9 e o que fazer no fim de semana (aqui: posterga)' },
-  // ISS: dia 10 (PRECISA CONFERIR: varia por município)
-  { id: 'iss', etapa: 'fiscal-iss', nome: 'ISS (imposto da prefeitura)', dia: 10, mesesDepois: 1, ajuste: 'posterga', conferir: 'PRECISA CONFERIR: dia 10 e o fim de semana variam por município' },
-  // PIS/COFINS: dia 25 do mês seguinte (federal: antecipa)
-  { id: 'pis-cofins', etapa: 'fiscal-piscofins', nome: 'PIS e COFINS', dia: 25, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'pis-cofins', etapa: 'fiscal-piscofins-real', nome: 'PIS e COFINS', dia: 25, mesesDepois: 1, ajuste: 'antecipa' },
-  // IRPJ/CSLL: o último dia útil do mês seguinte ao trimestre (a etapa só entra em mar/jun/set/dez, ver Etapa.meses)
-  { id: 'irpj-csll', etapa: 'fiscal-irpj-csll', nome: 'IRPJ e CSLL do trimestre', dia: 'ultimo-util', mesesDepois: 1, ajuste: 'antecipa' },
-  // Real: a estimativa mensal, o último dia útil do mês seguinte
-  { id: 'irpj-csll-estimativa', etapa: 'fiscal-irpj-csll-real', nome: 'IRPJ e CSLL (estimativa do mês)', dia: 'ultimo-util', mesesDepois: 1, ajuste: 'antecipa' },
+  // o DAS posterga para o dia útil seguinte (o dono, 17/11/2026: "Posterga (regra oficial)")
+  { id: 'das', etapa: 'fiscal-simples', nome: 'DAS do Simples Nacional' },
+  { id: 'das-mei', etapa: 'fiscal-mei', nome: 'DAS do MEI', conferir: 'PRECISA CONFERIR: o DAS-MEI não estava na lista do Vitor; mesma regra do DAS' },
+  { id: 'icms', etapa: 'fiscal-icms', nome: 'ICMS (imposto estadual)', conferir: 'PRECISA CONFERIR: dia 9 e o que fazer no fim de semana (aqui: posterga)' },
+  { id: 'iss', etapa: 'fiscal-iss', nome: 'ISS (imposto da prefeitura)', conferir: 'PRECISA CONFERIR: dia 10 e o fim de semana variam por município' },
+  { id: 'pis-cofins', etapa: 'fiscal-piscofins', nome: 'PIS e COFINS' },
+  { id: 'pis-cofins', etapa: 'fiscal-piscofins-real', nome: 'PIS e COFINS' },
+  // IRPJ/CSLL: a etapa só entra em mar/jun/set/dez (ver Etapa.meses)
+  { id: 'irpj-csll', etapa: 'fiscal-irpj-csll', nome: 'IRPJ e CSLL do trimestre' },
+  { id: 'irpj-csll-estimativa', etapa: 'fiscal-irpj-csll-real', nome: 'IRPJ e CSLL (estimativa do mês)' },
   // ─── Departamento Pessoal ─────────────────────────────────────────────────
-  { id: 'esocial', etapa: 'dp-s1299', nome: 'Fechamento da folha no eSocial', dia: 15, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'dctfweb', etapa: 'dp-dctfweb', nome: 'DCTFWeb (declaração da folha)', dia: 15, mesesDepois: 1, ajuste: 'antecipa' },
-  // DARF previdenciário (INSS da folha): dia 20
-  { id: 'darf-inss', etapa: 'dp-darf', nome: 'DARF do INSS da folha', dia: 20, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'fgts', etapa: 'dp-fgts', nome: 'FGTS', dia: 20, mesesDepois: 1, ajuste: 'antecipa' },
+  { id: 'esocial', etapa: 'dp-s1299', nome: 'Fechamento da folha no eSocial' },
+  // o dia 15 só para o cliente (o dono, 17/11/2026: "Voltar para o 15"); o DP conta o 20
+  { id: 'dctfweb', etapa: 'dp-dctfweb', nome: 'DCTFWeb (declaração da folha)', dia: 15 },
+  { id: 'darf-inss', etapa: 'dp-darf', nome: 'DARF do INSS da folha' },
+  { id: 'fgts', etapa: 'dp-fgts', nome: 'FGTS' },
 ];
+
+/** A linha do cliente com o dia, o ajuste e a esfera da tabela única (os campos na mesma ordem de sempre: o robô compara). */
+function comOPrazo(c: (typeof DO_CLIENTE)[number]): Vencimento {
+  const p = PRAZOS.find(x => x.etapa === c.etapa);
+  if (!p || p.dia === 'quinto-dia-util' || p.ajuste === 'mantem') throw new Error('vencimentos: a etapa ' + c.etapa + ' não tem prazo que sirva à agenda em tarefas/regras/prazos.ts');
+  const v: Vencimento = { id: c.id, etapa: c.etapa, nome: c.nome, dia: c.dia ?? p.dia, mesesDepois: p.mesesDepois, ajuste: p.ajuste, esfera: p.esfera };
+  if (c.conferir) v.conferir = c.conferir;
+  return v;
+}
+
+export const VENCIMENTOS: Vencimento[] = DO_CLIENTE.map(comOPrazo);
 
 const POR_ETAPA = new Map(VENCIMENTOS.map(v => [v.etapa, v]));
 
@@ -59,44 +79,27 @@ export function vencimentoDaEtapa(etapa: string): Vencimento | null {
   return POR_ETAPA.get(etapa) ?? null;
 }
 
-const dois = (n: number) => String(n).padStart(2, '0');
-const fimDeSemana = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
-
 /** 'aaaa-mm-dd' de uma data (hora local). */
-export function isoDaData(d: Date): string {
-  return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
+export const isoDaData = (d: Date): string => isoDe(d);
+
+/** O dia útil anterior (ou o próprio dia, se já for útil), na esfera (federal: sem os feriados nacionais). */
+export function diaUtilAnterior(d: Date, esfera: Esfera = 'federal'): Date {
+  return dataDe(ajustar(isoDe(d), 'antecipa', esfera));
 }
 
-/** O dia útil anterior (ou o próprio dia, se já for útil): só tira sábado e domingo, sem feriados. */
-export function diaUtilAnterior(d: Date): Date {
-  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  while (fimDeSemana(r)) r.setDate(r.getDate() - 1);
-  return r;
+/** O próximo dia útil (ou o próprio dia, se já for útil), na esfera (federal: sem os feriados nacionais). */
+export function proximoDiaUtil(d: Date, esfera: Esfera = 'federal'): Date {
+  return dataDe(ajustar(isoDe(d), 'posterga', esfera));
 }
 
-/** O próximo dia útil (ou o próprio dia, se já for útil): só tira sábado e domingo, sem feriados. */
-export function proximoDiaUtil(d: Date): Date {
-  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  while (fimDeSemana(r)) r.setDate(r.getDate() + 1);
-  return r;
-}
-
-/** O último dia útil de um mês (mes 1–12): o último dia do mês, recuando se cair no fim de semana. */
-export function ultimoDiaUtilDoMes(ano: number, mes: number): Date {
-  return diaUtilAnterior(new Date(ano, mes, 0));
+/** O último dia útil de um mês (mes 1–12), na esfera. */
+export function ultimoDiaUtilDoMes(ano: number, mes: number, esfera: Esfera = 'federal'): Date {
+  return dataDe(ultimoDiaUtil(ano, mes - 1, esfera));
 }
 
 /** O vencimento de uma linha da tabela para uma competência 'aaaa-mm', em 'aaaa-mm-dd'; null se a competência for inválida. */
 export function vencimentoNaCompetencia(v: Vencimento, competencia: string): string | null {
-  const m = /^(\d{4})-(\d{2})$/.exec(competencia);
-  if (!m) return null;
-  const mes0 = Number(m[2]) - 1 + v.mesesDepois;
-  const ano = Number(m[1]) + Math.floor(mes0 / 12);
-  const mes = (mes0 % 12) + 1;
-  if (Number(m[2]) < 1 || Number(m[2]) > 12) return null;
-  if (v.dia === 'ultimo-util') return isoDaData(ultimoDiaUtilDoMes(ano, mes));
-  const data = new Date(ano, mes - 1, v.dia);
-  return isoDaData(v.ajuste === 'antecipa' ? diaUtilAnterior(data) : proximoDiaUtil(data));
+  return prazoLegal(v, competencia);
 }
 
 /** O vencimento (aaaa-mm-dd) da etapa na competência; null = a etapa não está na tabela do cliente. */

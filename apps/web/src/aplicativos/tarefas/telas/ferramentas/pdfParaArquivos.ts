@@ -96,6 +96,19 @@ export async function textoDoPdf(bytes: Uint8Array): Promise<string> {
   return partes.join('\n\n');
 }
 
+/**
+ * O texto de cada página, na ordem (17/11/2026, ficha E16 do plano do Acessórias: separar o PDF com guias de vários
+ * clientes). Página de foto (digitalizada) volta vazia.
+ */
+export async function textoPorPagina(bytes: Uint8Array): Promise<string[]> {
+  const paginas: string[] = [];
+  await cadaPagina(bytes, async pagina => {
+    const tc = await pagina.getTextContent();
+    paginas.push(tc.items.map(i => ('str' in i ? i.str + (i.hasEOL ? '\n' : ' ') : '')).join('').trim());
+  });
+  return paginas;
+}
+
 /** O texto pelo OCR (o PDF digitalizado): o mesmo OCR do extrato, aqui no navegador. */
 export async function textoPorOcr(bytes: Uint8Array, aoAndar?: (feitas: number, total: number) => void): Promise<string> {
   const paginas = await ocrDoArquivo(bytes, 'pdf', aoAndar);

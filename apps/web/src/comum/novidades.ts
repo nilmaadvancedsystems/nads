@@ -44,6 +44,9 @@ export const NOVIDADES = {
    *  fazendo perguntas"): o Perguntar na janela do feedback do admin; quem mandou responde na janela grande e no balão (só aparece
    *  depois que o admin pergunta); aprovada para todos no mesmo dia ("Aprova para todos") */
   'conversa-feedback': { desde: '16/11/2026', aprovada: true },
+  /** a Tela de Insights, só Diretor e admin (18/11/2026: "a Tela de Insights eu quero"; "Todos os seis"): os números do escritório
+   *  em seis painéis e o Modo TV; o robô do PC monta os números (Robôs › Ajustes › Tela de Insights) */
+  insights: { desde: '18/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

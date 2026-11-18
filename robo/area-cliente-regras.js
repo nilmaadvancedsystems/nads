@@ -163,48 +163,33 @@ function reciboDoEnvio(e) {
 // =====================================================================================================================
 
 const VENCIMENTOS = [
-  { id: 'das', etapa: 'fiscal-simples', nome: 'DAS do Simples Nacional', dia: 20, mesesDepois: 1, ajuste: 'antecipa', conferir: 'DAS: o escritório antecipa; a regra oficial prorroga para o dia útil seguinte' },
-  { id: 'das-mei', etapa: 'fiscal-mei', nome: 'DAS do MEI', dia: 20, mesesDepois: 1, ajuste: 'antecipa', conferir: 'PRECISA CONFERIR: o DAS-MEI não estava na lista do Vitor; mesma regra do DAS' },
-  { id: 'icms', etapa: 'fiscal-icms', nome: 'ICMS (imposto estadual)', dia: 9, mesesDepois: 1, ajuste: 'posterga', conferir: 'PRECISA CONFERIR: dia 9 e o que fazer no fim de semana (aqui: posterga)' },
-  { id: 'iss', etapa: 'fiscal-iss', nome: 'ISS (imposto da prefeitura)', dia: 10, mesesDepois: 1, ajuste: 'posterga', conferir: 'PRECISA CONFERIR: dia 10 e o fim de semana variam por município' },
-  { id: 'pis-cofins', etapa: 'fiscal-piscofins', nome: 'PIS e COFINS', dia: 25, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'pis-cofins', etapa: 'fiscal-piscofins-real', nome: 'PIS e COFINS', dia: 25, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'irpj-csll', etapa: 'fiscal-irpj-csll', nome: 'IRPJ e CSLL do trimestre', dia: 'ultimo-util', mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'irpj-csll-estimativa', etapa: 'fiscal-irpj-csll-real', nome: 'IRPJ e CSLL (estimativa do mês)', dia: 'ultimo-util', mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'esocial', etapa: 'dp-s1299', nome: 'Fechamento da folha no eSocial', dia: 15, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'dctfweb', etapa: 'dp-dctfweb', nome: 'DCTFWeb (declaração da folha)', dia: 15, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'darf-inss', etapa: 'dp-darf', nome: 'DARF do INSS da folha', dia: 20, mesesDepois: 1, ajuste: 'antecipa' },
-  { id: 'fgts', etapa: 'dp-fgts', nome: 'FGTS', dia: 20, mesesDepois: 1, ajuste: 'antecipa' },
+  // o DAS posterga para o dia útil seguinte (o dono, 17/11/2026: "Posterga (regra oficial)")
+  { id: 'das', etapa: 'fiscal-simples', nome: 'DAS do Simples Nacional', dia: 20, mesesDepois: 1, ajuste: 'posterga', esfera: 'federal' },
+  { id: 'das-mei', etapa: 'fiscal-mei', nome: 'DAS do MEI', dia: 20, mesesDepois: 1, ajuste: 'posterga', esfera: 'federal', conferir: 'PRECISA CONFERIR: o DAS-MEI não estava na lista do Vitor; mesma regra do DAS' },
+  { id: 'icms', etapa: 'fiscal-icms', nome: 'ICMS (imposto estadual)', dia: 9, mesesDepois: 1, ajuste: 'posterga', esfera: 'estadual', conferir: 'PRECISA CONFERIR: dia 9 e o que fazer no fim de semana (aqui: posterga)' },
+  { id: 'iss', etapa: 'fiscal-iss', nome: 'ISS (imposto da prefeitura)', dia: 10, mesesDepois: 1, ajuste: 'posterga', esfera: 'municipal', conferir: 'PRECISA CONFERIR: dia 10 e o fim de semana variam por município' },
+  { id: 'pis-cofins', etapa: 'fiscal-piscofins', nome: 'PIS e COFINS', dia: 25, mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'pis-cofins', etapa: 'fiscal-piscofins-real', nome: 'PIS e COFINS', dia: 25, mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'irpj-csll', etapa: 'fiscal-irpj-csll', nome: 'IRPJ e CSLL do trimestre', dia: 'ultimo-util', mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'irpj-csll-estimativa', etapa: 'fiscal-irpj-csll-real', nome: 'IRPJ e CSLL (estimativa do mês)', dia: 'ultimo-util', mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'esocial', etapa: 'dp-s1299', nome: 'Fechamento da folha no eSocial', dia: 15, mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'dctfweb', etapa: 'dp-dctfweb', nome: 'DCTFWeb (declaração da folha)', dia: 15, mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'darf-inss', etapa: 'dp-darf', nome: 'DARF do INSS da folha', dia: 20, mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
+  { id: 'fgts', etapa: 'dp-fgts', nome: 'FGTS', dia: 20, mesesDepois: 1, ajuste: 'antecipa', esfera: 'federal' },
 ];
 const POR_ETAPA = new Map(VENCIMENTOS.map(v => [v.etapa, v]));
 
 function vencimentoDaEtapa(etapa) { return POR_ETAPA.get(etapa) ?? null; }
-const fimDeSemana = d => d.getDay() === 0 || d.getDay() === 6;
 function isoDaData(d) { return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate()); }
-function diaUtilAnterior(d) {
-  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  while (fimDeSemana(r)) r.setDate(r.getDate() - 1);
-  return r;
-}
-function proximoDiaUtil(d) {
-  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  while (fimDeSemana(r)) r.setDate(r.getDate() + 1);
-  return r;
-}
-function ultimoDiaUtilDoMes(ano, mes) { return diaUtilAnterior(new Date(ano, mes, 0)); }
+// A conta do dia útil (17/11/2026, plano do Acessórias, ficha E01; frase do dono: "Fazer site e robô"): agora com os
+// feriados, na esfera de cada linha (federal: os nacionais; estadual: + MG; municipal: + Taiobeiras). Ela NÃO é copiada
+// aqui: vem do core pelo robo/gerado/danfse.js (scripts/robo-danfse.mjs), o mesmo pacote que o area-cliente.js já usa,
+// para o site e o robô nunca darem datas diferentes. Carregado só na primeira conta (o pacote é grande).
+let gerado = null;
+const doCore = () => gerado || (gerado = require('./gerado/danfse'));
 
 /** O vencimento de uma linha da tabela para uma competência 'aaaa-mm', em 'aaaa-mm-dd'; null se a competência for inválida. */
-function vencimentoNaCompetencia(v, competencia) {
-  const m = /^(\d{4})-(\d{2})$/.exec(competencia);
-  if (!m) return null;
-  const mes0 = Number(m[2]) - 1 + v.mesesDepois;
-  const ano = Number(m[1]) + Math.floor(mes0 / 12);
-  const mes = (mes0 % 12) + 1;
-  if (Number(m[2]) < 1 || Number(m[2]) > 12) return null;
-  if (v.dia === 'ultimo-util') return isoDaData(ultimoDiaUtilDoMes(ano, mes));
-  const data = new Date(ano, mes - 1, v.dia);
-  return isoDaData(v.ajuste === 'antecipa' ? diaUtilAnterior(data) : proximoDiaUtil(data));
-}
+function vencimentoNaCompetencia(v, competencia) { return doCore().vencimentoNaCompetencia(v, competencia); }
 function vencimentoDaEtapaNoMes(etapa, competencia) {
   const v = vencimentoDaEtapa(etapa);
   return v ? vencimentoNaCompetencia(v, competencia) : null;
@@ -645,7 +630,8 @@ const CAMPOS_DO_ESPELHO = {
   resumo: ['empresas', 'escritorio', 'atualizadoEm'],
   empresa: ['codigo', 'nome', 'cnpj'],
   escritorio: ['telefone', 'email', 'whatsapp'],
-  guia: ['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'situacao', 'temPdf'],
+  // o tributo da DARF (17/11/2026, ficha todas-as-guias: as guias dos lotes do Fiscal e do DP)
+  guia: ['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm'], // pagoEm: (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir")
   pdf: ['base64', 'n', 'total'],
   agenda: ['mes', 'itens', 'atualizadoEm'],
   item: ['id', 'nome', 'vence', 'situacao', 'feitoEm'],
@@ -665,6 +651,19 @@ const CAMPOS_DO_ESPELHO = {
   periodoFerias: ['inicio', 'fim', 'direito', 'gozados', 'aGozar', 'concederAte'],
   documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes'],
   pedacoDp: ['base64', 'n', 'total', 'de'],
+  // o acervo do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio; frase do dono: "Pasta fixa")
+  documentoEscritorio: ['tipo', 'id', 'nome', 'area', 'enviadoEm', 'tamanho', 'partes'],
+  // a ficha cadastral (plano do Acessórias, 18/11/2026, ficha dados-cadastrais; frase do dono: "Sim, comece assim"): o CNPJ da própria empresa e os sócios só pelo nome
+  ficha: ['razaoSocial', 'nomeFantasia', 'cnpj', 'inscricaoEstadual', 'regime', 'cnae', 'abertura', 'endereco', 'socios', 'atualizadoEm'],
+  socioFicha: ['nome'],
+  // as certidões (plano do Acessórias, 18/11/2026, ficha certidoes): só o órgão, a validade e o PDF
+  documentoCertidao: ['tipo', 'id', 'nome', 'orgao', 'validoAte', 'tamanho', 'partes'],
+  // as entregas que esperam a confirmação do cliente (plano do Acessórias, 18/11/2026, ficha confirmar-entrega; frase do dono: "Seguir")
+  // os parcelamentos ativos (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir"): sem obs, número do processo nem o id interno
+  parcelamentos: ['itens', 'atualizadoEm'],
+  itemParcelamento: ['id', 'orgao', 'modalidade', 'parcela', 'parcelas', 'valorParcela', 'vencimento'],
+  entregas: ['itens', 'atualizadoEm'],
+  itemEntrega: ['id', 'titulo', 'competencia'],
   // a DANFE pedida pelo relatório do dia (12/11/2026): documentos/danfe-<chave> (os pedaços como os do DP)
   documentoDanfe: ['tipo', 'id', 'nome', 'chave', 'partes', 'erro', 'atualizadoEm'],
   // o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
@@ -691,9 +690,16 @@ const CAMPOS_DO_ESPELHO = {
   notaRel: ['dia', 'tipo', 'numero', 'serie', 'cliente', 'cfop', 'valor', 'cancelada', 'chave'],
   // a logo da empresa (12/11/2026): resumo/marca
   marca: ['logo', 'atualizadoEm'],
+  // o certificado A1 do cofre (17/11/2026, ficha certificado-digital): só a validade e a razão social, nunca o .pfx
+  certificado: ['tipo', 'titular', 'validoAte', 'atualizadoEm'],
+  // o que falta mandar e os pedidos do Mandei (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): sem quem cobrou nem quando
+  pendencias: ['itens', 'competencia', 'atualizadoEm'],
+  itemPendencia: ['id', 'titulo', 'tipo', 'competencia'],
+  tickets: ['tickets', 'atualizadoEm'],
+  ticketNaArea: ['codigo', 'numero', 'assunto', 'validoAte', 'total', 'faltam', 'refazer'],
   serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
+const DENTRO = { parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {
@@ -729,7 +735,7 @@ module.exports = {
   // core: envios
   TIPOS_DE_ENVIO, EXTENSOES_ACEITAS, MAIOR_ENVIO, LIMITE_DO_ENVIO, MIME_DO_ENVIO, mimeDoEnvio, erroDoEnvio, reciboDoEnvio,
   // core: vencimentos
-  VENCIMENTOS, vencimentoDaEtapa, isoDaData, diaUtilAnterior, proximoDiaUtil, ultimoDiaUtilDoMes, vencimentoNaCompetencia, vencimentoDaEtapaNoMes,
+  VENCIMENTOS, vencimentoDaEtapa, isoDaData, vencimentoNaCompetencia, vencimentoDaEtapaNoMes,
   // core: execução e agenda
   ROTINAS_DA_AGENDA, etapaNoMesDoAno, etapaNoMes, execucaoNova, agendaDaExecucao, competenciaDoMesDeVencimento, agendaDoMes,
   // só do robô

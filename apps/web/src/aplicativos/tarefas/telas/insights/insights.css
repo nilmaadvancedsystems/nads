@@ -1,0 +1,34 @@
+/* A Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights) */
+.ins-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
+.ins-cartao { padding: 14px 16px; display: grid; gap: 12px; align-content: start; }
+.ins-cabeca h3 { margin: 0; }
+.ins-cabeca .hint { display: block; margin-top: 2px; }
+.ins-numeros { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.ins-numero { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.ins-numero b { font-size: 26px; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ins-numero span { font-size: var(--fs-12); color: var(--ink-muted); }
+.ins-numero.t-bom b { color: var(--success); }
+.ins-numero.t-alerta b { color: var(--warn); }
+.ins-numero.t-ruim b { color: var(--danger); }
+.ins-linhas { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-13); }
+.ins-linhas li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-top: 1px solid var(--border-muted); }
+.ins-linhas li > span:last-child { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ins-linhas li.t-alerta > span:last-child { color: var(--warn); }
+.ins-linhas li.t-ruim > span:last-child { color: var(--danger); }
+
+/* o Modo TV: tela cheia, letras grandes */
+.ins-tv { position: fixed; inset: 0; z-index: 1000; background: var(--surface); display: grid; grid-template-rows: 1fr auto; padding: 4vh 4vw 2vh; }
+.ins-tv .ins-grande { border: 0; box-shadow: none; background: transparent; gap: 4vh; align-content: center; }
+.ins-tv .ins-grande h3 { font-size: clamp(28px, 4vw, 64px); }
+.ins-tv .ins-grande .ins-cabeca .hint { font-size: clamp(16px, 1.6vw, 28px); }
+.ins-tv .ins-grande .ins-numeros { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2vw; }
+.ins-tv .ins-grande .ins-numero { padding: 2vh 1.5vw; }
+.ins-tv .ins-grande .ins-numero b { font-size: clamp(40px, 6vw, 110px); }
+.ins-tv .ins-grande .ins-numero span { font-size: clamp(14px, 1.4vw, 26px); }
+.ins-tv .ins-grande .ins-linhas { font-size: clamp(16px, 1.6vw, 28px); columns: 2; column-gap: 4vw; display: block; }
+.ins-tv .ins-grande .ins-linhas li { break-inside: avoid; }
+.ins-tv-pe { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ins-pontos { display: flex; gap: 8px; flex: 1; }
+.ins-pontos button { width: 12px; height: 12px; border-radius: 50%; border: 0; padding: 0; background: var(--border-strong); cursor: pointer; }
+.ins-pontos button.ativo { background: var(--accent); }
+@media (max-width: 600px) { .ins-grade { grid-template-columns: 1fr; } }

@@ -3,7 +3,9 @@
 import { Icone } from '@nads/ui';
 import { BotoesDoLink, type BotoesDoLinkProps } from './BotoesDoLink';
 
-export function BlocoDoLink({ endereco, data, podeMexer, carregando, logo, gravandoLogo, aoEnviarLogo, aoTirarLogo, ...botoes }: Omit<BotoesDoLinkProps, 'temLink'> & {
+export function BlocoDoLink({ endereco, data, podeMexer, carregando, logo, gravandoLogo, aoEnviarLogo, aoTirarLogo, guiasAbertas, ...botoes }: Omit<BotoesDoLinkProps, 'temLink'> & {
+  /** as guias que o cliente abriu pelo link (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura) */
+  guiasAbertas?: { erro: string; lista: { chave: string; rotulo: string; quando: string }[] };
   /** o endereço completo ('' = a empresa não tem link) */
   endereco: string;
   /** 'dd/mm/aaaa' */
@@ -45,6 +47,14 @@ export function BlocoDoLink({ endereco, data, podeMexer, carregando, logo, grava
                 </label>
                 {logo && aoTirarLogo && <button type="button" className="btn btn-sm btn-outline" disabled={gravandoLogo} onClick={aoTirarLogo}>Tirar</button>}
               </span>
+            )}
+          </div>
+        )}
+        {endereco && guiasAbertas && (guiasAbertas.erro || guiasAbertas.lista.length > 0) && (
+          <div className="ac-guias-abertas">
+            <b>Guias que o cliente abriu</b>
+            {guiasAbertas.erro ? <p className="fraco">{guiasAbertas.erro}</p> : (
+              <ul className="fraco">{guiasAbertas.lista.map(g => <li key={g.chave}>{g.rotulo} · {g.quando}</li>)}</ul>
             )}
           </div>
         )}

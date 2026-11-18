@@ -14,6 +14,7 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     enviar: (token, tipo, arquivos) => escolher(token).enviar(token, tipo, arquivos),
     abrirChamado: (token, dados) => escolher(token).abrirChamado(token, dados),
     responderChamado: (token, id, texto) => escolher(token).responderChamado(token, id, texto),
+    avaliarChamado: (token, id, nota, comentario) => escolher(token).avaliarChamado(token, id, nota, comentario),
     baixarGuia: (token, id) => escolher(token).baixarGuia(token, id),
     baixarDocumento: (token, id) => escolher(token).baixarDocumento(token, id),
     baixarComprovante: (token, id) => escolher(token).baixarComprovante(token, id),
@@ -21,6 +22,7 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     notasDoMes: (token, codigo, mes) => escolher(token).notasDoMes(token, codigo, mes),
     extratoDoMes: (token, codigo, mes) => escolher(token).extratoDoMes(token, codigo, mes),
     pedirDanfe: (token, chave) => escolher(token).pedirDanfe(token, chave),
+    confirmarRecebido: (token, id) => escolher(token).confirmarRecebido(token, id),
   };
 }
 

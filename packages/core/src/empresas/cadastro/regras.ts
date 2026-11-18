@@ -8,7 +8,7 @@ import { razaoSocialDoDocumento } from './razaoSocial';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
-  type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
+  type LembreteDaEmpresa, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -295,6 +295,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
+    ...lembreteDoDocumento(doc.lembreteVencimento),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
     ...(/^(\d{11}|\d{14})$/.test(texto(doc.cnpj)) ? { cnpj: texto(doc.cnpj) } : {}),
@@ -323,6 +324,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
+    ...(c.lembreteVencimento ? { lembreteVencimento: c.lembreteVencimento } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
     ...(c.cnpj ? { cnpj: c.cnpj } : {}),
@@ -984,6 +986,28 @@ export function definirRelatorioDeLiquidacao(c: CadastroDaEmpresa, banco: BancoD
   const novos = BANCOS_DO_RELATORIO.map(b => b.id).filter(id => (id === banco ? marcado : atual.includes(id)));
   const nome = BANCOS_DO_RELATORIO.find(b => b.id === banco)?.nome || banco;
   return registrar({ ...c, relatoriosDeLiquidacao: novos }, por, agora, 'Relatório de liquidação (Creditor)', nome + (marcado ? ': sim' : ': não'));
+}
+
+/** A escolha do lembrete gravada no banco, conferida; a torta fica de fora (= como o escritório). */
+function lembreteDoDocumento(x: unknown): { lembreteVencimento?: LembreteDaEmpresa } {
+  const o = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+  if (o.modo !== 'sim' && o.modo !== 'nao') return {};
+  const d = Number(o.diasAntes);
+  return { lembreteVencimento: { modo: o.modo, ...(Number.isInteger(d) && d >= 0 && d <= 10 ? { diasAntes: d } : {}) } };
+}
+
+/**
+ * Guarda a escolha do lembrete de vencimento da empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"). null = como o
+ * escritório. Registra no histórico.
+ */
+export function definirLembreteDeVencimento(c: CadastroDaEmpresa, escolha: LembreteDaEmpresa | null, por: string, agora: Date): CadastroDaEmpresa {
+  const limpa = escolha ? lembreteDoDocumento(escolha).lembreteVencimento ?? null : null;
+  if (JSON.stringify(c.lembreteVencimento ?? null) === JSON.stringify(limpa)) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.lembreteVencimento;
+  const novo = limpa ? { ...resto, lembreteVencimento: limpa } : resto;
+  const texto = !limpa ? 'Como o escritório' : (limpa.modo === 'sim' ? 'Mandar' : 'Não mandar') + (limpa.modo === 'sim' && limpa.diasAntes != null ? ', ' + limpa.diasAntes + ' dia(s) antes' : '');
+  return registrar(novo, por, agora, 'Lembrete de vencimento', texto);
 }
 
 export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {

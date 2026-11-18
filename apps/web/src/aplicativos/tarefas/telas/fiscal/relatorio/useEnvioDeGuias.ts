@@ -14,8 +14,9 @@ import { financeiro, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useContatosDoEntregas, useControleTributos, useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
-import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, type EscolhaDaGuia, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
+import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, type EscolhaDaGuia, type GuiaDoLote, type GuiaNaPasta, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
+import { useSepararPorCliente } from '../../ferramentas/useSepararPorCliente';
 
 const MAX_ARQUIVOS = 150;
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -85,6 +86,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     return achado.i;
   }
   const { toast, modal } = useRetorno();
+  const separarPorCliente = useSepararPorCliente();
   const doGrupo = t.grupoDoControle(grupo);
   const todos = repo.lotes();
   const lotes = todos.lista.filter(l => l.grupo === grupo);
@@ -93,6 +95,13 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const terminado = (l: (typeof lotes)[number]) => l.status === 'disparado' && l.resultados.length > 0 && l.resultados.every(r => r.status === 'enviado');
   const paraEnviar = lotes.filter(l => !terminado(l));
   const [escolhido, setEscolhido] = useState<string | null>(null);
+  // as guias já arquivadas na pasta do Drive no mês (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir"): só as do grupo da tela (Simples, ou
+  // Presumido e Real), todas marcadas; a pessoa desmarca o que não vai e cria o lote, que segue o fluxo de sempre
+  const [naPasta, setNaPasta] = useState<{ comp: string; carregadas: boolean; erro: string; guias: GuiaNaPasta[] }>({ comp: '', carregadas: false, erro: '', guias: [] });
+  const [desmarcadas, setDesmarcadas] = useState<string[]>([]);
+  const [criandoDaPasta, setCriandoDaPasta] = useState(false);
+  useEffect(() => repo.guiasNaPasta(competenciaDaTela, r => setNaPasta({ comp: competenciaDaTela, ...r })), [repo, competenciaDaTela]);
+  const doGrupoNaPasta = (naPasta.comp === competenciaDaTela ? naPasta.guias : []).filter(g => /SIMPLES NACIONAL/i.test(g.pasta) === (grupo === 'sn'));
   const atual = (escolhido ? paraEnviar.find(l => l.id === escolhido) : null) || paraEnviar[0] || null;
   const idAtual = atual?.id || '';
   const [arquivos, setArquivos] = useState<{ lote: string; lista: GuiaDoLote[] } | null>(null);
@@ -167,8 +176,28 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     financeiro.linkDoWhatsapp(doCodigo.get(codigo)?.whatsapp || '', encherCom(modelo.texto || MODELO_PADRAO_DAS_GUIAS.texto, camposDe(nome || doCodigo.get(codigo)?.nome || 'Cliente ' + codigo, competencia))
       .replace(/\beste e-mail\b/gi, 'esta mensagem'));
 
+  const nomeDoCodigo = (codigo: number) => tarefas.listarEmpresas().find(e => e.codigo === codigo)?.nome || 'Cliente ' + codigo;
   return {
     exemplos: repo.exemplos,
+    /** a aba "Já na pasta" (ficha E15): as guias do mês já arquivadas no Drive */
+    pasta: {
+      carregadas: naPasta.carregadas && naPasta.comp === competenciaDaTela, erro: naPasta.erro,
+      guias: doGrupoNaPasta.map(g => ({ ...g, marcada: !desmarcadas.includes(g.driveId), cliente: nomeDoCodigo(g.codigo) })),
+      marcadas: doGrupoNaPasta.filter(g => !desmarcadas.includes(g.driveId)).length,
+      alternar: (driveId: string) => setDesmarcadas(d => (d.includes(driveId) ? d.filter(x => x !== driveId) : [...d, driveId])),
+      criando: criandoDaPasta,
+      /** cria o lote com as marcadas; devolve se criou (a tela volta para o lote) */
+      async criarLote() {
+        const vao = doGrupoNaPasta.filter(g => !desmarcadas.includes(g.driveId));
+        if (!vao.length || criandoDaPasta) return false;
+        setCriandoDaPasta(true);
+        try {
+          setEscolhido(await repo.criarDaPasta(grupo, vao));
+          toast(vao.length + (vao.length === 1 ? ' guia foi' : ' guias foram') + ' para o lote: o robô lê do Drive e você revisa antes de disparar.');
+          return true;
+        } catch (e) { toast('Não consegui criar o lote: ' + (e instanceof Error ? e.message : String(e))); return false; } finally { setCriandoDaPasta(false); }
+      },
+    },
     carregando: !todos.carregados,
     grupo: doGrupo,
     /** os lotes com o que mandar (o aberto é o atual) */
@@ -294,10 +323,16 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       if (grande) { toast(grande.name + ' passa de 25 MB.'); return; }
       setSubindo({ feitos: 0, total: lista.length });
       try {
-        const lidos = await Promise.all(lista.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+        const escolhidas = await Promise.all(lista.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+      // o PDF com guias de vários clientes vira um arquivo por cliente, se a pessoa confirmar (plano do Acessórias,
+      // 17/11/2026, ficha E16; frase do dono: "Separar PDF (E16)"); cancelou, nada sobe
+        const lidos = await separarPorCliente(escolhidas);
+        if (!lidos) return;
+        if (lidos.length + (destino ? destino.total : 0) > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote.'); return; }
+        setSubindo({ feitos: 0, total: lidos.length });
         if (destino) await repo.adicionar(destino.id, lidos, (feitos, total) => setSubindo({ feitos, total }));
         else setEscolhido(await repo.subir(grupo, lidos, (feitos, total) => setSubindo({ feitos, total })));
-        toast(lista.length + (lista.length === 1 ? ' guia enviada' : ' guias enviadas') + ' ao robô para ler' + (destino ? ', no mesmo lote.' : '.'));
+        toast(lidos.length + (lidos.length === 1 ? ' guia enviada' : ' guias enviadas') + ' ao robô para ler' + (destino ? ', no mesmo lote.' : '.'));
       } catch (e) { toast('Não consegui subir: ' + (e instanceof Error ? e.message : String(e))); } finally { setSubindo(null); }
     },
     /** a escolha da revisão: o que mudar (cliente, coluna ou competência) vale sobre o que o robô leu */
@@ -320,8 +355,14 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       try { await repo.tirar(atual.id, arquivo.id, fora); } catch (e) { toast('Não consegui: ' + (e instanceof Error ? e.message : String(e))); }
     },
     /** dispara o lote (os clientes ainda não enviados), depois de confirmar */
-    async disparar() {
+    async disparar(agendar?: { data: string; hora: string }) {
       if (!atual || disparando) return;
+      // o envio agendado (plano do Acessórias, 17/11/2026, ficha E17; frase do dono: "Seguir"): o dia e a hora de Brasília; nada sai antes
+      const agendadoPara = agendar ? t.agendadoParaIso(agendar.data, agendar.hora) : '';
+      if (agendar) { const erro = t.erroDoAgendamento(agendadoPara, new Date()); if (erro) { toast(erro); return; } }
+      const venceAntes = agendadoPara ? t.venceAntesDoEnvio(agendadoPara, (arquivos?.lista || []).map(a => a.leitura?.vencimento || '')) : null;
+      const quando = agendadoPara ? 'Sai ' + t.rotuloDoAgendamento(agendadoPara) + ' (na primeira vez que o robô passar depois dessa hora). '
+        + (venceAntes ? 'Atenção: tem guia que vence em ' + venceAntes + ', antes do envio. ' : '') : '';
       const n = pendentes.length;
       if (!n) return;
       const porEmail = pendentes.filter(g => g.via === 'email').length;
@@ -332,8 +373,8 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       const semEmail = pendentes.filter(g => g.via === 'email' && !g.email).length;
       const semZap = pendentes.filter(g => g.via === 'zap' && !g.whatsapp).length;
       const ok = await modal({
-        icone: 'envelope', titulo: 'Disparar para ' + n + (n === 1 ? ' cliente?' : ' clientes?'),
-        texto: (porEmail ? porEmail + (porEmail === 1 ? ' cliente recebe' : ' clientes recebem') + ' as guias no e-mail do cadastro. ' : '') +
+        icone: 'envelope', titulo: (agendadoPara ? 'Agendar para ' : 'Disparar para ') + n + (n === 1 ? ' cliente?' : ' clientes?'),
+        texto: quando + (porEmail ? porEmail + (porEmail === 1 ? ' cliente recebe' : ' clientes recebem') + ' as guias no e-mail do cadastro. ' : '') +
           (impressos ? impressos + (impressos === 1 ? ' cliente vai' : ' clientes vão') + ' para a rota do Entregas, com as guias anexadas para imprimir. ' : '') +
           (noEcontador ? noEcontador + (noEcontador === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = eContador (as guias no Drive, para postar no eContador). ' : '') +
           (noSci ? noSci + (noSci === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = SCI Report (as guias no Drive, para mandar pelo SCI Report). ' : '') +
@@ -343,13 +384,21 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
           (semEmail ? ' ' + semEmail + (semEmail === 1 ? ' cliente está' : ' clientes estão') + ' sem e-mail e vai dar erro.' : '') +
           (semZap ? ' ' + semZap + (semZap === 1 ? ' cliente do WhatsApp está' : ' clientes do WhatsApp estão') + ' sem número no Cadastro e no Entregas.' : '') +
           (faltam.length ? ' ' + faltam.length + (faltam.length === 1 ? ' guia sem cliente fica' : ' guias sem cliente ficam') + ' de fora.' : ''),
-        botoes: [{ rotulo: 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+        botoes: [{ rotulo: agendadoPara ? 'Agendar' : 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
       });
       if (!ok) return;
       setDisparando(true);
       // a via de cada um vai junto (a que vale na tela, mesmo a que veio do mês anterior)
-      try { await repo.definirVias(atual.id, { ...atual.vias, ...Object.fromEntries(pendentes.map(g => [String(g.codigo), g.via])) }); await repo.disparar(atual.id); } catch (e) { toast('Não consegui disparar: ' + (e instanceof Error ? e.message : String(e))); } finally { setDisparando(false); }
+      try { await repo.definirVias(atual.id, { ...atual.vias, ...Object.fromEntries(pendentes.map(g => [String(g.codigo), g.via])) }); await repo.disparar(atual.id, agendadoPara || undefined); } catch (e) { toast('Não consegui ' + (agendadoPara ? 'agendar' : 'disparar') + ': ' + (e instanceof Error ? e.message : String(e))); } finally { setDisparando(false); }
     },
+    /** o lote está agendado (ainda não chegou a hora): o selo e o Cancelar agendamento (ficha E17) */
+    agendado: atual && atual.status === 'disparar' && t.aindaAgendado(atual.agendadoPara, Date.now()) ? t.rotuloDoAgendamento(atual.agendadoPara) : '',
+    async cancelarAgendamento() {
+      if (!atual) return;
+      try { await repo.cancelarAgendamento(atual.id); toast('Agendamento cancelado. O lote espera você enviar.'); }
+      catch (e) { toast('Não consegui cancelar: ' + (e instanceof Error ? e.message : String(e))); }
+    },
+
     /** o modelo do e-mail (vazio = o padrão) e a prévia com um cliente do lote */
     modelo: { carregado: modelo.carregado, assunto: modelo.assunto, texto: modelo.texto, padrao: MODELO_PADRAO_DAS_GUIAS },
     previa: { assunto: encher(modelo.assunto || MODELO_PADRAO_DAS_GUIAS.assunto), texto: encher(modelo.texto || MODELO_PADRAO_DAS_GUIAS.texto) },

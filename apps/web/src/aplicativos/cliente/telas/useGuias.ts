@@ -17,6 +17,7 @@ import { abaDoDia, chaveDoMes, painelDasGuias, legendaDoCalendario, type MarcaDo
 import { quandoVence, resumoCurtoDasGuias } from '../dados/guiasDoMes';
 import { tituloDaGuiaNova } from '../dados/visaoGeral';
 import type { DaCasca } from './useAreaCliente';
+import { useJanelaDoComprovante } from './JanelaDeEnvio';
 
 export type AbaDasGuias = 'apagar' | 'pagas';
 
@@ -25,8 +26,11 @@ const mesDaData = (br: string) => br.slice(6, 10) + '-' + br.slice(3, 5);
 /** 'dd/mm/aaaa' → dd */
 const diaDaData = (br: string) => Number(br.slice(0, 2)) || 0;
 
-export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
+export function useGuias(props: DaCasca) {
+  const { token, area, hoje, irPara, copiar } = props;
   const { toast } = useRetorno();
+  // o "Já paguei: mandar o comprovante" (plano do Acessórias, 17/11/2026, ficha comprovante-da-guia, parte A)
+  const abrirComprovante = useJanelaDoComprovante(props);
   const [baixando, setBaixando] = useState('');
   const [mes, setMesBruto] = useState(chaveDoMes(hoje));
   const [abaBruta, setAba] = useState<AbaDasGuias>('apagar');
@@ -64,7 +68,7 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
   const proxima = guias.find(g => g.situacao !== 'vencida') ?? null;
 
   // (16/11/2026, "muita informação") sem as entregas do escritório: o calendário marca só as guias e as pagas
-  const p = painelDasGuias(guias, pagas, [], mes, hoje, g => ac.ROTULO_DA_GUIA[g.tipo]);
+  const p = painelDasGuias(guias, pagas, [], mes, hoje, g => ac.rotuloDaGuia(g));
   const nomeDoMes = formatos.rot(mes).toLowerCase().replace(/ de \d{4}$/, '');
   const porDia = new Map<number, MarcaDoMes[]>();
   for (const x of p.linha.marcas) porDia.set(x.dia, [...(porDia.get(x.dia) ?? []), x]);
@@ -94,7 +98,16 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
   const comPdf = guias.filter(g => g.temPdf);
 
   return {
+    /** abre a janela do comprovante desta guia (o tipo e o prefixo já marcados) */
+    mandarComprovante: abrirComprovante,
+    /** 'dd/mm' do comprovante mais novo que o cliente mandou para a guia, ou '' */
+    comprovanteEm: (g: ac.GuiaDoCliente) => { const r = ac.comprovanteDaGuia(g, area.envios); const d = r ? formatos.diaEmBrasilia(r.recebidoEm) : ''; return d ? d.slice(8, 10) + '/' + d.slice(5, 7) : ''; },
     mes, mudarMes: setMes, ultimo,
+    // os parcelamentos ativos, numa linha cada (só se houver; nunca "atrasada") (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir")
+    parcelamentos: area.parcelamentos.map(x => ({
+      id: x.id, nome: 'Parcelamento ' + x.orgao + (x.modalidade ? ' (' + x.modalidade + ')' : ''),
+      texto: 'parcela ' + x.parcela + ' de ' + x.parcelas + ' · ' + formatos.reais(x.valorParcela) + ' · vence ' + x.vencimento.slice(0, 5),
+    })),
     // a linha embaixo do título (16/11/2026, "muita informação": no máximo dois fatos)
     resumo: resumoCurtoDasGuias({
       nomeDoMes, aPagar: { valor: formatos.reais(p.aPagar.valor), guias: p.aPagar.guias }, vencidas: p.vencidas.guias,
