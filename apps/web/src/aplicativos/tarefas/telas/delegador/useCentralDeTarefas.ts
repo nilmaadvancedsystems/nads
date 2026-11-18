@@ -6,7 +6,7 @@ import { formatos, tarefas } from '@nads/core';
 import { baixarArquivo, baixarBytes } from '@nads/ui';
 import { useState } from 'react';
 import { useTarefasDelegadas } from '../../dados/repo';
-import { useConcluirComPergunta } from './perguntaAoConcluir';
+import { useConcluirComPergunta } from './useConcluirComPergunta';
 import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 import { useNovidade } from '../../../../comum/novidades';
 

@@ -7,7 +7,7 @@ import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useNovidade } from '../../../../comum/novidades';
-import { useConcluirComPergunta } from './perguntaAoConcluir';
+import { useConcluirComPergunta } from './useConcluirComPergunta';
 import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useEntregasDeDocumentos, useRepo, useTarefasDelegadas } from '../../dados/repo';

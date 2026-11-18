@@ -16,7 +16,7 @@ import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
 import { useRecorrentes } from './useRecorrentes';
-import { useConcluirComPergunta } from '../delegador/perguntaAoConcluir';
+import { useConcluirComPergunta } from '../delegador/useConcluirComPergunta';
 import { useNovidade } from '../../../../comum/novidades';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 

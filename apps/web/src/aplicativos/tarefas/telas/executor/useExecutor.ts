@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
 import { useCadastro, useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo, useTarefasDelegadas } from '../../dados/repo';
-import { useConcluirComPergunta } from '../delegador/perguntaAoConcluir';
+import { useConcluirComPergunta } from '../delegador/useConcluirComPergunta';
 import { caminhoDaEmpresa, caminhoDoExecutor, BASE } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
