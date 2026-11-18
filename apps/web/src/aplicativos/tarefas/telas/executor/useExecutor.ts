@@ -248,8 +248,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
   // no Em lote, a etapa que entrou em algum mês do período trabalha o lote inteiro, como as outras (Vitor, 18/11/2026: "cade o
   // creditor seguindo a regra do lote?"; na 292 só agosto tinha CRÉD.LIQ e o Creditor abria só em ago): só no modo desenvolvedor
-  const doLote = dev && varios && entrouEm.length > 0 ? [...meses] : entrouEm;
-  const mesesDaEtapa = revista ? doLote : doLote.filter(c => !concluidaEm(vista!.id, c));
+  const noLote = dev && varios && entrouEm.length > 0;
+  const doLote = noLote ? [...meses] : entrouEm;
+  // nos meses em que ela não entrou, a etapa conta como "não se aplica" (concluída): no lote, só sai o mês em que foi feita de verdade
+  const feitaEm = (id: string, c: string) => t.situacaoDa(exDe[c] || null, id) === 'feita';
+  const mesesDaEtapa = revista ? doLote : doLote.filter(c => (noLote ? !feitaEm(vista!.id, c) : !concluidaEm(vista!.id, c)));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!vista?.tela?.periodo;
 
