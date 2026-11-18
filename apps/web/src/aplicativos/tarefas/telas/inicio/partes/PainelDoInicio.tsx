@@ -142,6 +142,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             ))}
           </div>
         )}
+        {/* a dica, só por enquanto (Vitor, 18/11/2026: "coloca embaixo... so por enquanto, depois tiramos") */}
+        {dev && (vm.reunioes.length + vm.avisosNoQuadro.length > 0) && <p className="hint ini-quadro-dica"><Icone nome="lampada" width={13} height={13} />Passe o mouse em cima do aviso e marque recebido</p>}
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>

@@ -7093,7 +7093,8 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
 /* os cards soltos, sem a caixa (18/11/2026): o aviso com o ícone no lugar do dia, o que pede o Recebido com a borda de atenção */
 .ini-quadro-solto .ini-quadro-item{background:var(--surface);}
-.ini-coluna > .ini-quadro-solto{margin-bottom:-12px;}
+.ini-coluna > .ini-quadro-solto{margin-bottom:-18px;}
+.ini-quadro-dica{display:flex;align-items:center;gap:6px;margin:0 0 -8px;}
 .ini-quadro-item.aviso .ini-quadro-dia{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);}
 .ini-quadro-item.aviso .ini-quadro-dia svg{width:20px;height:20px;}
 .ini-quadro-item.pendente{border-color:color-mix(in srgb,var(--warn) 60%,var(--border));}
