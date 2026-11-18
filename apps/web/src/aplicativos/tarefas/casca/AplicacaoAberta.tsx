@@ -93,7 +93,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'carteira': return <Carteira pagina={pagina} />;
     case 'administrativo': return <Administrativo pagina={pagina} />;
     // a Tela de Insights (18/11/2026, ficha tela-de-insights): só Diretor e admin
-    case 'insights': return <Insights />;
+    case 'insights': return <Insights pagina={pagina} />;
     case 'lancatudo': return <Lancatudo pagina={pagina} />;
     // o Desenvolvedor (13/11/2026): a Área do Cliente e a Central dos robôs, só no modo desenvolvedor
     case 'desenvolvedor': return <OutrosSites />;

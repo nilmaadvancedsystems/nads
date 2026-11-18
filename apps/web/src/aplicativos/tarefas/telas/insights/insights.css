@@ -24,7 +24,7 @@
 
 /* o anel */
 .ins-anel { position: relative; display: inline-grid; place-items: center; flex: none; }
-.ins-anel svg { position: absolute; inset: 0; }
+.ins-anel > svg { position: absolute; inset: 0; }
 .ins-anel-fundo { fill: none; stroke: var(--surface-3); }
 .ins-anel-cheio { fill: none; stroke: var(--ins-cor, var(--accent)); stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
 .ins-anel-meio { position: relative; display: grid; place-items: center; color: var(--ins-cor, var(--ink)); }
@@ -121,5 +121,16 @@
 }
 /* na TV, os anéis da equipe crescem junto com o texto (o SVG acompanha pelo viewBox) */
 .ins-tv .ins-pessoa .ins-anel { width: clamp(84px, 9vw, 170px) !important; height: clamp(84px, 9vw, 170px) !important; }
-.ins-tv .ins-anel svg { width: 100%; height: 100%; }
+.ins-tv .ins-anel > svg { width: 100%; height: 100%; }
 .ins-tv .ins-iniciais { width: clamp(62px, 6.6vw, 126px); height: clamp(62px, 6.6vw, 126px); font-size: clamp(20px, 2.2vw, 44px); }
+
+/* um assunto só, na página dele (o menu lateral): o cartão maior */
+.ins-sozinho .ins-cartao { padding: 22px 24px; gap: 20px; }
+.ins-sozinho .ins-cabeca h3 { font-size: 20px; }
+.ins-sozinho .ins-legenda b, .ins-sozinho .ins-funil-topo b, .ins-sozinho .ins-itens li b, .ins-sozinho .ins-atrasos b { font-size: 30px; }
+.ins-sozinho .ins-legenda span, .ins-sozinho .ins-funil-topo, .ins-sozinho .ins-itens li, .ins-sozinho .ins-atraso-nome { font-size: 15px; }
+.ins-sozinho .ins-barra { height: 20px; }
+.ins-sozinho .ins-trilho { height: 14px; }
+.ins-sozinho .ins-nota > b { font-size: 64px; }
+.ins-sozinho .ins-estrelas { font-size: 30px; }
+.ins-sozinho .ins-equipe { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }

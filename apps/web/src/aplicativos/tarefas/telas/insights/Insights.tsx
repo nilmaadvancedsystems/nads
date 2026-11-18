@@ -135,8 +135,10 @@ function Tarefas({ tela }: { tela: Tela }) {
 
 const DO_PAINEL = { equipe: Equipe, dp: Dp, guias: Guias, clientes: Clientes, entregas: Entregas, tarefas: Tarefas } as const;
 
-export function Insights() {
+export function Insights({ pagina = 'painel' }: { pagina?: string }) {
   const vm = useInsights();
+  // a página do menu lateral: a Visão geral ou um assunto só (18/11/2026: "pode dividir em menu lateral")
+  const Sozinho = pagina in DO_PAINEL ? DO_PAINEL[pagina as keyof typeof DO_PAINEL] : null;
   useCarregando(vm.carregando);
   // a tela cheia do Modo TV: entra junto; sair da tela cheia (o Esc do navegador) sai da TV
   const { tv, sairDaTv } = vm;
@@ -184,6 +186,8 @@ export function Insights() {
       </div>
       {vm.carregando ? <Esqueleto linhas={6} /> : vm.semNumeros || !vm.tela ? (
         <p className="hint" style={{ marginTop: 16 }}>Ainda não há números. Ligue a Tela de Insights em Robôs › Ajustes; o robô do PC monta os primeiros em até 15 minutos.</p>
+      ) : Sozinho ? (
+        <div className="ins-sozinho"><Sozinho tela={vm.tela} /></div>
       ) : (
         <>
           <div className="ins-destaques">
