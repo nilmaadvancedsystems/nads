@@ -150,6 +150,17 @@ describe('o relatório de cobrança na pasta do extrato', () => {
     expect(ehRelatorioDeTitulos('Relatório - Títulos por Período')).toBe(false);
     expect(ehRelatorioDeTitulos('Extrato conta corrente Saldo anterior 10,00 Relatório - Títulos por Período Sacado Nosso Número')).toBe(false);
   });
+
+  it('na releitura, o relatório que entrou como extrato sai inteiro (18/11/2026, na 292)', () => {
+    const titulos: ArquivoImportado = { id: 'tit', lado: 'banco', nome: 'SICOOB 09.pdf', importadoEm: '2026-10-06T00:00:00Z', modo: 'primeira', banco: 'sicoob', leitor: 22,
+      lancamentos: [{ data: '2026-10-01', valor: 84024, historico: '(sem histórico)' }] };
+    const extrato: ArquivoImportado = { ...titulos, id: 'ext', nome: '09.pdf', lancamentos: [{ data: '2026-09-02', valor: -100, historico: 'TARIFA' }] };
+    const e: EmpresaExtrator = { nome: 'T', auditoria: [], arquivos: [titulos, extrato] };
+    const lido: ArquivoLido = { nome: 'SICOOB 09.pdf', lancamentos: [], erro: 'É o relatório de cobrança (títulos por período), não o extrato da conta.', naoEExtrato: true };
+    const r = relerExtrato(e, 'tit', lido, AGORA);
+    expect(r.arquivos.map(a => a.id)).toEqual(['ext']);
+    expect(r.auditoria[0].acao).toBe('Tirou o que não era extrato');
+  });
 });
 
 describe('reler o pedaço com o ano errado quando o mês já veio em outro extrato do banco', () => {
