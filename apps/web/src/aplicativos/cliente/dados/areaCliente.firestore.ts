@@ -10,7 +10,8 @@
 // página aberta, a tela troca na hora. Do documento do link só sai o nome (para o topo, enquanto o robô não grava o
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
-import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type Firestore, type FirestoreError } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type DocumentSnapshot, type Firestore, type FirestoreError } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type Auth } from 'firebase/auth';
 import { areaCliente as ac, demo, type mandei } from '@nads/core';
 import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModoDev';
 import { AREA_VAZIA, type AvisoDoEscritorio, type CertificadoDigital, type EstadoDaArea, type FichaDaEmpresa, type RepoAreaCliente } from './areaCliente';
@@ -44,6 +45,26 @@ export function bancoDoCliente(): Firestore {
   } catch {
     return getFirestore(app); // já aberto nesta página
   }
+}
+
+/**
+ * O login de quem tem senha (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"): o mesmo app 'cliente' do banco, então o
+ * Firestore já leva o login nas leituras. Só é aberto quando um link pede senha (o link sem senha nunca carrega o Auth).
+ */
+function loginDoCliente(): Auth {
+  const app = getApps().find(a => a.name === 'cliente') ?? initializeApp(CONFIG_ENTREGAS, 'cliente');
+  const auth = getAuth(app);
+  auth.languageCode = 'pt-BR';
+  return auth;
+}
+
+/** O erro do login em português (sem dizer se o e-mail existe: só "não deu") */
+function erroDoLogin(e: unknown): string {
+  const c = String((e as { code?: string } | null)?.code ?? '');
+  if (c === 'auth/too-many-requests') return 'Muitas tentativas. Espere alguns minutos e tente de novo.';
+  if (c === 'auth/network-request-failed') return 'Sem internet agora. Confira a conexão e tente de novo.';
+  if (c === 'auth/invalid-email') return 'Este e-mail não parece certo.';
+  return 'E-mail ou senha não conferem. Se for o primeiro acesso, use "Criar ou trocar a senha".';
 }
 
 const LINK_RUIM = 'Este link não vale mais. Peça um novo ao escritório.';
@@ -147,9 +168,29 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       }
 
       let ouvindoEspelho = false;
+      // a senha (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"): o link com exigeSenha só abre o espelho para quem entrou com
+      // um e-mail que tem este link no login (a regra do banco confere o mesmo); sem isso, a tela de entrar
+      let autorizado = false;
+      let ultimaFoto: DocumentSnapshot | null = null;
+      let ouvindoLogin = false;
+      const ouvirLogin = () => {
+        if (ouvindoLogin) return;
+        ouvindoLogin = true;
+        paradas.push(onAuthStateChanged(loginDoCliente(), u => {
+          void (u ? u.getIdTokenResult(true) : Promise.resolve(null)).then(r => {
+            const agora = ac.clienteAbreOLink(r?.claims, token);
+            if (agora === autorizado) return;
+            autorizado = agora;
+            // entrou: abre o espelho; saiu com ele aberto: recomeça (a tela de entrar volta)
+            if (autorizado && ultimaFoto) aoLink(ultimaFoto);
+            else if (!autorizado && ouvindoEspelho) { parar(); aoMudar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: nomeDoLink } }); }
+          }).catch(() => undefined);
+        }));
+      };
       // primeiro o link: só com ele de pé o resto é ouvido (link ruim = um só "permission-denied", não seis)
       let pararTeste: (() => void) | null = null;
-      paradas.push(onSnapshot(espelho, s => {
+      const aoLink = (s: DocumentSnapshot) => {
+        ultimaFoto = s;
         if (!s.exists()) { invalido(); return; }
         // a empresa de teste: para de ouvir o banco e mostra os dados de exemplo
         if (teste && linkDaEmpresaDeTeste(s.get('codigos'))) {
@@ -161,6 +202,11 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         }
         const nome = s.get('nome');
         nomeDoLink = typeof nome === 'string' ? nome.trim() : '';
+        if (s.get('exigeSenha') === true && !autorizado) {
+          ouvirLogin();
+          if (!ouvindoEspelho) mostrar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: nomeDoLink } });
+          return;
+        }
         if (ouvindoEspelho) { desenhar(); return; }
         ouvindoEspelho = true;
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'atual'), r => { partes.resumo = r.exists() ? lerResumo(r.data()) : null; desenhar(); }, falhou));
@@ -206,8 +252,36 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
           partes.danfes = s.docs.map(d => lerDanfe(d.id, d.data())).filter((x): x is DanfeNoEspelho => x != null);
           desenhar();
         }, () => { partes.danfes = []; desenhar(); }));
-      }, falhou));
+      };
+      paradas.push(onSnapshot(espelho, aoLink, falhou));
       return () => { parar(); pararTeste?.(); };
+    },
+
+    // a senha (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa")
+    async entrar(token, email, senha) {
+      const auth = loginDoCliente();
+      let claims: unknown;
+      try {
+        const c = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), senha);
+        claims = (await c.user.getIdTokenResult(true)).claims;
+      } catch (e) { throw new Error(erroDoLogin(e), { cause: e }); }
+      if (!ac.clienteAbreOLink(claims, token)) {
+        await signOut(auth).catch(() => undefined);
+        throw new Error('Este e-mail não tem acesso a esta empresa. Peça ao escritório para incluir você.');
+      }
+    },
+    async criarSenha(token, email) {
+      const e = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(e)) throw new Error('Este e-mail não parece certo.');
+      // volta para este link depois de criar a senha; o Firebase não diz se o e-mail existe (não deixa adivinhar quem tem acesso)
+      try { await sendPasswordResetEmail(loginDoCliente(), e, { url: location.origin + '/cliente/' + token }); }
+      catch (err) {
+        const c = String((err as { code?: string } | null)?.code ?? '');
+        if (c !== 'auth/user-not-found') throw new Error(erroDoLogin(err), { cause: err });
+      }
+    },
+    async sair() {
+      await signOut(loginDoCliente()).catch(() => undefined);
     },
 
     async abrirChamado(token, { tipo, texto }) {
@@ -405,5 +479,9 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     pedirDanfe: (token, chave) => de(token).pedirDanfe(tk(token), chave),
     confirmarRecebido: (token, id) => de(token).confirmarRecebido(tk(token), id),
     avaliarChamado: (token, id, nota, comentario) => de(token).avaliarChamado(tk(token), id, nota, comentario),
+    // a senha vale só no banco (a empresa de teste nunca pede)
+    entrar: (token, email, senha) => doBanco.entrar(token, email, senha),
+    criarSenha: (token, email) => doBanco.criarSenha(token, email),
+    sair: () => doBanco.sair(),
   };
 }

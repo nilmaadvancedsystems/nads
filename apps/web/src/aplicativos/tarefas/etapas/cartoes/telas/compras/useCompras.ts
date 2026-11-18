@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useGuardado } from '../../../../../../comum/guardado';
-import { useNotasDaConferencia } from '../../../conferencia/importadosNaEtapa';
+import { useContasDoBalancete, useNotasDaConferencia } from '../../../conferencia/importadosNaEtapa';
 import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { repoDoCadastro } from '../../../dados/cadastro';
@@ -44,7 +44,16 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
 
   const ext = useEmpresa(empresa.nome);
   const { cadastro, salvar } = useCadastroDaEmpresa(empresa.nome, empresa.codigo);
-  const plano = usePlano(empresa.nome);
+  const doCadastro = usePlano(empresa.nome);
+  // sem o plano no Cadastro, o do balancete da Conferência (18/11/2026: a 309 não tinha plano no Cadastro; a conta do cartão
+  // ficava sem nome e o banco Sicoob sem conta), na ordem do plano (a sintética antes das contas dela)
+  const doBalancete = useContasDoBalancete(doCadastro?.contas.length ? '' : empresa.nome);
+  const plano = useMemo<empresas.cadastro.PlanoDeContas | null>(() => {
+    if (doCadastro?.contas.length) return doCadastro;
+    if (!doBalancete?.length) return doCadastro;
+    const contas = [...doBalancete].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((c, i) => ({ codigo: c.codigo, nome: c.nome, ordem: i, ...(c.sintetica ? { sintetica: true } : {}) }));
+    return { contas, origem: 'balancete', importadoEm: '' };
+  }, [doCadastro, doBalancete]);
   const [lidas, setLidas] = useState<FaturaLida[]>([]);
   const [lendo, setLendo] = useState(false);
   // as notas de entrada da Conferência fiscal (a mesma nota em várias linhas de CFOP: somadas)
@@ -110,7 +119,16 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   /** a conta do banco no plano pelo nome dele ("Sicoob" → "Banco Sicoob Credinor"), quando o Cadastro não tem */
   const doPlanoPeloNome = (banco: string) => {
     const palavras = sem(nomeDoBanco(banco) + ' ' + banco).split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !['banco', 'bco', 'conta', 'corrente', 'ltda'].includes(w));
-    const achadas = (plano?.contas || []).filter(c => !c.sintetica && palavras.some(w => sem(c.nome).split(/[^a-z0-9]+/).includes(w)));
+    // a aplicação e o empréstimo do mesmo banco (a sintética de cima diz) não contam (18/11/2026: o "Banco Sicoob Credinor" 11001
+    // da aplicação empatava com o 10501 da conta movimento e ninguém era escolhido)
+    const fora = /aplica|investimento|poupan|empr[eé]stimo|financiamento|cons[oó]rcio/i;
+    let pai = '';
+    const daContaMovimento: { codigo: string; nome: string }[] = [];
+    for (const c of plano?.contas || []) {
+      if (c.sintetica) { pai = c.nome; continue; }
+      if (!fora.test(pai) && !fora.test(c.nome)) daContaMovimento.push(c);
+    }
+    const achadas = daContaMovimento.filter(c => palavras.some(w => sem(c.nome).split(/[^a-z0-9]+/).includes(w)));
     return achadas.length === 1 ? achadas[0].codigo : '';
   };
   /** a conta do banco: a escolhida aqui, a do Cadastro ou a do plano pelo nome (e de onde veio) */
@@ -185,8 +203,15 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     };
   });
   const faltaBanco = validas.some(f => !f.pagamento || !f.contaBanco);
-  const pronto = validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate) && (!naTarefa || !!fonte) && (!semNota || !!contaCaixa) && (!notaSemConta || !!contaFornecedor);
-  const linhasDoArquivo = () => razao.map(x => x.linha);
+  // só o pagamento da fatura, quebrado por gasto (Vitor, 18/11/2026: "so quero que ele pegue o valor total da fatura e quebre em
+  // historicos de valores menores, os lancamentos que nao envolvem banco eu lancei na mao"): cada gasto D Cartão / C Banco no dia
+  // do débito; nada de fornecedor, caixa ou nota. Para todos desde 18/11/2026 (o razão completo de 11/11 fica no código, desligado)
+  const soPagamento = true;
+  const doPagamento = validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao || '?', f.bruto.contaBanco || '?'));
+  const pronto = soPagamento
+    ? validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate)
+    : validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate) && (!naTarefa || !!fonte) && (!semNota || !!contaCaixa) && (!notaSemConta || !!contaFornecedor);
+  const linhasDoArquivo = () => (soPagamento ? doPagamento : razao.map(x => x.linha));
   const opcoes = (plano?.contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome }));
 
   return {
@@ -194,7 +219,14 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     periodo: meses.length ? tarefas.rotuloDoPeriodo(meses) : '',
     lendo, importar: (fs: File[]) => { void importar(fs); },
     remover: (id: string) => setLidas(l => l.filter(f => f.id !== id)),
-    faturas: comRazao,
+    faturas: soPagamento ? faturas.map(f => ({ ...f, compras: [] as { id: number; data: string; descricao: string; valor: string; situacao: string; dica: string }[] })) : comRazao,
+    /** só o pagamento quebrado (o modo desenvolvedor, 18/11/2026): sem o razão completo, sem o caixa e sem as notas */
+    soPagamento,
+    /** por mês do pagamento: quanto saiu do banco (a soma das faturas pagas no mês) */
+    pagamentosPorMes: soPagamento ? (meses.length ? meses : [...new Set(validas.map(f => f.bruto.dia.slice(0, 7)))].sort()).map(m => {
+      const doMes = validas.filter(f => f.bruto.dia.startsWith(m));
+      return { mes: m, rotulo: tarefas.rotuloNumericoCompetencia(m), qtd: doMes.reduce((x, f) => x + f.qtd, 0), total: doMes.length ? formatos.brl(doMes.reduce((x, f) => x + f.bruto.compras.soma, 0)) : '—', dia: doMes.map(f => f.pagamento?.data.slice(0, 5) || '').filter(Boolean).join(', ') };
+    }) : [],
     /** o razão gerado: as notas de entrada que vieram, quantas compras com e sem nota e o movimento de cada mês */
     razao: {
       temNotas: !!fonte, qtdNotas: notas.length,
@@ -220,7 +252,13 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     escolherContaBanco: (banco: string, codigo: string) => setBancoEscolhido(b => ({ ...b, [banco]: codigo })),
     pronto,
     /** o que falta para baixar */
-    falta: [
+    falta: soPagamento ? [
+      !validas.length ? 'Importe a fatura do cartão (PDF)' : '',
+      validas.length && !contaCartao ? 'Escolha a conta do cartão de crédito' : '',
+      validas.some(f => !f.pagamento) ? 'O pagamento de alguma fatura não está no extrato importado' : '',
+      validas.some(f => f.pagamento && !f.contaBanco) ? 'Escolha a conta do banco que pagou a fatura' : '',
+      validas.some(f => !f.bate) ? 'A soma das compras não bate com o total de alguma fatura' : '',
+    ].filter(Boolean) : [
       !validas.length ? 'Importe a fatura do cartão (PDF)' : '',
       validas.length && !contaCartao ? 'Escolha a conta do cartão de crédito' : '',
       validas.length && naTarefa && !fonte ? 'Importe as notas de entrada na Conferência fiscal' : '',
@@ -230,7 +268,7 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
       validas.some(f => f.pagamento && !f.contaBanco) ? 'Escolha a conta do banco que pagou a fatura' : '',
       validas.some(f => !f.bate) ? 'A soma das compras não bate com o total de alguma fatura' : '',
     ].filter(Boolean),
-    qtdLancamentos: razao.length,
+    qtdLancamentos: soPagamento ? doPagamento.length : razao.length,
     /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
     importacao: {
       codigo: empresa.codigo ?? null, empresa: empresa.nome, origem: 'cartoes',
