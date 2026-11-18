@@ -243,7 +243,7 @@ export function DetalheDoComunicado({ c, vm, mural, podeMexer, devNovo }: { c: C
 }
 
 type FiltroDaLista = 'todos' | 'avisos' | 'reunioes' | 'cobrancas';
-interface LinhaDaLista { chave: string; id: string; tipo: Exclude<FiltroDaLista, 'todos'>; icone: NomeIcone; titulo: string; rotulo: string; quem: string; quando: string; pendente: boolean; selo: ReactNode; abrir?: () => void }
+interface LinhaDaLista { chave: string; id: string; tipo: Exclude<FiltroDaLista, 'todos'>; comunicado?: boolean; icone: NomeIcone; titulo: string; rotulo: string; quem: string; quando: string; pendente: boolean; selo: ReactNode; abrir?: () => void }
 
 /**
  * As Notificações em lista (modo desenvolvedor, 18/11/2026): as cobranças, as reuniões e os comunicados numa lista só, com os
@@ -258,7 +258,8 @@ function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof u
       selo: x.aberta ? <span className="badge badge-suave badge-warn">Responder</span> : null, abrir: () => vm.abrir(x.tarefa) })),
     ...vm.reunioesNaLista.map(x => ({ chave: 'r' + x.id, id: x.id, tipo: 'reunioes' as const, icone: 'calendar' as NomeIcone, titulo: x.titulo, rotulo: 'Reunião', quem: x.criadaPor.nome, quando: x.quandoTexto,
       pendente: x.minhaPresenca === null && x.acoes.includes('confirmar'), selo: <SeloDaReuniao x={x} /> })),
-    ...vm.comunicados.map(x => ({ chave: 'a' + x.id, id: x.id, tipo: 'avisos' as const, icone: (x.fixado ? 'mapaPin' : ICONE_DO_TIPO[x.tipo || 'aviso']) as NomeIcone, titulo: x.tituloNaLista, rotulo: x.tipoRotulo, quem: x.por, quando: x.quandoFoi,
+    // o comunicado de reunião entra no filtro Reuniões; o detalhe dele é o do comunicado (aberto como aviso)
+    ...vm.comunicados.map(x => ({ chave: 'a' + x.id, id: x.id, tipo: (x.tipo === 'reuniao' ? 'reunioes' : 'avisos') as LinhaDaLista['tipo'], comunicado: true, icone: (x.fixado ? 'mapaPin' : ICONE_DO_TIPO[x.tipo || 'aviso']) as NomeIcone, titulo: x.tituloNaLista, rotulo: x.tipoRotulo, quem: x.por, quando: x.quandoFoi,
       pendente: !!x.precisaReceber, selo: x.precisaReceber ? <span className="badge badge-suave badge-warn">Marcar recebido</span> : x.fixado ? <span className="badge badge-suave">Fixado</span> : null })),
   ];
   const conta = (f: FiltroDaLista) => linhas.filter(l => (f === 'todos' || l.tipo === f) && (!soPendentes || l.pendente)).length;
@@ -298,8 +299,8 @@ function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof u
               </button>
               {aqui && (
                 <div className="notif-detalhe">
-                  {l.tipo === 'reunioes' && vm.reuniao?.id === l.id && <DetalheDaReuniao x={vm.reuniao} vm={vm.reunioesVm} />}
-                  {l.tipo === 'avisos' && vm.comunicado?.id === l.id && <DetalheDoComunicado c={vm.comunicado} vm={vm} mural={mural} podeMexer={podeMexer} devNovo />}
+                  {!l.comunicado && vm.reuniao?.id === l.id && <DetalheDaReuniao x={vm.reuniao} vm={vm.reunioesVm} />}
+                  {l.comunicado && vm.comunicado?.id === l.id && <DetalheDoComunicado c={vm.comunicado} vm={vm} mural={mural} podeMexer={podeMexer} devNovo />}
                 </div>
               )}
             </Fragment>
