@@ -9,7 +9,7 @@ import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarre
 import { demo } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router';
-import { useAvisoDeBloqueio, useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
 import { implantarNotasFiscaisDeTeste } from '../../etapas/conferencia/importadosNaEtapa';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
@@ -130,10 +130,9 @@ export function Executor() {
     folha.alternar(feitoNaDelegacao.id);
   }, [feitoNaDelegacao?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // o item delegado fica travado para quem delegou (Vitor, 18/11/2026: "da check la e bloqueia pra mim, so clara pode desmarcar,
-  // porque foi ela que fez"): o check segue o da pessoa; ela desmarcou na delegação, desmarca aqui também. Modo desenvolvedor.
-  const [dev] = useModoDesenvolvedor();
-  const travadoNaDelegacao = (id: string) => (dev && naFolha && !delegacao.recebida ? delegacao.com(id) : '');
-  const desfeitoNaDelegacao = dev && folha.itens && naFolha && !delegacao.recebida
+  // porque foi ela que fez"): o check segue o da pessoa; ela desmarcou na delegação, desmarca aqui também. Para todos.
+  const travadoNaDelegacao = (id: string) => (naFolha && !delegacao.recebida ? delegacao.com(id) : '');
+  const desfeitoNaDelegacao = folha.itens && naFolha && !delegacao.recebida
     ? folha.itens.find(i => i.marcado && i.liberado && !!delegacao.com(i.id) && !delegacao.ofuscada(i.id)) || null : null;
   useEffect(() => {
     if (!desfeitoNaDelegacao) return;
