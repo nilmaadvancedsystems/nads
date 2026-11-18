@@ -15,6 +15,23 @@ export interface LinkDaEmpresa {
   atualizadoEm: string;
 }
 
+/**
+ * Uma pessoa da empresa cliente com senha na Área do Cliente (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"; docs/acessorias/desenho-senha-por-pessoa.md):
+ * areaClientePessoas/{id}, uma ficha por pessoa e empresa (o código, não o link: trocar o link não tira a senha). O robô
+ * da nuvem cria o login e responde na ficha (situacao, erro).
+ */
+export interface PessoaComSenha {
+  id: string;
+  codigo: number;
+  nome: string;
+  email: string;
+  ativo: boolean;
+  /** 'esperando' = o robô ainda não criou o login; 'pronto' = já entra; 'erro' = o robô não conseguiu (erro diz por quê) */
+  situacao: 'esperando' | 'pronto' | 'erro';
+  erro: string;
+  criadoEm: string;
+}
+
 /** Uma mensagem do chamado como a equipe guarda: o autor do escritório é o nome da pessoa (o cliente só vê "Escritório"). */
 export interface MensagemNaEquipe { de: 'cliente' | 'escritorio'; autor: string; texto: string; em: string }
 
@@ -84,6 +101,15 @@ export interface RepoAreaCliente {
   /** acrescenta a resposta do escritório e passa o chamado para "respondido" */
   responder(chamadoId: string, texto: string): Promise<void>;
   mudarSituacao(chamadoId: string, situacao: ac.SituacaoDoChamado): Promise<void>;
+  /** as pessoas com senha (todas as empresas; pedir já começa a ouvir) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"; docs/acessorias/desenho-senha-por-pessoa.md) */
+  pessoas(): ListaAoVivo<PessoaComSenha>;
+  /** cadastra a pessoa na empresa (o robô cria o login); o e-mail repetido na mesma empresa religa a ficha */
+  adicionarPessoa(codigo: number, nome: string, email: string): Promise<void>;
+  /** tira o acesso da pessoa a esta empresa (o robô derruba as sessões) */
+  tirarPessoa(id: string): Promise<void>;
+  /** o link pede senha? (areasCliente/{token}.exigeSenha; pedir já começa a ouvir) */
+  exigeSenha(token: string): { carregado: boolean; ligado: boolean };
+  mudarExigeSenha(token: string, ligado: boolean): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -167,6 +193,12 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
   ];
   const vazio = <T,>(lista: readonly T[]): ListaAoVivo<T> => ({ carregada: true, lista, erro: '' });
   let logos: LogoDaEmpresa[] = [];
+  // as pessoas com senha de exemplo (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"; docs/acessorias/desenho-senha-por-pessoa.md)
+  let pessoas: PessoaComSenha[] = [
+    { id: 'px-1', codigo: 462, nome: 'Marcos Dias', email: 'marcos@exemplo.com.br', ativo: true, situacao: 'pronto', erro: '', criadoEm: ha(60 * 48) },
+    { id: 'px-2', codigo: 462, nome: 'Ana do RH', email: 'rh@exemplo.com.br', ativo: true, situacao: 'esperando', erro: '', criadoEm: ha(10) },
+  ];
+  const comSenha = new Set<string>();
   return {
     exemplos: true,
     links: () => vazio(links),
@@ -206,6 +238,17 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
       chamados = chamados.map(c => (c.id === id ? { ...c, situacao, atualizadoEm: new Date().toISOString() } : c));
       mudou();
     },
+    pessoas: () => vazio(pessoas.filter(p => p.ativo)),
+    async adicionarPessoa(codigo, nome, email) {
+      const e = email.trim().toLowerCase();
+      const ja = pessoas.find(p => p.codigo === codigo && p.email === e);
+      pessoas = ja ? pessoas.map(p => (p === ja ? { ...p, nome: nome.trim(), ativo: true } : p))
+        : [...pessoas, { id: 'px-' + (pessoas.length + 1), codigo, nome: nome.trim(), email: e, ativo: true, situacao: 'esperando', erro: '', criadoEm: new Date().toISOString() }];
+      mudou();
+    },
+    async tirarPessoa(id) { pessoas = pessoas.map(p => (p.id === id ? { ...p, ativo: false } : p)); mudou(); },
+    exigeSenha: token => ({ carregado: true, ligado: comSenha.has(token) }),
+    async mudarExigeSenha(token, ligado) { if (ligado) comSenha.add(token); else comSenha.delete(token); mudou(); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

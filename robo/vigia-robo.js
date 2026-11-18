@@ -1152,6 +1152,10 @@ async function iniciar() {
         },
       }));
     } catch (err) { log('checklist do mês desligado:', err.message); }
+    // a senha por pessoa na Área do Cliente (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"):
+    // cria o login de cada pessoa que a equipe cadastrou e põe nele os links que ela abre (robo/acesso-cliente.js)
+    try { tarefa('acesso-cliente', () => require('./acesso-cliente').iniciarAcessoCliente({ db, auth: require('firebase-admin/auth').getAuth(), log, ouvir: require('./ouvinte').ouvir, core: () => require('./gerado/danfse') })); }
+    catch (err) { log('acesso do cliente desligado:', err.message); }
     // a troca do e-mail de entrada (12/11/2026, nads › Cadastro › Usuários › Acesso): o Diretor ou o Dono pede, o robô troca
     try { tarefa('pedidos-de-conta', () => require('./contas-pedidos').iniciarPedidosDeConta(db, log)); }
     catch (err) { log('pedidos de conta desligados:', err.message); }

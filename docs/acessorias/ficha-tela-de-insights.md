@@ -92,3 +92,11 @@ match /nadsInsights/{id} {
   no resumo, por pessoa, até 80 empresas (nome, situação, etapa) e até 10 tarefas atrasadas (título, prazo). Só Diretor
   e admin leem o documento.
 - "remove o modo tv": o Modo TV saiu.
+
+## Regra publicada (18/11/2026, 19:23, a pedido do dono: "publica a regra")
+
+Publicada pelo serviço de regras do Firebase (entregas-2e5e2), sobre a versão que estava no ar (a de 18/11 18:37), só
+acrescentando: `match /nadsInsights/{id}` (ler: `ehDiretorNads()`; gravar: ninguém, só o robô) e
+`match /config/insights` (`administraRobos() && soMudou(['ligado'])`). Ruleset novo `a028d8dc-0b6d-41be-a462-53aebf0c0e04`;
+o anterior, para voltar se precisar: `2c8bf02c-69a5-4703-a841-c902b78c8f99`. Vitor: o firestore.rules que você mantém
+precisa ganhar estas 9 linhas, senão a próxima publicação sua tira.

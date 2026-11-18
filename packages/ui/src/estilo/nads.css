@@ -7977,3 +7977,13 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .lt-extrato-avisos:empty{display:none;}
 .lt-conta-banco input.lt-conta-banco-campo{flex:none;width:110px;min-width:0;}
 .lt-conta-banco .btn{flex:none;}
+
+/* As pessoas com senha da Área do Cliente (18/11/2026: "a area de cliente vai ter senha de acesso", "Uma por pessoa") */
+.ac-pessoas { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ac-pessoas li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border-muted); }
+.ac-pessoa-quem { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.ac-pessoa-quem .fraco { font-size: var(--fs-12); overflow: hidden; text-overflow: ellipsis; }
+.ac-pessoa-nova { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.ac-pessoa-nova input { flex: 1 1 160px; min-width: 0; }
+.ac-exige-senha { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; cursor: pointer; }
+.ac-exige-senha input { margin-top: 3px; }

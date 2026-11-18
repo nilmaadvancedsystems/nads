@@ -110,3 +110,15 @@ trocar por uma claim quando todas as empresas estiverem com senha. `ehDaEquipe()
   as do setor dela; o sócio (Tudo) vê todas.
 - Os e-mails do escritório (guias, avisos) passam a ir para as pessoas do setor, ou continuam no e-mail do cadastro?
   Proposta: continuam no cadastro nesta etapa; mudar depois.
+
+## Primeira etapa feita (18/11/2026, sem setores: cada pessoa vê a empresa inteira, como o link de hoje) — sem commit
+
+- Conferência do item 6 nas regras no ar: nenhuma regra interna aceita só "logado" (todas pedem `membro()`); a regra de
+  `chamados` confere só as chaves que mudaram (a nota da avaliação, ficha 34, não trava a equipe).
+- Core `areaCliente/acessoPorPessoa.ts` (+teste); Tarefas › janela da empresa › "Pessoas com senha" (dar acesso, tirar,
+  "Exigir senha" só com alguém pronto); ficha `areaClientePessoas/{codigo}_{email}` (trocar o link não tira a senha; o link
+  trocado herda o `exigeSenha`); robô da nuvem `robo/acesso-cliente.js` (+teste) no `vigia-robo.js`; site do cliente com a
+  tela de entrar (exemplo: `/cliente/exemplo-senha`). Regra proposta: `regra-senha-por-pessoa.md` (compila; não publicada).
+- Para ligar, nesta ordem: publicar a regra; trocar o `robo-versao` da nuvem; publicar o site; cadastrar as pessoas de uma
+  empresa de teste e, quando ficarem "Pode entrar", ligar "Exigir senha".
+- Falta: o botão "Sair" dentro da área, a lista das empresas da pessoa depois de entrar e a divisão por setor.

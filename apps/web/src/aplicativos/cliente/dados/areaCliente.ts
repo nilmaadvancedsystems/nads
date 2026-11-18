@@ -98,6 +98,8 @@ export interface EstadoDaArea {
   carregado: boolean;
   /** false = o link não existe ou foi trocado: a tela não mostra dado nenhum */
   valido: boolean;
+  /** o link pede senha e ninguém com acesso entrou: a tela de entrar (o nome do link para o topo) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa") */
+  pedeLogin: { nome: string } | null;
   /** o banco não respondeu por outro motivo (não é o link): a frase para o cliente; '' = sem problema */
   erro: string;
   /** true = dados de exemplo (nada vai para o escritório) */
@@ -139,7 +141,7 @@ export interface EstadoDaArea {
 }
 
 export const AREA_VAZIA: EstadoDaArea = {
-  carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
+  carregado: false, valido: false, pedeLogin: null, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
   documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [], entregas: [], parcelamentos: [],
 };
 
@@ -172,4 +174,10 @@ export interface RepoAreaCliente {
   avaliarChamado(token: string, chamadoId: string, nota: number, comentario: string): Promise<void>;
   /** "Confirmar que recebi" a entrega: o pedido marcado vai para o robô (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
   confirmarRecebido(token: string, entregaId: string): Promise<void>;
+  /** entra com o e-mail e a senha (o link que pede senha) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"); o erro já vem em português */
+  entrar(token: string, email: string, senha: string): Promise<void>;
+  /** manda o e-mail do Firebase para criar ou trocar a senha (volta para este link) */
+  criarSenha(token: string, email: string): Promise<void>;
+  /** sai da conta neste aparelho */
+  sair(): Promise<void>;
 }

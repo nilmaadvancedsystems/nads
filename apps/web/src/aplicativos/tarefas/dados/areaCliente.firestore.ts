@@ -14,7 +14,7 @@ import { arrayUnion, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit
 import { areaCliente as ac } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
-import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LeituraDaGuia, type LinkDaEmpresa, type ListaAoVivo, type LogoDaEmpresa, type MensagemNaEquipe, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
+import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LeituraDaGuia, type LinkDaEmpresa, type ListaAoVivo, type LogoDaEmpresa, type MensagemNaEquipe, type PessoaComSenha, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
 
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
@@ -104,17 +104,50 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     return token && guiaId ? { token, guiaId, tipo: texto(x.tipo), competencia: texto(x.competencia), primeiraEm: instante(x.primeiraEm), ultimaEm: instante(x.ultimaEm), vezes: numero(x.vezes) } : null;
   });
 
+  // as pessoas com senha (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"; docs/acessorias/desenho-senha-por-pessoa.md): a coleção é pequena (algumas por empresa)
+  const pessoas = aoVivo<PessoaComSenha>(() => collection(db, 'areaClientePessoas'), (id, x) => {
+    const codigo = numero(x.codigo), email = texto(x.email);
+    if (!codigo || !email || x.ativo === false) return null;
+    const s = texto(x.situacao);
+    return { id, codigo, nome: texto(x.nome), email, ativo: true, situacao: s === 'pronto' || s === 'erro' ? s : 'esperando', erro: texto(x.erro), criadoEm: instante(x.criadoEm) };
+  });
+  // o "Exigir senha" de cada link aberto na tela (um documento por link)
+  const senhaDoLink = new Map<string, { carregado: boolean; ligado: boolean }>();
+
   /** Grava o token novo para as empresas do link: primeiro o link, depois os ponteiros (o ponteiro nunca aponta para nada). */
-  async function criar(token: string, cods: number[], nome: string, criadoPor: string, criadoEm: string): Promise<void> {
+  async function criar(token: string, cods: number[], nome: string, criadoPor: string, criadoEm: string, exigeSenha = false): Promise<void> {
     const agora = new Date().toISOString();
-    // as regras aceitam só estas 5 chaves (codigos de 1 a 50, nome até 200); o cliente lê este doc: criadoPor é o NOME, nunca o e-mail
-    await setDoc(doc(db, 'areasCliente', token), { codigos: cods.slice(0, 50), nome: nome.slice(0, 200), criadoEm, criadoPor: criadoPor || 'Escritório', atualizadoEm: agora });
+    // as regras aceitam só estas chaves (codigos de 1 a 50, nome até 200); o cliente lê este doc: criadoPor é o NOME, nunca o e-mail.
+    // O exigeSenha só vai quando ligado (o link trocado herda a senha; a regra nova aceita a chave)
+    await setDoc(doc(db, 'areasCliente', token), { codigos: cods.slice(0, 50), nome: nome.slice(0, 200), criadoEm, criadoPor: criadoPor || 'Escritório', atualizadoEm: agora, ...(exigeSenha ? { exigeSenha: true } : {}) });
     for (const c of cods) await setDoc(doc(db, 'areasClientePorEmpresa', String(c)), { token, atualizadoEm: agora });
   }
 
   return {
     exemplos: false,
-    links, chamados, recebidos, logos, leituras,
+    links, chamados, recebidos, logos, leituras, pessoas,
+    async adicionarPessoa(codigo, nome, email) {
+      const e = email.trim().toLowerCase();
+      const agora = new Date().toISOString();
+      // a mesma pessoa na mesma empresa é uma ficha só (o id junta os dois): cadastrar de novo religa
+      const id = codigo + '_' + e.replace(/[^a-z0-9]+/g, '-').slice(0, 120);
+      // merge: a resposta do robô na ficha (situacao, uid) fica
+      await setDoc(doc(db, 'areaClientePessoas', id), { codigo, nome: nome.trim().slice(0, 80), email: e, ativo: true, criadoEm: agora, criadoPor: quem() || 'Escritório', atualizadoEm: agora }, { merge: true });
+    },
+    async tirarPessoa(id) {
+      await updateDoc(doc(db, 'areaClientePessoas', id), { ativo: false, atualizadoEm: new Date().toISOString() });
+    },
+    exigeSenha(token) {
+      if (!senhaDoLink.has(token)) {
+        senhaDoLink.set(token, { carregado: false, ligado: false });
+        onSnapshot(doc(db, 'areasCliente', token), s => { senhaDoLink.set(token, { carregado: true, ligado: s.get('exigeSenha') === true }); mudou(); },
+          () => { senhaDoLink.set(token, { carregado: true, ligado: false }); mudou(); });
+      }
+      return senhaDoLink.get(token)!;
+    },
+    async mudarExigeSenha(token, ligado) {
+      await updateDoc(doc(db, 'areasCliente', token), { exigeSenha: ligado, atualizadoEm: new Date().toISOString() });
+    },
     async gravarLogo(codigo, logo) {
       await setDoc(doc(db, 'logosDasEmpresas', String(codigo)), { logo, atualizadoEm: new Date().toISOString(), por: quem() || 'Escritório' });
     },
@@ -138,7 +171,7 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
       const cods = codigos(velho?.codigos);
       const token = novoToken();
       const agora = new Date().toISOString();
-      await criar(token, cods.length ? cods : [e.codigo], texto(velho?.nome) || e.nome, quem(), instante(velho?.criadoEm) || agora);
+      await criar(token, cods.length ? cods : [e.codigo], texto(velho?.nome) || e.nome, quem(), instante(velho?.criadoEm) || agora, velho?.exigeSenha === true);
       if (antigo) await deleteDoc(doc(db, 'areasCliente', antigo));
       return { codigo: e.codigo, token, atualizadoEm: agora };
     },

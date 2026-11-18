@@ -22,6 +22,7 @@ import { ICONES_DO_CLIENTE } from '../partes/iconesDoCliente';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
+import { EntrarComSenha } from './EntrarComSenha';
 import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
 import { Contato, Empresa, Faturamento } from './Administrativo';
@@ -67,7 +68,8 @@ function Area() {
   // a tela recriada a cada navegação: o que a busca geral pede (a busca preenchida, a solicitação) vale de novo
   const { key: chaveDaTela } = useLocation();
   const daCasca = { token: vm.token, area, hoje: vm.hoje, irPara: vm.irPara, copiar: vm.copiar, exemplos: vm.exemplos, marcarLida: vm.marcarLida };
-  const valido = area.carregado && area.valido;
+  // o link que pede senha e ninguém entrou: a tela de entrar no lugar da área (18/11/2026: "a area de cliente vai ter senha de acesso")
+  const valido = area.carregado && area.valido && !area.pedeLogin;
   const c = vm.contato;
   const abrirEnvio = useJanelaDeEnvio(daCasca);
   // o aviso "Falta mandar" do sino abre o envio já no tipo (17/11/2026, ficha o-que-falta-mandar)
@@ -236,7 +238,7 @@ function Area() {
         </header>
         <main className="cli-main">
           {vm.exemplos && valido && <p className="cli-exemplo">Versão de exemplo: os dados são de mentira e nada chega ao escritório.</p>}
-          {!area.carregado ? <EsqueletoDaArea /> : !area.valido ? (
+          {!area.carregado ? <EsqueletoDaArea /> : area.pedeLogin ? <EntrarComSenha token={vm.token} nome={area.pedeLogin.nome} /> : !area.valido ? (
             <div className="card cli-link-ruim">
               {!vm.token ? (
                 // a raiz do site (sem token): o N da Nilma no lugar do ícone do vazio
