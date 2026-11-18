@@ -152,3 +152,19 @@ export function esquecerLembrada(c: ConfigDoLancatudo, chave: string): ConfigDoL
 export function registrarExportacao(m: MesDoLancatudo, e: ExportacaoFeita): MesDoLancatudo {
   return { ...m, exportacoes: [e, ...m.exportacoes].slice(0, 200) };
 }
+
+/**
+ * O código contábil da conta bancária, escolhido no Lançatudo (18/11/2026: "tem que ter como configurar por aqui as contas"):
+ * só dígitos; vazio tira. Vale quando o Cadastro não tem o código dessa conta.
+ */
+export function definirContaDoBanco(c: ConfigDoLancatudo, banco: string, conta: string): ConfigDoLancatudo {
+  const codigo = conta.replace(/\D/g, '');
+  const contas = { ...(c.contasDosBancos || {}) };
+  if (codigo) contas[banco] = codigo; else delete contas[banco];
+  return { ...c, contasDosBancos: contas };
+}
+
+/** O código contábil da conta bancária: o do Cadastro; sem ele, o escolhido no Lançatudo. */
+export function contaDoBancoNaConfig(c: ConfigDoLancatudo, banco: string, doCadastro: string | undefined): string {
+  return (doCadastro || '').trim() || c.contasDosBancos?.[banco] || '';
+}

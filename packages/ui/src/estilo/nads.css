@@ -7966,3 +7966,14 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .modal .concluir-obs:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);}
 .modal .concluir-obs::placeholder{color:var(--ink-muted);}
 .concluir-obs-conta{align-self:flex-end;font-size:var(--fs-11);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+/* Lançatudo: o código contábil do banco no próprio aviso e o extrato numa janela (18/11/2026) */
+.lt-conta-banco{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:8px 10px 8px 12px;border:1px solid color-mix(in srgb,var(--warn) 40%,var(--border));border-radius:10px;background:color-mix(in srgb,var(--warn) 8%,transparent);}
+.lt-conta-banco-texto{display:inline-flex;align-items:center;gap:8px;flex:1 1 320px;min-width:0;font-size:var(--fs-13);color:var(--ink);}
+.lt-conta-banco-texto svg{flex:none;width:15px;height:15px;color:var(--warn);}
+.lt-conta-banco-campo{width:110px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--ink);font:inherit;font-size:var(--fs-13);font-variant-numeric:tabular-nums;}
+.lt-conta-banco-campo:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);}
+.modal.lt-janela.lt-janela-extrato{max-width:1240px;width:min(1240px,100%);height:min(88dvh,900px);display:flex;flex-direction:column;}
+.lt-janela-extrato .lt-extrato-corpo{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 18px 18px;}
+.lt-extrato-avisos:empty{display:none;}
+.lt-conta-banco input.lt-conta-banco-campo{flex:none;width:110px;min-width:0;}
+.lt-conta-banco .btn{flex:none;}

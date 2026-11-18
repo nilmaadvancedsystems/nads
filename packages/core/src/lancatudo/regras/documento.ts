@@ -33,7 +33,9 @@ export function configDoDocumento(d: unknown): ConfigDoLancatudo {
       if (ehObj(v) && txt(v.conta)) lembradas[k] = { conta: txt(v.conta), exemplo: txt(v.exemplo), em: txt(v.em), por: txt(v.por) };
     }
   }
-  return { regras, lembradas };
+  const contasDosBancos: Record<string, string> = {};
+  if (ehObj(d.contasDosBancos)) for (const [k, v] of Object.entries(d.contasDosBancos)) if (txt(v)) contasDosBancos[k] = txt(v);
+  return Object.keys(contasDosBancos).length ? { regras, lembradas, contasDosBancos } : { regras, lembradas };
 }
 
 function decisaoDoDocumento(v: unknown): DecisaoDaLinha | null {
@@ -68,7 +70,7 @@ export function mesDoDocumento(d: unknown, competencia: string): MesDoLancatudo 
 /** Só JSON (sem undefined). */
 const json = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
-export const documentoDaConfig = (c: ConfigDoLancatudo) => json({ regras: c.regras, lembradas: c.lembradas });
+export const documentoDaConfig = (c: ConfigDoLancatudo) => json({ regras: c.regras, lembradas: c.lembradas, contasDosBancos: c.contasDosBancos || {} });
 export const documentoDoMes = (m: MesDoLancatudo) => json({ competencia: m.competencia, decisoes: m.decisoes, exportacoes: m.exportacoes });
 
 /**

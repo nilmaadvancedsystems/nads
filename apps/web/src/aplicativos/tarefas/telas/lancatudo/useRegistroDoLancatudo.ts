@@ -50,7 +50,9 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
   const { bancos, primeiro } = useMemo(() => extrator.bancosDaEmpresaNa(e, cad.carregada ? cad.cadastro : null, empresa.codigo, competencia),
     [e, cad.carregada, cad.cadastro, empresa.codigo, competencia]);
   const banco = bancos.find(b => b.id === bancoEscolhido) || bancos[0];
-  const contaDoBanco = cad.cadastro.bancos?.find(b => b.id === banco.id)?.contaContabil || '';
+  // o código contábil da conta bancária: o do Cadastro; sem ele, o escolhido aqui (18/11/2026: "tem que ter como configurar por aqui as contas")
+  const contaDoCadastro = cad.cadastro.bancos?.find(b => b.id === banco.id)?.contaContabil || '';
+  const contaDoBanco = lt.contaDoBancoNaConfig(cfg.config, banco.id, contaDoCadastro);
   const plano = useMemo(() => cad.plano?.contas.length ? cad.plano.contas : null, [cad.plano]);
   const contasDoPlano = useMemo((): { codigo: string; nome: string }[] => (plano || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [plano]);
   const nomeDaConta = (codigo: string) => plano?.find(c => c.codigo === codigo)?.nome || '';
@@ -199,6 +201,8 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
     const alvo = [...chaves];
     setEscolhendo({ conta: uma?.conta || null, quantas: alvo.length, aoEscolher: c => escolherConta(alvo, c) });
   };
+  const gravarContaDoBanco = (codigo: string) => { if (pronto) salvarConfig(lt.definirContaDoBanco(cfg.config, banco.id, codigo)); };
+  const abrirPlanoDoBanco = () => setEscolhendo({ conta: contaDoBanco || null, quantas: 0, aoEscolher: gravarContaDoBanco });
   const abrirPlanoDaRegra = () => setEscolhendo({ conta: regra?.conta || null, quantas: 0, aoEscolher: c => setRegra(r => (r ? { ...r, conta: c } : r)) });
   const escolherNoPlano = (codigo: string) => { const alvo = escolhendo; setEscolhendo(null); alvo?.aoEscolher(codigo); };
 
@@ -228,7 +232,7 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
   // ---- saída
   const [comSugeridas, setComSugeridas] = useState(false);
   const paraExportar = useMemo(() => lt.lancamentosParaImportar(linhas, comSugeridas), [linhas, comSugeridas]);
-  const motivoSemExportar = !contaDoBanco ? 'Falta o código contábil da conta ' + banco.nome + ' em Configurações › Empresas › Contas bancárias.'
+  const motivoSemExportar = !contaDoBanco ? 'Falta o código contábil da conta ' + banco.nome + (banco.conta ? ' ' + banco.conta : '') + ': escolha no aviso em cima.'
     : !paraExportar.length ? 'Nenhuma linha conciliada para exportar.' : '';
   const registrar = (destino: lt.ExportacaoFeita['destino'], quantidade: number) =>
     salvarMes(lt.registrarExportacao(mesNoBanco.mes, { em: new Date().toISOString(), por: quem, banco: banco.id, quantidade, destino }));
@@ -259,7 +263,7 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
 
   return {
     empresa, competencia, pronto, quem,
-    bancos, banco, contaDoBanco, semPlano: cad.carregada && !plano, contasDoPlano, nomeDaConta,
+    bancos, banco, contaDoBanco, contaDoBancoNoCadastro: !!contaDoCadastro, gravarContaDoBanco, abrirPlanoDoBanco, semPlano: cad.carregada && !plano, contasDoPlano, nomeDaConta,
     semExtrato: extratorChegou && !dados.extrato.length, razaoDoMes: dados.razaoDoMes.length > 0, mesesComExtrato, rotuloDoMes: rotuloDoMes(competencia),
     linhas, visiveis, totais, percentual: lt.percentualConciliado(totais),
     filtro, setFiltro, busca, setBusca, selecionadas, marcar, todasMarcadas, marcarVisiveis, marcarRevisar, limparSelecao: () => setSelecionadas(new Set()),
