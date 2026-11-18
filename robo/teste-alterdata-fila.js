@@ -210,6 +210,22 @@ function novo(id, tipo, codigo, competencia) {
     assert.strictEqual(pedidos.get('fc').status, 'cancelado');
   }
 
+  // ── o razão da conta até o último dia do mês seguinte (18/11/2026); sem movimento nele, de novo só até o mês pedido
+  {
+    const fins = [];
+    const f5 = criarFilaAlterdata({ banco, limiteMs: 5000, pastaDoPedido: id => path.join(BASE, 'seguinte', id), limparTela: async () => {},
+      rodar: async (rel, a5) => { fins.push(a5.inicio + '-' + a5.fim); if (fins.length === 1 && a5.fim === '31/12/2026') return { ok: false, semMovimento: true, erro: 'Movimento 12/2026 não importado' }; fs.writeFileSync(a5.destino, 'x'); return { ok: true, arquivo: a5.destino }; } });
+    pedidos.set('rs1', { status: 'pendente', tipo: 'razaoConta', codigo: 402, conta: '21304', competencia: '2026-01', ate: '2026-09', criadoEm: new Date().toISOString() });
+    f5.chegou('rs1');
+    await f5.ocioso();
+    assert.deepStrictEqual(fins, ['01/01/2026-31/10/2026'], 'o razão não foi até o fim do mês seguinte: ' + fins.join(', '));
+    fins.length = 0;
+    pedidos.set('rs2', { status: 'pendente', tipo: 'razaoConta', codigo: 402, conta: '21304', competencia: '2026-11', ate: '2026-11', criadoEm: new Date().toISOString() });
+    f5.chegou('rs2');
+    await f5.ocioso();
+    assert.deepStrictEqual(fins, ['01/11/2026-31/12/2026', '01/11/2026-30/11/2026'], 'sem movimento no mês seguinte, não puxou de novo até o pedido: ' + fins.join(', '));
+  }
+
   fs.rmSync(BASE, { recursive: true, force: true });
   console.log('ok: ' + pedidos.size + ' pedidos, ' + chamadas.length + ' roteiros, no máximo ' + maximo + ' ao mesmo tempo; o travado virou erro e a fila seguiu; duas máquinas: ' + porMaquina.s.length / 2 + ' no servidor + ' + porMaquina.p.length / 2 + ' no PC, nenhum repetido');
 })().catch(err => { console.error('FALHOU:', err.message); process.exit(1); });

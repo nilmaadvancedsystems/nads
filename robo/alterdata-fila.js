@@ -463,7 +463,12 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       return banco.atualizar(id, { andamento: { pct: pct(), etapa, clique: String(nome).slice(0, 120), em: agora() } }).catch(() => {});
     };
     const [inicio] = periodo(p.competencia);
-    const [, fim] = periodo(ate);
+    // o razão vai até o último dia do mês seguinte (Vitor, 18/11/2026: "sempre se for puxar um razao, puxar ate o ultimo dia do
+    // mes subsequente, que as vezes os pagamentos estao la"); se o mês seguinte não tiver movimento, de novo só até o pedido
+    const [aA, mA] = ate.split('-').map(Number);
+    const mesSeguinte = mA === 12 ? (aA + 1) + '-01' : aA + '-' + String(mA + 1).padStart(2, '0');
+    const [, fimDoPedido] = periodo(ate);
+    const fim = razaoConta ? periodo(mesSeguinte)[1] : fimDoPedido;
     const lote = ate !== p.competencia ? p.competencia + ' a ' + ate : p.competencia;
     await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
     if (painel) painel.fazendo('alterdata', rotuloRel + ' ' + codigo + ' ' + lote + (doContabil ? ' no Alterdata Contábil' : ' no Alterdata Fiscal'));
@@ -472,7 +477,12 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     // o número da empresa na frente (17/11/2026, Vitor: "ele coloca o numero da empresa e o nome do arquivo")
     const nomeBase = codigo + ' ' + rotuloRel + ' ' + lote;
     const destino = path.join(pasta, nomeBase + '.xls');
-    const r = await comPrazo(balancete ? 'balancetePeriodo' : dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique, id);
+    let r = await comPrazo(balancete ? 'balancetePeriodo' : dinamico ? 'dinamicoPeriodo' : razaoConta ? 'razaoConta' : 'fiscal', { relatorio: rel, codigo, conta, inicio, fim, destino }, passo, clique, id);
+    if (razaoConta && fim !== fimDoPedido && !r.ok && !r.cancelado && r.semMovimento) {
+      log('Alterdata: o mês seguinte não tem movimento; o razão de novo até', fimDoPedido, id);
+      if (limparTela) { try { await limparTela(); } catch (_) { /* segue */ } }
+      r = await comPrazo('razaoConta', { relatorio: rel, codigo, conta, inicio, fim: fimDoPedido, destino }, passo, clique, id);
+    }
     const fimP = await banco.ler(id);
     if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
       // volta o Alterdata ao ponto de antes (fecha o que o roteiro abriu) e apaga a pasta do pedido
