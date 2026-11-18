@@ -7028,6 +7028,11 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .cobranca-corpo textarea{width:100%;resize:vertical;}
 .cobranca-acoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
 .cobranca-tempo{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border-muted);}
+/* a empresa junto do título e a escolha do tempo antes do motivo (18/11/2026) */
+.cobranca-topo > span{display:flex;flex-direction:column;gap:2px;}
+.cobranca-empresa{font-weight:600;color:var(--ink);font-size:var(--fs-15,15px);}
+.cobranca-tempo-titulo{font-weight:600;}
+.cobranca-escolha{justify-content:flex-start;}
 /* o sino nas listas: quem faz vê que foi cobrado; quem delegou, o botão de cobrar */
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
