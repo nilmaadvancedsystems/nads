@@ -117,6 +117,13 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>
+          {vm.proximas.reunioes.map(r => (
+            <div key={'reuniao-' + r.id} className="ini-linha ini-reuniao-do-dia">
+              <span className="ini-marca"><Icone nome="calendar" /></span>
+              <button type="button" className="ini-linha-texto ini-abrir" onClick={() => abrir(r.id)}><b>{r.titulo}</b><span className="hint"> · Reunião</span></button>
+              <span className="hint num">{[r.hora, r.duracao].filter(Boolean).join(' · ')}</span>
+            </div>
+          ))}
           {vm.proximas.linhas.length ? vm.proximas.linhas.map(t => (
             <div key={t.id} className="ini-linha">
               <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
@@ -124,7 +131,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               {cobrarLigado && t.cobrada && <span className="ini-sino" title={t.dicaDaCobranca}><Icone nome="sino" />{!discreta && 'Cobrada'}</span>}
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
-          )) : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}
+          )) : vm.proximas.reunioes.length ? null : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}
         </Cartao>
         <Cartao titulo="Delegadas por mim">
           {vm.delegadasPorMim.length ? vm.delegadasPorMim.map(t => (

@@ -56,6 +56,11 @@ export interface Reuniao {
   comentarios: ComentarioDaReuniao[];
   /** quem já respondeu se vai (Vou / Não vou) */
   presencas: PresencaNaReuniao[];
+  /**
+   * Quem marcou pediu a confirmação de presença (Vitor, 18/11/2026: "quando quem criou a reuniao marcar essa opcao, apareca no
+   * calendario, igual ao aviso, a pessoa deve clicar em confirmar"): o calendário pede o Confirmar presença só destas.
+   */
+  pedirPresenca?: true;
   historico: Nota[];
   em: string;
 }
@@ -108,7 +113,11 @@ export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora:
 // pedir e marcar
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface PedidoDeReuniao { titulo: string; pauta: string; quando: string; link: string; participantes: Pessoa[]; comDiretor: boolean; tipo: TipoDaReuniao; duracao: number }
+export interface PedidoDeReuniao {
+  titulo: string; pauta: string; quando: string; link: string; participantes: Pessoa[]; comDiretor: boolean; tipo: TipoDaReuniao; duracao: number;
+  /** quem marca pede a confirmação de presença (Vitor, 18/11/2026: "uma opcao de marcar, de confirmar presenca") */
+  pedirPresenca?: boolean;
+}
 
 /** Vitor, 13/11/2026: "Tipo: Reunião da Equipe e LIVE / Dia e hora / link apenas se for LIVE". */
 export type TipoDaReuniao = 'equipe' | 'live';
@@ -149,7 +158,7 @@ const nota = (por: string, em: string, texto: string): Nota => ({ por, em, texto
 export function nova(p: PedidoDeReuniao, o: { id: string; por: Pessoa; em: string; direta: boolean }): Reuniao {
   return {
     id: o.id, titulo: p.titulo.trim(), pauta: limparAviso(p.pauta), quando: p.quando, ...(p.tipo === 'live' && p.link.trim() ? { link: p.link.trim(), tipo: 'live' as const } : {}),
-    ...(p.duracao > 0 ? { duracao: p.duracao } : {}),
+    ...(p.duracao > 0 ? { duracao: p.duracao } : {}), ...(p.pedirPresenca ? { pedirPresenca: true as const } : {}),
     criadaPor: o.por, origem: o.direta ? 'direta' : 'pedido', participantes: p.participantes.filter(x => x.uid !== o.por.uid), comDiretor: o.direta || p.comDiretor,
     status: o.direta ? 'aprovada' : 'em-analise', comentarios: [], presencas: [], historico: [nota(o.por.nome, o.em, o.direta ? 'Marcou a reunião' : 'Pediu a reunião')], em: o.em,
   };

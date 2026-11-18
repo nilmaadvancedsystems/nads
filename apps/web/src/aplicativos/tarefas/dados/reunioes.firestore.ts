@@ -9,7 +9,7 @@ import { ouvirInsistindo } from './ouvirInsistindo.firestore';
 import { bytesDoAnexo } from './encolherAnexo';
 import { anexoDe } from './tarefasDelegadas';
 import type { RepoReunioes } from './reunioes';
-import { guardar } from '../../../comum/modoDesenvolvedor';
+import { guardar, modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
@@ -32,7 +32,7 @@ function lerReuniao(id: string, x: Record<string, unknown>): Reuniao {
   return {
     id, titulo: t(x.titulo), pauta: t(x.pauta), quando: t(x.quando), ...(x.link ? { link: t(x.link) } : {}),
     criadaPor: pessoa(x.criadaPor), origem: x.origem === 'direta' ? 'direta' : 'pedido', participantes: lista(x.participantes).map(pessoa), comDiretor: x.comDiretor === true,
-    ...(x.tipo === 'live' ? { tipo: 'live' as const } : {}), ...(Number(x.duracao) > 0 ? { duracao: Number(x.duracao) } : {}),
+    ...(x.tipo === 'live' ? { tipo: 'live' as const } : {}), ...(x.pedirPresenca === true ? { pedirPresenca: true as const } : {}), ...(Number(x.duracao) > 0 ? { duracao: Number(x.duracao) } : {}),
     status, ...(x.prazoDaRevisao ? { prazoDaRevisao: t(x.prazoDaRevisao) } : {}), ...(x.decididoPor ? { decididoPor: t(x.decididoPor) } : {}), ...(x.observacao ? { observacao: t(x.observacao) } : {}),
     ...(problema ? { problema } : {}), ...(solucao ? { solucao } : {}),
     comentarios: lista(x.comentarios).map(c => ({ uid: t(c.uid), nome: t(c.nome), texto: t(c.texto), em: t(c.em) })),
@@ -51,7 +51,16 @@ export function criarReunioesFirestore(quem: () => { uid: string; nome: string }
   const agora = () => new Date().toISOString();
   const daLista = (id: string) => { const x = estado?.reunioes.find(y => y.id === id); if (!x) throw new Error('a reunião não existe mais'); return x; };
   /** grava a reunião inteira (sem o id, que é o do documento) */
-  const gravar = async (x: Reuniao) => { const { id, ...dados } = x; await setDoc(doc(db, COLECAO, id), dados); };
+  const gravar = async (x: Reuniao) => {
+    const { id, ...dados } = x;
+    await setDoc(doc(db, COLECAO, id), dados);
+    // no modo desenvolvedor nada vai para o banco: a reunião fica na lista só nesta tela, para testar (18/11/2026)
+    if (modoDesenvolvedor() && estado) {
+      const resto = estado.reunioes.filter(y => y.id !== id);
+      estado = { ...estado, reunioes: [x, ...resto] };
+      mudou();
+    }
+  };
   const mudar = async (id: string, f: (x: Reuniao) => Reuniao) => gravar(f(daLista(id)));
   const parte = (id: string, arquivoId: string, n: number) => doc(db, COLECAO, id, 'partes', arquivoId + '-' + n);
   return {

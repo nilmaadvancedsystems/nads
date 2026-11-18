@@ -7081,6 +7081,9 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-coluna > .card{margin-bottom:0;}
 .ini-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .ini-linha{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;border-bottom:1px solid var(--border);}
+/* a reunião do dia escolhido, em primeiro na caixa de prazos e destacada (18/11/2026) */
+.ini-reuniao-do-dia{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding:4px 10px;margin-bottom:6px;border-bottom:0;}
+.ini-reuniao-do-dia .ini-marca svg{color:var(--accent);width:16px;height:16px;}
 .ini-linha:last-child{border-bottom:none;}
 .ini-linha-texto{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-linha-texto .hint{white-space:nowrap;}

@@ -16,6 +16,7 @@ import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
 import { useNovidade } from '../../../../comum/novidades';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
@@ -71,6 +72,8 @@ export function useInicioNovo() {
   const op = useOperador().operador as Operador;
   // as reuniões das Notificações (o Sênior pede, o Diretor e o Dono decidem): também no Painel e no calendário
   const reunioes = useReunioesDoInicio();
+  // a confirmação de presença só quando quem marcou pediu: em teste no modo desenvolvedor (18/11/2026)
+  const [devPresenca] = useModoDesenvolvedor();
   const { toast, aviso } = useRetorno();
   const [params, setParams] = useSearchParams();
   const aba = abaDaUrl(params.get('aba'));
@@ -139,6 +142,11 @@ export function useInicioNovo() {
   const [mes, setMes] = useState(hoje.slice(0, 7));
   const [dia, setDia] = useState<string | null>(null);
   const doDia = dia ? abertas.filter(t => t.prazo === dia) : minhas;
+  const horaDe = (q: string) => (q.length >= 16 ? q.slice(11, 16) : '');
+  const reunioesDoDia = !dia ? [] : [
+    ...reunioes.proximas.filter(x => x.quando.startsWith(dia)).map(x => ({ id: x.id, titulo: x.titulo, hora: horaDe(x.quando), duracao: x.duracaoTexto, quando: x.quando })),
+    ...comunicados.filter(c => c.tipo === 'reuniao' && (c.quando || '').startsWith(dia)).map(c => ({ id: c.id, titulo: c.tituloNaLista, hora: horaDe(c.quando || ''), duracao: '', quando: c.quando || '' })),
+  ].sort((a, b) => a.quando.localeCompare(b.quando));
 
   const concluir = (t: tarefas.delegadas.TarefaDelegada) => {
     // concluir pelo círculo só quando a tarefa deixa: os documentos (o envio e o requerer) e as que não deixam abrem a janela
@@ -225,7 +233,12 @@ export function useInicioNovo() {
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
-      total: dia ? doDia.length : minhas.length,
+      total: dia ? doDia.length + reunioesDoDia.length : minhas.length,
+      /**
+       * as reuniões do dia escolhido, em primeiro e destacadas (Vitor, 18/11/2026: "essa reuniao ao selecionar o dia apareca na
+       * caixa de prazos destacada e em primeiro"): as marcadas (aprovadas ou remarcadas) e os comunicados de reunião
+       */
+      reunioes: reunioesDoDia,
       linhas: doDia.slice(0, 6).map(t => ({
         id: t.id, titulo: t.titulo, prazo: ag.prazoCurto(t.prazo, hoje) || 'Sem prazo', atrasada: d.atrasada(t, hoje, agora),
         concluir: () => concluir(t),
@@ -272,7 +285,8 @@ export function useInicioNovo() {
      * sem o Recebido, um de cada vez; respondeu, aparece o próximo
      */
     paraConfirmar: [
-      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null)
+      // no modo desenvolvedor, só as reuniões em que quem marcou pediu a confirmação de presença (18/11/2026, em teste)
+      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null && (!devPresenca || x.pedirPresenca === true))
         .map(x => ({ tipo: 'reuniao' as const, id: x.id, titulo: x.titulo, texto: x.pauta, quem: x.criadaPor.nome, quando: x.quandoTexto })),
       ...comunicados.filter(c => c.precisaReceber)
         .map(c => ({ tipo: 'aviso' as const, id: c.id, titulo: c.tituloNaLista, texto: c.texto, quem: c.por, quando: c.quandoFoi })),
