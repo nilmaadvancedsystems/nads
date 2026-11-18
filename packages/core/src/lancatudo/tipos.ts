@@ -5,6 +5,8 @@
 // Datas em 'aaaa-mm-dd' e valores em centavos (+ entrou no banco, − saiu), como no Extrator.
 
 /** Em que sentido a regra vale: o que entrou no banco, o que saiu, ou os dois. */
+import type { ComprovanteDoLancatudo } from './regras/comprovantes';
+
 export type SentidoDaRegra = 'entrada' | 'saida' | 'ambos';
 
 /**
@@ -87,6 +89,8 @@ export interface MesDoLancatudo {
   competencia: string;
   decisoes: Record<string, Record<string, DecisaoDaLinha>>;
   exportacoes: ExportacaoFeita[];
+  /** os comprovantes lidos de cada conta bancária no mês (18/11/2026) */
+  comprovantes?: Record<string, ComprovanteDoLancatudo[]>;
 }
 
 /** De onde veio a contrapartida da linha. */
@@ -128,6 +132,10 @@ export interface LinhaDoRegistro {
   situacao: SituacaoDaLinha;
   /** o que está errado na conta (não existe no plano, é sintética) */
   problema?: string;
+  /** o comprovante que casou com a linha (18/11/2026: "com os comprovantes tem como saber o cliente") */
+  comprovante?: Pick<ComprovanteDoLancatudo, 'id' | 'nome' | 'driveId' | 'favorecido' | 'documento' | 'tipo'>;
+  /** o texto de onde sai a chave do que o nads aprende (o CPF/CNPJ do comprovante na frente); sem = o historicoDoBanco */
+  textoParaAprender?: string;
 }
 
 /** Os números do mês do banco. */

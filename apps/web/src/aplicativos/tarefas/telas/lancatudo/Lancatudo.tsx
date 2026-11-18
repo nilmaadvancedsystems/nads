@@ -10,6 +10,8 @@ import { useState, type ReactNode } from 'react';
 import { BotaoImportarNoAlterdata } from '../../../../comum/BotaoImportarNoAlterdata';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
 import { JanelaDoExtrato } from './JanelaDoExtrato';
+import { JanelaDosComprovantes } from './JanelaDosComprovantes';
+import { useComprovantesDoLancatudo } from './useComprovantesDoLancatudo';
 import { Janela, JanelaDaLinha, JanelaDaRegra, JanelaDoPlano } from './Janelas';
 import { useLancatudo, type EmpresaDoLancatudo } from './useLancatudo';
 import { useRegistroDoLancatudo } from './useRegistroDoLancatudo';
@@ -47,10 +49,14 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
   const tutorial = useTutorialDoLancatudo(vm.pronto && vm.linhas.length > 0 && !regrasAbertas);
   // o extrato e o razão do mês aqui mesmo (18/11/2026: "tem que ter como adicionar o extrato aqui ou puxar do drive")
   const [extratoAberto, setExtratoAberto] = useState(false);
+  // os comprovantes (18/11/2026: "quero a opção de adicionar comprovantes, não só extratos")
+  const comp = useComprovantesDoLancatudo(vm);
+  const [comprovantesAbertos, setComprovantesAbertos] = useState(false);
   return (
     <section className="lt">
       {extratoAberto && <JanelaDoExtrato empresa={empresa} competencia={entrada.competencia} rotuloDoMes={vm.rotuloDoMes} fechar={() => setExtratoAberto(false)} />}
       {tutorial.aberto && <TutorialDoLancatudo fechar={tutorial.fechar} />}
+      {comprovantesAbertos && <JanelaDosComprovantes vm={vm} c={comp} fechar={() => setComprovantesAbertos(false)} />}
       {regrasAbertas && (
         <Janela titulo="Regras" fechar={() => setRegrasAbertas(false)} className="lt-janela-regras">
           <div className="registro-corpo"><Regras vm={vm} trocarBanco={entrada.setBanco} /></div>
@@ -71,6 +77,9 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
         <button type="button" className="btn btn-outline" data-tut="lt-extrato" onClick={() => setExtratoAberto(true)} title="Importar o extrato e o razão do mês: do computador, do Drive ou do e-mail">
           <Icone nome="upload" />Extrato e razão
         </button>
+        <button type="button" className="btn btn-outline" data-tut="lt-comprovantes" onClick={() => setComprovantesAbertos(true)} title="Os comprovantes do mês: do computador ou do Drive. Eles dizem quem é o cliente ou o fornecedor">
+          <Icone nome="clipe" />Comprovantes{vm.comprovantes.length > 0 && <span className="menu-contador">{vm.comprovantes.length}</span>}
+        </button>
         {vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
         <button type="button" className="btn btn-outline" data-tut="lt-regras" onClick={() => setRegrasAbertas(true)} title="As regras da empresa e as contas que o nads aprendeu">
           <Icone nome="settings" />Regras<span className="menu-contador">{vm.regras.length}</span>
@@ -79,7 +88,7 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
       {vm.erro && <p className="registro-dica registro-dica-erro lt-dica"><Icone nome="alert" />O banco recusou: {vm.erro}</p>}
       {vm.pronto && !vm.contaDoBanco && <ContaDoBanco vm={vm} rotulo={rotuloDoBanco(vm.banco)} />}
       {vm.semPlano && <p className="registro-dica lt-dica"><Icone nome="ajuda" />A empresa ainda não tem plano de contas no Cadastro: o código da conta vale como for digitado, sem conferir.</p>}
-      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setExtratoAberto(true)} />
+      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setExtratoAberto(true)} verComprovante={comp.ver} />
     </section>
   );
 }
@@ -103,7 +112,7 @@ function ContaDoBanco({ vm, rotulo }: { vm: Vm; rotulo: string }) {
   );
 }
 
-function Lancamentos({ vm, irParaOMes, abrirExtrato }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void }) {
+function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void; verComprovante: (c: NonNullable<Linha['comprovante']>) => void }) {
   const t = vm.totais;
   if (vm.semExtrato) {
     const temOutros = vm.mesesComExtrato.length > 0;
@@ -198,23 +207,23 @@ function Lancamentos({ vm, irParaOMes, abrirExtrato }: { vm: Vm; irParaOMes: (co
       <div className="table-wrap lt-registro-wrap">
         <table className="lt-registro">
           <colgroup>
-            <col className="c-marca" /><col className="c-data" /><col className="c-conta" /><col className="c-valor" /><col /><col className="c-extra" />
+            <col className="c-marca" /><col className="c-data" /><col className="c-conta" /><col className="c-valor" /><col /><col className="c-quem" /><col className="c-extra" />
           </colgroup>
           <thead>
             <tr>
               <th><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarVisiveis(e.target.checked)} aria-label="Selecionar os visíveis" /></th>
-              <th>Data</th><th>Débito / Crédito</th><th className="num">Valor</th><th>Histórico</th><th>Informação extra</th>
+              <th>Data</th><th>Débito / Crédito</th><th className="num">Valor</th><th>Histórico</th><th className="lt-quem-th">Cliente / Fornecedor</th><th>Informação extra</th>
             </tr>
           </thead>
-          {vm.visiveis.map(l => <Partidas key={l.chave} vm={vm} l={l} />)}
-          {!vm.visiveis.length && <tbody><tr><td colSpan={6}><Vazio compacto texto="Nenhum lançamento com isso." /></td></tr></tbody>}
+          {vm.visiveis.map(l => <Partidas key={l.chave} vm={vm} l={l} verComprovante={verComprovante} />)}
+          {!vm.visiveis.length && <tbody><tr><td colSpan={7}><Vazio compacto texto="Nenhum lançamento com isso." /></td></tr></tbody>}
           {vm.visiveis.length > 0 && (
             <tfoot>
               <tr>
                 <td />
                 <td colSpan={2}>{vm.visiveis.length} {vm.visiveis.length === 1 ? 'lançamento' : 'lançamentos'}</td>
                 <td className="num">{vm.valor(vm.visiveis.reduce((s, l) => s + Math.abs(l.valor), 0))}</td>
-                <td colSpan={2} className="fraco">entrou R$ {vm.valor(t.entradas)} · saiu R$ {vm.valor(t.saidas)}</td>
+                <td colSpan={3} className="fraco">entrou R$ {vm.valor(t.entradas)} · saiu R$ {vm.valor(t.saidas)}</td>
               </tr>
             </tfoot>
           )}
@@ -289,11 +298,11 @@ function CodigoNaLinha({ vm, l }: { vm: Vm; l: Linha }) {
  * números": o valor repetido no débito de uma linha e no crédito da outra). O ícone ao lado da contrapartida diz de onde ela
  * veio; o histórico e a informação extra valem para as duas. A faixa à esquerda diz a situação.
  */
-function Partidas({ vm, l }: { vm: Vm; l: Linha }) {
+function Partidas({ vm, l, verComprovante }: { vm: Vm; l: Linha; verComprovante: (c: NonNullable<Linha['comprovante']>) => void }) {
   const entrada = l.valor > 0;
   const fora = l.situacao === 'ignorada' || l.situacao === 'no-razao';
   const origem = l.origem ? ICONE_DA_ORIGEM[l.origem] : null;
-  const doc = vm.documentoDaLinha(l);
+  const quem = vm.quemDaLinha(l);
   const marcada = vm.selecionadas.has(l.chave);
   const abrir = () => vm.abrirLinha(l.chave);
   const precisaDeConta = !fora && (l.situacao === 'pendente' || !l.conta);
@@ -318,6 +327,25 @@ function Partidas({ vm, l }: { vm: Vm; l: Linha }) {
         <td rowSpan={2} className={'num lt-valor ' + (entrada ? 'lt-entrada' : 'lt-saida')}>{vm.valor(l.valor)}</td>
         <td rowSpan={2} className="lt-hist" title={l.historico !== l.historicoDoBanco.trim() ? 'No extrato: ' + l.historicoDoBanco : undefined}>
           <span className="lt-hist-texto">{l.codHistorico && <span className="lt-codhist num">{l.codHistorico}</span>}{l.historico}</span>
+          {/* na tela estreita, o cliente ou fornecedor vem aqui (a coluna dele encolhe) */}
+          {(quem.nome || quem.documento) && <span className="lt-hist-quem">{l.comprovante && <Icone nome="clipe" />}{[quem.nome, quem.documento].filter(Boolean).join(' · ')}</span>}
+        </td>
+        <td rowSpan={2} className="lt-quem">
+          {/* o cliente ou fornecedor (18/11/2026: "com os comprovantes tem como saber o cliente"): o do comprovante, com o clipe que abre ele */}
+          {(l.comprovante || quem.documento) && (
+            <span className="lt-quem-caixa">
+              {l.comprovante && (
+                <button type="button" className="lt-quem-clipe" title={'Ver o comprovante: ' + l.comprovante.nome} aria-label="Ver o comprovante" onClick={e => { e.stopPropagation(); verComprovante(l.comprovante!); }}>
+                  <Icone nome="clipe" />
+                </button>
+              )}
+              <span className="lt-quem-textos">
+                {quem.nome && <span className="lt-quem-nome" title={quem.nome}>{quem.nome}</span>}
+                {quem.documento && <span className="lt-quem-doc num">{quem.documento}</span>}
+                {l.comprovante && !quem.nome && !quem.documento && <span className="lt-quem-doc">comprovante sem nome</span>}
+              </span>
+            </span>
+          )}
         </td>
         <td rowSpan={2} className="lt-extra">
           {/* a sugerida pelo razão se resolve no próprio selo (18/11/2026: "não tem como eu resolver esse 'sugerido'?"; "ainda gera
@@ -325,7 +353,7 @@ function Partidas({ vm, l }: { vm: Vm; l: Linha }) {
           {l.situacao === 'sugerida'
             ? <button type="button" className="badge badge-warn lt-selo-confirmar" title="Sugerido pelo razão: clique para confirmar a conta" onClick={e => { e.stopPropagation(); vm.confirmar(l); }}><Icone nome="check" />Confirmar</button>
             : <span className={SELO[l.situacao].classe} title={origem && !fora ? origem.dica : undefined}>{SELO[l.situacao].rotulo}</span>}
-          {doc && <span className="lt-extra-texto num">{doc}</span>}
+
           {l.problema && <span className="lt-extra-texto lt-problema">{l.problema}</span>}
           {l.documento && <span className="lt-extra-texto">Doc. {l.documento}</span>}
         </td>

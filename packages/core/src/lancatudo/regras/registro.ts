@@ -2,6 +2,7 @@
 // conta: a pessoa (na linha) > a regra > a conta aprendida do favorecido > a sugestão pelo razão já importado (esta só
 // sugere: a linha fica "sugerida" até a pessoa confirmar). O que já está no razão do mês (importado no Extrator) fica
 // marcado e fora da exportação: já foi lançado no Alterdata.
+import { casarComprovantes, textoParaAprender, textoParaAsRegras, type ComprovanteDoLancatudo } from './comprovantes';
 import type { ContaDoPlano } from '../../empresas/cadastro/tipos';
 import { bancoDoArquivo } from '../../extratudo/extrator/regras/bancos';
 import { conferir } from '../../extratudo/extrator/regras/conferencia';
@@ -82,6 +83,8 @@ export interface EntradaDoRegistro {
   decisoes: Readonly<Record<string, DecisaoDaLinha>>;
   /** o plano de contas da empresa (sem plano, qualquer código vale) */
   plano: readonly ContaDoPlano[] | null;
+  /** os comprovantes do banco no mês (18/11/2026): casam com as linhas e ajudam a achar a conta */
+  comprovantes?: readonly ComprovanteDoLancatudo[];
 }
 
 /** O que está errado na conta, pelo plano (null = nada). */
@@ -98,6 +101,7 @@ export function montarRegistro(p: EntradaDoRegistro): LinhaDoRegistro[] {
   const { dados, config, decisoes, plano } = p;
   const porCodigo = new Map((plano || []).map(c => [c.codigo, c]));
   const chaves = chavesDasLinhas(dados.extrato);
+  const casados = p.comprovantes?.length ? casarComprovantes(dados.extrato.map((l, i) => ({ chave: chaves[i], data: l.data, valor: l.valor })), p.comprovantes) : new Map<string, ComprovanteDoLancatudo>();
 
   // o que já está no razão do mês: o mesmo valor no mesmo dia (o "ok" da conferência); a contrapartida que o razão tem (a
   // coluna Contrapartida do razão da conciliação do Alterdata) é a conta da linha
@@ -112,14 +116,17 @@ export function montarRegistro(p: EntradaDoRegistro): LinhaDoRegistro[] {
   const escolhas: Escolha[] = dados.extrato.map((l, i) => {
     const d = decisoes[chaves[i]];
     const historicoDoBanco = historicoLimpo(l.historico);
-    const r = regraDaLinha(config.regras, l, p.banco);
+    const comp = casados.get(chaves[i]);
+    // as regras olham também o nome e o CPF/CNPJ do comprovante; o histórico do lançamento continua o do banco
+    const r = regraDaLinha(config.regras, comp ? { ...l, historico: textoParaAsRegras(l.historico, comp) } : l, p.banco);
     const historicoBase = r ? historicoPelaRegra(r, l.historico) : historicoDoBanco;
     const historico = d?.historico?.trim() || historicoBase;
     const codHistorico = d?.codHistorico !== undefined ? d.codHistorico : r?.codHistorico || '';
     if (d && d.conta !== undefined) return { conta: d.conta || null, nome: '', origem: d.conta ? 'pessoa' : null, historico, codHistorico };
     if (r) return { conta: r.conta, nome: '', origem: 'regra', regra: r.id, historico, codHistorico };
-    const k = chaveLembrada(l.historico, l.valor);
-    const lembrada = k ? config.lembradas[k] : undefined;
+    const k = chaveLembrada(textoParaAprender(l.historico, comp), l.valor);
+    const k0 = comp ? chaveLembrada(l.historico, l.valor) : null;
+    const lembrada = (k ? config.lembradas[k] : undefined) || (k0 ? config.lembradas[k0] : undefined);
     if (lembrada) return { conta: lembrada.conta, nome: '', origem: 'lembrada', historico, codHistorico };
     return { conta: null, nome: '', origem: null, historico, codHistorico };
   });
@@ -142,6 +149,7 @@ export function montarRegistro(p: EntradaDoRegistro): LinhaDoRegistro[] {
     const e = escolhas[i];
     const d = decisoes[chaves[i]];
     const problema = e.conta ? problemaDaConta(e.conta, plano, porCodigo) : null;
+    const comp = casados.get(chaves[i]);
     let situacao: SituacaoDaLinha;
     if (noRazao.has(i)) situacao = 'no-razao';
     else if (d?.ignorar) situacao = 'ignorada';
@@ -152,6 +160,10 @@ export function montarRegistro(p: EntradaDoRegistro): LinhaDoRegistro[] {
       historico: e.historico, codHistorico: e.codHistorico, documento: d?.documento || '', contaDoBanco: p.contaDoBanco,
       conta: e.conta, nomeDaConta: (e.conta && porCodigo.get(e.conta)?.nome) || e.nome || '',
       origem: e.origem, ...(d && d.conta !== undefined ? { contaEscolhida: true } : {}), ...(e.regra ? { regra: e.regra } : {}), situacao, ...(problema ? { problema } : {}),
+      ...(comp ? {
+        comprovante: { id: comp.id, nome: comp.nome, ...(comp.driveId ? { driveId: comp.driveId } : {}), favorecido: comp.favorecido, documento: comp.documento, tipo: comp.tipo },
+        ...(comp.documento ? { textoParaAprender: textoParaAprender(l.historico, comp) } : {}),
+      } : {}),
     };
   });
 }

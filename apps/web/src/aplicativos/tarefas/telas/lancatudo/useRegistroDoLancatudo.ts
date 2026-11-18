@@ -62,8 +62,10 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
   // os meses com extrato deste banco (a tela vazia oferece, quando o mês escolhido não tem; os 6 mais novos)
   const mesesComExtrato = useMemo(() => lt.mesesComExtrato(e, banco.id, primeiro).filter(m => m !== competencia).slice(0, 6)
     .map(m => ({ valor: m, rotulo: rotuloDoMes(m) })), [e, banco.id, primeiro, competencia]);
-  const linhas = useMemo(() => lt.montarRegistro({ dados, banco: banco.id, contaDoBanco, config: cfg.config, decisoes: decisoes || {}, plano }),
-    [dados, banco.id, contaDoBanco, cfg.config, decisoes, plano]);
+  // os comprovantes do banco no mês (18/11/2026): casam com as linhas e ajudam a achar a conta
+  const comprovantes = mesNoBanco.mes.comprovantes?.[banco.id];
+  const linhas = useMemo(() => lt.montarRegistro({ dados, banco: banco.id, contaDoBanco, config: cfg.config, decisoes: decisoes || {}, plano, comprovantes: comprovantes || [] }),
+    [dados, banco.id, contaDoBanco, cfg.config, decisoes, plano, comprovantes]);
   const totais = useMemo(() => lt.totaisDoRegistro(linhas), [linhas]);
 
   // ---- filtro, busca e seleção
@@ -95,6 +97,14 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
   const pronto = extratorChegou && cad.carregada && cfg.carregada && mesNoBanco.carregado;
   const falhou = (err: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para salvar', texto: (err as Error).message });
   const salvarMes = (m: lt.MesDoLancatudo) => { repo.salvarMes(nome, m).catch(falhou); };
+  /** guarda os comprovantes lidos; devolve quantos entraram (os repetidos ficam fora) */
+  const guardarComprovantes = (novos: readonly lt.ComprovanteDoLancatudo[]): number => {
+    if (!pronto || !novos.length) return 0;
+    // o mês de agora (a leitura dos arquivos demora: alguém pode ter mexido enquanto isso)
+    const r = lt.adicionarComprovantes(repo.mes(nome, competencia).mes, banco.id, novos);
+    if (r.entraram) salvarMes(r.mes);
+    return r.entraram;
+  };
   const salvarConfig = (c: lt.ConfigDoLancatudo) => { repo.salvarConfig(nome, c).catch(falhou); };
   const agora = () => new Date();
 
@@ -263,6 +273,11 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
 
   return {
     empresa, competencia, pronto, quem,
+    comprovantes: comprovantes || [], guardarComprovantes,
+    tirarComprovante: (id: string) => { if (pronto) salvarMes(lt.removerComprovante(mesNoBanco.mes, banco.id, id)); },
+    ligarComprovante: (id: string, chave: string) => { if (pronto) salvarMes(lt.ligarComprovante(mesNoBanco.mes, banco.id, id, chave)); },
+    /** a linha do extrato de cada comprovante (o casamento do Registro) */
+    linhaDoComprovante: (id: string) => linhas.find(l => l.comprovante?.id === id) || null,
     bancos, banco, contaDoBanco, contaDoBancoNoCadastro: !!contaDoCadastro, gravarContaDoBanco, abrirPlanoDoBanco, semPlano: cad.carregada && !plano, contasDoPlano, nomeDaConta,
     semExtrato: extratorChegou && !dados.extrato.length, razaoDoMes: dados.razaoDoMes.length > 0, mesesComExtrato, rotuloDoMes: rotuloDoMes(competencia),
     linhas, visiveis, totais, percentual: lt.percentualConciliado(totais),
@@ -281,6 +296,13 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
     classificacao: (codigo: string | null) => (codigo ? linhasDoPlano.find(x => x.codigo === codigo)?.classificacao || '' : ''),
     /** o CPF/CNPJ que aparece no histórico do banco, com a máscara */
     documentoDaLinha: (l: lt.LinhaDoRegistro) => { const d = lt.documentoNoHistorico(l.historicoDoBanco); return d ? formatos.mascaraDocumento(d) : ''; },
+    /** o cliente ou fornecedor da linha (18/11/2026, como o Mister mostra): o do comprovante; sem ele, o CPF/CNPJ do histórico */
+    quemDaLinha: (l: lt.LinhaDoRegistro): { nome: string; documento: string } => {
+      if (l.comprovante) return { nome: l.comprovante.favorecido, documento: l.comprovante.documento ? formatos.mascaraDocumento(l.comprovante.documento) : '' };
+      const d = lt.documentoNoHistorico(l.historicoDoBanco);
+      return { nome: '', documento: d ? formatos.mascaraDocumento(d) : '' };
+    },
+    mascaraDocumento: (d: string) => (d ? formatos.mascaraDocumento(d) : ''),
     erro: cfg.erro || mesNoBanco.erro,
   };
 }
