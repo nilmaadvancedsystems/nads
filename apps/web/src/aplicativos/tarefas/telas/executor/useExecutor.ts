@@ -246,7 +246,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
   // (só os que faltam concluir; revendo a etapa já feita, todos em que ela entrou)
   const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
-  const mesesDaEtapa = revista ? entrouEm : entrouEm.filter(c => !concluidaEm(vista!.id, c));
+  // no Em lote, a etapa que entrou em algum mês do período trabalha o lote inteiro, como as outras (Vitor, 18/11/2026: "cade o
+  // creditor seguindo a regra do lote?"; na 292 só agosto tinha CRÉD.LIQ e o Creditor abria só em ago): só no modo desenvolvedor
+  const doLote = dev && varios && entrouEm.length > 0 ? [...meses] : entrouEm;
+  const mesesDaEtapa = revista ? doLote : doLote.filter(c => !concluidaEm(vista!.id, c));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!vista?.tela?.periodo;
 
