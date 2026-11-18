@@ -6324,6 +6324,10 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .fxr-aliquota-valor{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-14);font-weight:600;}
 .fxr-aliquota .fin-valor-edita{width:64px;}
 .fxr-tabela .fin-valor-edita{width:56px;min-width:0;padding:2px 4px;}
+/* a alíquota mudada à mão (18/11/2026): o campo destacado e o botão de voltar à da nota */
+.fxr-aliq{white-space:nowrap;}
+.fxr-aliq-corrigida .fin-valor-edita{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent);font-weight:600;}
+.fxr-aliq-voltar{margin-left:2px;vertical-align:middle;}
 .fxr-nf{font-weight:500;}
 .fxr-fornecedor{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
 .fxr-calc{color:var(--ink-muted);background:color-mix(in srgb,var(--info) 4%,transparent);}
