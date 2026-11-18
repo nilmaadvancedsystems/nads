@@ -6,6 +6,7 @@
 // que pede confirmação tem o Recebido; quem escreveu vê quem marcou e quem falta. Só os destinatários veem o aviso.
 import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useInicio } from '../useInicio';
@@ -101,13 +102,13 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
 
 /** podeMexer: fixar, soltar e apagar, só o Diretor e o Dono (Vitor, 13/11/2026: "Quem pode soltar aviso é só diretor e dono"; o nível
  * simulado do ⚡ vale); os outros só leem */
-export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
+export function NotificacoesDoInicio({ vm, mural, podeMexer, lugarDosFiltros }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean; lugarDosFiltros?: HTMLElement | null }) {
   const c = vm.comunicado;
   const r = vm.reuniao;
   // o detalhe arrumado e as listas com rolagem (18/11/2026): só no modo desenvolvedor por enquanto
   const [devNovo] = useModoDesenvolvedor();
   // em lista, com os filtros no alto (Vitor, 18/11/2026: "deixa em modo lista... onde o usuario pode filtrar"): só no modo desenvolvedor
-  if (devNovo) return <section className="ini-lista"><ListaDeNotificacoes vm={vm} mural={mural} podeMexer={podeMexer} /></section>;
+  if (devNovo) return <section className="ini-lista"><ListaDeNotificacoes vm={vm} mural={mural} podeMexer={podeMexer} lugarDosFiltros={lugarDosFiltros} /></section>;
   return (
     <section className="ini-lista">
       {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length && !vm.cobrancas.length ? (
@@ -249,7 +250,7 @@ interface LinhaDaLista { chave: string; id: string; tipo: Exclude<FiltroDaLista,
  * As Notificações em lista (modo desenvolvedor, 18/11/2026): as cobranças, as reuniões e os comunicados numa lista só, com os
  * filtros do tipo no alto; clicar abre o detalhe logo embaixo da linha (a cobrança abre a tarefa).
  */
-function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
+function ListaDeNotificacoes({ vm, mural, podeMexer, lugarDosFiltros }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean; lugarDosFiltros?: HTMLElement | null }) {
   const [filtro, setFiltro] = useState<FiltroDaLista>('todos');
   // o "Só pendentes" saiu (Vitor, 18/11/2026: "remove esse so pendentes")
   const soPendentes = false;
@@ -266,6 +267,16 @@ function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof u
   const conta = (f: FiltroDaLista) => linhas.filter(l => (f === 'todos' || l.tipo === f) && (!soPendentes || l.pendente)).length;
   const visiveis = linhas.filter(l => (filtro === 'todos' || l.tipo === filtro) && (!soPendentes || l.pendente));
   const FILTROS: { id: FiltroDaLista; rotulo: string }[] = [{ id: 'todos', rotulo: 'Todos' }, { id: 'avisos', rotulo: 'Avisos' }, { id: 'reunioes', rotulo: 'Reuniões' }, { id: 'cobrancas', rotulo: 'Cobranças' }];
+  const filtros = (
+    <div className="notif-filtros" role="toolbar" aria-label="Filtrar as notificações">
+      <Icone nome="funil" width={16} height={16} />
+      {FILTROS.map(f => (
+        <button key={f.id} type="button" className={'chip-f' + (filtro === f.id ? ' on' : '')} aria-pressed={filtro === f.id} onClick={() => setFiltro(f.id)}>
+          {f.rotulo} <span className="num">{conta(f.id)}</span>
+        </button>
+      ))}
+    </div>
+  );
   const clicar = (l: LinhaDaLista) => {
     if (l.abrir) { l.abrir(); return; }
     if (aberta === l.chave) { setAberta(null); return; }
@@ -274,13 +285,8 @@ function ListaDeNotificacoes({ vm, mural, podeMexer }: { vm: ReturnType<typeof u
   };
   return (
     <>
-      <div className="notif-filtros" role="toolbar" aria-label="Filtrar as notificações">
-        {FILTROS.map(f => (
-          <button key={f.id} type="button" className={'chip-f' + (filtro === f.id ? ' on' : '')} aria-pressed={filtro === f.id} onClick={() => setFiltro(f.id)}>
-            {f.rotulo} <span className="num">{conta(f.id)}</span>
-          </button>
-        ))}
-      </div>
+      {/* os filtros na fileira da busca, com o ícone (Vitor, 18/11/2026: "alinhe esse filtro na mesma linha da barra de pesquisa") */}
+      {lugarDosFiltros ? createPortal(filtros, lugarDosFiltros) : filtros}
       <section className="card notif-lista">
         {visiveis.length ? visiveis.map(l => {
           const aqui = aberta === l.chave;

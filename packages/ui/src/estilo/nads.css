@@ -7400,6 +7400,8 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 
 /* as Notificações em lista, com os filtros no alto (modo desenvolvedor, 18/11/2026) */
 .notif-filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;}
+.ini-topo-lugar .notif-filtros{margin-bottom:0;}
+.notif-filtros > svg{color:var(--ink-muted);flex:none;}
 .notif-filtros .num{opacity:.7;margin-left:4px;}
 .notif-filtros .chip-f{display:inline-flex;align-items:center;gap:6px;}
 .notif-filtros-espaco{flex:1;}
