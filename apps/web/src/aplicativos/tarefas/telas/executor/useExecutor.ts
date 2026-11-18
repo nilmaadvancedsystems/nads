@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
 import { useCadastro, useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo, useTarefasDelegadas } from '../../dados/repo';
+import { useConcluirComPergunta } from '../delegador/perguntaAoConcluir';
 import { caminhoDaEmpresa, caminhoDoExecutor, BASE } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -76,6 +77,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [paramsDaUrl] = useSearchParams();
   const idDelegada = paramsDaUrl.get('delegada');
   const repoDelegadas = useTarefasDelegadas();
+  const concluirComPergunta = useConcluirComPergunta();
   const listaDelegadas = repoDelegadas.lista();
   const euNaDelegacao = repoDelegadas.eu()?.uid || '';
   // a tarefa em conjunto (Vitor, 12/11/2026: "mais de uma pessoa delegada, aí você coloca todas as boxes, quando o usuário
@@ -627,7 +629,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     concluirDelegada: async () => {
       if (!recebida) return;
       try {
-        await repoDelegadas.salvar(recebida.id, { status: 'concluida' });
+        // "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+        if (!(await concluirComPergunta(recebida, () => repoDelegadas.salvar(recebida.id, { status: 'concluida' })))) return;
         toast('Tarefa concluída.');
         navegar(BASE + '/inicio?aba=minhas');
       } catch (e) { toast('Não concluí a tarefa: ' + (e instanceof Error ? e.message : String(e))); }

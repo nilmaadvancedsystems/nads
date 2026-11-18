@@ -16,6 +16,7 @@ import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
 import { useRecorrentes } from './useRecorrentes';
+import { useConcluirComPergunta } from '../delegador/perguntaAoConcluir';
 import { useNovidade } from '../../../../comum/novidades';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
@@ -153,10 +154,12 @@ export function useInicioNovo() {
     ...comunicados.filter(c => c.tipo === 'reuniao' && (c.quando || '').startsWith(dia)).map(c => ({ id: c.id, titulo: c.tituloNaLista, hora: horaDe(c.quando || ''), duracao: '', quando: c.quando || '' })),
   ].sort((a, b) => a.quando.localeCompare(b.quando));
 
+  // a pergunta "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+  const concluirComPergunta = useConcluirComPergunta();
   const concluir = (t: tarefas.delegadas.TarefaDelegada) => {
     // concluir pelo círculo só quando a tarefa deixa: os documentos (o envio e o requerer) e as que não deixam abrem a janela
     if (d.pedeDocumentos(t) || !d.acoesDaTarefa(t, relogio).some(a => a.id === 'concluir')) { setAberta(t.id); return; }
-    repo.salvar(t.id, { status: 'concluida' }).then(() => toast('Tarefa concluída.'))
+    concluirComPergunta(t, () => repo.salvar(t.id, { status: 'concluida' })).then(ok => { if (ok) toast('Tarefa concluída.'); })
       .catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para concluir', texto: e instanceof Error ? e.message : String(e) }));
   };
 

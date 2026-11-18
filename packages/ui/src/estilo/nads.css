@@ -7471,3 +7471,13 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .prolabore-conta{max-width:280px;}
 .prolabore-conta > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .prolabore-conta.vazio{color:var(--ink-muted);}
+/* a observação do concluir ("Mais algo que eu deva saber?", 18/11/2026): a janela um pouco mais larga, o campo no desenho dos
+   outros, com o foco azul e o contador embaixo à direita */
+.modal:has(.concluir-obs){width:min(480px, calc(100vw - 32px));max-width:none;}
+.concluir-obs-caixa{display:flex;flex-direction:column;gap:4px;width:100%;margin:4px 0 14px;text-align:left;}
+.modal .concluir-obs{display:block;width:100%;resize:vertical;min-height:112px;max-height:320px;border:1px solid var(--border);
+  background:var(--input-bg);color:var(--ink);border-radius:8px;padding:10px 12px;font:14px/21px var(--font-body);box-shadow:var(--shadow-inset);
+  transition:border-color .15s, box-shadow .15s;}
+.modal .concluir-obs:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);}
+.modal .concluir-obs::placeholder{color:var(--ink-muted);}
+.concluir-obs-conta{align-self:flex-end;font-size:var(--fs-11);color:var(--ink-muted);font-variant-numeric:tabular-nums;}

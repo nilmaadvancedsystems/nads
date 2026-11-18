@@ -7,6 +7,7 @@ import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useNovidade } from '../../../../comum/novidades';
+import { useConcluirComPergunta } from './perguntaAoConcluir';
 import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useEntregasDeDocumentos, useRepo, useTarefasDelegadas } from '../../dados/repo';
@@ -51,6 +52,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const { operador } = useOperador();
   const admin = !!operador?.admin;
   const { toast, modal } = useRetorno();
+  const concluirComPergunta = useConcluirComPergunta();
   const eu = repo.eu();
   const uid = eu?.uid || '';
   // 'documentos': a nova já como pedido de documentos (o botão Delegar documentos do Início; 12/11/2026)
@@ -339,7 +341,9 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     async fazerAcao(status: tarefas.delegadas.Status) {
       if (!tarefa) return;
       try {
-        await repo.salvar(tarefa.id, { status });
+        // concluir pergunta "Mais algo que eu deva saber?" (18/11/2026, modo desenvolvedor)
+        if (status === 'concluida') { if (!(await concluirComPergunta(tarefa, () => repo.salvar(tarefa.id, { status })))) return; }
+        else await repo.salvar(tarefa.id, { status });
         if (status === 'concluida' && !mudou) voltar();
       } catch (e) { setErro('Não gravei: ' + (e instanceof Error ? e.message : String(e))); }
     },
