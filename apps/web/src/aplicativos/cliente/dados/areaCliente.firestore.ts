@@ -192,19 +192,20 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       const aoLink = (s: DocumentSnapshot) => {
         ultimaFoto = s;
         if (!s.exists()) { invalido(); return; }
+        const nome = s.get('nome');
+        nomeDoLink = typeof nome === 'string' ? nome.trim() : '';
+        // a senha vem antes de tudo, também na empresa de teste (assim dá para testar a tela de entrar nela; 18/11/2026)
+        if (s.get('exigeSenha') === true && !autorizado) {
+          ouvirLogin();
+          if (!ouvindoEspelho && !pararTeste) mostrar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: nomeDoLink } });
+          return;
+        }
         // a empresa de teste: para de ouvir o banco e mostra os dados de exemplo
         if (teste && linkDaEmpresaDeTeste(s.get('codigos'))) {
           if (pararTeste) return;
           parar();
           deTeste.add(token);
           pararTeste = teste.repo.assinar(teste.token, aoMudar);
-          return;
-        }
-        const nome = s.get('nome');
-        nomeDoLink = typeof nome === 'string' ? nome.trim() : '';
-        if (s.get('exigeSenha') === true && !autorizado) {
-          ouvirLogin();
-          if (!ouvindoEspelho) mostrar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: nomeDoLink } });
           return;
         }
         if (ouvindoEspelho) { desenhar(); return; }
