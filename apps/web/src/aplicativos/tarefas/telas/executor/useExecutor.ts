@@ -187,6 +187,20 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       repo.gravar(a.execucao, a.evento, exc);
     }
   });
+  // o Creditor segue o lote (Vitor, 18/11/2026: "cade o creditor seguindo a regra do lote?"; "quero fazer o 09 do creditor"): no
+  // Em lote, entrou num mês (CRÉD.LIQ.COBRANÇA no caixa ou o Cadastro), entra também nos meses seguintes do período; os de antes
+  // ficam de fora (na 292: agosto feito, setembro para fazer)
+  useEffect(() => {
+    if (dev || !carregada || !empresa || !varios || !temEtapa('creditor')) return;
+    const primeiro = meses.findIndex(c => t.etapaNoMes(exDe[c] || null, 'creditor'));
+    if (primeiro < 0) return;
+    for (const c of meses.slice(primeiro + 1)) {
+      const exc = exDe[c];
+      if (!exc || t.etapaNoMes(exc, 'creditor') || !podePedir(c + '|creditor|lote')) continue;
+      const a = t.adicionarEtapa(exc, 'creditor', 'Em lote: o Creditor segue o período', op.nome, new Date());
+      repo.gravar(a.execucao, a.evento, exc);
+    }
+  });
   /**
    * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: os adiantamentos só com saldo no dinâmico). Só
    * os meses que ele cobre; a etapa já feita no mês não sai.
@@ -246,13 +260,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
   // (só os que faltam concluir; revendo a etapa já feita, todos em que ela entrou)
   const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
-  // no Em lote, a etapa que entrou em algum mês do período trabalha o lote inteiro, como as outras (Vitor, 18/11/2026: "cade o
-  // creditor seguindo a regra do lote?"; na 292 só agosto tinha CRÉD.LIQ e o Creditor abria só em ago; publicado para todos)
-  const noLote = varios && entrouEm.length > 0;
-  const doLote = noLote ? [...meses] : entrouEm;
-  // nos meses em que ela não entrou, a etapa conta como "não se aplica" (concluída): no lote, só sai o mês em que foi feita de verdade
-  const feitaEm = (id: string, c: string) => t.situacaoDa(exDe[c] || null, id) === 'feita';
-  const mesesDaEtapa = revista ? doLote : doLote.filter(c => (noLote ? !feitaEm(vista!.id, c) : !concluidaEm(vista!.id, c)));
+  // no Em lote, o Creditor que entra num mês entra também nos seguintes do lote (o efeito "o Creditor segue o lote", acima)
+  const mesesDaEtapa = revista ? entrouEm : entrouEm.filter(c => !concluidaEm(vista!.id, c));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!vista?.tela?.periodo;
 
@@ -675,6 +684,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     ajustarCreditor: (comLiquidacao: readonly string[]): string[] => {
       if (carregando) return [];
       const entrou: string[] = [];
+      // no Em lote, o Creditor fica nos meses depois do primeiro com liquidação (ele segue o lote)
+      const primeiroDoCreditor = [...meses].find(c => comLiquidacao.includes(c) || t.etapaNoMes(exDe[c] || null, 'creditor')) || '9999-99';
       for (const c of meses) {
         const exc = exDe[c];
         if (!exc) continue;
@@ -684,7 +695,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           const a = t.adicionarEtapa(exc, 'creditor', 'CRÉD.LIQ.COBRANÇA no razão do caixa', op.nome, new Date());
           repo.gravar(a.execucao, a.evento, exc);
           entrou.push(c);
-        } else if (!tem && esta && !t.estadoDa(exc, 'creditor') && credLiquidacao !== true) {
+        } else if (!tem && esta && !t.estadoDa(exc, 'creditor') && credLiquidacao !== true && !(varios && c > primeiroDoCreditor)) {
           const r = t.retirarEtapa(exc, 'creditor', 'o razão do caixa não tem CRÉD.LIQ.COBRANÇA', op.nome, new Date());
           repo.gravar(r.execucao, r.evento, exc);
         }
