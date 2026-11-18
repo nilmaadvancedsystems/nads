@@ -286,8 +286,11 @@ export function useInicioNovo() {
     })),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
     reunioes: [
-      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo })),
-      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '' })),
+      // o que o card espera da pessoa (18/11/2026, o botão ao passar o mouse): a presença na reunião ou o Recebido do comunicado
+      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo,
+        espera: (x.acoes.includes('confirmar') && x.minhaPresenca === null ? 'presenca' : '') as '' | 'presenca' | 'recebido' })),
+      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '',
+        espera: (c.precisaReceber ? 'recebido' : '') as '' | 'presenca' | 'recebido' })),
     ].sort((a, b) => a.quando.localeCompare(b.quando)).slice(0, 4),
     /**
      * o que espera a confirmação da pessoa, por cima do calendário do Painel (Vitor, 13/11/2026: "Se for algo que precisa de

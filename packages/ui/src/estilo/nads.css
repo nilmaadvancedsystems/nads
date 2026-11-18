@@ -7097,11 +7097,15 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro-item.aviso .ini-quadro-dia{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);}
 .ini-quadro-item.aviso .ini-quadro-dia svg{width:20px;height:20px;}
 .ini-quadro-item.pendente{border-color:color-mix(in srgb,var(--warn) 60%,var(--border));}
-/* o Recebido do card: aparece ao passar o mouse (ou com o foco); no toque, sempre (18/11/2026) */
-.ini-quadro-item{position:relative;}
-.ini-quadro-acao{flex:none;opacity:0;pointer-events:none;transition:opacity .12s;}
-.ini-quadro-item:hover .ini-quadro-acao,.ini-quadro-item:focus-within .ini-quadro-acao{opacity:1;pointer-events:auto;}
-@media (hover:none){.ini-quadro-acao{opacity:1;pointer-events:auto;}}
+/* o card ao passar o mouse: o conteúdo embaça e o botão aparece no meio (18/11/2026); no toque, nada (o card abre) */
+.ini-quadro-solto .ini-quadro-item{position:relative;overflow:hidden;}
+.ini-quadro-conteudo{display:flex;align-items:center;gap:12px;width:100%;min-width:0;transition:filter .15s,opacity .15s;}
+.ini-quadro-conteudo > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
+.ini-quadro-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .15s;}
+@media (hover:hover){
+  .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-conteudo,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-conteudo{filter:blur(3px);opacity:.45;}
+  .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-hover,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-hover{opacity:1;pointer-events:auto;}
+}
 .ini-quadro-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
 .ini-quadro-item:hover{border-color:var(--accent);}
 .ini-quadro-item > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
