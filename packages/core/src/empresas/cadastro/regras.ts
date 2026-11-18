@@ -5,6 +5,7 @@
 import { nomeNorm } from '../../formatos';
 import { cnpjFormatado, documentoValido } from './receita';
 import { razaoSocialDoDocumento } from './razaoSocial';
+import { receitaDoDocumento } from './receitaNoCadastro';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
@@ -306,6 +307,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...documentosFiscaisDoDocumento(doc.documentosFiscais),
     ...antecipacaoDoDocumento(doc.antecipacaoIcmsEs),
     ...razaoSocialDoDocumento(doc.razaoSocial),
+    ...receitaDoDocumento(doc.receita),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
       ? { nova: { regime: texto((doc.nova as Record<string, unknown>).regime), criadaEm: texto((doc.nova as Record<string, unknown>).criadaEm) } } : {}),
   };
@@ -337,6 +339,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
     ...(c.razaoSocial ? { razaoSocial: c.razaoSocial } : {}),
+    ...(c.receita ? { receita: c.receita } : {}),
     ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
     ...(c.antecipacaoIcmsEs && (c.antecipacaoIcmsEs.aliquota != null || Object.keys(c.antecipacaoIcmsEs.situacoes || {}).length || Object.keys(c.antecipacaoIcmsEs.aliquotas || {}).length) ? { antecipacaoIcmsEs: c.antecipacaoIcmsEs } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
@@ -585,6 +588,25 @@ export function cancelarTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoR
   const t = c.transferencias?.[dep];
   if (!t) return c;
   return registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + t.de + ' para ' + t.para);
+}
+
+/**
+ * O Diretor troca quem cuida da empresa direto, pelo Cadastro › Dados da empresa (Vitor, 17/11/2026: "a função de eu alterar o
+ * responsável fiscal e contábil aqui"): sem pedir o aceite, como o definirResponsavel; a transferência que estava pedida
+ * no departamento cai, porque a troca direta passa por cima dela. Fica no histórico. Vazio tira o responsável.
+ */
+export function trocarResponsavelDireto(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, nome: string, por: string, agora: Date): CadastroDaEmpresa {
+  const pedida = c.transferencias?.[dep];
+  const semPedido = pedida ? registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + pedida.de + ' para ' + pedida.para + ' (trocado direto)') : c;
+  return definirResponsavel(semPedido, dep, nome, por, agora);
+}
+
+/**
+ * Quem pode ser responsável num departamento: as pessoas ativas dele (ou com o papel dele), em ordem de nome. O mesmo
+ * filtro de Empresas por responsável.
+ */
+export function quemPodeSerResponsavel(equipe: readonly { nome: string; ativo: boolean; departamento: string | null; papeis: readonly string[] }[], dep: DepartamentoDoResponsavel): string[] {
+  return equipe.filter(p => p.ativo && (p.departamento === dep || p.papeis.includes(dep))).map(p => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 /** Falta o aceite de quem? (os nomes, emitente primeiro) */

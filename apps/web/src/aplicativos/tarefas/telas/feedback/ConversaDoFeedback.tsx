@@ -30,6 +30,7 @@ export function ConversaDoFeedback({ vm, vazia, rotulo, campo, fechada, grande =
     <div className={'conversa' + (grande ? ' conversa-grande' : '')}>
       <div className="conversa-lista" ref={lista} aria-live="polite">
         {vm.carregando ? <Esqueleto linhas={2} />
+          : vm.erroAoLer && !vm.mensagens.length ? <p className="hint ext-neg conversa-vazia" role="alert">{vm.erroAoLer}</p>
           : !vm.mensagens.length ? <p className="hint conversa-vazia">{vazia}</p>
             : vm.mensagens.map(m => (
               <div key={m.id} className={'conversa-item' + (m.minha ? ' minha' : '')}>

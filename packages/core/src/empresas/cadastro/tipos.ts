@@ -116,11 +116,54 @@ export interface RazaoSocialAnterior { nome: string; ate: string }
  */
 export interface RazaoSocialDoCadastro { atual: string; em: string; por: string; anteriores: RazaoSocialAnterior[] }
 
+/** Uma atividade (CNAE) na Receita: o código com a máscara (4711-3/02) e a descrição. */
+export interface AtividadeDaReceita { codigo: string; descricao: string }
+/** Um sócio do quadro (QSA) na Receita: o CPF vem mascarado na fonte e fica de fora. */
+export interface SocioNaReceita { nome: string; qualificacao: string; desde: string }
+/** A opção pelo Simples ou pelo MEI na Receita: optante null = a fonte não disse. */
+export interface OpcaoNaReceita { optante: boolean | null; desde: string; exclusao: string }
+
+/** O que a Receita diz da empresa, lido da consulta (situacaoNaReceita.ts). */
+export interface RetratoDaReceita {
+  cnpj: string;
+  /** ATIVA, BAIXADA, INAPTA, SUSPENSA, NULA */
+  situacao: string;
+  situacaoDesde: string;
+  /** o motivo da situação (vazio na empresa ativa sem motivo) */
+  motivoSituacao: string;
+  razaoSocial: string;
+  fantasia: string;
+  /** o logradouro, o número, o bairro e o município/UF (o mesmo jeito do vigia do Entregas, para comparar) */
+  endereco: string;
+  complemento: string;
+  cep: string;
+  cnae: AtividadeDaReceita | null;
+  cnaesSecundarios: AtividadeDaReceita[];
+  naturezaJuridica: string;
+  porte: string;
+  /** em reais (null = a fonte não disse) */
+  capitalSocial: number | null;
+  abertura: string;
+  socios: SocioNaReceita[];
+  simples: OpcaoNaReceita;
+  mei: OpcaoNaReceita;
+  /** quando foi consultado (ISO) */
+  consultadoEm: string;
+}
+
+/**
+ * O retrato da Receita que o nads guarda (17/11/2026: o botão Consultar na Receita do Cadastro › Empresa): só os campos que
+ * alguém escolheu gravar (e os que estavam iguais), com quem conferiu e quando.
+ */
+export type ReceitaNoCadastro = Partial<Omit<RetratoDaReceita, 'consultadoEm'>> & { conferidoEm: string; por: string };
+
 export interface CadastroDaEmpresa {
   /** o nome de sempre: é a CHAVE da empresa (nunca muda). Para mostrar, vale a razão social (razaoSocialDoCadastro) */
   nome: string;
   /** a razão social trocada no nads (sem = vale o nome) */
   razaoSocial?: RazaoSocialDoCadastro;
+  /** o que a Receita disse, gravado pelo botão Consultar na Receita (sem = vale o que o Entregas sabe) */
+  receita?: ReceitaNoCadastro;
   codigo: number | null;
   /** null = os bancos nunca foram cadastrados (os aplicativos seguem com o que tinham antes) */
   bancos: ContaBancaria[] | null;

@@ -3,7 +3,7 @@ import { htmlDoPedido } from './email';
 import { empresaNova } from './importacao';
 import {
   assuntoDoPedido, competenciaDoPedido, competenciasPorExtenso, dataPorExtenso, documentosDoPedido, linkDoWhatsApp, prazoPadrao, registrarPedido,
-  telefoneParaWhatsApp, textoDoPedido, textoDoWhatsApp, type PedidoDeExtratos,
+  telefoneParaWhatsApp, textoDoPedido, textoDoWhatsApp, nomeDoPdfDoPedido, type PedidoDeExtratos,
 } from './pedido';
 
 const docs = documentosDoPedido([{ id: 'sicoob', nome: 'Sicoob', conta: 'Ag. 3069 · C/C 1234-5' }]);
@@ -49,8 +49,15 @@ describe('pedir documentos', () => {
     expect(h).toContain('ago/2026');
   });
 
-  it('o WhatsApp: texto com "•"; o telefone do cadastro para o wa.me', () => {
-    expect(textoDoWhatsApp(pedido, '')).toContain('• Comprovantes bancários');
+  it('o WhatsApp no estilo do Acessórias; o telefone do cadastro para o wa.me', () => {
+    expect(textoDoWhatsApp(pedido, '')).toContain('📄 Comprovantes bancários');
+    expect(textoDoWhatsApp(pedido, '30/09/2026')).toContain('📅 *Prazo:* até 30/09/2026');
+    expect(textoDoWhatsApp(pedido, '').startsWith('*Nilma Contabilidade*')).toBe(true);
+    // pelo robô vai com o PDF e diz para onde responder (o chip do robô ninguém lê); pelo link, não fala em anexo
+    expect(textoDoWhatsApp(pedido, '', 'robo')).toContain('Segue em anexo a solicitação em PDF');
+    expect(textoDoWhatsApp(pedido, '', 'robo')).toContain('(38) 9138-3638');
+    expect(textoDoWhatsApp(pedido, '', 'link')).not.toContain('anexo');
+    expect(nomeDoPdfDoPedido({ ...pedido, cliente: 'A/B: LTDA' })).toMatch(/^Solicitação de documentos - A B LTDA - .+\.pdf$/);
     expect(telefoneParaWhatsApp('(38) 99999-1234')).toBe('5538999991234');
     expect(telefoneParaWhatsApp('38 3333-1234')).toBe('553833331234');
     expect(telefoneParaWhatsApp('1234')).toBe('');

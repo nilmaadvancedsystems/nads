@@ -8,6 +8,7 @@ import { entregas, suporte } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { ouvirInsistindo } from './ouvirInsistindo.firestore';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
@@ -122,12 +123,18 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
         throw e;
       }
     },
-    // a conversa (16/11/2026): só a do feedback aberto (o admin, na janela dele; quem mandou, na janela grande da conversa)
+    // a conversa (16/11/2026): só a do feedback aberto (o admin, na janela dele; quem mandou, na janela grande da conversa).
+    // Negada, insiste (16/11/2026: com a regra fora do ar, a conversa aberta parou de ouvir e as perguntas gravadas depois
+    // não apareciam: "mandei e não aconteceu nada"); enquanto isso, fica com o que já tinha chegado
     ouvirMensagens(id, aoMudar) {
+      let ultima: suporte.MensagemDoFeedback[] = [];
       aoMudar({ carregadas: false, lista: [] });
-      return onSnapshot(query(collection(db, 'feedbacks', id, 'mensagens'), limit(300)), s => {
-        aoMudar({ carregadas: true, lista: suporte.emOrdem(s.docs.map(d => suporte.lerMensagem(d.id, d.data())).filter(m => m !== null)) });
-      }, () => aoMudar({ carregadas: true, lista: [] }));
+      return ouvirInsistindo(query(collection(db, 'feedbacks', id, 'mensagens'), limit(300)), s => {
+        ultima = suporte.emOrdem(s.docs.map(d => suporte.lerMensagem(d.id, d.data())).filter(m => m !== null));
+        aoMudar({ carregadas: true, lista: ultima });
+      }, e => aoMudar({ carregadas: true, lista: ultima, erro: /permission|insufficient/i.test(e instanceof Error ? e.message : String(e))
+        ? 'O banco não deixou ler a conversa (a regra dos feedbacks no ar não tem a conversa). Vou tentar de novo sozinho a cada minuto.'
+        : 'Não consegui abrir a conversa: ' + (e instanceof Error ? e.message : String(e)) }));
     },
     // a mensagem e o resumo no mesmo lote: a regra confere quem escreve (o admin, ou o dono depois que o admin perguntou) e
     // que a contagem só sobe de um em um

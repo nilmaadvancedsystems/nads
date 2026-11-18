@@ -6,6 +6,7 @@ import { formatos, tarefas } from '@nads/core';
 import { baixarArquivo, baixarBytes } from '@nads/ui';
 import { useState } from 'react';
 import { useTarefasDelegadas } from '../../dados/repo';
+import { useConcluirComPergunta } from './useConcluirComPergunta';
 import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 import { useNovidade } from '../../../../comum/novidades';
 
@@ -53,6 +54,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
   const [aberta, setAberta] = useState<string | null>(null);
   const [erroDaAcao, setErroDaAcao] = useState('');
   const uid = repo.eu()?.uid || '';
+  const concluirComPergunta = useConcluirComPergunta();
   const lidas = repo.lista();
   const { carregadas, erro } = lidas;
   const todas = opcoes.documentos ? lidas.tarefas.filter(d.pedeDocumentos) : opcoes.semDocumentos ? lidas.tarefas.filter(t => !d.pedeDocumentos(t)) : lidas.tarefas;
@@ -133,7 +135,12 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     /** os botões de quem faz a tarefa, só nas minhas (nas delegadas, o andamento vai na linha: 09/11/2026 "eu tenha esse controle") */
     comAcoes: aba === 'minhas',
     cobrar: (id: string) => repo.cobrar(id, '').catch((e: unknown) => setErroDaAcao('Não cobrei: ' + (e instanceof Error ? e.message : String(e)))),
-    fazerAcao: (id: string, novo: Status) => { repo.salvar(id, { status: novo }).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e)))); },
+    fazerAcao: (id: string, novo: Status) => {
+      const gravar = () => repo.salvar(id, { status: novo });
+      const t = todas.find(x => x.id === id);
+      // concluir pergunta "Mais algo que eu deva saber?" (18/11/2026)
+      (novo === 'concluida' && t ? concluirComPergunta(t, gravar) : gravar()).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e))));
+    },
     vazio: daAba.length ? { titulo: 'Nenhuma tarefa com isso', texto: '' } : VAZIO_DA_ABA[aba],
     /** as linhas agrupadas pelo prazo, na ordem do core em cada grupo; as encerradas num grupo só */
     grupos: opcoes.documentos

@@ -5,6 +5,7 @@
 import { suporte } from '@nads/core';
 import { useEffect, useState } from 'react';
 import { useFeedback } from '../../dados/repo';
+import type { LeituraDaConversa } from '../../dados/feedback';
 
 const hora = (iso: string) => {
   const d = new Date(iso);
@@ -13,7 +14,7 @@ const hora = (iso: string) => {
 
 export function useConversaDoFeedback(id: string, lado: suporte.LadoDaConversa, status: string, conversa: suporte.ResumoDaConversa | null) {
   const repo = useFeedback();
-  const [lidas, setLidas] = useState<{ carregadas: boolean; lista: suporte.MensagemDoFeedback[] }>({ carregadas: false, lista: [] });
+  const [lidas, setLidas] = useState<LeituraDaConversa>({ carregadas: false, lista: [] });
   // só a conversa aberta é ouvida; fechou (ou trocou de feedback), para de ouvir
   useEffect(() => (id ? repo.ouvirMensagens(id, setLidas) : undefined), [repo, id]);
   const [texto, setTexto] = useState('');
@@ -39,6 +40,8 @@ export function useConversaDoFeedback(id: string, lado: suporte.LadoDaConversa, 
 
   return {
     carregando: !lidas.carregadas,
+    /** o banco não deixou ler (a conversa não está vazia: não deu para ver) */
+    erroAoLer: lidas.erro || '',
     /** da mais velha para a mais nova; minha = do lado de quem está vendo (fica à direita) */
     mensagens: lidas.lista.map(m => ({ id: m.id, minha: m.de === lado, nome: m.nome || (m.de === 'admin' ? 'Suporte' : 'Quem mandou'), texto: m.texto, quando: hora(m.em) })),
     texto, setTexto: (t: string) => { setTexto(t); if (erro) setErro(''); },

@@ -8,6 +8,7 @@ import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';
 import { useImportacao, type Mensagem } from './useImportacao';
 import type { NotasDoRobo } from './useNotasDoRobo';
+import { MarcaAlterdata } from './partes/MarcaAlterdata';
 
 /**
  * naEtapa: dentro da primeira etapa da Tarefas. Dentro da Tarefa (a Importação ou a Conferência fiscal), sem o "Apagar ao sair"
@@ -36,9 +37,11 @@ export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImp
           <div className="import-box-row">
             <CampoArquivo id={vm.cfg.idArquivo} arquivo={vm.arquivo} onEscolher={vm.setArquivo} aceitar={vm.cfg.aceitar} abrirAgora={vm.abrirArquivo} />
             {vm.robo.disponivel && (
-              <BotaoAcao className="btn btn-outline" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando="Com o robô…" disabled={vm.carregando}
-                onClick={vm.robo.pedir} title={'O robô do servidor puxa ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' no Alterdata Fiscal e importa aqui'}>
-                <Icone nome="robo" />Pedir ao robô
+              // a marca do Alterdata e o nome de quem tem o robô no PC (Vitor, 17/11/2026: "muda o nome do botao com o icone do
+              // alterdata e o nome vitor")
+              <BotaoAcao className="btn btn-outline btn-icone-alterdata" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando={vm.robo.rotulo} disabled={vm.carregando}
+                onClick={vm.robo.pedir} title={'Puxar ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' do Alterdata, pelo robô do PC de ' + vm.robo.rotulo} aria-label={'Puxar ' + vm.nomeDoTipo + ' do Alterdata pelo robô de ' + vm.robo.rotulo}>
+                <MarcaAlterdata />{vm.robo.rotulo}
               </BotaoAcao>
             )}
             <BotaoAcao carregando={vm.carregando} textoCarregando="Importando…" disabled={!vm.arquivo} onClick={vm.importar}>Importar</BotaoAcao>
@@ -105,14 +108,23 @@ export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImp
   );
 }
 
-/** O andamento do robô do Fiscal embaixo da caixa: a barra e o que ele está fazendo; o erro em vermelho. */
+/**
+ * O andamento do robô do Fiscal embaixo da caixa (Vitor, 17/11/2026: "um feedback visual apenas de barra de progresso enquanto o
+ * robo puxa, nao precisa escrever nada, so bloqueia toda a acao da tela e deixe o botao carregando"): só a barra; com o robô no
+ * Alterdata, uma camada por cima da tela inteira não deixa clicar em nada. O erro, em vermelho, numa linha. O modo
+ * desenvolvedor vê também o que o robô está fazendo e o Cancelar.
+ */
 function RoboDoFiscal({ r }: { r: NotasDoRobo }) {
   if (!r.situacao && !r.falha && !r.lendo) return null;
+  const barra = r.andando || r.lendo;
+  // parado na fila do PC: o porquê aparece para todos (17/11/2026: o Contábil aberto duas vezes e o botão só esperava)
+  const texto = r.falha || r.espera || (r.erro ? r.situacao : r.dev ? (r.lendo ? 'A planilha chegou: importando…' : r.situacao) + (r.clique ? ' · ' + r.clique : '') : '');
   return (
-    <div className={'imp-robo-fiscal' + (r.erro || r.falha ? ' ext-neg' : '')} role="status">
-      {r.andando && <div className="imp-robo-barra"><span style={{ width: r.pct + '%' }} /></div>}
-      <span>{r.lendo ? 'A planilha chegou: importando…' : r.falha || r.situacao}{r.clique ? ' · ' + r.clique : ''}</span>
-      {r.andando && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void r.cancelar(); }}>Cancelar</button>}
+    <div className={'imp-robo-fiscal' + (r.erro || r.falha ? ' ext-neg' : '')} role="status" aria-label={barra ? 'Puxando do Alterdata' : undefined}>
+      {barra && <div className="imp-robo-barra"><span style={{ width: (r.lendo ? 100 : Math.max(4, r.pct)) + '%' }} /></div>}
+      {texto && <span>{texto}</span>}
+      {r.andando && <button type="button" className="btn btn-ghost btn-sm imp-robo-cancelar" onClick={() => { void r.cancelar(); }} title="O robô para e volta o Alterdata ao ponto de antes">Cancelar</button>}
+      {r.bloqueia && <div className="imp-robo-bloqueio" aria-hidden="true" />}
       {r.diag.length > 0 && (
         <details className="imp-robo-diag">
           <summary>O que o robô viu na tela</summary>

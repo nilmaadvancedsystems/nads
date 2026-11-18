@@ -13,6 +13,16 @@ export function modoDevLigado(): boolean {
   try { return localStorage.getItem(CHAVE_DO_MODO_DEV) === '1'; } catch { return false; }
 }
 
+/**
+ * O Contatudo (17/11/2026, Vitor: "as ferramentas do contábil num link, a pessoa coloca tudo manual... nao upa nada dessa
+ * aplicacao no banco"; "puxando o que puder do banco, mas nada de la e upado, apenas consulta"): debaixo de /tarefas/contatudo
+ * nada é gravado no banco — nem documento, nem lote, nem pedido (robô, e-mail, IA). Só leitura.
+ */
+export const MENSAGEM_CONSULTA = 'Contatudo: só consulta, nada vai para o banco.';
+export function emConsulta(): boolean {
+  try { return typeof location !== 'undefined' && /^\/tarefas\/contatudo(\/|$)/.test(location.pathname); } catch { return false; }
+}
+
 /** O pedido (addDoc) que não sai no modo desenvolvedor: recusa com a mensagem do modo e avisa a tela, sem tocar no banco. */
 export function recusarNoModoDev<A extends unknown[], R>(gravar: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
   return (...a: A) => {

@@ -6,6 +6,7 @@
 // o documento do banco. A gravação é do repositório da Tarefas (dados/tarefasDelegadas*.ts).
 import { diaEmBrasilia, nomeNorm } from '../../formatos';
 import { feriadoDoDia } from './feriados';
+import { proximaOcorrencia, type Recorrencia } from './recorrencia';
 
 export type Prioridade = 'baixa' | 'normal' | 'alta' | 'urgente';
 export type Status = 'pendente' | 'andamento' | 'pausada' | 'cancelada' | 'concluida';
@@ -97,6 +98,8 @@ export interface TarefaDelegada {
   entrega?: Entrega;
   /** ISO de quando quem recebeu abriu a tarefa pela primeira vez (o Visualizado de quem delegou; 12/11/2026) */
   visualizadaEm?: string;
+  /** a tarefa recorrente (18/11/2026): concluída, nasce a próxima (recorrencia.ts) */
+  recorrencia?: Recorrencia;
 }
 
 /** O que a pessoa preenche no cadastro da tarefa (a nova e a aberta). */
@@ -115,6 +118,8 @@ export interface Rascunho {
   tipo?: TipoDaTarefa;
   /** o requerer de documentos: enviou para conferir, contestou ou voltou ao começo ('', no repasse) */
   entrega?: Entrega;
+  /** só ao criar: a recorrência (o prazo vai para o próximo dia útil) */
+  recorrencia?: Recorrencia;
 }
 
 /** Os documentos (13/11/2026): 'documentos' = requerer (quem recebe anexa e envia); 'envio' = quem delega manda os arquivos. */
@@ -1002,6 +1007,7 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     pareceres: [], historico: [...historicoDaCriacao(base, o.em), ...(r.status === 'andamento' ? [{ por: o.por.nome, em: o.em, texto: 'Iniciou a tarefa' }] : [])], anexos: [],
     ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
     ...(r.tipo === 'documentos' || r.tipo === 'envio' ? { tipo: r.tipo } : {}),
+    ...(r.recorrencia ? { recorrencia: r.recorrencia } : {}),
   };
 }
 
@@ -1168,6 +1174,15 @@ const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((
   })) : []);
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
+const REPETE = ['diaria', 'semanal', 'quinzenal', 'mensal', 'anual'];
+function lerRecorrencia(v: unknown): Recorrencia | null {
+  const r = v && typeof v === 'object' ? v as Record<string, unknown> : null;
+  if (!r || !REPETE.includes(String(r.repete)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.ancora)) || !(Number(r.dia) >= 1 && Number(r.dia) <= 31)) return null;
+  const vezes = Number(r.vezes), n = Number(r.n);
+  const conta = Number.isInteger(vezes) && vezes >= 1 ? { vezes, n: Number.isInteger(n) && n >= 1 ? n : 1 } : {};
+  return { repete: r.repete as Recorrencia['repete'], ancora: String(r.ancora), dia: Number(r.dia), ...conta };
+}
+
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {
   const lerCliente = (v: unknown): ClienteVinculado | null => {
     const c = obj(v);
@@ -1200,6 +1215,8 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     ...(x.tipo === 'documentos' || x.tipo === 'envio' ? { tipo: x.tipo } : {}),
     ...(x.entrega === 'enviada' || x.entrega === 'contestada' || x.entrega === '' ? { entrega: x.entrega } : {}),
     ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),
+    // a recorrência (18/11/2026)
+    ...(lerRecorrencia(x.recorrencia) ? { recorrencia: lerRecorrencia(x.recorrencia)! } : {}),
   };
 }
 
@@ -1224,4 +1241,18 @@ export function linhasDaPlanilha(lista: readonly TarefaDelegada[]): (string | nu
 export function celulaDoCsv(v: string | number): string {
   const s = String(v);
   return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+/**
+ * A próxima de uma tarefa recorrente que foi concluída (18/11/2026): o mesmo título, os detalhes, os clientes, a prioridade, a hora
+ * e quem faz; nasce pendente, com a âncora um período adiante e o prazo no próximo dia útil. null quando não é recorrente.
+ */
+export function rascunhoDaProxima(t: TarefaDelegada): Rascunho | null {
+  if (!t.recorrencia) return null;
+  const p = proximaOcorrencia(t.recorrencia);
+  if (!p) return null;
+  return {
+    titulo: t.titulo, descricao: t.descricao, clientes: t.clientes, prioridade: t.prioridade, prazo: p.prazo, prazoHora: t.prazoHora,
+    status: 'pendente', responsavel: t.responsavel, recorrencia: p.recorrencia,
+  };
 }

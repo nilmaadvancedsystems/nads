@@ -32,10 +32,14 @@ export interface RepoAcesso {
   minhaFoto(): string | null;
   /** troca (ou tira, com null) a foto de perfil de quem está logado */
   salvarMinhaFoto(foto: string | null): Promise<void>;
-  /** o nads de quem está logado está aberto agora (usuarios/{uid}.nadsVistoEm): quem está online, em Usuários */
+  /** o nads de quem está logado está aberto agora (nadsPresenca/{uid}.vistoEm): quem está online, em Usuários */
   marcarPresenca(): Promise<void>;
-  /** a empresa e a etapa do Contábil abertas por quem está logado (usuarios/{uid}.nadsOnde); null = saiu da etapa */
+  /** a empresa e a etapa do Contábil abertas por quem está logado (nadsPresenca/{uid}.onde); null = saiu da etapa */
   marcarOnde(onde: usuarios.OndeNoNads | null): Promise<void>;
+  /** o ponto de cada pessoa (nadsPresenca, uid → documento), enquanto alguém ouve (ouvirPresencas) */
+  presencas(): Record<string, usuarios.DocPresenca>;
+  /** escuta nadsPresenca enquanto a tela de Usuários está aberta; devolve como parar (a última a parar desliga a escuta) */
+  ouvirPresencas(): () => void;
   ativar(uid: string, ativo: boolean): Promise<void>;
   /**
    * onde a pessoa está gravada no sistema (16/11/2026, excluir usuário): os rótulos dos lugares de usuarios.LUGARES_DE_REGISTRO
@@ -121,6 +125,9 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
       const d = Object.values(docs).find(x => x.nome === quem()?.nome);
       if (d) { if (onde) d.nadsOnde = onde; else delete d.nadsOnde; mudou(); }
     },
+    // nos exemplos, o ponto fica no próprio documento da equipe de exemplo (marcarPresenca, acima)
+    presencas: () => ({}),
+    ouvirPresencas: () => () => undefined,
     async salvarMinhaFoto(foto) {
       const d = Object.values(docs).find(x => x.nome === quem()?.nome);
       if (d) { d.fotoPerfil = foto || undefined; mudou(); }

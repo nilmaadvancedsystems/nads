@@ -276,6 +276,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
     // a Tela de Insights: só Diretor e admin (o dono, 18/11/2026: "esses paineis so vao ser vistos por diretor e admin")
     (a.id !== 'insights' || (ehDiretor(op) && novidadeLigada('insights'))) &&
+    // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
+    // link direto não abre
+    (a.id !== 'carteira' || modoDesenvolvedor()) &&
     // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
     (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros

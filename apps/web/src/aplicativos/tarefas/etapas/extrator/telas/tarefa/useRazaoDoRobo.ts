@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { erroDeAmbiente, vagasDePedidoSozinho } from '../../../../dados/razaoDoRobo.regras';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { lerBalanceteDoRobo, lerRazaoDoRobo, ouvirPedidosDoRazao, pedirRazaoDoMes, type PedidoDoRazao } from '../../../../dados/razaoDoRobo.firestore';
+import { roboDePcDoUsuario } from '../../../../dados/notasDoFiscal.firestore';
 
 export type SituacaoDoMes = 'pronto' | 'fila' | 'robo' | 'erro' | 'falta';
 export interface MesDoRobo { mes: string; situacao: SituacaoDoMes; pedido: PedidoDoRazao | null }
@@ -23,7 +24,7 @@ const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
 function situacao(p: PedidoDoRazao | null): SituacaoDoMes {
   if (!p) return 'falta';
-  if (p.status === 'pendente') return 'fila';
+  if (p.status === 'pendente' || p.status === 'pendentePc') return 'fila';
   if (p.status === 'trabalhando') return 'robo';
   if (p.status === 'pronto' && p.razaoLido) return 'pronto';
   return 'erro';
@@ -135,6 +136,9 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
     ? 'O balancete de ' + semBalancete.map(m => rotuloDoMes(m.mes)).join(', ') + ' não veio' + (semBalancete[0].pedido!.erroDoBalancete ? ': ' + semBalancete[0].pedido!.erroDoBalancete : '') + '.' : '';
 
   return {
+    /** o nome do dono do robô no PC (Vitor, 17/11/2026: "balancete dinamico, coloca o botao Vitor, para puxar do robo"): o botão leva
+     *  a marca do Alterdata e o nome; '' = o botão de sempre */
+    rotulo: roboDePcDoUsuario()?.rotulo || '',
     /** o que deu errado (ou pede atenção) no balancete dinâmico do robô */
     avisoDoBalancete: faltaBalancete || avisoDoBalancete,
     /** sem o código da empresa ou sem o período: o robô não tem o que pedir */

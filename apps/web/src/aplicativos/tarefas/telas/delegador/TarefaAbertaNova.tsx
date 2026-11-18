@@ -55,7 +55,9 @@ function DatasDaTarefa({ datas, envio = false }: { datas: readonly { rotulo: str
  * a hora, nos campos do navegador (o calendário e o relógio dele). Desligar apaga a data e a hora.
  */
 function PrazoDaTarefa({ vm }: { vm: Vm }) {
-  const [ligado, setLigado] = useState(() => !!vm.prazoTexto || !!vm.prazoHora);
+  const [marcado, setLigado] = useState(() => !!vm.prazoTexto || !!vm.prazoHora);
+  // o Repetir põe a data de hoje quando não tem prazo: a caixinha acompanha
+  const ligado = marcado || !!vm.prazoTexto;
   const iso = d.prazoDaTela(vm.prazoTexto) || '';
   const alternar = () => {
     if (ligado) { vm.setPrazo(''); vm.setPrazoHora(''); }
@@ -71,6 +73,51 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
           <input type="time" value={vm.prazoHora} aria-label="A hora do prazo" onChange={e => vm.setPrazoHora(e.target.value)} />
         </span>
       )}
+      {ligado && vm.prazoNoDiaUtil && <span className="hint tdl-prazo-util">Não é dia útil: vai para {vm.prazoNoDiaUtil}</span>}
+    </span>
+  );
+}
+
+/**
+ * Repetir, numa linha própria (Vitor, 18/11/2026: "coloca numa linha própria Repetir... Todo dia, toda semana, todo mes, todo
+ * ano... e escolher qual periodo que eu quero, que as vezes a pessoa so quer colocar 12 meses ou 3 meses"): a frequência e, ao
+ * repetir, Sem fim ou Por um período (quantos dias, semanas, meses ou anos). A data do prazo é a primeira vez; sem prazo, o
+ * Repetir põe hoje. Concluída, nasce a próxima; dia não útil vai para o próximo dia útil. Para todos.
+ */
+function RepetirDaTarefa({ vm }: { vm: Vm }) {
+  const [porPeriodo, setPorPeriodo] = useState(() => !!vm.vezes);
+  const rotulo = vm.opcoesDeRepeticao.find(o => o.valor === vm.repete)?.rotulo || 'Não repete';
+  const escolher = (v: typeof vm.repete) => {
+    vm.setRepete(v);
+    if (!v) { setPorPeriodo(false); vm.setVezes(''); return; }
+    if (!vm.prazoTexto) vm.setPrazo(d.prazoParaTela(d.hojeIso()));
+  };
+  const periodo = (sim: boolean) => {
+    setPorPeriodo(sim);
+    vm.setVezes(sim ? String(vm.repete === 'mensal' ? 12 : vm.repete === 'semanal' ? 4 : vm.repete === 'diaria' ? 5 : 2) : '');
+  };
+  return (
+    <span className="tdl-repetir">
+      <MenuSuspenso rotulo={rotulo} className={ESCOLHA} titulo="Repetir" flutuante largura={200}
+        itens={[{ valor: '' as const, rotulo: 'Não repete' }, ...vm.opcoesDeRepeticao].map(o => ({ rotulo: o.rotulo, marcado: o.valor === vm.repete, onClick: () => escolher(o.valor) }))} />
+      {vm.repete && (
+        <span className="tdl-repetir-periodo">
+          <MenuSuspenso rotulo={porPeriodo ? 'Por' : 'Sem fim'} className={ESCOLHA} titulo="Até quando" flutuante largura={200}
+            itens={[
+              { rotulo: 'Sem fim', marcado: !porPeriodo, onClick: () => periodo(false) },
+              { rotulo: 'Por um período', marcado: porPeriodo, onClick: () => periodo(true) },
+            ]} />
+          {porPeriodo && (
+            <>
+              <input type="number" inputMode="numeric" min={1} max={vm.maisVezes} value={vm.vezes} aria-label={'Quantos ' + vm.unidadeDasVezes}
+                onChange={e => vm.setVezes(e.target.value)} />
+              <span>{vm.unidadeDasVezes}</span>
+            </>
+          )}
+        </span>
+      )}
+      {vm.repete && vm.prazoDaUltima && <span className="hint">A última fica para {vm.prazoDaUltima}</span>}
+      {vm.repeteSemPrazo && <span className="hint tdl-atrasada">Coloque o prazo: é a data da primeira vez</span>}
     </span>
   );
 }
@@ -171,6 +218,7 @@ function Propriedades({ vm }: { vm: Vm }) {
         )}
       </Propriedade>}
       {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
+      {vm.podeRepetir && !travado && !docs && <Propriedade icone="repeat" rotulo="Repetir"><RepetirDaTarefa vm={vm} /></Propriedade>}
       {!envio && <Propriedade icone="alert" rotulo="Prioridade">
         {travado ? <span>{prioridade}</span> : (
           <MenuSuspenso rotulo={prioridade} className={ESCOLHA} titulo="A prioridade" flutuante largura={200}

@@ -87,3 +87,93 @@ export function pagamentosDoProLabore(razao: RazaoDaConta, modelos?: ModelosDoHi
     historico: historicoDoPagamento(g.competencia, g.socio, modelos), ...(g.anterior ? { doSaldoAnterior: true } : {}),
   }));
 }
+
+/** A situação do pró-labore de uma competência (a grade dos meses da etapa). */
+export type SituacaoDoProLabore = 'pago' | 'parcial' | 'falta' | 'sem';
+
+export interface MesDoProLabore {
+  /** 'aaaa-mm' */
+  mes: string;
+  /** o pró-labore lançado a crédito na competência (todos os sócios) */
+  provisao: number;
+  /** o INSS descontado (a débito, com a competência) */
+  inss: number;
+  /** provisão − INSS: o que tem de ser pago */
+  liquido: number;
+  /** o que foi pago desta competência (com a competência no histórico, ou o pagamento sem ela abatendo das mais antigas) */
+  pago: number;
+  /** o que ainda falta pagar (0 quando pago) */
+  falta: number;
+  situacao: SituacaoDoProLabore;
+  /** as datas dos pagamentos ('aaaa-mm-dd') que caíram nesta competência */
+  pagoEm: string[];
+  /** o saldo da conta no fim do mês (coluna Saldo do razão; credor positivo = a pagar); null antes do razão */
+  saldo: number | null;
+}
+
+const RE_MES_SOLTO = /\b(\d{2})\/(\d{4})\b/;
+
+/**
+ * O pró-labore mês a mês (Vitor, 18/11/2026: "coloca um saldo mensal embaixo para eu ver quais pagamentos faltam... pago ou nao
+ * pago"; "para depois decidir se quero gerar os lancamentos"): por competência, a provisão, o INSS descontado, o líquido, o que
+ * foi pago e o que falta. O pagamento com "<mm/aaaa>" (ou "mm/aaaa") no histórico é da competência; sem ela, abate das mais
+ * antigas (o saldo de antes do razão primeiro). Só os meses pedidos voltam, em ordem.
+ */
+export function mesesDoProLabore(razao: RazaoDaConta, meses: readonly string[]): { meses: MesDoProLabore[]; anterior: { valor: number; falta: number } } {
+  const por = new Map<string, { provisao: number; inss: number; pago: number; pagoEm: string[] }>();
+  const de = (m: string) => { let g = por.get(m); if (!g) { g = { provisao: 0, inss: 0, pago: 0, pagoEm: [] }; por.set(m, g); } return g; };
+  const soltos: { valor: number; data: string }[] = [];
+  for (const l of razao.lancamentos) {
+    const ref = RE_REF.exec(l.historico);
+    if (l.valor > 0) {
+      // crédito: a provisão da competência (sem competência, um estorno de pagamento: devolve às mais antigas)
+      if (ref) de(ref[2] + '-' + ref[1]).provisao = centavos(de(ref[2] + '-' + ref[1]).provisao + l.valor);
+      else soltos.push({ valor: -l.valor, data: l.data });
+      continue;
+    }
+    const pago = -l.valor;
+    if (ref && /INSS/i.test(l.historico)) { const g = de(ref[2] + '-' + ref[1]); g.inss = centavos(g.inss + pago); continue; }
+    const solto = ref ? null : RE_MES_SOLTO.exec(l.historico);
+    const comp = ref ? ref[2] + '-' + ref[1] : solto ? solto[2] + '-' + solto[1] : '';
+    if (comp && por.has(comp)) { const g = de(comp); g.pago = centavos(g.pago + pago); g.pagoEm.push(l.data); }
+    else soltos.push({ valor: pago, data: l.data });
+  }
+  // o saldo de antes (credor = a pagar) e as competências, da mais antiga para a mais nova, recebem os pagamentos sem competência
+  const anterior = { valor: centavos(Math.max(0, razao.saldoInicial)), pago: 0 };
+  const ordem = [...por.keys()].sort();
+  const faltaDe = (m: string) => { const g = por.get(m)!; return centavos(g.provisao - g.inss - g.pago); };
+  for (const s of soltos) {
+    let resta = s.valor;
+    if (resta < 0) continue;
+    const doAnterior = Math.min(resta, centavos(anterior.valor - anterior.pago));
+    if (doAnterior > 0.005) { anterior.pago = centavos(anterior.pago + doAnterior); resta = centavos(resta - doAnterior); }
+    for (const m of ordem) {
+      if (resta <= 0.005) break;
+      const f = faltaDe(m);
+      if (f <= 0.005) continue;
+      const usa = Math.min(f, resta);
+      const g = por.get(m)!;
+      g.pago = centavos(g.pago + usa);
+      g.pagoEm.push(s.data);
+      resta = centavos(resta - usa);
+    }
+  }
+  const lancs = [...razao.lancamentos].sort((a, b) => a.data.localeCompare(b.data));
+  const saldoNoFim = (m: string): number | null => {
+    const fim = fimDoMes(m);
+    if (!razao.inicio || fim < razao.inicio.slice(0, 7) + '-01') return null;
+    let s: number | null = razao.saldoInicial;
+    for (const l of lancs) { if (l.data > fim) break; s = l.saldo; }
+    return s === null ? null : centavos(s);
+  };
+  return {
+    meses: [...meses].sort().map(m => {
+      const g = por.get(m) || { provisao: 0, inss: 0, pago: 0, pagoEm: [] };
+      const liquido = centavos(g.provisao - g.inss);
+      const falta = centavos(Math.max(0, liquido - g.pago));
+      const situacao: SituacaoDoProLabore = liquido <= 0.005 ? 'sem' : falta <= 0.005 ? 'pago' : g.pago > 0.005 ? 'parcial' : 'falta';
+      return { mes: m, provisao: g.provisao, inss: g.inss, liquido, pago: g.pago, falta, situacao, pagoEm: [...new Set(g.pagoEm)].sort(), saldo: saldoNoFim(m) };
+    }),
+    anterior: { valor: anterior.valor, falta: centavos(Math.max(0, anterior.valor - anterior.pago)) },
+  };
+}

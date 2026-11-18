@@ -51,7 +51,15 @@ function doBanco(id: string, d: Record<string, unknown>): ImportacaoNoAlterdata 
 }
 
 /** Manda a planilha ao robô; devolve o id do pedido. */
+/**
+ * Desligado em todo o nads (Vitor, 18/11/2026: "Desabilite o botao importar no alterdata de todo o nads, ta bugado, irei
+ * corrigir"): o botão fica apagado em todas as telas e nenhum pedido sai. Volta quando ele liberar (false).
+ */
+export const IMPORTAR_DESLIGADO = true;
+export const MOTIVO_DESLIGADO = 'Importar no Alterdata está desligado por enquanto (em correção). Baixe a planilha e importe você.';
+
 export async function pedirImportacao(p: PedidoDeImportacao, quem: string): Promise<string> {
+  if (IMPORTAR_DESLIGADO) throw new Error(MOTIVO_DESLIGADO);
   const planilha = paraBase64(p.planilha);
   if (planilha.length > LIMITE_BASE64) throw new Error('a planilha passou do tamanho que o robô recebe (' + p.linhas + ' lançamentos); divida em duas');
   if (!ligadoAoBanco()) return exemplo(p);

@@ -59,6 +59,8 @@ export * as agenda from './regras/agenda';
 export * as feriados from './regras/feriados';
 // o calendário único de dias úteis (plano do Acessórias, 17/11/2026, ficha E01): tarefas.diasUteis.*
 export * as diasUteis from './regras/diasUteis';
+// a tarefa recorrente e o próximo dia útil (18/11/2026): tarefas.recorrencia.*
+export * as recorrencia from './regras/recorrencia';
 // a saudação do Início novo (13/11/2026): pelo turno, a segunda-feira, o aniversário e as frases personalizadas
 export * as saudacao from './regras/saudacao';
 // as reuniões das Notificações do Início novo (13/11/2026): o Sênior pede, o Diretor e o Dono aprovam e marcam direto

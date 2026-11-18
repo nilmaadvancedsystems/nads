@@ -14,7 +14,7 @@ const CM = 72 / 2.54;
 const A4 = { l: 21 * CM, a: 29.7 * CM };
 const MARGEM = 2 * CM;
 const LARGURA = A4.l - 2 * MARGEM;
-const ENDERECO = [
+export const ENDERECO = [
   'Travessa Martinho Rego nº 30 – Salas 101/105 – Centro – Taiobeiras/MG',
   'Tel.: (38)3845-2074 / E-mail: nilmacontabilidade@gmail.com',
   'Site: www.nilmacontabilidade.com.br',

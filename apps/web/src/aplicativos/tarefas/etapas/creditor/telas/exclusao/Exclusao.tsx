@@ -5,6 +5,7 @@ import { Alerta, Esqueleto, Icone, LogoBanco } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useExclusao } from './useExclusao';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
+import { ComRoboDoRazao, MenuDeImportar } from '../../../extrator/telas/tarefa/BotaoVitorDoRazao';
 
 export function Exclusao() {
   const vm = useExclusao();
@@ -48,12 +49,22 @@ export function Exclusao() {
                   ) : (
                     <>
                       <BotaoDeTeste itens={vm.teste} />
-                      <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão da conta ' + vm.contaBanco}
-                        aria-label="Importar o razão da conta" onClick={() => arquivo.current?.click()}>
-                        <Icone nome="upload" />
-                      </button>
-                      <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv,.txt,.pdf" className="sr-only" tabIndex={-1} aria-hidden="true"
-                        onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarRazao(f); }} />
+                      {/* o ⬆ com o botão Vitor (18/11/2026: "pode colocar aqui tb o botao vitor"): o robô do PC dele puxa o razão da conta banco
+                          nos meses do Creditor; para os outros, o ⬆ de sempre */}
+                      <ComRoboDoRazao codigo={vm.roboDoRazao.codigo} empresa={vm.roboDoRazao.empresa} conta={vm.contaBanco} meses={vm.roboDoRazao.meses} importar={f => vm.importarRazao(f)}>
+                        {robo => robo ? (
+                          <MenuDeImportar titulo={'o razão da conta ' + vm.contaBanco} aceitar=".xls,.xlsx,.csv,.txt,.pdf" travado={false} onArquivos={fs => vm.importarRazao(fs[0])} robo={robo} />
+                        ) : (
+                          <>
+                            <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão da conta ' + vm.contaBanco}
+                              aria-label="Importar o razão da conta" onClick={() => arquivo.current?.click()}>
+                              <Icone nome="upload" />
+                            </button>
+                            <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv,.txt,.pdf" className="sr-only" tabIndex={-1} aria-hidden="true"
+                              onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarRazao(f); }} />
+                          </>
+                        )}
+                      </ComRoboDoRazao>
                     </>
                   )}
                 </div>

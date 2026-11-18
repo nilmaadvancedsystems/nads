@@ -5,6 +5,8 @@
 //   nadsSessoes/{uid}_{authTime}    o login liberado (a pessoa cria com o código; as regras conferem; o admin revoga:
 //                                   a sessão some, o pedido vira 'revogado' e o código é apagado)
 //   usuarios/{uid}                  a equipe: departamento, nível, papéis (roles) e ativo (só o admin grava)
+//   nadsPresenca/{uid}              { vistoEm, onde } — o ponto do online e a etapa do Contábil (a própria pessoa grava;
+//                                   só a tela de Usuários escuta)
 // As regras do Entregas (firestore.rules) só deixam ler e gravar os dados do nads (rotinas, cadastro) com o login
 // liberado, quando a proteção está ligada; o admin não precisa de liberação.
 import { usuarios as u } from '@nads/core';
@@ -27,6 +29,8 @@ const DIA = 24 * 60 * 60 * 1000;
 const novoCodigo = () => crypto.randomUUID().replace(/-/g, '');
 // o último ponto do online gravado por esta aba (ms): o ponto e o sinal da etapa não gravam um logo depois do outro
 let ultimoPonto = 0;
+// o banco negou nadsPresenca (a regra ainda não está no ar): o ponto volta para usuarios até recarregar
+let presencaSemRegra = false;
 
 export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
   const db = bancoDoEntregas();
@@ -42,6 +46,23 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
   let authTime = '';
   let ouvindoDe = '';
   const paradas: (() => void)[] = [];
+  let presencas: Record<string, u.DocPresenca> = {};
+  let ouvindoPresencas = 0;
+  let pararPresencas: (() => void) | null = null;
+
+  /**
+   * Grava o ponto em nadsPresenca/{uid}. Sem a regra de nadsPresenca no ar (o banco nega), grava como antes, em
+   * usuarios/{uid}, e esta aba não tenta mais o novo até recarregar.
+   */
+  async function gravarPonto(uid: string, novo: Record<string, unknown>, antigo: Record<string, unknown>) {
+    if (!presencaSemRegra) {
+      try { await setDoc(doc(db, 'nadsPresenca', uid), novo, { merge: true }); return; } catch (e) {
+        if ((e as { code?: string }).code !== 'permission-denied') throw e;
+        presencaSemRegra = true;
+      }
+    }
+    await updateDoc(doc(db, 'usuarios', uid), antigo);
+  }
 
   /** Começa a ouvir o que é da pessoa logada (e, se for admin, o que é do admin); troca quando a pessoa troca. */
   function ouvir() {
@@ -158,21 +179,37 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       if (!q) throw new Error('Sem login.');
       await updateDoc(doc(db, 'usuarios', q.uid), { fotoPerfil: foto || '' });
     },
-    // o dono pode mexer no próprio documento (menos roles, email e criadoEm): o ponto de quem está online. Cada gravação
-    // aqui vira uma leitura em toda aba aberta do escritório (todas escutam usuarios): o ponto que o sinal da etapa acabou
-    // de levar junto não grava de novo
+    // o ponto de quem está online (17/11/2026, consumo do banco): em nadsPresenca/{uid}, que só a tela de Usuários escuta.
+    // Em usuarios, cada ponto virava uma leitura em toda aba do nads, em todo aparelho com o Entregas e no robô do login
+    // por nome (todos escutam usuarios inteira). O ponto que o sinal da etapa acabou de levar junto não grava de novo.
     async marcarPresenca() {
       const q = quem();
       if (!q || !u.ehHoraDoPonto(ultimoPonto, Date.now())) return;
       ultimoPonto = Date.now();
-      await updateDoc(doc(db, 'usuarios', q.uid), { nadsVistoEm: new Date().toISOString() });
+      await gravarPonto(q.uid, { vistoEm: new Date().toISOString() }, { nadsVistoEm: new Date().toISOString() });
     },
     // o sinal da etapa leva o ponto do online junto (uma gravação, não duas)
     async marcarOnde(onde) {
       const q = quem();
       if (!q) return;
       ultimoPonto = Date.now();
-      await updateDoc(doc(db, 'usuarios', q.uid), { nadsOnde: onde ?? deleteField(), nadsVistoEm: new Date().toISOString() });
+      const em = new Date().toISOString();
+      await gravarPonto(q.uid, { onde: onde ?? deleteField(), vistoEm: em }, { nadsOnde: onde ?? deleteField(), nadsVistoEm: em });
+    },
+    presencas: () => presencas,
+    ouvirPresencas() {
+      if (ouvindoPresencas++ === 0) {
+        pararPresencas = onSnapshot(collection(db, 'nadsPresenca'), s => {
+          presencas = Object.fromEntries(s.docs.map(d => [d.id, d.data() as u.DocPresenca]));
+          mudou();
+        }, () => { presencas = {}; mudou(); });
+      }
+      let parado = false;
+      return () => {
+        if (parado) return;
+        parado = true;
+        if (--ouvindoPresencas === 0 && pararPresencas) { pararPresencas(); pararPresencas = null; }
+      };
     },
     async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
     // excluir usuário (16/11/2026): um documento basta em cada lugar (limit 1); as buscas vão juntas. O lugar que não deu para
@@ -200,6 +237,8 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       if (!d) throw new Error('Não achei essa pessoa.');
       if (d.ativo !== false) throw new Error('Só uma conta inativa pode ser excluída.');
       await deleteDoc(doc(db, 'usuarios', uid));
+      // o último ponto dela (sem a regra no ar, ou já apagado, não faz falta)
+      await deleteDoc(doc(db, 'nadsPresenca', uid)).catch(() => undefined);
     },
     // o "Criar acesso" do Entregas: o login (numa instância à parte) e o cadastro gravado pela sessão do admin (a regra
     // só deixa o admin criar usuarios/{uid} de outra pessoa)

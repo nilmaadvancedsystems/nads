@@ -101,6 +101,82 @@ export const MAX_OBSERVACOES = 30;
 export const MAX_RETIFICACOES = 30;
 
 /**
+ * O quadro de retificação do mês (16/11/2026: "um botão parecido com o do 13º" que troca a tabela do Relatório pela da
+ * retificação; escolhido o quadro do protocolo): uma linha por retificação — as guardadas na folha do grupo e as empresas
+ * com o Retif. ligado que ainda não têm uma guardada (o código e a referência do mês; o resto em branco, até alguém
+ * escrever: aí ela vai para a folha). Em ordem de código e, na mesma empresa, de referência, para a linha não pular de
+ * lugar quando passa a ser guardada.
+ */
+export interface LinhaDaRetificacao {
+  /** a posição na folha; null = a empresa ligada que ainda não foi guardada */
+  indice: number | null;
+  retificacao: RetificacaoDoControle;
+  /** a empresa está com o Retif. ligado no Relatório */
+  ligada: boolean;
+}
+export const retificacaoEmBranco = (codigo: number | null, referencia: string): RetificacaoDoControle => ({ codigo, referencia, valores: {}, marcas: {}, entregue: '' });
+const mesDaReferencia = (r: string) => { const m = /^(\d{2})\/(\d{4})$/.exec(r); return m ? m[2] + '-' + m[1] : r; };
+
+export function quadroDeRetificacao(p: {
+  competencia: string; empresas: readonly EmpresaDoProtocolo[]; linhas: ReadonlyMap<number, LinhaDoControle>; folha: FolhaDoControle;
+}): LinhaDaRetificacao[] {
+  const ligadas = new Set(p.empresas.filter(e => linhaRetificada(p.linhas.get(e.codigo))).map(e => e.codigo));
+  const guardadas = new Set(p.folha.retificacoes.map(r => r.codigo));
+  const ref = competenciaParaEtiqueta(p.competencia.trim());
+  const todas: LinhaDaRetificacao[] = [
+    ...p.folha.retificacoes.map((retificacao, indice) => ({ indice, retificacao, ligada: retificacao.codigo != null && ligadas.has(retificacao.codigo) })),
+    ...[...ligadas].filter(c => !guardadas.has(c)).map(c => ({ indice: null, retificacao: retificacaoEmBranco(c, ref), ligada: true })),
+  ];
+  const cod = (l: LinhaDaRetificacao) => l.retificacao.codigo ?? Number.MAX_SAFE_INTEGER;
+  return todas.sort((a, b) => cod(a) - cod(b) || mesDaReferencia(a.retificacao.referencia).localeCompare(mesDaReferencia(b.retificacao.referencia)) || (a.indice ?? 1e9) - (b.indice ?? 1e9));
+}
+
+/** A referência (o mês retificado) como fica: "9/2026", "092026" ou "2026-09" → "09/2026"; vazio fica vazio; o resto não vale (null) */
+export function referenciaDaRetificacao(texto: string): string | null {
+  const t = texto.trim();
+  if (!t) return '';
+  const iso = /^(\d{4})-(\d{2})$/.exec(t);
+  const br = /^(\d{1,2})\s*[/.-]?\s*(\d{4})$/.exec(t);
+  const [mes, ano] = iso ? [Number(iso[2]), iso[1]] : br ? [Number(br[1]), br[2]] : [0, ''];
+  return mes >= 1 && mes <= 12 ? String(mes).padStart(2, '0') + '/' + ano : null;
+}
+
+/** Cabe mais uma retificação na folha do grupo */
+export const cabeRetificacao = (folha: FolhaDoControle) => folha.retificacoes.length < MAX_RETIFICACOES;
+
+/** A linha do quadro mudada: a guardada é trocada no lugar; a da empresa ligada passa a ser guardada (no fim da folha) */
+export function guardarRetificacao(folha: FolhaDoControle, linha: Pick<LinhaDaRetificacao, 'indice'>, nova: RetificacaoDoControle): FolhaDoControle {
+  if (linha.indice != null && linha.indice < folha.retificacoes.length) {
+    return { ...folha, retificacoes: folha.retificacoes.map((r, i) => (i === linha.indice ? nova : r)) };
+  }
+  return cabeRetificacao(folha) ? { ...folha, retificacoes: [...folha.retificacoes, nova] } : folha;
+}
+
+/** "+ Retificação": a empresa e o mês retificado; a mesma empresa com a mesma referência não entra duas vezes */
+export function adicionarRetificacao(folha: FolhaDoControle, codigo: number, referencia: string): FolhaDoControle {
+  if (folha.retificacoes.some(r => r.codigo === codigo && r.referencia === referencia)) return folha;
+  return guardarRetificacao(folha, { indice: null }, retificacaoEmBranco(codigo, referencia));
+}
+
+/**
+ * Tirar a linha do quadro: a guardada sai da folha; a empresa ligada sem outra guardada também se desliga (senão volta
+ * em branco). desligar: o código da empresa a desligar no Relatório; folha: null quando a folha não muda.
+ */
+export function removerRetificacao(folha: FolhaDoControle, linha: LinhaDaRetificacao): { folha: FolhaDoControle | null; desligar: number | null } {
+  const codigo = linha.retificacao.codigo;
+  if (linha.indice == null) return { folha: null, desligar: linha.ligada ? codigo : null };
+  const retificacoes = folha.retificacoes.filter((_, i) => i !== linha.indice);
+  const sobra = retificacoes.some(r => r.codigo === codigo);
+  return { folha: { ...folha, retificacoes }, desligar: linha.ligada && !sobra ? codigo : null };
+}
+
+/** Em que pé a retificação está: entregue, começada (algo escrito ou conferido) ou em branco */
+export function situacaoDaRetificacao(r: RetificacaoDoControle): 'entregue' | 'comecada' | 'branco' {
+  if (r.entregue) return 'entregue';
+  return Object.values(r.valores).some(v => v.trim()) || Object.values(r.marcas).some(Boolean) ? 'comecada' : 'branco';
+}
+
+/**
  * O valor como fica na tela: o número em reais (1234,5 → 1.234,50); "-", "—" e "0" ficam como traço e zero; o resto
  * (uma anotação curta), como foi escrito.
  */
@@ -219,10 +295,8 @@ export function htmlDoControle(p: {
   }).join('');
   const obs = p.folha.observacoes.filter(o => o.trim());
   const linhasObs = [...obs.map(o => `<tr><td>${esc(o)}</td></tr>`), ...Array(Math.max(0, 4 - obs.length)).fill('<tr><td></td></tr>')].join('');
-  // no quadro: as que a folha guardou e as empresas ligadas no Relatório (o código, o nome e a competência; o resto, à mão)
-  const ligadas: RetificacaoDoControle[] = [...p.empresas].sort((a, b) => a.codigo - b.codigo).filter(e => linhaRetificada(p.linhas.get(e.codigo)))
-    .map(e => ({ codigo: e.codigo, referencia: ref, valores: {}, marcas: {}, entregue: '' }));
-  const rets = [...p.folha.retificacoes, ...ligadas];
+  // no quadro: o mesmo da tela (as que a folha guardou e as empresas ligadas no Relatório que ainda não têm uma guardada)
+  const rets = quadroDeRetificacao(p).map(l => l.retificacao);
   const nomeDaRet = (r: RetificacaoDoControle | null) => p.empresas.find(e => e.codigo === r?.codigo)?.nome || '';
   const linhaRet = (r: RetificacaoDoControle | null) => `<tr><td class="cod">${r?.codigo != null ? String(r.codigo).padStart(5, '0') : ''}</td><td class="nome">${esc(nomeDaRet(r))}</td><td class="ref">${esc(r?.referencia || '')}</td>${g.colunas.map(c => `<td class="val">${esc(r?.valores[c.id] || '')}</td>`).join('')}${g.marcas.map(m => `<td class="mk">${marcaNaFolha(r?.marcas[m.id])}</td>`).join('')}<td class="mail">${esc(ROTULO_NA_FOLHA[r?.entregue || ''])}</td></tr>`;
   const corpoRet = [...rets.map(linhaRet), ...Array(Math.max(0, 4 - rets.length)).fill(linhaRet(null))].join('');

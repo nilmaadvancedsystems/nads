@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from './razao';
-import { dataDoPagamentoDoProLabore, pagamentosDoProLabore } from './proLabore';
+import { dataDoPagamentoDoProLabore, mesesDoProLabore, pagamentosDoProLabore } from './proLabore';
 
 // o razão do Pró-labore a pagar no formato da conciliação do Alterdata (crédito positivo), nomes inventados
 const CAB = ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo', 'Observação'];
@@ -48,5 +48,31 @@ describe('dataDoPagamentoDoProLabore (o 5º dia útil do mês seguinte)', () => 
     expect(dataDoPagamentoDoProLabore('2026-01', 1)).toBe('02/02/2026');
     expect(dataDoPagamentoDoProLabore('2026-03', 3)).toBe('06/04/2026'); // 1, 2, (3 feriado), 6
     expect(dataDoPagamentoDoProLabore('2026-12', 1)).toBe('04/01/2027');
+  });
+});
+
+describe('mesesDoProLabore (pago ou não, mês a mês)', () => {
+  it('a provisão, o INSS, o pago e o que falta; o pagamento sem competência abate o saldo de antes e as mais antigas', () => {
+    const r = lerRazao(linhas(500, [
+      ['31/01/2026', '52003', -100, INSS('01/2026', 'A')],
+      ['31/01/2026', '87002', 1000, PROV('01/2026', 'A')],
+      ['05/02/2026', '10503', -900, 'Pagamento de pro-labore 01/2026 A'],
+      ['28/02/2026', '52003', -100, INSS('02/2026', 'A')],
+      ['28/02/2026', '87002', 1000, PROV('02/2026', 'A')],
+      ['05/03/2026', '10501', -800, 'Pix enviado'],
+      ['31/03/2026', '52003', -100, INSS('03/2026', 'A')],
+      ['31/03/2026', '87002', 1000, PROV('03/2026', 'A')],
+    ]));
+    const { meses, anterior } = mesesDoProLabore(r, ['2026-01', '2026-02', '2026-03', '2026-04']);
+    expect(anterior).toEqual({ valor: 500, falta: 0 });
+    expect(meses.map(m => [m.mes, m.liquido, m.pago, m.falta, m.situacao])).toEqual([
+      ['2026-01', 900, 900, 0, 'pago'],
+      ['2026-02', 900, 300, 600, 'parcial'],
+      ['2026-03', 900, 0, 900, 'falta'],
+      ['2026-04', 0, 0, 0, 'sem'],
+    ]);
+    expect(meses[0].pagoEm).toEqual(['2026-02-05']);
+    expect(meses[1].saldo).toBe(1400);
+    expect(meses[2].saldo).toBe(1500);
   });
 });

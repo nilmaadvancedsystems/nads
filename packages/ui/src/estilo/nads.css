@@ -1693,9 +1693,13 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-robo-barra > span{display:block;height:100%;background:var(--success);}
 /* o robô do Fiscal embaixo da caixa da Importação (16/11/2026): a barra e o que ele está fazendo, numa linha */
 .imp-robo-fiscal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--ink-muted);}
-.imp-robo-fiscal .imp-robo-barra{flex:0 0 120px;}
 .imp-robo-fiscal > span{flex:1 1 200px;min-width:0;}
 .imp-robo-diag{flex:1 0 100%;}
+/* a tela travada enquanto o robô puxa do Alterdata (17/11/2026): nada responde ao clique; a barra continua à mostra */
+.imp-robo-bloqueio{position:fixed;inset:0;z-index:60;cursor:progress;background:transparent;}
+.imp-robo-fiscal .imp-robo-barra{flex:1 1 200px;}
+/* o botão só com a marca do Alterdata (17/11/2026) */
+.btn-icone-alterdata{padding-inline:12px;min-width:44px;justify-content:center;gap:6px;}
 .imp-robo-diag pre{max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;background:var(--surface-2);padding:8px;border-radius:6px;}
 .imp-robo-atencao{display:flex;flex-direction:column;gap:4px;padding:0 12px 12px 56px;font-size:var(--fs-12);line-height:18px;}
 .imp-robo-atencao > span{display:flex;align-items:flex-start;gap:6px;}
@@ -4387,6 +4391,10 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .registro-busca{display:flex;align-items:center;gap:10px;padding:4px 4px 4px 14px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);}
 .registro-busca:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);}
 .registro-busca.com-erro{border-color:var(--danger);}
+/* o cartão CNPJ em PDF ao lado do Buscar na Receita (18/11/2026); o input do arquivo fica escondido dentro do rótulo */
+.registro-cartao{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;white-space:nowrap;}
+.registro-cartao svg{width:16px;height:16px;}
+@media (max-width:560px){.registro-cartao{font-size:0;gap:0;}.registro-cartao svg{width:18px;height:18px;}}
 .registro-busca > svg{width:18px;height:18px;flex:none;color:var(--ink-muted);}
 .registro-busca input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:var(--fs-18);font-weight:500;padding:8px 0;color:var(--ink);font-variant-numeric:tabular-nums;}
 .registro-busca input::placeholder{color:var(--ink-faint);font-weight:400;}
@@ -6083,6 +6091,26 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela col.fr-c-sit{width:36px;}
 .fr-tabela col.fr-c-ret{width:52px;}
 .fr-retif .toggle-txt{display:none;}
+/* a janela da retificação (16/11/2026; flutuante desde 17/11/2026): o + Retificação em cima, a referência e a lixeira */
+.fr-ret-abrir .fr-qtd{margin-left:2px;}
+.modal.fr-ret-janela{max-width:min(1320px,96vw);width:100%;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;}
+.fr-ret-cabeca{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px 10px 16px;border-bottom:1px solid var(--border);}
+.modal .fr-ret-cabeca h3{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;}
+.fr-ret-janela .fr-ret-novo{padding:10px 16px;border-bottom:1px solid var(--border);}
+.fr-ret-janela .fr-ret-rola{flex:1 1 auto;min-height:0;max-height:none;}
+.fr-ret-janela .fr-tabela{min-width:1000px;}
+.fr-ret-janela .dp-vazio{padding:24px 16px;}
+.fr-ret-janela .modal-actions{align-items:center;}
+.fr-ret-dica{margin-right:auto;font-size:var(--fs-12);}
+.fr-tabela tr.fr-ret-destaque td{background:var(--accent-soft);}
+.fr-ret-novo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fr-ret-novo input{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm,6px);background:var(--surface);color:var(--ink);font-size:var(--fs-12);}
+.fr-ret-novo .fr-ret-empresa{width:240px;max-width:100%;}
+.fr-ret-novo .fr-ret-ref{width:84px;}
+.fr-tabela col.fr-c-ref{width:78px;}
+.fr-tabela col.fr-c-tirar{width:40px;}
+.fr-ret-tirar{width:26px;height:26px;color:var(--ink-muted);}
+.fr-ret-tirar:hover{color:var(--danger,#c0392b);}
 /* a REINF, nas mesmas linhas */
 .fr-tabela.fr-reinf{min-width:1190px;}
 .fr-tabela col.fr-c-ate{width:112px;}
@@ -6296,6 +6324,10 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .fxr-aliquota-valor{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-14);font-weight:600;}
 .fxr-aliquota .fin-valor-edita{width:64px;}
 .fxr-tabela .fin-valor-edita{width:56px;min-width:0;padding:2px 4px;}
+/* a alíquota mudada à mão (18/11/2026): o campo destacado e o botão de voltar à da nota */
+.fxr-aliq{white-space:nowrap;}
+.fxr-aliq-corrigida .fin-valor-edita{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent);font-weight:600;}
+.fxr-aliq-voltar{margin-left:2px;vertical-align:middle;}
 .fxr-nf{font-weight:500;}
 .fxr-fornecedor{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
 .fxr-calc{color:var(--ink-muted);background:color-mix(in srgb,var(--info) 4%,transparent);}
@@ -6952,6 +6984,12 @@ td.fs-fat-sem{color:var(--ink-faint);}
   min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);color-scheme:light dark;}
 .tdl-prazo-escolhas input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
 .tdl-prazo-escolhas.sem-animacao,.tdl-prazo-escolhas.sem-animacao > *{animation:none;}
+/* o Repetir numa linha própria (18/11/2026): a frequência, Sem fim ou Por um período e quantos */
+.tdl-repetir{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0;font-size:var(--fs-13);color:var(--ink-muted);}
+.tdl-repetir-periodo{display:inline-flex;align-items:center;gap:6px;animation:prazoAbre .36s cubic-bezier(.23,1,.32,1) both;}
+.tdl-repetir-periodo input[type=number]{width:64px;padding-left:8px;padding-right:4px;}
+.tdl-repetir .hint{flex-basis:100%;margin:0;}
+@media (prefers-reduced-motion: reduce){.tdl-repetir-periodo{animation:none;}}
 /* as caixinhas Delegar e Colocar prazo, ao lado do valor, sem o negrito do "Já estava fazendo" */
 .registro-props .tdl-ja-fazendo{font-weight:400;font-size:var(--fs-13);color:var(--ink-muted);white-space:nowrap;}
 /* o Voltar no canto superior esquerdo da janela, antes do título */
@@ -7000,6 +7038,11 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .cobranca-corpo textarea{width:100%;resize:vertical;}
 .cobranca-acoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
 .cobranca-tempo{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border-muted);}
+/* a empresa junto do título e a escolha do tempo antes do motivo (18/11/2026) */
+.cobranca-topo > span{display:flex;flex-direction:column;gap:2px;}
+.cobranca-empresa{font-weight:600;color:var(--ink);font-size:var(--fs-15,15px);}
+.cobranca-tempo-titulo{font-weight:600;}
+.cobranca-escolha{justify-content:flex-start;}
 /* o sino nas listas: quem faz vê que foi cobrado; quem delegou, o botão de cobrar */
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
@@ -7052,7 +7095,40 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-coluna{display:flex;flex-direction:column;gap:28px;min-width:0;}
 .ini-coluna > .card{margin-bottom:0;}
 .ini-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+/* o Quadro de avisos destacado, no alto da coluna da direita (18/11/2026) */
+.ini-quadro{border-color:color-mix(in srgb,var(--accent) 45%,var(--border));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent);}
+.ini-quadro .card-head{background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.ini-quadro .card-head h3{display:inline-flex;align-items:center;gap:8px;}
+.ini-quadro .card-head h3 svg{width:18px;height:18px;color:var(--accent);}
+.ini-quadro-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+/* os cards soltos, sem a caixa (18/11/2026): o aviso com o ícone no lugar do dia, o que pede o Recebido com a borda de atenção */
+.ini-quadro-solto .ini-quadro-item{background:var(--surface);}
+.ini-coluna > .ini-quadro-solto{margin-bottom:-18px;}
+.ini-quadro-dica{display:flex;align-items:center;gap:6px;margin:0 0 -8px;}
+.ini-quadro-item.aviso .ini-quadro-dia{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);}
+.ini-quadro-item.aviso .ini-quadro-dia svg{width:20px;height:20px;}
+.ini-quadro-item.pendente{border-color:color-mix(in srgb,var(--warn) 60%,var(--border));}
+/* o card ao passar o mouse: o conteúdo embaça e o botão aparece no meio (18/11/2026); no toque, nada (o card abre) */
+.ini-quadro-solto .ini-quadro-item{position:relative;overflow:hidden;}
+.ini-quadro-conteudo{display:flex;align-items:center;gap:12px;width:100%;min-width:0;transition:filter .15s,opacity .15s;}
+.ini-quadro-conteudo > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
+.ini-quadro-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .15s;}
+@media (hover:hover){
+  .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-conteudo,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-conteudo{filter:blur(3px);opacity:.45;}
+  .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-hover,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-hover{opacity:1;pointer-events:auto;}
+}
+.ini-quadro-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
+.ini-quadro-item:hover{border-color:var(--accent);}
+.ini-quadro-item > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
+.ini-quadro-dia{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:44px;height:44px;border-radius:8px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);flex:none;line-height:1.05;}
+.ini-quadro-dia b{font-size:var(--fs-18,18px);}
+.ini-quadro-dia small{font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+.ini-quadro-texto{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.ini-quadro-texto b{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;}
 .ini-linha{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;border-bottom:1px solid var(--border);}
+/* a reunião do dia escolhido, em primeiro na caixa de prazos e destacada (18/11/2026) */
+.ini-reuniao-do-dia{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding:4px 10px;margin-bottom:6px;border-bottom:0;}
+.ini-reuniao-do-dia .ini-marca svg{color:var(--accent);width:16px;height:16px;}
 .ini-linha:last-child{border-bottom:none;}
 .ini-linha-texto{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-linha-texto .hint{white-space:nowrap;}
@@ -7267,3 +7343,141 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 @keyframes email-certo-traco{from{stroke-dashoffset:36;}to{stroke-dashoffset:0;}}
 .entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
 .entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}
+/* o Contatudo (17/11/2026): a escolha da empresa e as ferramentas do Contábil soltas, só consulta */
+.contatudo{max-width:1400px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.contatudo-topo{display:flex;flex-direction:column;gap:4px;}
+.contatudo-topo-empresa{flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;}
+.contatudo-titulo{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;}
+.contatudo-titulo .page-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contatudo-periodo{display:flex;gap:8px;}
+.contatudo-empresas{max-width:640px;}
+.contatudo-lista{list-style:none;margin:8px 0 0;padding:0;max-height:60vh;overflow:auto;}
+.contatudo-empresa{display:flex;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--ink);cursor:pointer;}
+.contatudo-empresa:hover{background:var(--hover-bg);}
+.contatudo-cod{min-width:40px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.contatudo-ferramenta{min-height:60vh;}
+/* o navegador de pastas do Selecionar no Drive (17/11/2026): o Voltar à esquerda, as migalhas, as pastas e os arquivos */
+.drive-nav{width:min(720px,calc(100vw - 32px));max-width:720px;text-align:left;}
+.drive-nav-topo{display:flex;align-items:center;gap:10px;}
+.drive-nav-topo h3{flex:1 1 auto;min-width:0;margin:0;font-size:var(--fs-16,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-nav-caminho{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin:12px 0 8px;font-size:13px;}
+.drive-nav-passo{display:inline-flex;align-items:center;gap:2px;color:var(--ink-muted);}
+.drive-nav-migalha{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--ink-muted);padding:4px 6px;border-radius:6px;cursor:pointer;font:inherit;}
+.drive-nav-migalha:hover{background:var(--hover-bg);color:var(--ink);}
+.drive-nav-passo:last-child .drive-nav-migalha{color:var(--ink);font-weight:600;}
+.drive-nav-lista{display:flex;flex-direction:column;max-height:min(420px,60vh);overflow:auto;border:1px solid var(--border,var(--surface-3));border-radius:8px;}
+.drive-nav-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border:0;border-bottom:1px solid var(--border,var(--surface-3));background:transparent;color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
+.drive-nav-item:last-child{border-bottom:0;}
+.drive-nav-item:hover{background:var(--hover-bg);}
+.drive-nav-ico{display:inline-flex;width:28px;justify-content:center;flex:0 0 28px;}
+.drive-nav-ico.pasta{color:#f4b400;}
+.drive-nav-nome{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-nav-info{flex:0 0 auto;font-size:12px;color:var(--ink-muted);display:inline-flex;align-items:center;}
+.drive-nav-vazio{padding:16px;margin:0;}
+/* o robô puxando no ⬆ (17/11/2026): a barra e o × no lugar do botão; o Cancelar fica acima da camada que trava a tela */
+.imp-robo-mini{display:inline-flex;align-items:center;gap:6px;min-width:96px;}
+/* o Escolher arquivo do Verificar por conta com o botão Vitor ao lado (17/11/2026) */
+.vc-razao-linha{display:flex;align-items:stretch;gap:8px;}
+.vc-razao-linha .file-picker{flex:1 1 auto;min-width:0;}
+.vc-razao-linha .imp-robo-mini{min-width:140px;}
+.imp-robo-mini .imp-robo-barra{flex:1 1 60px;min-width:60px;}
+.imp-robo-cancelar{position:relative;z-index:61;}
+/* o detalhe do aviso nas Notificações, mais arrumado (18/11/2026) */
+.ini-detalhe-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-4px 0 14px;color:var(--ink-muted);font-size:var(--fs-14,14px);}
+.ini-detalhe-meta svg{width:14px;height:14px;}
+.ini-detalhe-meta > span[aria-hidden]{margin:0 4px;opacity:.6;}
+.ini-detalhe-corpo{padding:14px 16px;border-left:3px solid var(--accent);border-radius:6px;background:color-mix(in srgb,var(--accent) 7%,transparent);line-height:1.55;white-space:pre-wrap;margin:0 0 16px;}
+.ini-recebidos{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;}
+.ini-recebidos-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ini-recebidos-topo > span:first-child{display:inline-flex;align-items:center;gap:6px;}
+.ini-recebidos-topo svg{width:16px;height:16px;color:var(--ok,#3fb950);}
+.ini-recebidos-barra{height:6px;border-radius:99px;background:var(--border);overflow:hidden;}
+.ini-recebidos-barra > span{display:block;height:100%;background:var(--ok,#3fb950);border-radius:99px;}
+.ini-recebidos-pessoas{display:flex;flex-wrap:wrap;gap:6px;}
+.ini-pessoa{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:var(--fs-13,13px);border:1px solid var(--border);}
+.ini-pessoa svg{width:12px;height:12px;}
+.ini-pessoa.ok{border-color:color-mix(in srgb,var(--ok,#3fb950) 50%,transparent);background:color-mix(in srgb,var(--ok,#3fb950) 12%,transparent);color:var(--ok,#3fb950);}
+.ini-pessoa.falta{color:var(--ink-muted);}
+/* as Notificações quando as listas crescem (18/11/2026, Vitor: "quando vai crescendo parece que desorganiza"): cada lista rola
+   dentro do cartão, as linhas mantêm o texto numa linha e o selo à direita, e o detalhe fica parado à direita */
+.ini-notificacoes.nova .ini-lista-rolagem{max-height:420px;overflow-y:auto;overscroll-behavior:contain;margin-right:-6px;padding-right:6px;}
+.ini-notificacoes.nova .ini-comunicado{display:flex;align-items:center;gap:10px;}
+.ini-notificacoes.nova .ini-comunicado .popover-texto{flex:1;min-width:0;}
+.ini-notificacoes.nova .ini-comunicado .popover-texto > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-notificacoes.nova .ini-comunicado .popover-texto > br{display:none;}
+.ini-notificacoes.nova .ini-comunicado > .badge,.ini-notificacoes.nova .ini-comunicado > .selo-reuniao{flex:none;}
+@media (min-width:861px){.ini-notificacoes.nova > .ini-detalhe{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;}}
+
+/* as Notificações em lista, com os filtros no alto (modo desenvolvedor, 18/11/2026) */
+.notif-filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;}
+.ini-topo-lugar .notif-filtros{margin-bottom:0;}
+.notif-filtros > svg{color:var(--ink-muted);flex:none;}
+.notif-filtros .num{opacity:.7;margin-left:4px;}
+.notif-filtros .chip-f{display:inline-flex;align-items:center;gap:6px;}
+.notif-filtros-espaco{flex:1;}
+.notif-lista{padding:0;overflow:hidden;}
+.notif-linha{display:grid;grid-template-columns:32px minmax(0,1fr) 130px 170px 130px 16px;align-items:center;gap:12px;width:100%;padding:10px 18px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer;}
+.notif-linha:hover{background:color-mix(in srgb,var(--accent) 6%,transparent);}
+.notif-linha.aberta{background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.notif-linha.pendente .notif-icone{color:var(--warn);}
+.notif-linha > svg{width:16px;height:16px;color:var(--ink-muted);}
+.notif-icone{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--surface-2,color-mix(in srgb,var(--ink) 6%,transparent));color:var(--ink-muted);}
+.notif-icone svg{width:16px;height:16px;}
+.notif-titulo{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.notif-titulo b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.notif-quem,.notif-quando{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.notif-selo{display:flex;justify-content:flex-end;}
+.notif-detalhe{padding:16px 18px 20px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--accent) 4%,transparent);}
+.notif-detalhe > .card{margin:0;box-shadow:none;}
+@media (max-width:720px){.notif-linha{grid-template-columns:32px minmax(0,1fr) auto 16px;}.notif-quem,.notif-quando{display:none;}}
+/* a paginação das tabelas longas (o Creditor, 18/11/2026) */
+.paginacao{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;}
+/* o Consultar na Receita do Cadastro › Empresa (17/11/2026): a janela do antes × depois; o que mudou em destaque, a caixa
+   de marcar à esquerda (só o marcado é gravado) */
+.modal.receita-modal{max-width:min(920px,96vw);width:100%;display:flex;flex-direction:column;max-height:min(88vh,860px);}
+.receita-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px;border-bottom:1px solid var(--border);}
+.receita-topo h3{border:0;padding:0;margin:0 0 2px;}
+.modal p.receita-alerta,.modal p.receita-ok{display:flex;align-items:center;gap:8px;margin:12px 16px 0;padding:10px 12px;border-radius:8px;font-size:var(--fs-13);}
+.modal p.receita-alerta{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger);}
+.modal p.receita-ok{background:color-mix(in srgb,var(--success) 10%,transparent);color:var(--success);}
+.receita-alerta svg,.receita-ok svg{width:16px;height:16px;flex:none;}
+.receita-corpo{overflow:auto;padding:4px 16px 12px;flex:1;min-height:0;}
+.receita-tabela{width:100%;border-collapse:collapse;font-size:var(--fs-13);}
+.receita-tabela th{position:sticky;top:0;background:var(--surface);text-align:left;font-weight:600;color:var(--ink-muted);padding:10px 8px;border-bottom:1px solid var(--border);}
+.receita-tabela td{vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--border);color:var(--ink);}
+.receita-tabela td b{font-weight:600;display:block;}
+.receita-marcar{width:28px;}
+.receita-valor-linha{display:block;}
+.receita-tabela .vazio{color:var(--ink-muted);}
+.receita-estado{display:inline-block;margin-top:4px;padding:1px 8px;border-radius:999px;font-size:var(--fs-12);color:var(--ink-muted);background:color-mix(in srgb,var(--ink) 6%,transparent);}
+.receita-estado-mudou{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);}
+.receita-estado-novo{color:var(--info);background:color-mix(in srgb,var(--info) 12%,transparent);}
+.receita-nota{display:block;margin-top:4px;font-size:var(--fs-12);color:var(--ink-muted);}
+.receita-mudou td{background:color-mix(in srgb,var(--warn) 6%,transparent);}
+.receita-mudou .receita-antes{text-decoration:line-through;color:var(--ink-muted);}
+.receita-mudou .receita-depois{font-weight:600;}
+.receita-grave .receita-depois{color:var(--danger);}
+.receita-igual td,.receita-vazio td{color:var(--ink-muted);}
+.receita-pe{flex:1;align-self:center;}
+@media (max-width:640px){.receita-tabela th:nth-child(3),.receita-tabela td.receita-antes{display:none;}}
+
+/* o Pró-labore mês a mês na Folha (18/11/2026): a grade dos meses numa linha própria, embaixo do item, com a largura toda e sem
+   rolar para o lado ("sem barra de rolagem inferior"): no mês estreito o valor perde o "R$" (ValorNaGrade) */
+.folha-check-lista li:has(.prolabore-meses){flex-wrap:wrap;}
+.prolabore-meses{flex:1 0 100%;display:flex;flex-direction:column;gap:6px;margin:0 0 12px;min-width:0;}
+.prolabore-meses .hint{margin:0;}
+.prolabore-meses .imp-meses td{font-size:var(--fs-12);padding:0 2px;}
+.prolabore-meses .badge{font-size:var(--fs-11);padding:0 4px;white-space:nowrap;}
+.prolabore-conta{max-width:280px;}
+.prolabore-conta > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.prolabore-conta.vazio{color:var(--ink-muted);}
+/* a observação do concluir ("Mais algo que eu deva saber?", 18/11/2026): a janela um pouco mais larga, o campo no desenho dos
+   outros, com o foco azul e o contador embaixo à direita */
+.modal:has(.concluir-obs){width:min(480px, calc(100vw - 32px));max-width:none;}
+.concluir-obs-caixa{display:flex;flex-direction:column;gap:4px;width:100%;margin:4px 0 14px;text-align:left;}
+.modal .concluir-obs{display:block;width:100%;resize:vertical;min-height:112px;max-height:320px;border:1px solid var(--border);
+  background:var(--input-bg);color:var(--ink);border-radius:8px;padding:10px 12px;font:14px/21px var(--font-body);box-shadow:var(--shadow-inset);
+  transition:border-color .15s, box-shadow .15s;}
+.modal .concluir-obs:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);}
+.modal .concluir-obs::placeholder{color:var(--ink-muted);}
+.concluir-obs-conta{align-self:flex-end;font-size:var(--fs-11);color:var(--ink-muted);font-variant-numeric:tabular-nums;}

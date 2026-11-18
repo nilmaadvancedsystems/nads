@@ -32,7 +32,7 @@ export { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial,
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { chequeEspecialDoBanco, lancamentosDoChequeEspecial, type ChequeEspecialDoBanco } from './regras/chequeEspecial';
 export { lancamentosParaOSistema, lancamentosDoQueFaltaNoRazao, type PendenteDoBanco, type SugestaoDeLancamento } from './regras/lancamentosParaOSistema';
-export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
+export { acharExtratoNoDrive, arquivosDoMesNoDrive, caminhoAtePasta, conteudoDaPasta, mensagemDaBuscaDoExtrato, pastaInicialDoMes, type ContaProcurada } from './regras/drive';
 export { bancoDoTexto, deOutroBanco, preVerificarExtrato, type NaoEExtrato, type OutroDocumento } from './regras/preVerificacao';
 export { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes, type ComprovanteNoDrive } from './regras/comprovantes';
 export { linhaDoRecebido, type ExtratoRecebido, type LinhaParaRecebido } from './regras/recebidos';
@@ -40,7 +40,7 @@ export { gravacao, semMudanca, empresaDoBanco, lotesDaGravacao, LIMITE_DO_DOCUME
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
 export {
   assuntoDoPedido, competenciaDoPedido, competenciasPorExtenso, linkDoWhatsApp, mesPorExtenso, rotuloDoBanco, telefoneParaWhatsApp, textoDoPedido,
-  documentosDoPedido, textoDoWhatsApp, registrarPedido, prazoPadrao, dataPorExtenso, nomeComCompetencias,
+  documentosDoPedido, textoDoWhatsApp, nomeDoPdfDoPedido, WHATSAPP_PARA_RESPONDER, registrarPedido, prazoPadrao, dataPorExtenso, nomeComCompetencias,
   type BancoDoPedido, type CanalDoPedido, type PedidoDeExtratos, type DocumentoDoPedido,
 } from './regras/pedido';
 export { htmlDoPedido, type OpcoesDoEmail } from './regras/email';

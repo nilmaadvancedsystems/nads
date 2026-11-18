@@ -18,6 +18,8 @@ const CadastroAntigo = pedaco(() => import('./casca/CadastroAberto'), 'CadastroA
 const EmpresaAberta = pedaco(() => import('./casca/EmpresaAberta'), 'EmpresaAberta');
 const ConviteDoNads = pedaco(() => import('./telas/convite/ConviteDoNads'), 'ConviteDoNads');
 const Executor = pedaco(() => import('./telas/executor/Executor'), 'Executor');
+// o Contatudo (17/11/2026): as ferramentas do Contábil soltas, só consulta (nada grava debaixo de /tarefas/contatudo)
+const Contatudo = pedaco(() => import('./telas/contatudo/Contatudo'), 'Contatudo');
 const PreviaAbertura = pedaco(() => import('./telas/previa/PreviaAbertura'), 'PreviaAbertura');
 const PreviaAnimacoes = pedaco(() => import('./telas/previa/PreviaAnimacoes'), 'PreviaAnimacoes');
 
@@ -32,6 +34,8 @@ export const rotasTarefas: RouteObject[] = [
   { path: BASE + '/previa/animacoes', element: <NaEspera inteira><PreviaAnimacoes /></NaEspera> },
   // o convite (15/10/2026): criar a conta ou trocar a senha pelo link que o admin gerou, sem login
   { path: BASE + '/convite/:codigo', element: <NaEspera inteira><ConviteDoNads /></NaEspera> },
+  // o link curto do Contatudo
+  { path: '/contatudo', element: <Navigate to={BASE + '/contatudo'} replace /> },
   {
     path: BASE,
     element: <AppTarefas />,
@@ -39,6 +43,7 @@ export const rotasTarefas: RouteObject[] = [
       // onde a Tarefas abre: a pessoa escolhe na Minha página › Aparência e telas (padrão: o Início, 27/10/2026)
       { index: true, element: <Inicio /> },
       { path: 'executar/:empresa/:competencia', element: <NaEspera inteira><Executor /></NaEspera> },
+      { path: 'contatudo', element: <NaEspera inteira><Contatudo /></NaEspera> },
       { path: 'minhas-empresas/empresa/:empresa', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
       // o endereço antigo do LCDPR na página da empresa (16/10/2026): volta para a página da empresa (o LCDPR agora é a
       // etapa do executor)

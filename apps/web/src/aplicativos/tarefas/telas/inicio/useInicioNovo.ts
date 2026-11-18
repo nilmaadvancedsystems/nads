@@ -15,7 +15,10 @@ import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
+import { useRecorrentes } from './useRecorrentes';
+import { useConcluirComPergunta } from '../delegador/useConcluirComPergunta';
 import { useNovidade } from '../../../../comum/novidades';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
@@ -71,12 +74,16 @@ export function useInicioNovo() {
   const op = useOperador().operador as Operador;
   // as reuniões das Notificações (o Sênior pede, o Diretor e o Dono decidem): também no Painel e no calendário
   const reunioes = useReunioesDoInicio();
+  // a confirmação de presença só quando quem marcou pediu: em teste no modo desenvolvedor (18/11/2026)
+  const [devPresenca] = useModoDesenvolvedor();
   const { toast, aviso } = useRetorno();
   const [params, setParams] = useSearchParams();
   const aba = abaDaUrl(params.get('aba'));
   const mudarAba = (a: AbaDoInicio) => setParams(p => { const n = new URLSearchParams(p); n.set('aba', a); return n; }, { replace: true });
 
   const repo = useTarefasDelegadas();
+  // as tarefas recorrentes concluídas ganham a próxima (18/11/2026)
+  useRecorrentes();
   const acesso = useAcesso();
   const docs = acesso.equipe().docs;
   const comFoto = (p: tarefas.delegadas.Pessoa): PessoaComFoto => ({ uid: p.uid, nome: p.nome, foto: String(docs[p.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(p.nome) });
@@ -129,7 +136,8 @@ export function useInicioNovo() {
     quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
     reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
     // o Recebido: a pessoa ainda precisa marcar? quem escreveu (e o Diretor) vê quem marcou e quem falta
-    precisaReceber: !!a.pedeConfirmacao && a.porUid !== uid && !tarefas.recebeu(a, uid) && tarefas.avisoParaMim(a, { uid, departamento: op.departamento }),
+    // no modo desenvolvedor, todo aviso pede o Recebido (Vitor, 18/11/2026: "todos vao ter confirmacao")
+    precisaReceber: (devPresenca ? a.tipo !== 'reuniao' : !!a.pedeConfirmacao) && a.porUid !== uid && !tarefas.recebeu(a, uid) && tarefas.avisoParaMim(a, { uid, departamento: op.departamento }),
     jaRecebi: tarefas.recebeu(a, uid),
     acompanha: !!a.pedeConfirmacao && (a.porUid === uid || veTodos),
     faltaReceber: tarefas.faltaReceber(a, equipeComSetor).map(p => p.nome),
@@ -139,11 +147,19 @@ export function useInicioNovo() {
   const [mes, setMes] = useState(hoje.slice(0, 7));
   const [dia, setDia] = useState<string | null>(null);
   const doDia = dia ? abertas.filter(t => t.prazo === dia) : minhas;
+  const horaDe = (q: string) => (q.length >= 16 ? q.slice(11, 16) : '');
+  // publicado para todos (18/11/2026: "pode publicar essa parte do inicio")
+  const reunioesDoDia = !dia ? [] : [
+    ...reunioes.proximas.filter(x => x.quando.startsWith(dia)).map(x => ({ id: x.id, titulo: x.titulo, hora: horaDe(x.quando), duracao: x.duracaoTexto, quando: x.quando })),
+    ...comunicados.filter(c => c.tipo === 'reuniao' && (c.quando || '').startsWith(dia)).map(c => ({ id: c.id, titulo: c.tituloNaLista, hora: horaDe(c.quando || ''), duracao: '', quando: c.quando || '' })),
+  ].sort((a, b) => a.quando.localeCompare(b.quando));
 
+  // a pergunta "Mais algo que eu deva saber?" (18/11/2026)
+  const concluirComPergunta = useConcluirComPergunta();
   const concluir = (t: tarefas.delegadas.TarefaDelegada) => {
     // concluir pelo círculo só quando a tarefa deixa: os documentos (o envio e o requerer) e as que não deixam abrem a janela
     if (d.pedeDocumentos(t) || !d.acoesDaTarefa(t, relogio).some(a => a.id === 'concluir')) { setAberta(t.id); return; }
-    repo.salvar(t.id, { status: 'concluida' }).then(() => toast('Tarefa concluída.'))
+    concluirComPergunta(t, () => repo.salvar(t.id, { status: 'concluida' })).then(ok => { if (ok) toast('Tarefa concluída.'); })
       .catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para concluir', texto: e instanceof Error ? e.message : String(e) }));
   };
 
@@ -225,7 +241,12 @@ export function useInicioNovo() {
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
-      total: dia ? doDia.length : minhas.length,
+      total: dia ? doDia.length + reunioesDoDia.length : minhas.length,
+      /**
+       * as reuniões do dia escolhido, em primeiro e destacadas (Vitor, 18/11/2026: "essa reuniao ao selecionar o dia apareca na
+       * caixa de prazos destacada e em primeiro"): as marcadas (aprovadas ou remarcadas) e os comunicados de reunião
+       */
+      reunioes: reunioesDoDia,
       linhas: doDia.slice(0, 6).map(t => ({
         id: t.id, titulo: t.titulo, prazo: ag.prazoCurto(t.prazo, hoje) || 'Sem prazo', atrasada: d.atrasada(t, hoje, agora),
         concluir: () => concluir(t),
@@ -261,10 +282,21 @@ export function useInicioNovo() {
           .catch((e: unknown) => toast('Não cobrei: ' + (e instanceof Error ? e.message : String(e)))),
       };
     }),
+    /**
+     * os avisos (os que não são reunião) nos cards do Painel, junto das reuniões (Vitor, 18/11/2026: "deixa so os cards, tanto de
+     * aviso quanto de reuniao"): os fixados e os que esperam o Recebido, na ordem do mural, até 6
+     */
+    // os fixados ficam sempre; os outros, até a pessoa marcar o Recebido (18/11/2026: o fixado "fica meio que permanente na tela inicial")
+    avisosNoQuadro: comunicados.filter(c => c.tipo !== 'reuniao' && (c.fixado || c.precisaReceber)).slice(0, 6).map(c => ({
+      id: c.id, titulo: c.tituloNaLista, detalhe: [c.tipoRotulo, c.por, c.quandoFoi].filter(Boolean).join(' · '), em: c.em, fixado: !!c.fixado, precisaReceber: c.precisaReceber,
+    })),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
     reunioes: [
-      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo })),
-      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '' })),
+      // o que o card espera da pessoa (18/11/2026, o botão ao passar o mouse): a presença na reunião ou o Recebido do comunicado
+      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo,
+        espera: (x.acoes.includes('confirmar') && x.minhaPresenca === null ? 'presenca' : '') as '' | 'presenca' | 'recebido' })),
+      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '',
+        espera: (c.precisaReceber ? 'recebido' : '') as '' | 'presenca' | 'recebido' })),
     ].sort((a, b) => a.quando.localeCompare(b.quando)).slice(0, 4),
     /**
      * o que espera a confirmação da pessoa, por cima do calendário do Painel (Vitor, 13/11/2026: "Se for algo que precisa de
@@ -272,7 +304,8 @@ export function useInicioNovo() {
      * sem o Recebido, um de cada vez; respondeu, aparece o próximo
      */
     paraConfirmar: [
-      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null)
+      // só as reuniões em que quem marcou pediu a confirmação de presença (18/11/2026)
+      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null && x.pedirPresenca === true)
         .map(x => ({ tipo: 'reuniao' as const, id: x.id, titulo: x.titulo, texto: x.pauta, quem: x.criadaPor.nome, quando: x.quandoTexto })),
       ...comunicados.filter(c => c.precisaReceber)
         .map(c => ({ tipo: 'aviso' as const, id: c.id, titulo: c.tituloNaLista, texto: c.texto, quem: c.por, quando: c.quandoFoi })),
@@ -321,6 +354,9 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const [publicando, setPublicando] = useState(false);
   // o Diretor e o Dono pedem o Recebido e escolhem para quem é (todos, setores ou pessoas)
   const [pedeConfirmacao, setPedeConfirmacao] = useState(false);
+  // todo aviso novo pede o Recebido e quem cria escolhe fixar na tela inicial (18/11/2026; publicado para todos)
+  const devAviso = true;
+  const [fixarNoInicio, setFixarNoInicio] = useState(false);
   const [destino, setDestino] = useState<'todos' | 'setor' | 'pessoas'>('todos');
   const [setores, setSetores] = useState<string[]>([]);
   const [pessoas, setPessoas] = useState<tarefas.delegadas.Pessoa[]>([]);
@@ -329,7 +365,7 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const para: tarefas.DestinoDoAviso = destino === 'setor' ? { tipo: 'setor', setores } : destino === 'pessoas' ? { tipo: 'pessoas', pessoas } : { tipo: 'todos' };
   const dia = d.prazoDaTela(data);
   const norma = tipo === 'aviso' && jeito === 'norma';
-  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link: tipo === 'aviso' ? '' : link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao, para, jeito, comPdf: norma && !!pdf };
+  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link: tipo === 'aviso' ? '' : link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao: devAviso ? tipo !== 'reuniao' : pedeConfirmacao, para, jeito, comPdf: norma && !!pdf };
   // o menu do Tipo: os jeitos do aviso (o aviso não tem link; a norma leva o PDF), o estudo e o comunicado
   const opcoes = [
     ...tarefas.JEITOS_DO_AVISO.map(j => ({ tipo: 'aviso' as const, jeito: j.valor, rotulo: j.rotulo })),
@@ -350,7 +386,7 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
     problema, publicando,
     /** só o Diretor, o Dono e o admin pedem o Recebido */
     podePedirConfirmacao: op.admin || usuarios.nivelDeDiretor(nivel),
-    pedeConfirmacao, setPedeConfirmacao,
+    pedeConfirmacao, setPedeConfirmacao, devAviso, fixarNoInicio, setFixarNoInicio,
     destino, setDestino, setores, pessoas,
     opcoesDeSetor: usuarios.DEPARTAMENTOS,
     equipe: acesso.equipe().lista.filter(u => u.ativo && u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
@@ -360,7 +396,11 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
     async publicar() {
       if (problema) { aviso({ tom: 'erro', titulo: problema }); return; }
       setPublicando(true);
-      try { await repo.publicar(texto, op.nome, extras, uid || undefined, norma && pdf ? pdf : undefined); toast('Publicado nas Notificações.'); fechar(); }
+      try {
+        const id = await repo.publicar(texto, op.nome, extras, uid || undefined, norma && pdf ? pdf : undefined);
+        if (devAviso && fixarNoInicio && id) await repo.fixar(id, true);
+        toast('Publicado nas Notificações.'); fechar();
+      }
       catch (e) { aviso({ tom: 'erro', titulo: 'Não foi publicado', texto: e instanceof Error ? e.message : String(e) }); }
       finally { setPublicando(false); }
     },

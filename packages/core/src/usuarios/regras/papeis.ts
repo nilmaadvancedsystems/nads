@@ -4,7 +4,7 @@
 // funcionando, sem mudar nenhum deles.
 // Origem do que já existia: entregas.html CARGOS (~L1232), papeisDoDoc_ (~L11720), cargosLabel_,
 // e o rótulo 'dp' da tarefas.html (~L2289).
-import type { Departamento, DocUsuario, Nivel, Papel, Usuario } from '../tipos';
+import type { Departamento, DocUsuario, Nivel, OndeNoNads, Papel, Usuario } from '../tipos';
 
 export const DEPARTAMENTOS: readonly { id: Departamento; rotulo: string }[] = [
   { id: 'fiscal', rotulo: 'Fiscal' },
@@ -117,10 +117,15 @@ export function lerUsuario(uid: string, doc: DocUsuario): Usuario {
     ativo: doc.ativo !== false,
     fotoPerfil: doc.fotoPerfil || null,
     vistoNoNads: doc.nadsVistoEm || null,
-    ondeNoNads: doc.nadsOnde?.empresa && doc.nadsOnde.etapa && doc.nadsOnde.em
-      ? { codigo: doc.nadsOnde.codigo ?? null, empresa: doc.nadsOnde.empresa, etapa: doc.nadsOnde.etapa, competencia: doc.nadsOnde.competencia || '', em: doc.nadsOnde.em }
-      : null,
+    ondeNoNads: lerOndeNoNads(doc.nadsOnde),
   };
+}
+
+/** A empresa e a etapa gravadas (em usuarios.nadsOnde ou em nadsPresenca.onde), só se vieram inteiras. */
+export function lerOndeNoNads(o: Partial<OndeNoNads> | null | undefined): OndeNoNads | null {
+  return o?.empresa && o.etapa && o.em
+    ? { codigo: o.codigo ?? null, empresa: o.empresa, etapa: o.etapa, competencia: o.competencia || '', em: o.em }
+    : null;
 }
 
 export function temPapel(u: Pick<Usuario, 'papeis'>, p: Papel): boolean {

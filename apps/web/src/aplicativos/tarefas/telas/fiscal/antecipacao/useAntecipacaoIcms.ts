@@ -210,6 +210,12 @@ export function useAntecipacaoIcms() {
       if ('erro' in r) { aviso({ titulo: 'Alíquota que não vale', texto: r.erro, tom: 'erro' }); return; }
       if (r !== c.cadastro) { c.salvar(r); toast(v == null || v === l.aliquotaDaNota ? 'NF-e ' + l.numero + ': voltou à alíquota da nota' : 'NF-e ' + l.numero + ': alíquota ' + texto.trim().replace('%', '') + '%'); }
     },
+    /** desfaz a alíquota mudada à mão: a linha volta à da nota (18/11/2026) */
+    voltarAliquota(l: t.sieg.LinhaCalculada) {
+      if (!c.carregada || !empresa) return;
+      const r = cad.corrigirAliquotaDaLinhaDaAntecipacao(c.cadastro, l.id, null, 'NF-e ' + l.numero, por, new Date());
+      if (!('erro' in r) && r !== c.cadastro) { c.salvar(r); toast('NF-e ' + l.numero + ': voltou à alíquota da nota (' + String(l.aliquotaDaNota).replace('.', ',') + '%)'); }
+    },
     marcar(id: string, nova: t.sieg.SituacaoDaAntecipacao) {
       if (!c.carregada || !empresa) return;
       const r = cad.marcarSituacaoDaAntecipacao(c.cadastro, id, nova, por, new Date());

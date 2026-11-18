@@ -115,4 +115,13 @@ describe('contas somadas com uma fora do balancete (ex.: 70002 + 70006)', () => 
     expect(l.contasFora).toEqual(['70002']);
     expect(l.situacao.tipo).toBe('ok');
   });
+  it('o Ok do Verificar na 70006 (a única no plano) vale para a linha 70002 + 70006 (17/11/2026)', () => {
+    const e2 = { ...e, entradas: [nota('1102', '6', 292000, '100')] };
+    const grupos = agruparTotaisPorNatureza(comTipo(e2.entradas, e2.saidas));
+    const [antes] = linhasDoSaldo(e2, grupos, Object.keys(grupos), FILTRO_MOVIMENTO_VAZIO, '');
+    expect(antes.situacao.tipo).toBe('diferenca');
+    const e3 = { ...e2, verifConta: { [periodoKey(FILTRO_MOVIMENTO_VAZIO) + '||70006']: 'ok' as const } };
+    const [depois] = linhasDoSaldo(e3, grupos, Object.keys(grupos), FILTRO_MOVIMENTO_VAZIO, '');
+    expect(depois.situacao.tipo).toBe('ok-pela-revisao');
+  });
 });

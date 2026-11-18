@@ -4,6 +4,8 @@
 import { formatos } from '@nads/core';
 import { Esqueleto, Icone, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
+import { ComRoboDoRazao } from '../../../../extrator/telas/tarefa/BotaoVitorDoRazao';
+import { MarcaAlterdata } from '../../importacao/partes/MarcaAlterdata';
 import type { InfoRelatorio, useVerificarConta } from '../useVerificarConta';
 import { AlertaVerde } from './Tabelas';
 
@@ -75,12 +77,31 @@ function CampoRelatorio({ id, r, nome, vm, idNome, idIcone }: { id: string; r: R
     input.current.click();
   }, [pedido, r.codigo]);
   useEffect(() => { if (!nome && input.current) input.current.value = ''; }, [nome]);
+  const emp = vm.empresaDoRobo;
   return (
     <>
-      <label className={'file-picker' + (nome ? ' has-file' : '')} htmlFor={id}>
-        {idIcone ? <span id={idIcone}><Icone nome="upload" /></span> : <Icone nome="upload" />}
-        <span className="file-picker-name" id={idNome}>{nome || 'Escolher arquivo'}</span>
-      </label>
+      <div className="vc-razao-linha">
+        <label className={'file-picker' + (nome ? ' has-file' : '')} htmlFor={id}>
+          {idIcone ? <span id={idIcone}><Icone nome="upload" /></span> : <Icone nome="upload" />}
+          <span className="file-picker-name" id={idNome}>{nome || 'Escolher arquivo'}</span>
+        </label>
+        {/* o botão Vitor (17/11/2026, Vitor: "coloca outro botao aqui de vitor... consultas > lancamentos > exportar excel"): o robô
+            do PC dele puxa o razão da conta no período conferido e ele entra aqui como o arquivo escolhido. Só na conta dele. */}
+        {r.codigo && (
+          <ComRoboDoRazao codigo={emp.codigo} empresa={emp.nome} conta={r.codigo} meses={emp.meses} importar={f => vm.escolherRelatorio(r.codigo, f as File)}>
+            {robo => robo && (robo.andando ? (
+              <span className="imp-robo-mini" title={'O robô de ' + robo.rotulo + ' está puxando o razão da conta ' + r.codigo}>
+                <span className="imp-robo-barra"><span style={{ width: Math.max(6, robo.pct || 0) + '%' }} /></span>
+                {robo.cancelar && <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={robo.cancelar} title="Cancelar: o robô para e volta o Alterdata ao ponto de antes" aria-label="Cancelar o robô"><Icone nome="x" /></button>}
+              </span>
+            ) : (
+              <button type="button" className="btn btn-outline btn-icone-alterdata" onClick={robo.pedir} title={robo.titulo} aria-label={'Puxar o razão da conta ' + r.codigo + ' do Alterdata pelo robô de ' + robo.rotulo}>
+                <MarcaAlterdata />{robo.rotulo}
+              </button>
+            ))}
+          </ComRoboDoRazao>
+        )}
+      </div>
       <input ref={input} type="file" id={id} accept=".xls,.xlsx,.csv" className="sr-only" onChange={ev => void vm.escolherRelatorio(r.codigo, ev.target.files?.[0] || null)} />
     </>
   );

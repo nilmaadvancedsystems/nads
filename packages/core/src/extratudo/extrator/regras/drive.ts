@@ -148,3 +148,68 @@ export function mensagemDaBuscaDoExtrato(b: BuscaNoDrive, mes: string): string {
     case 'achou': return 'Achei ' + (b.arquivo?.caminho || '') + '.';
   }
 }
+
+/**
+ * Os arquivos do mês na pasta da empresa no Drive, para a pessoa escolher o extrato (Vitor, 17/11/2026: "lança a opção selecionar
+ * no Drive, onde abre uma popup no mês do contábil da empresa e o usuário seleciona o arquivo"). Sem os filtros da busca sozinha
+ * (é a pessoa quem escolhe): todo arquivo cuja pasta é do mês ("2026 › 09") ou que fala do mês no nome. Os da pasta EXTRATOS
+ * vêm primeiro; depois pelo caminho.
+ */
+export function arquivosDoMesNoDrive(itens: readonly ItemDrive[], raizDoCliente: string | null, competencia: string): ArquivoAchado[] {
+  if (!raizDoCliente) return [];
+  const filhos = filhosDoMapa(itens);
+  const ano = competencia.slice(0, 4), mm = competencia.slice(5, 7);
+  const out: (ArquivoAchado & { extratos: boolean })[] = [];
+  const andar = (pasta: string, caminho: string[]) => {
+    for (const it of filhos.get(pasta) || []) {
+      if (it.t === 'd') { andar(it.i, [...caminho, it.n]); continue; }
+      if (it.t !== 'f' || !EXTENSOES.test(it.n)) continue;
+      const pastas = caminho.map(nomeNorm);
+      const pelaPasta = mesDaPasta(pastas, ano);
+      const doMes = pelaPasta ? pelaPasta === mm : falaDaCompetencia([...caminho, it.n].join(' '), competencia);
+      if (!doMes) continue;
+      out.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: /cred ?liquid/.test(nomeNorm(it.n)), daCompetencia: true,
+        extratos: pastas.includes('extratos') });
+    }
+  };
+  andar(raizDoCliente, []);
+  return out.sort((a, b) => Number(b.extratos) - Number(a.extratos) || a.caminho.localeCompare(b.caminho, 'pt-BR'))
+    .map(({ extratos: _e, ...a }) => a);
+}
+
+/**
+ * O navegador de pastas do "Selecionar no Drive" (Vitor, 17/11/2026: "quero sistemas de pastas e diretórios, tudo bonitinho"):
+ * a pasta onde ele abre — a do mês dentro de EXTRATOS (EXTRATOS › 2026 › 09), ou a mais funda que existir nesse caminho, ou a
+ * pasta da empresa.
+ */
+export function pastaInicialDoMes(itens: readonly ItemDrive[], raizDoCliente: string | null, competencia: string): string | null {
+  if (!raizDoCliente) return null;
+  const filhos = filhosDoMapa(itens);
+  const pastasDe = (id: string) => (filhos.get(id) || []).filter(it => it.t === 'd');
+  // a EXTRATOS mais perto da raiz (CONTÁBIL › EXTRATOS)
+  let extratos: string | null = null;
+  const fila: string[] = [raizDoCliente];
+  for (let n = 0; fila.length && n < 400 && !extratos; n++) {
+    const id = fila.shift() as string;
+    for (const p of pastasDe(id)) { if (nomeNorm(p.n) === 'extratos') { extratos = p.i; break; } fila.push(p.i); }
+  }
+  if (!extratos) return raizDoCliente;
+  const ano = pastasDe(extratos).find(p => nomeNorm(p.n) === competencia.slice(0, 4));
+  if (!ano) return extratos;
+  const mes = pastasDe(ano.i).find(p => mesDaPasta([nomeNorm(p.n)], competencia.slice(0, 4)) === competencia.slice(5, 7) || nomeNorm(p.n) === competencia.slice(5, 7));
+  return mes ? mes.i : ano.i;
+}
+
+/** O que está numa pasta do mapa, as pastas primeiro e depois os arquivos, cada grupo em ordem alfabética. */
+export function conteudoDaPasta(itens: readonly ItemDrive[], pasta: string): ItemDrive[] {
+  return [...(filhosDoMapa(itens).get(pasta) || [])].sort((a, b) => Number(b.t === 'd') - Number(a.t === 'd') || a.n.localeCompare(b.n, 'pt-BR', { numeric: true }));
+}
+
+/** O caminho da raiz da empresa até a pasta (para as migalhas do navegador). */
+export function caminhoAtePasta(itens: readonly ItemDrive[], raizDoCliente: string, pasta: string): ItemDrive[] {
+  const porId = new Map(itens.map(it => [it.i, it]));
+  const out: ItemDrive[] = [];
+  let atual = porId.get(pasta);
+  for (let n = 0; atual && atual.i !== raizDoCliente && n < 50; n++) { out.unshift(atual); atual = porId.get(atual.p); }
+  return out;
+}
