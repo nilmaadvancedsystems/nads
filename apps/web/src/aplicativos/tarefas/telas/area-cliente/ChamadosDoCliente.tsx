@@ -30,6 +30,11 @@ export function ChamadosDoCliente() {
         <Segmentado valor={vm.filtro} onMudar={vm.setFiltro}
           opcoes={FILTROS_DOS_CHAMADOS.map(f => ({ valor: f, rotulo: rotuloDoFiltro(f) + ' (' + vm.contagem(f) + ')' }))} />
         <span className="tarefas-barra-espaco" />
+        {vm.notaDoMes.total > 0 && (
+          <span className="hint" title="A média das notas que os clientes deram nas solicitações concluídas, neste mês">
+            Nota do mês: <b>{vm.notaDoMes.media.toLocaleString('pt-BR')}</b> de 5 ({vm.notaDoMes.total} {vm.notaDoMes.total === 1 ? 'avaliação' : 'avaliações'})
+          </span>
+        )}
         <label className="busca-curta">
           <Icone nome="search" />
           <input type="text" placeholder="Buscar empresa ou assunto" aria-label="Buscar solicitação" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
@@ -46,7 +51,7 @@ export function ChamadosDoCliente() {
                   <tr className="linha-abre" tabIndex={0} onClick={() => vm.abrir(c.id)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(c.id); }} aria-expanded={d?.id === c.id}>
                     <td className="wrap">{c.empresa}</td>
                     <td className="wrap"><b>{c.titulo}</b><span className="hint" style={{ display: 'block' }}>{rotuloDoTipo(c.tipo)}</span></td>
-                    <td><span className={SELO[c.situacao]}>{ac.ROTULO_DA_SITUACAO_DO_CHAMADO[c.situacao]}</span></td>
+                    <td><span className={SELO[c.situacao]}>{ac.ROTULO_DA_SITUACAO_DO_CHAMADO[c.situacao]}</span>{c.avaliacao && <span className="hint" style={{ display: 'block' }} title={'Nota do cliente: ' + c.avaliacao.nota + ' de 5'}>{vm.estrelas(c.avaliacao.nota)}</span>}</td>
                     <td className="fraco">{vm.data(c.atualizadoEm)}</td>
                   </tr>
                   {d?.id === c.id && (
@@ -62,6 +67,9 @@ export function ChamadosDoCliente() {
                         <div className="ac-chamado">
                           <p className="hint">{d.empresa} · aberto em {vm.data(d.criadoEm)}</p>
                           <PedidoDoChamado mensagens={d.mensagens} />
+                          {d.avaliacao && (
+                            <p className="hint">Avaliação do cliente: <b>{vm.estrelas(d.avaliacao.nota)}</b> {d.avaliacao.nota} de 5 ({vm.rotuloDaNota(d.avaliacao.nota)}) em {vm.data(d.avaliacao.em)}{d.avaliacao.comentario && <> · “{d.avaliacao.comentario}”</>}</p>
+                          )}
                           <div className="field">
                             <label htmlFor="ac-resposta">Resposta ao cliente</label>
                             <textarea id="ac-resposta" rows={3} value={vm.resposta} onChange={e => vm.setResposta(e.target.value)} placeholder="O cliente vê a resposta como vinda do Escritório. Para conversar, o WhatsApp." />

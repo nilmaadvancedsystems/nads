@@ -43,6 +43,35 @@ export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   via: ViaDaGuia;
   entregaId: string;
 }
+/** Uma guia do Fiscal já arquivada no Drive (fiscalArquivos/{mês}.clientes.<código>.arquivos[]) (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir"). */
+export interface GuiaNaPasta {
+  /** o id do arquivo no Drive */
+  driveId: string;
+  nome: string;
+  /** a pasta onde está ("FISCAL/SIMPLES NACIONAL/01. DAS") */
+  pasta: string;
+  tamanho: number;
+  codigo: number;
+  competencia: string;
+}
+
+/** As guias de um documento fiscalArquivos/{mês}, conferidas campo a campo (o que vier torto fica de fora). */
+export function guiasDoDocumento(competencia: string, x: unknown): GuiaNaPasta[] {
+  const clientes = (x && typeof x === 'object' && (x as { clientes?: unknown }).clientes) || {};
+  const r: GuiaNaPasta[] = [];
+  for (const [cod, c] of Object.entries(clientes as Record<string, unknown>)) {
+    const codigo = Number(cod);
+    const lista = c && typeof c === 'object' ? (c as { arquivos?: unknown }).arquivos : null;
+    if (!Number.isInteger(codigo) || codigo <= 0 || !Array.isArray(lista)) continue;
+    for (const a of lista) {
+      const o = (a || {}) as Record<string, unknown>;
+      if (typeof o.i !== 'string' || !o.i || typeof o.n !== 'string' || !o.n) continue;
+      r.push({ driveId: o.i, nome: o.n, pasta: typeof o.c === 'string' ? o.c : '', tamanho: Number(o.s) || 0, codigo, competencia });
+    }
+  }
+  return r.sort((a, b) => a.codigo - b.codigo || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
 export interface LoteFiscal extends Omit<LoteDp, 'resultados'> {
   grupo: t.GrupoDoControleId;
   resultados: ResultadoDoLoteFiscal[];
@@ -79,6 +108,13 @@ export interface RepoLoteFiscal {
   exemplos: boolean;
   /** os lotes de guias de quem está no nads (os dois grupos), o mais novo primeiro */
   lotes(): { carregados: boolean; lista: LoteFiscal[] };
+  /**
+   * as guias do Fiscal já arquivadas no Drive no mês (fiscalArquivos/{AAAA-MM}, que o robô monta) (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir");
+   * erro = o banco ainda não deixa ler (a regra do Vitor)
+   */
+  guiasNaPasta(competencia: string, chegou: (r: { carregadas: boolean; erro: string; guias: GuiaNaPasta[] }) => void): () => void;
+  /** cria o lote com as guias da pasta (o robô lê pelo Drive, conferindo a lista do mês); devolve o id do lote */
+  criarDaPasta(grupo: t.GrupoDoControleId, guias: readonly GuiaNaPasta[]): Promise<string>;
   /** as guias de um lote, ao vivo */
   arquivos(lote: string, chegou: (lista: GuiaDoLote[]) => void): () => void;
   /** sobe as guias (em pedaços) e entrega o lote ao robô; devolve o id do lote */
@@ -95,8 +131,12 @@ export interface RepoLoteFiscal {
   tirar(lote: string, arquivo: string, fora: boolean): Promise<void>;
   /** grava a via de cada cliente (o código) no lote, antes do disparo */
   definirVias(lote: string, vias: Record<string, ViaDaGuia>): Promise<void>;
-  /** pede o disparo ao robô */
-  disparar(lote: string): Promise<void>;
+  /**
+   * pede o disparo ao robô; com agendadoPara ('2026-11-20T08:00:00-03:00'), o robô só dispara depois da hora (plano do Acessórias, 17/11/2026, ficha E17)
+   */
+  disparar(lote: string, agendadoPara?: string): Promise<void>;
+  /** desfaz o agendamento: o lote volta a esperar o Enviar (ficha E17) */
+  cancelarAgendamento(lote: string): Promise<void>;
   /** exclui o lote ainda não enviado (marca 'cancelado'; o robô apaga o lote, as guias e os pedaços) */
   excluir(lote: string): Promise<void>;
   /** o PDF de uma guia do lote, pelos pedaços que a tela subiu (só existem até o e-mail sair: o robô apaga depois) */
@@ -197,9 +237,24 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
       mandar();
       return () => { ouvintes.delete(mandar); };
     },
+    // as guias já na pasta, nos exemplos: três clientes no mês (ficha E15)
+    guiasNaPasta(competencia, chegou) {
+      const [ano, mes] = competencia.split('-');
+      const doc = { clientes: {
+        58: { arquivos: [{ i: 'drv-58-das', n: mes + '-' + ano + '.pdf', c: 'FISCAL/SIMPLES NACIONAL/01. DAS', s: 51_000 }] },
+        444: { arquivos: [{ i: 'drv-444-darf', n: mes + '-' + ano + ' - DARF PIS - VALOR 19,50 - VENCIMENTO 25-' + mes + '-' + ano + '.pdf', c: 'FISCAL/LUCRO PRESUMIDO/05. DARF', s: 9_000 },
+          { i: 'drv-444-dae', n: mes + '-' + ano + ' - DAE ICMS - VALOR 120,00 - VENCIMENTO 09-' + mes + '-' + ano + '.pdf', c: 'FISCAL/LUCRO PRESUMIDO/06. DAE', s: 12_000 }] },
+      } };
+      chegou({ carregadas: true, erro: '', guias: guiasDoDocumento(competencia, doc) });
+      return () => {};
+    },
+    async criarDaPasta(grupo, guias) {
+      const lista = guias.map(g => ({ nome: g.nome, bytes: new Uint8Array(g.tamanho || 1) }));
+      return this.subir(grupo, lista, () => {});
+    },
     async subir(grupo, lista, andamento) {
       const id = 'ex-guias-' + Date.now();
-      lotes.push({ id, grupo, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', resultados: [], vias: {} });
+      lotes.push({ id, grupo, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', agendadoPara: '', resultados: [], vias: {} });
       lista.forEach((a, k) => bytes.set(id + '/' + k, a.bytes));
       arquivos.set(id, lista.map((a, k) => ({ id: String(k), nome: a.nome, tamanho: a.bytes.length, status: 'pendente', erro: '', leitura: null, escolha: null, fora: false })));
       andamento(lista.length, lista.length);
@@ -237,7 +292,10 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
       arquivos.delete(id);
       mudou();
     },
-    async disparar(id) {
+    async cancelarAgendamento(id) { mudarLote(id, { status: 'lido', agendadoPara: '' }); },
+    async disparar(id, agendadoPara) {
+      // agendado: nos exemplos fica esperando (não há robô para disparar na hora)
+      if (agendadoPara) { mudarLote(id, { status: 'disparar', agendadoPara, disparadoPor: 'exemplo' }); return; }
       const lote = lotes.find(l => l.id === id);
       if (!lote) return;
       mudarLote(id, { status: 'disparando', disparadoPor: 'exemplo' });

@@ -58,7 +58,9 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   }, [contas]);
   const debito = contaDoItem.split(' — ')[0].trim();
   const modelos = useModelosDeHistorico();
-  const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao, modelos) : []), [razao, modelos]);
+  // só até o fim do período (o razão do robô vem até o mês seguinte; 18/11/2026)
+  const ateDoPeriodo = meses.length ? [...meses].sort()[meses.length - 1] : undefined;
+  const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao, modelos, ateDoPeriodo) : []), [razao, modelos, ateDoPeriodo]);
 
   async function importar(f: File | null) {
     if (!f) return;

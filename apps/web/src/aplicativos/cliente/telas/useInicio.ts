@@ -43,7 +43,7 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirE
   // ---------- as guias a pagar ----------
   const g = guiasDoInicio(area.guias, hoje, GUIAS);
   const guias = g.itens.map(({ guia, quando, tom }) => {
-    const id = guia.id, codigo = area.codigos[id] ?? '', nome = ac.ROTULO_DA_GUIA[guia.tipo];
+    const id = guia.id, codigo = area.codigos[id] ?? '', nome = ac.rotuloDaGuia(guia);
     // a vencida pede uma nova (o link embaixo); as outras: baixar (sem o PDF, copiar o código; sem os dois, nada)
     const pedirNova = tom === 'vencida' ? () => pedirGuiaNova(tituloDaGuiaNova(guia)) : null;
     const acao = pedirNova ? null

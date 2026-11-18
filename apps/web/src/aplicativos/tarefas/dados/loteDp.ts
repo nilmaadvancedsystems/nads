@@ -70,6 +70,8 @@ export interface LoteDp {
   lidos: number;
   erro: string;
   disparadoPor: string;
+  /** o envio agendado (ISO com o fuso de Brasília); '' = sai na hora (plano do Acessórias, 17/11/2026, ficha E17) */
+  agendadoPara: string;
   resultados: ResultadoDoLote[];
 }
 
@@ -85,8 +87,12 @@ export interface RepoLoteDp {
   escolher(lote: string, arquivo: string, escolha: EscolhaDoArquivo | null): Promise<void>;
   /** tira do lote ou põe de volta */
   tirar(lote: string, arquivo: string, fora: boolean): Promise<void>;
-  /** pede o disparo ao robô */
-  disparar(lote: string): Promise<void>;
+  /**
+   * pede o disparo ao robô; com agendadoPara ('2026-11-20T08:00:00-03:00'), o robô só dispara depois da hora (plano do Acessórias, 17/11/2026, ficha E17)
+   */
+  disparar(lote: string, agendadoPara?: string): Promise<void>;
+  /** desfaz o agendamento: o lote volta a esperar o Enviar (ficha E17) */
+  cancelarAgendamento(lote: string): Promise<void>;
   assinar(f: () => void): () => void;
   versao(): number;
 }
@@ -129,7 +135,7 @@ export function criarLoteDpMemoria(): RepoLoteDp {
     },
     async subir(lista, andamento) {
       const id = 'ex-lote-' + Date.now();
-      lotes.push({ id, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', resultados: [] });
+      lotes.push({ id, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', agendadoPara: '', resultados: [] });
       arquivos.set(id, lista.map((a, k) => ({ id: String(k), nome: a.nome, tamanho: a.bytes.length, status: 'pendente', erro: '', leitura: null, escolha: null, fora: false })));
       andamento(lista.length, lista.length);
       mudou();
@@ -142,7 +148,10 @@ export function criarLoteDpMemoria(): RepoLoteDp {
     },
     async escolher(id, a, escolha) { mudarArquivo(id, a, { escolha }); },
     async tirar(id, a, fora) { mudarArquivo(id, a, { fora }); },
-    async disparar(id) {
+    async cancelarAgendamento(id) { mudarLote(id, { status: 'lido', agendadoPara: '' }); },
+    async disparar(id, agendadoPara) {
+      // agendado: nos exemplos fica esperando (não há robô para disparar na hora)
+      if (agendadoPara) { mudarLote(id, { status: 'disparar', agendadoPara, disparadoPor: 'exemplo' }); return; }
       mudarLote(id, { status: 'disparando', disparadoPor: 'exemplo' });
       setTimeout(() => {
         const porChave = new Map<string, ArquivoDoLote[]>();

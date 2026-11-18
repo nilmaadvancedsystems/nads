@@ -6,6 +6,7 @@
 // de você, os clientes prontos e o Disparar), sem os já enviados. "Enviados": os e-mails que saíram na competência da
 // apuração (o registro do robô; fica mesmo depois que o lote some). "Modelo do e-mail": o assunto e o texto
 // (config/envioFiscal), como o do DP › Envios.
+import { AgendarEnvio } from '../../janela/AgendarEnvio';
 import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import type { GuiaDoLote, ViaDaGuia } from '../../../dados/loteFiscal';
@@ -189,9 +190,35 @@ function Modelo({ vm }: { vm: VmEnvioDeGuias }) {
   );
 }
 
+/** As guias do mês já arquivadas no Drive (17/11/2026, ficha E15): marcar e criar o lote. Só desenha. */
+function JaNaPasta({ vm, criado }: { vm: VmEnvioDeGuias; criado: () => void }) {
+  const p = vm.pasta;
+  if (!p.carregadas) return <Esqueleto linhas={3} />;
+  return (
+    <div className="card">
+      <h3>Guias já na pasta do Drive</h3>
+      <p className="hint">As guias do mês que o robô já arquivou na pasta FISCAL de cada cliente. Viram um lote sem subir de novo: o robô lê cada uma pelo Drive e você revisa antes de disparar.</p>
+      {p.erro ? <p className="hint">{p.erro}</p> : !p.guias.length ? <p className="hint">Nenhuma guia deste grupo na pasta do Drive neste mês.</p> : (
+        <>
+          <ul className="lista-simples">
+            {p.guias.map(g => (
+              <li key={g.driveId}>
+                <label><input type="checkbox" checked={g.marcada} onChange={() => p.alternar(g.driveId)} /> <b>{g.codigo} · {g.cliente}</b> <span className="fraco">{g.nome}</span></label>
+              </li>
+            ))}
+          </ul>
+          <BotaoAcao carregando={p.criando} textoCarregando="Criando…" disabled={!p.marcadas} onClick={() => { void p.criarLote().then(ok => { if (ok) criado(); }); }}>
+            <Icone nome="clipe" width={16} height={16} />Criar o lote com {p.marcadas} {p.marcadas === 1 ? 'guia' : 'guias'}
+          </BotaoAcao>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function JanelaDasGuias({ regime, competencia, fechar }: { regime: RegimeDoRelatorio; competencia: string; fechar: () => void }) {
   const vm = useEnvioDeGuias(regime, competencia);
-  const [topico, setTopico] = useState<'enviar' | 'enviados' | 'modelo'>('enviar');
+  const [topico, setTopico] = useState<'enviar' | 'pasta' | 'enviados' | 'modelo'>('enviar');
   // as guias de baixo vão para o lote aberto (lido, antes do disparo; 05/11/2026) ou, se a pessoa escolher, para um lote novo
   const [loteNovo, setLoteNovo] = useState(false);
   const noLote = vm.podeAdicionar && !loteNovo;
@@ -218,11 +245,13 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
     <JanelaLateral rotulo="Enviar guias" topico={topico} mudar={setTopico} fechar={fechar} classe="fgts-janela guias-janela"
       topicos={[
         { id: 'enviar', rotulo: 'Para enviar', icone: 'aviao', contador: vm.paraDisparar },
+        // as guias já arquivadas no Drive (17/11/2026, ficha E15)
+        { id: 'pasta', rotulo: 'Já na pasta', icone: 'pastaAberta', contador: vm.pasta.guias.length },
         { id: 'enviados', rotulo: 'Enviados', icone: 'check', contador: vm.enviados.length },
         { id: 'modelo', rotulo: 'Modelo do e-mail', icone: 'envelope' },
       ]}
       resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail, impresso, eContador, SCI Report ou WhatsApp</span></div>}>
-      {topico === 'modelo' ? <Modelo vm={vm} /> : topico === 'enviados' ? <Enviados vm={vm} /> : (
+      {topico === 'modelo' ? <Modelo vm={vm} /> : topico === 'enviados' ? <Enviados vm={vm} /> : topico === 'pasta' ? <JaNaPasta vm={vm} criado={() => setTopico('enviar')} /> : (
         <>
           {vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (
             // sem lote: só o subir, grande, com a explicação
@@ -246,13 +275,18 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                   {vm.podeExcluir && (
                     <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.excluirLote()}><Icone nome="lixeira" width={16} height={16} />Excluir lote</button>
                   )}
-                  {mexe && (
+                  {mexe && (<>
                     <BotaoAcao carregando={vm.disparando} textoCarregando="Pedindo…" disabled={!vm.paraDisparar} onClick={() => void vm.disparar()}>
                       <Icone nome="aviao" width={16} height={16} />Disparar{vm.paraDisparar ? ' · ' + vm.paraDisparar + (vm.paraDisparar === 1 ? ' cliente' : ' clientes') : ''}
                     </BotaoAcao>
+                    {/* o envio agendado (17/11/2026, ficha E17): o dia e a hora, e o robô só dispara depois */}
+                    <AgendarEnvio desabilitado={!vm.paraDisparar || vm.disparando} agendar={(data, hora) => void vm.disparar({ data, hora })} /></>
                   )}
                 </div>
-                {andando && (
+                {vm.agendado && (
+                  <p className="hint"><span className="badge badge-info">Agendado</span> Sai {vm.agendado}, na primeira vez que o robô passar depois dessa hora. <button type="button" className="btn btn-ghost" onClick={() => void vm.cancelarAgendamento()}>Cancelar agendamento</button></p>
+                )}
+                {andando && !vm.agendado && (
                   <span className="tarefas-barra fgts-barra dp-lote-barra" role="progressbar" aria-valuemin={0} aria-valuemax={lote.total} aria-valuenow={lote.lidos} aria-label="Guias lidas">
                     <span style={{ width: (lote.status === 'lendo' ? Math.max(5, (lote.lidos / Math.max(1, lote.total)) * 100) : lote.status === 'pendente' ? 3 : 100) + '%' }} />
                   </span>

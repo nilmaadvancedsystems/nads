@@ -38,6 +38,43 @@ const codigo = [
   'export { notasDoMes, listaDeNotasDoMes } from ' + caminho('packages/core/src/areaCliente/notasDoMes.ts') + ';',
   'export { erroDaLogo } from ' + caminho('packages/core/src/areaCliente/logo.ts') + ';',
   'export { chaveDoPedidoDeDanfe, idDaDanfe, partesDaChave } from ' + caminho('packages/core/src/areaCliente/pedidoDeDanfe.ts') + ';',
+  // os vencimentos da agenda do cliente com os feriados (17/11/2026, ficha E01 do plano do Acessórias): o robô faz a mesma
+  // conta do site pelo calendário único, em vez de uma cópia (robo/area-cliente-regras.js)
+  // o certificado A1 do cofre na Área do Cliente (17/11/2026, ficha certificado-digital)
+  'export { certificadoDoLink } from ' + caminho('packages/core/src/areaCliente/certificado.ts') + ';',
+  // o que falta mandar e os pedidos do Mandei no sino da Área do Cliente (17/11/2026)
+  'export { pendenciasDoMes, competenciaDoEnvio } from ' + caminho('packages/core/src/areaCliente/pendencias.ts') + ';',
+  // o registro de abertura da guia (17/11/2026, ficha comprovante-de-leitura)
+  // o lembrete de vencimento ao cliente (17/11/2026, ficha lembrete-de-vencimento)
+  'export { guiasParaLembrar, emailDoLembrete, diasDoLembrete, lembreteDaEmpresa } from ' + caminho('packages/core/src/areaCliente/lembretes.ts') + ';',
+  // o e-mail quando o escritório responde (17/11/2026, ficha aviso-de-resposta)
+  // o acervo de documentos do escritório (17/11/2026, ficha documentos-do-escritorio)
+  'export { areaDaSubpasta, idDoDocumentoDoEscritorio, PASTA_DO_ESCRITORIO } from ' + caminho('packages/core/src/areaCliente/documentosDoEscritorio.ts') + ';',
+  // a ficha cadastral da empresa (18/11/2026, ficha dados-cadastrais)
+  // as certidões da empresa (18/11/2026, ficha certidoes)
+  // a Tela de Insights (18/11/2026, ficha tela-de-insights)
+  'export { rotinasPorPessoa, situacaoDoClienteDp, contarDp, contarChamados, contarEntregas, delegadasAtrasadas } from ' + caminho('packages/core/src/tarefas/regras/insights.ts') + ';',
+  'export { competenciaDeTrabalhoDoDp } from ' + caminho('packages/core/src/tarefas/regras/prazosDoDp.ts') + ';',
+  'export { rotinaDaEmpresa } from ' + caminho('packages/core/src/tarefas/rotinas/rotinaDo.ts') + ';',
+  'export { CLIENTES_DO_DP, clienteDoDpNoCadastro } from ' + caminho('packages/core/src/empresas/dp.ts') + ';',
+  'export { situacaoDoTicket } from ' + caminho('packages/core/src/mandei/index.ts') + ';',
+  // os parcelamentos na Área (18/11/2026, ficha parcelamentos)
+  'export { parcelamentosDoCliente } from ' + caminho('packages/core/src/areaCliente/parcelamentos.ts') + ';',
+  'export { parcelamentoDoDocumento } from ' + caminho('packages/core/src/entregas/parcelamentos.ts') + ';',
+  // a guia paga pelo extrato (18/11/2026, ficha guia-paga-confirmada)
+  'export { guiasPagasPeloExtrato, saidasDosMeses } from ' + caminho('packages/core/src/areaCliente/guiaPaga.ts') + ';',
+  // a avaliação do atendimento (18/11/2026, ficha avaliacao-do-atendimento)
+  'export { avaliacaoDoPedido } from ' + caminho('packages/core/src/areaCliente/avaliacao.ts') + ';',
+  // o comprovante ligado à guia (18/11/2026, ficha comprovante-da-guia, parte B)
+  'export { guiaDoComprovante, rotuloDoComprovante } from ' + caminho('packages/core/src/areaCliente/comprovanteDaGuia.ts') + ';',
+  // o cliente confirma a entrega pela Área (18/11/2026, ficha confirmar-entrega)
+  'export { entregaDoPedidoDeRecebido, entregasParaConfirmar } from ' + caminho('packages/core/src/areaCliente/entregaRecebida.ts') + ';',
+  'export { orgaoDaCertidao, ultimaPorOrgao } from ' + caminho('packages/core/src/areaCliente/certidoes.ts') + ';',
+  'export { fichaDoCliente } from ' + caminho('packages/core/src/areaCliente/ficha.ts') + ';',
+  'export { precisaAvisar, emailDoAviso } from ' + caminho('packages/core/src/areaCliente/avisoDeResposta.ts') + ';',
+  'export { guiaDoPedidoDeLeitura, idDaLeitura } from ' + caminho('packages/core/src/areaCliente/leitura.ts') + ';',
+  'export { ticketsDaArea } from ' + caminho('packages/core/src/mandei/index.ts') + ';',
+  'export { VENCIMENTOS, vencimentoNaCompetencia } from ' + caminho('packages/core/src/areaCliente/vencimentos.ts') + ';',
   'export { itensDoPdf } from ' + caminho('packages/core/src/extratudo/extrator/arquivos/pdf.ts') + ';',
   'export { dadosDaDanfse, desenharDanfse, camposDaNota, configDoEmail, emailValido, mensagemDaNota, EMAIL_PADRAO, AVISO_SEM_VALOR };',
   '/** O PDF da DANFSe (Uint8Array) a partir do XML da NFS-e autorizada. */',

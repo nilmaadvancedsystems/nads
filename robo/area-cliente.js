@@ -128,6 +128,32 @@ function iniciarAreaDoCliente(db, log) {
   let revogados = null;   // ligado lá embaixo (5): apaga o espelho do link que acabou de sumir
   const tokensDaEmpresa = codigo => [...links.entries()].filter(([, l]) => l.codigos.some(c => String(c) === String(codigo))).map(([t]) => t);
 
+  // os certificados do cofre (plano do Acessórias, 17/11/2026, ficha certificado-digital; frase do dono: "Seguir"): só o que a conta precisa (código, empresa, validade,
+  // tipo), lidos de vez em quando; nunca o .pfx, a senha nem o titular cifrado
+  // o documentosMensal de cada cliente no mês, guardado por 10 minutos (um link de grupo lê uma vez por empresa) (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino")
+  const pendenciasEmCache = new Map();
+  async function documentoDoMes(id) {
+    const c = pendenciasEmCache.get(id);
+    if (c && Date.now() - c.em < 10 * 60 * 1000) return c.doc;
+    const s = await db.collection('documentosMensal').doc(id).get();
+    const doc = s.exists ? s.data() : null;
+    pendenciasEmCache.set(id, { em: Date.now(), doc });
+    return doc;
+  }
+  // os tickets do Mandei ainda não resolvidos (os dos últimos 90 dias), em memória: a conta de quem espera o cliente é do core
+  const ticketsAbertos = new Map();
+
+  let certificados = { em: 0, lista: [] };
+  async function certificadosDoCofre() {
+    if (Date.now() - certificados.em < CLIENTES_VALEM_MS) return certificados.lista;
+    try {
+      const s = await db.collection('cofre').where('temCertificado', '==', true).get();
+      const lista = s.docs.map(d => ({ codigo: d.get('codigo') == null ? null : Number(d.get('codigo')), empresa: String(d.get('empresa') || ''), validade: String(d.get('validade') || ''), temCertificado: true, tipo: String(d.get('tipo') || '') }));
+      certificados = { em: Date.now(), lista };
+    } catch (e) { log('Área do Cliente: os certificados do cofre não vieram -', e.message); }
+    return certificados.lista;
+  }
+
   // os clientes do Entregas (nome, CPF/CNPJ, enquadramento): lidos de vez em quando, não a cada volta
   let clientes = { em: 0, mapa: new Map() };
   async function clientesDoEntregas() {
@@ -136,7 +162,8 @@ function iniciarAreaDoCliente(db, log) {
       const mapa = new Map();
       (await require('./clientes-cache').clientesAtivos(db)).forEach(d => {
         const c = d.data();
-        if (c.codigoOrigem != null && String(c.codigoOrigem).trim()) mapa.set(String(c.codigoOrigem).trim(), c);
+        // o _id (o documento clientes/{id}) serve ao documentosMensal/{id}_{AAAA-MM} (17/11/2026, ficha o-que-falta-mandar); não sai no espelho
+        if (c.codigoOrigem != null && String(c.codigoOrigem).trim()) mapa.set(String(c.codigoOrigem).trim(), Object.assign({ _id: d.id }, c));
       });
       clientes = { em: Date.now(), mapa };
     } catch (e) { log('Área do Cliente: clientes do Entregas não vieram -', e.message); }
@@ -186,7 +213,8 @@ function iniciarAreaDoCliente(db, log) {
   }
 
   function esquecer(token) {
-    for (const m of [hashes, pdfsNoEspelho]) for (const k of [...m.keys()]) if (k.startsWith(token + '/')) m.delete(k);
+    for (const m of [hashes, pdfsNoEspelho, pagasNoEspelho]) for (const k of [...m.keys()]) if (k.startsWith(token + '/')) m.delete(k);
+    pagasConferidas.delete(token);
     fgtsNoEspelho.delete(token);
     dpNoEspelho.delete(token);
     historicoLido.delete(token);
@@ -226,7 +254,49 @@ function iniciarAreaDoCliente(db, log) {
       }
       if (pdfOk) pdfsNoEspelho.set(chave, assinatura);
     }
+    // a paga continua paga quando a guia do FGTS é regravada igual (o mesmo valor e vencimento) (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir")
+    const paga = pagasNoEspelho.get(chave);
+    if (paga && paga.valor === guia.valor && paga.vencimento === guia.vencimento) guia = Object.assign({}, guia, { pagoEm: paga.pagoEm });
     return gravar(token, 'guias/' + g.id, guia, 'guia');
+  }
+
+  // ---------- a guia paga pelo extrato (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir") ----------
+  // Só quando os lançamentos de alguma empresa do link mudaram (o cache dos extratos renova a cada 6 h) e só para as
+  // empresas com extrato: lê as guias do link uma vez, acha as pagas (core: o mesmo valor perto do vencimento; na dúvida
+  // não marca) e grava só o campo pagoEm (update), sem tocar no resto: as de DAS/DAE são do envios-do-nads.js. Nunca
+  // tira um pagoEm. A guia regravada pelo envios-do-nads.js (ref.set) perde o pagoEm e volta a ser conferida no próximo
+  // extrato; a retificada (outro valor) não herda.
+  const pagasNoEspelho = new Map(); // token/guias/id -> { pagoEm, valor, vencimento }
+  const pagasConferidas = new Map(); // token -> a assinatura dos extratos da última conferência
+  async function marcarGuiasPagas(token, empresas) {
+    const comExtrato = empresas.filter(e => lancamentosEmCache.has(e.codigo));
+    if (!comExtrato.length) return 0;
+    const assinatura = comExtrato.map(e => e.codigo + ':' + ((entradasEmCache.get(e.codigo) || {}).em || 0)).join('|');
+    if (pagasConferidas.get(token) === assinatura) return 0;
+    const P = doCore();
+    const snap = await espelhoDe(token).collection('guias').get();
+    let marcadas = 0;
+    for (const e of comExtrato) {
+      const sufixo = '-' + e.codigo;
+      const guias = snap.docs.filter(d => d.id.endsWith(sufixo)).map(d => Object.assign({ id: d.id }, d.data()));
+      if (!guias.length) continue;
+      const pagas = P.guiasPagasPeloExtrato(guias, P.saidasDosMeses(lancamentosEmCache.get(e.codigo)));
+      for (const [id, pagoEm] of pagas) {
+        const g = guias.find(x => x.id === id);
+        const ref = espelhoDe(token).collection('guias').doc(id);
+        await ref.update({ pagoEm });
+        const { id: _id, ...doc } = g;
+        hashes.set(token + '/guias/' + id, R.hashDoEspelho(Object.assign({}, doc, { pagoEm })));
+        pagasNoEspelho.set(token + '/guias/' + id, { pagoEm, valor: g.valor, vencimento: g.vencimento });
+        log('Área do Cliente: guia paga pelo extrato -', e.codigo + ' ' + e.nome, id, pagoEm);
+        marcadas++;
+      }
+      // as que já estavam pagas (depois de religar): a do FGTS regravada igual continua paga
+      for (const g of guias) if (g.pagoEm && !pagasNoEspelho.has(token + '/guias/' + g.id)) pagasNoEspelho.set(token + '/guias/' + g.id, { pagoEm: g.pagoEm, valor: g.valor, vencimento: g.vencimento });
+    }
+    pagasConferidas.set(token, assinatura);
+    if (marcadas) painel.atividade('area-cliente', 'Guias pagas pelo extrato', marcadas + (marcadas === 1 ? ' guia marcada' : ' guias marcadas') + ' como paga na Área do Cliente');
+    return marcadas;
   }
 
   /** Tira do espelho as guias do FGTS que saíram (só tipo FGTS: as de DAS/DAE são do envios-do-nads.js). */
@@ -298,6 +368,134 @@ function iniciarAreaDoCliente(db, log) {
   const idDoDocumentoDp = i => 'dp-' + String(i).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 120);
   /** Quantos pedaços de base64 (como os do PDF da guia) o arquivo de tantos bytes dá. */
   const pedacosDe = bytes => { const t = Math.floor(R.PEDACO_PDF / 4) * 4; return Math.max(1, Math.ceil((4 * Math.ceil(bytes / 3)) / t)); };
+
+  // ---------- o acervo do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio; frase do dono: "Pasta fixa") ----------
+  // A pasta fixa <ano>\<cód> - nome\ÁREA DO CLIENTE\DO ESCRITÓRIO\ (e as subpastas FISCAL, DP, CONTÁBIL, SOCIETÁRIO) de
+  // cada empresa do link: o que a equipe pôs lá vai para a Central de documentos › Do escritório. A pasta não é criada:
+  // sem ela, nada. O arquivo só é lido quando muda (o tamanho e a data); o que sai da pasta sai do espelho.
+  const escritorioNoEspelho = new Map();
+  function arquivosDoEscritorio(codigo) {
+    const P = doCore();
+    const ano = String(new Date().getFullYear());
+    const raizAno = path.join(DRIVE, ano);
+    let cliente;
+    try { cliente = fs.readdirSync(raizAno, { withFileTypes: true }).find(d => d.isDirectory() && d.name.startsWith(codigo + ' - ')); } catch (e) { return []; }
+    if (!cliente) return [];
+    const base = path.join(raizAno, cliente.name, PASTA_DOS_RECEBIDOS, P.PASTA_DO_ESCRITORIO);
+    const achados = [];
+    const ler = (pasta, sub) => {
+      let itens;
+      try { itens = fs.readdirSync(pasta, { withFileTypes: true }); } catch (e) { return; }
+      for (const it of itens) {
+        if (it.isDirectory()) { if (!sub) ler(path.join(pasta, it.name), it.name); continue; }
+        if (!it.isFile() || it.name.startsWith('.') || /^desktop\.ini$/i.test(it.name)) continue;
+        let st;
+        try { st = fs.statSync(path.join(pasta, it.name)); } catch (e) { continue; }
+        const caminho = (sub ? sub + '/' : '') + it.name;
+        achados.push({ id: P.idDoDocumentoDoEscritorio(Number(codigo), caminho), nome: it.name, area: P.areaDaSubpasta(sub), arquivo: path.join(pasta, it.name), tamanho: st.size, enviadoEm: st.mtime.toISOString() });
+      }
+    };
+    ler(base, '');
+    return achados.slice(0, 60);
+  }
+  async function espelharDoEscritorio(token, empresas) {
+    let gravados = 0;
+    const vivos = new Set();
+    for (const e of empresas) {
+      for (const d of arquivosDoEscritorio(e.codigo)) {
+        if (vivos.has(d.id)) continue;
+        const doc = { tipo: 'escritorio', id: d.id, nome: d.nome, area: d.area, enviadoEm: d.enviadoEm, tamanho: d.tamanho, partes: d.tamanho > MAIOR_ARQUIVO_DP ? 0 : pedacosDe(d.tamanho) };
+        const ref = espelhoDe(token).collection('documentos').doc(d.id);
+        if (await hashAtual(ref, token + '/documentos/' + d.id) === R.hashDoEspelho(doc)) { vivos.add(d.id); continue; }
+        if (doc.partes) {
+          let bytes;
+          try { bytes = fs.readFileSync(d.arquivo); } catch (err) { continue; } // ainda não sincronizou neste PC
+          doc.tamanho = bytes.length;
+          if (bytes.length > MAIOR_ARQUIVO_DP) doc.partes = 0;
+          else {
+            const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+            doc.partes = pedacos.length;
+            const col = espelhoDe(token).collection('documentos');
+            for (const pd of pedacos) await col.doc(d.id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: d.id }));
+            const velhos = await col.where('de', '==', d.id).select().get();
+            await Promise.all(velhos.docs.filter(x => Number(x.id.split('~')[1]) >= pedacos.length).map(x => x.ref.delete()));
+          }
+        }
+        if (await gravar(token, 'documentos/' + d.id, doc, 'documentoEscritorio')) gravados++;
+        vivos.add(d.id);
+      }
+    }
+    let antes = escritorioNoEspelho.get(token);
+    if (!antes) antes = new Set((await espelhoDe(token).collection('documentos').where('tipo', '==', 'escritorio').select().get()).docs.map(x => x.id));
+    for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
+    escritorioNoEspelho.set(token, vivos);
+    return gravados;
+  }
+
+  // ---------- as certidões (plano do Acessórias, 18/11/2026, ficha certidoes) ----------
+  // A última certidão de cada órgão de <ano>\<cód> - nome\SOCIETÁRIO\CERTIDÕES\<ÓRGÃO> (a pasta do arquivador), com a
+  // validade do nome do arquivo. O id é por empresa e órgão: a certidão nova substitui a velha no espelho.
+  const certidoesNoEspelho = new Map();
+  function certidoesDaPasta(codigo) {
+    const P = doCore();
+    const raizAno = path.join(DRIVE, String(new Date().getFullYear()));
+    let cliente;
+    try { cliente = fs.readdirSync(raizAno, { withFileTypes: true }).find(d => d.isDirectory() && d.name.startsWith(codigo + ' - ')); } catch (e) { return []; }
+    if (!cliente) return [];
+    const base = path.join(raizAno, cliente.name, 'SOCIETÁRIO', 'CERTIDÕES');
+    const arquivos = [];
+    let orgaos;
+    try { orgaos = fs.readdirSync(base, { withFileTypes: true }).filter(d => d.isDirectory()); } catch (e) { return []; }
+    for (const o of orgaos) {
+      let itens;
+      try { itens = fs.readdirSync(path.join(base, o.name), { withFileTypes: true }); } catch (e) { continue; }
+      for (const it of itens) {
+        if (!it.isFile() || !/\.pdf$/i.test(it.name)) continue;
+        let st;
+        try { st = fs.statSync(path.join(base, o.name, it.name)); } catch (e) { continue; }
+        arquivos.push({ orgao: P.orgaoDaCertidao(o.name), nome: it.name, modificadoEm: st.mtime.toISOString(), arquivo: path.join(base, o.name, it.name), tamanho: st.size });
+      }
+    }
+    const slug = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return P.ultimaPorOrgao(arquivos).map(c => Object.assign(c, { id: 'cert-' + codigo + '-' + slug(c.orgao) }));
+  }
+  async function espelharCertidoes(token, empresas) {
+    let gravados = 0;
+    const vivos = new Set();
+    for (const e of empresas) {
+      for (const c of certidoesDaPasta(e.codigo)) {
+        const doc = { tipo: 'certidao', id: c.id, nome: 'Certidão ' + c.orgao + '.pdf', orgao: c.orgao, validoAte: c.validoAte || '', tamanho: c.tamanho, partes: c.tamanho > MAIOR_ARQUIVO_DP ? 0 : pedacosDe(c.tamanho) };
+        // a mesma certidão (o mesmo arquivo) não é lida de novo: o hash leva o nome do arquivo e a data dele
+        const marca = Object.assign({}, doc, { de: c.nome + '|' + c.modificadoEm });
+        const ref = espelhoDe(token).collection('documentos').doc(c.id);
+        if (await hashAtual(ref, token + '/documentos/' + c.id) === R.hashDoEspelho(doc) && certidoesLidas.get(token + '/' + c.id) === marca.de) { vivos.add(c.id); continue; }
+        if (doc.partes) {
+          let bytes;
+          try { bytes = fs.readFileSync(c.arquivo); } catch (err) { continue; }
+          doc.tamanho = bytes.length;
+          if (bytes.length > MAIOR_ARQUIVO_DP) doc.partes = 0;
+          else {
+            const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+            doc.partes = pedacos.length;
+            const col = espelhoDe(token).collection('documentos');
+            for (const pd of pedacos) await col.doc(c.id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: c.id }));
+            const velhos = await col.where('de', '==', c.id).select().get();
+            await Promise.all(velhos.docs.filter(x => Number(x.id.split('~')[1]) >= pedacos.length).map(x => x.ref.delete()));
+          }
+        }
+        if (await gravar(token, 'documentos/' + c.id, doc, 'documentoCertidao')) gravados++;
+        certidoesLidas.set(token + '/' + c.id, marca.de);
+        vivos.add(c.id);
+      }
+    }
+    let antes = certidoesNoEspelho.get(token);
+    if (!antes) antes = new Set((await espelhoDe(token).collection('documentos').where('tipo', '==', 'certidao').select().get()).docs.map(x => x.id));
+    for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
+    certidoesNoEspelho.set(token, vivos);
+    return gravados;
+  }
+  // o arquivo de cada certidão já publicada (nome|data): a certidão nova com o mesmo tamanho também é lida
+  const certidoesLidas = new Map();
 
   async function apagarDocumentoDp(token, id) {
     const col = espelhoDe(token).collection('documentos');
@@ -435,6 +633,45 @@ function iniciarAreaDoCliente(db, log) {
 
     // o Registro (os funcionários e os documentos do DP): um erro aqui não para o resto do espelho
     try { gravados += await espelharPessoal(token, link, empresas, hoje); } catch (e) { log('Registro: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // a ficha cadastral (plano do Acessórias, 18/11/2026, ficha dados-cadastrais; frase do dono: "Sim, comece assim"): a da primeira empresa do link (a do
+    // retrato da Receita que o vigia-cnpj grava e o cadastro do Entregas); sem ficha, o resumo sai
+    try {
+      const e0 = empresas[0];
+      const ficha = e0 ? doCore().fichaDoCliente(mapaClientes.get(String(e0.codigo)) || null, e0.regime || '') : null;
+      const ref = espelhoDe(token).collection('resumo').doc('ficha');
+      if (ficha) { if (await gravar(token, 'resumo/ficha', Object.assign({}, ficha, { atualizadoEm: agora }), 'ficha')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/ficha')) { await ref.delete(); hashes.set(token + '/resumo/ficha', ''); }
+    } catch (e) { log('Ficha: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // os parcelamentos ativos (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir"); sem nenhum, o resumo sai
+    try {
+      const lista = [];
+      for (const e of empresas) {
+        const cli = mapaClientes.get(String(e.codigo));
+        if (cli && cli._id) lista.push(...(parcelamentosAtivos.get(String(cli._id)) || []));
+      }
+      const itens = doCore().parcelamentosDoCliente(lista, hoje);
+      const ref = espelhoDe(token).collection('resumo').doc('parcelamentos');
+      if (itens.length) { if (await gravar(token, 'resumo/parcelamentos', { itens, atualizadoEm: agora }, 'parcelamentos')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/parcelamentos')) { await ref.delete(); hashes.set(token + '/resumo/parcelamentos', ''); }
+    } catch (e) { log('Parcelamentos: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // as entregas que esperam o cliente confirmar (plano do Acessórias, 18/11/2026, ficha confirmar-entrega; frase do dono: "Seguir"); sem nenhuma, o resumo sai
+    try {
+      const lista = [];
+      for (const e of empresas) {
+        const cli = mapaClientes.get(String(e.codigo));
+        if (!cli || !cli._id) continue;
+        const s = await db.collection('entregas').where('clienteId', '==', cli._id).where('status', '==', 'link').limit(20).get();
+        lista.push(...s.docs.map(d => Object.assign({ id: d.id }, d.data())));
+      }
+      const itens = doCore().entregasParaConfirmar(lista);
+      const ref = espelhoDe(token).collection('resumo').doc('entregas');
+      if (itens.length) { if (await gravar(token, 'resumo/entregas', { itens, atualizadoEm: agora }, 'entregas')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/entregas')) { await ref.delete(); hashes.set(token + '/resumo/entregas', ''); }
+    } catch (e) { log('Entregas: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // as certidões (a última de cada órgão) (plano do Acessórias, 18/11/2026, ficha certidoes)
+    try { gravados += await espelharCertidoes(token, empresas); } catch (e) { log('Certidões: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // o acervo do escritório (a pasta fixa DO ESCRITÓRIO): um erro aqui não para o resto do espelho
+    try { gravados += await espelharDoEscritorio(token, empresas); } catch (e) { log('Do escritório: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
     // o Faturamento: os 12 meses de cada empresa pelas notas emitidas no SIEG; sem nenhum mês, o resumo sai
     try {
       const P = doCore();
@@ -463,6 +700,8 @@ function iniciarAreaDoCliente(db, log) {
         }
       }
     } catch (e) { log('Faturamento: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // a guia paga pelo extrato (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir"): um erro aqui não para o resto do espelho
+    try { gravados += await marcarGuiasPagas(token, empresas); } catch (e) { log('Guias pagas: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
 
     // a logo da empresa (12/11/2026): a primeira empresa do link que tem logo no nads; sem nenhuma, a marca sai
     try {
@@ -471,6 +710,43 @@ function iniciarAreaDoCliente(db, log) {
       if (comLogo) { if (await gravar(token, 'resumo/marca', { logo: comLogo, atualizadoEm: agora }, 'marca')) gravados++; }
       else if (await hashAtual(ref, token + '/resumo/marca')) { await ref.delete(); hashes.set(token + '/resumo/marca', ''); }
     } catch (e) { log('Logo: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
+    // o que falta mandar no mês (a matriz do documentosMensal, a mesma da régua) (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino").
+    // Sem nada faltando, o resumo sai.
+    try {
+      const P = doCore();
+      const comp = require('./regua-cobranca').competenciaAnterior(hoje);
+      const itens = [];
+      for (const e of empresas) {
+        const cli = mapaClientes.get(String(e.codigo));
+        if (!cli || !cli._id) continue;
+        const docMes = await documentoDoMes(cli._id + '_' + comp);
+        const faltando = require('./regua-cobranca').faltandoDo(cli, docMes).map(t => t.chave);
+        for (const p of P.pendenciasDoMes(faltando, comp)) if (!itens.some(x => x.id === p.id)) itens.push(p);
+      }
+      const ref = espelhoDe(token).collection('resumo').doc('pendencias');
+      if (itens.length) { if (await gravar(token, 'resumo/pendencias', { itens, competencia: comp, atualizadoEm: agora }, 'pendencias')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/pendencias')) { await ref.delete(); hashes.set(token + '/resumo/pendencias', ''); }
+    } catch (e) { log('Pendências: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
+    // os pedidos do Mandei esperando o cliente (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e
+    // pedidos-do-mandei; frase do dono: "No sino"). Enquanto a trava do Mandei estiver fechada (robo/mandei.js), só os
+    // tickets de teste do escritório. Todos os setores, o DP também (o dono, 17/11/2026: "Mostrar também").
+    try {
+      const lista = doCore().ticketsDaArea([...ticketsAbertos.values()], link.codigos.map(Number), hoje);
+      const ref = espelhoDe(token).collection('resumo').doc('tickets');
+      if (lista.length) { if (await gravar(token, 'resumo/tickets', { tickets: lista, atualizadoEm: agora }, 'tickets')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/tickets')) { await ref.delete(); hashes.set(token + '/resumo/tickets', ''); }
+    } catch (e) { log('Pedidos do Mandei: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
+    // o certificado A1 do cofre (plano do Acessórias, 17/11/2026, ficha certificado-digital; frase do dono: "Seguir"): o que vence primeiro entre as empresas do link;
+    // sem nenhum, o resumo sai (a tela não mostra nada)
+    try {
+      const cert = doCore().certificadoDoLink(await certificadosDoCofre(), empresas.map(e => ({ codigo: Number(e.codigo), nome: String(e.nome || '') })));
+      const ref = espelhoDe(token).collection('resumo').doc('certificado');
+      if (cert) { if (await gravar(token, 'resumo/certificado', Object.assign({}, cert, { atualizadoEm: agora }), 'certificado')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/certificado')) { await ref.delete(); hashes.set(token + '/resumo/certificado', ''); }
+    } catch (e) { log('Certificado: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
 
     for (const a of R.agendaDoLink(empresas, comps)) {
       if (await gravar(token, 'agenda/' + a.mes, { mes: a.mes, itens: a.itens, atualizadoEm: agora }, 'agenda')) gravados++;
@@ -528,6 +804,26 @@ function iniciarAreaDoCliente(db, log) {
     }
     pronto('links');
     agendar();
+  }, log);
+
+  // os parcelamentos ativos (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir"): um ouvinte só (não uma leitura por
+  // empresa a cada volta); a mudança (a parcela paga pelo comprovante, um cadastro novo) põe os links da empresa na fila
+  const parcelamentosAtivos = new Map(); // clienteId -> [documentos]
+  let primeirosParcelamentos = true;
+  ouvir('Área do Cliente: parcelamentos', () => db.collection('parcelamentos').where('status', '==', 'ativo'), snap => {
+    parcelamentosAtivos.clear();
+    for (const d of snap.docs) {
+      const c = String(d.get('clienteId') || '');
+      if (c) parcelamentosAtivos.set(c, [...(parcelamentosAtivos.get(c) || []), doCore().parcelamentoDoDocumento(d.id, d.data())]);
+    }
+    if (!primeirosParcelamentos) {
+      const ids = new Set(snap.docChanges().map(ch => String(ch.doc.get('clienteId') || '')));
+      clientesDoEntregas().then(mapa => {
+        for (const [codigo, cli] of mapa) if (cli && ids.has(String(cli._id))) tokensDaEmpresa(codigo).forEach(t => fila.add(t));
+        agendar();
+      }).catch(e => log('Parcelamentos: a fila falhou -', e.message));
+    }
+    primeirosParcelamentos = false;
   }, log);
 
   let primeiraFgts = true;
@@ -621,6 +917,16 @@ function iniciarAreaDoCliente(db, log) {
 
   // as logos das empresas (12/11/2026): o gestor põe no nads (logosDasEmpresas/{código}); só a que passa no erroDaLogo
   // (PNG, JPG ou WebP em data URL, dentro do tamanho) vai para o espelho
+  // os tickets do Mandei (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): os dos últimos 90 dias; resolvido sai da memória
+  ouvir('Área do Cliente: tickets do Mandei', () => db.collection('tickets').where('criadoEm', '>=', new Date(Date.now() - 90 * 864e5).toISOString()), snap => {
+    for (const ch of snap.docChanges()) {
+      const t = Object.assign({ id: ch.doc.id }, ch.doc.data());
+      if (ch.type === 'removed' || t.resolvidoEm) ticketsAbertos.delete(ch.doc.id); else ticketsAbertos.set(ch.doc.id, t);
+      if (t.empresa && t.empresa.codigo != null) tokensDaEmpresa(Number(t.empresa.codigo)).forEach(tk => fila.add(tk));
+    }
+    agendar();
+  }, log);
+
   ouvir('Área do Cliente: logos', () => db.collection('logosDasEmpresas'), snap => {
     const P = doCore();
     for (const ch of snap.docChanges()) {
@@ -681,6 +987,17 @@ function iniciarAreaDoCliente(db, log) {
     }, log);
   }
   ouvirRotinas();
+
+  // a Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frase do dono: "Todos os seis"): vem desligada (Robôs › Ajustes);
+  // reaproveita o que este robô já ouve (rotinas, cadastro, chamados, tickets) e as guias pagas que ele marcou
+  require('./insights').iniciarInsights({
+    db, log, ouvir, core: doCore,
+    fontes: {
+      execucoes, cadastroPorCodigo, chamados, ticketsAbertos,
+      guiasPagas: comp => new Set([...pagasNoEspelho.keys()].map(k => k.split('/').pop()).filter(id => id.includes('-' + comp + '-'))).size,
+      clientesAtivos: async () => (await require('./clientes-cache').clientesAtivos(db)).map(d => Object.assign({ id: d.id }, d.data())),
+    },
+  });
   setInterval(ouvirRotinas, 36e5);
 
   // 3. os chamados: a resposta da equipe vai para o espelho na hora
@@ -734,6 +1051,15 @@ function iniciarAreaDoCliente(db, log) {
       const atual = await doc.ref.get();
       if (!atual.exists) return;
       // o pedido de DANFE do relatório do dia (12/11/2026) vem pela mesma caixa, marcado: não vira chamado
+      // a avaliação do atendimento (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir"): não vira chamado
+      const avaliacao = doCore().avaliacaoDoPedido(atual.data());
+      if (avaliacao) { await tratarAvaliacao(doc, atual.data(), avaliacao); return; }
+      // o "Confirmar que recebi" da entrega (plano do Acessórias, 18/11/2026, ficha confirmar-entrega; frase do dono: "Seguir"): não vira chamado
+      const entregaRecebida = doCore().entregaDoPedidoDeRecebido(atual.data());
+      if (entregaRecebida) { await tratarRecebido(doc, atual.data(), entregaRecebida); return; }
+      // a guia que o cliente baixou (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura; frase do dono: "vamos continuar"): não vira chamado
+      const guiaLida = doCore().guiaDoPedidoDeLeitura(atual.data());
+      if (guiaLida) { await tratarLeitura(doc, atual.data(), guiaLida); return; }
       const chaveDanfe = doCore().chaveDoPedidoDeDanfe(atual.data());
       if (chaveDanfe) { await tratarDanfe(doc, atual.data(), chaveDanfe); return; }
       const v = R.validarPedidoDeChamado(atual.data());
@@ -785,6 +1111,85 @@ function iniciarAreaDoCliente(db, log) {
   // CNPJ do emitente na chave); o XML vem do Drive pela mesma busca do robô do SIEG (a pasta arquivada do cliente e a do
   // Claudio Secretario); a DANFE é o desenho do nads (desenharDanfe). Sem o XML, o documento sai com o erro (a tela diz).
   const LIMITE_DANFES_POR_DIA = 200;
+
+  // o registro de abertura da guia (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura; frase do dono: "vamos continuar"): confere o link e que a guia está no espelho
+  // dele, e anota em areaClienteLeituras/{token}_{guia} (interno; a equipe lê no Tarefas, com a regra do Vitor) a
+  // primeira e a última abertura e quantas vezes. Limite próprio por link por dia (não conta nos 20 chamados).
+  // o "Confirmar que recebi" (plano do Acessórias, 18/11/2026, ficha confirmar-entrega; frase do dono: "Seguir"): a entrega tem de ser de um cliente do link e
+  // ainda esperar no link (status 'link'); confirma como o link antigo (entrega-pelo-link.js), sem passar por cima de
+  // quem mudou a entrega no mesmo instante. Conferir o status impede a confirmação em dobro pelo link antigo.
+  const recebidosHoje = { dia: '', porToken: {} };
+  async function tratarRecebido(doc, p, entregaId) {
+    const token = R.tokenValido(p.token) ? p.token : '';
+    const linkSnap = token ? await espelhoDe(token).get() : null;
+    if (!linkSnap || !linkSnap.exists) { await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (recebidosHoje.dia !== dia) { recebidosHoje.dia = dia; recebidosHoje.porToken = {}; }
+    if ((recebidosHoje.porToken[token] || 0) >= 50) { await doc.ref.delete(); return; }
+    recebidosHoje.porToken[token] = (recebidosHoje.porToken[token] || 0) + 1;
+    const link = Object.assign({ codigos: [] }, linkSnap.data());
+    const mapa = await clientesDoEntregas();
+    const idsDoLink = new Set((link.codigos || []).map(c => (mapa.get(String(c)) || {})._id).filter(Boolean));
+    const ref = db.collection('entregas').doc(entregaId);
+    const snap = await ref.get();
+    const e = snap.exists ? snap.data() : null;
+    if (!e || e.status !== 'link' || !idsDoLink.has(String(e.clienteId || ''))) { await doc.ref.delete(); return; }
+    const agora = new Date().toISOString();
+    try {
+      await ref.update({
+        status: 'confirmada', confirmadoEm: agora, recebedor: 'cliente, pela Área do Cliente', recebidoPeloLink: true, tocouEm: agora,
+        entregadoPor: 'area-do-cliente', entregadoPorNome: 'Área do Cliente', temAssinatura: false, falha: false,
+      }, { lastUpdateTime: snap.updateTime });
+      db.collection('auditoria').add({ acao: 'entrega_pela_area_do_cliente', detalhe: (e.clienteNome || 'cliente'), origem: 'area-cliente', feitoPor: '', feitoPorNome: 'Área do Cliente (pelo robô)', quando: agora }).catch(() => {});
+      log('Área do Cliente: entrega confirmada pelo cliente -', e.clienteNome || entregaId);
+      fila.add(token); agendar();
+    } catch (err) { log('Área do Cliente: a entrega', entregaId, 'mudou no meio; deixei como estava'); }
+    await doc.ref.delete();
+  }
+
+  // a avaliação do atendimento (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir"): só no chamado concluído
+  // deste link; grava `avaliacao` no chamados/{id} interno (o espelho não leva: chamadoInterno escolhe os campos). Avaliar
+  // de novo substitui. Sem mexer no atualizadoEm (a avaliação não reabre nem sobe o chamado na lista da equipe).
+  const avaliacoesHoje = { dia: '', porToken: {} };
+  async function tratarAvaliacao(doc, p, a) {
+    const token = R.tokenValido(p.token) ? p.token : '';
+    if (!token) { await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (avaliacoesHoje.dia !== dia) { avaliacoesHoje.dia = dia; avaliacoesHoje.porToken = {}; }
+    if ((avaliacoesHoje.porToken[token] || 0) >= 30) { await doc.ref.delete(); return; }
+    avaliacoesHoje.porToken[token] = (avaliacoesHoje.porToken[token] || 0) + 1;
+    const ref = db.collection('chamados').doc(a.chamadoId);
+    const snap = await ref.get();
+    const c = snap.exists ? snap.data() : null;
+    if (!c || c.token !== token || c.situacao !== 'concluido') { await doc.ref.delete(); return; }
+    await ref.update({ avaliacao: { nota: a.nota, comentario: a.comentario, em: new Date().toISOString() } });
+    log('Área do Cliente: avaliação', a.nota, 'de 5 -', c.empresa || a.chamadoId);
+    painel.atividade('area-cliente', 'Avaliação do atendimento — ' + (c.empresa || 'cliente'), a.nota + ' de 5 · ' + (c.titulo || '') + (a.comentario ? ' · "' + a.comentario.slice(0, 120) + '"' : ''));
+    await doc.ref.delete();
+  }
+
+  const LIMITE_LEITURAS_POR_DIA = 200;
+  const leiturasHoje = { dia: '', porToken: {} };
+  async function tratarLeitura(doc, p, guiaId) {
+    const token = R.tokenValido(p.token) ? p.token : '';
+    const linkSnap = token ? await espelhoDe(token).get() : null;
+    if (!linkSnap || !linkSnap.exists) { await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (leiturasHoje.dia !== dia) { leiturasHoje.dia = dia; leiturasHoje.porToken = {}; }
+    if ((leiturasHoje.porToken[token] || 0) >= LIMITE_LEITURAS_POR_DIA) { await doc.ref.delete(); return; }
+    leiturasHoje.porToken[token] = (leiturasHoje.porToken[token] || 0) + 1;
+    const guia = await espelhoDe(token).collection('guias').doc(guiaId).get();
+    if (!guia.exists) { await doc.ref.delete(); return; }
+    const agora = new Date().toISOString();
+    const ref = db.collection('areaClienteLeituras').doc(doCore().idDaLeitura(token, guiaId));
+    const antes = await ref.get();
+    const link = Object.assign({ codigos: [] }, linkSnap.data());
+    await ref.set({
+      token, guiaId, codigos: (link.codigos || []).map(Number), tipo: String(guia.get('tipo') || ''), competencia: String(guia.get('competencia') || ''),
+      primeiraEm: (antes.exists && antes.get('primeiraEm')) || agora, ultimaEm: agora, vezes: ((antes.exists && Number(antes.get('vezes'))) || 0) + 1,
+    });
+    await doc.ref.delete();
+  }
   const danfesHoje = { dia: '', porToken: {} };
   let xmlsGuardados = { chave: '', em: 0, xmls: [] };   // os XMLs do último mês lido (10 min): várias DANFEs do mesmo mês
   async function xmlDaNota(codigo, competencia, chave) {
@@ -866,15 +1271,34 @@ function iniciarAreaDoCliente(db, log) {
       fs.mkdirSync(pasta, { recursive: true });
       const final = salvarSemRepetir(pasta, R.nomeNoDrive(v.envio, agora), v.envio.buffer);
       const recebidoEm = agora.toISOString();
+      // o comprovante mandado pela guia leva de que guia é (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir")
+      const guiaDoEnvio = v.envio.tipo === 'comprovante' ? doCore().guiaDoComprovante(v.envio.nome) : null;
       await db.collection('areaClienteRecebidos').doc(doc.id).set({
         token, codigo: empresa.codigo, empresa: empresa.nome, nome: v.envio.nome, tipo: v.envio.tipo, tamanho: v.envio.tamanho,
         pastaDrive: path.relative(DRIVE, pasta), arquivoDrive: path.basename(final), recebidoEm,
+        ...(guiaDoEnvio ? { guiaTipo: guiaDoEnvio.tipo, guiaCompetencia: guiaDoEnvio.competencia, ...(guiaDoEnvio.tributo ? { guiaTributo: guiaDoEnvio.tributo } : {}) } : {}),
       });
       await gravar(token, 'envios/' + doc.id, R.reciboDoEnvio({ id: doc.id, nome: v.envio.nome, tipo: v.envio.tipo, tamanho: v.envio.tamanho, recebidoEm }), 'recibo');
+      // o extrato mandado pela Área baixa a pendência do mês (documentosMensal, origem areaCliente), como fazia o portal
+      // antigo: a tela de Pendências mostra recebido e a régua para de cobrar (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino").
+      // Um erro aqui não impede o recibo.
+      try {
+        const comp = doCore().competenciaDoEnvio(v.envio.tipo, agora, v.envio.nome);
+        const cli = comp ? (await clientesDoEntregas()).get(String(empresa.codigo)) : null;
+        if (comp && cli && cli._id) {
+          await db.collection('documentosMensal').doc(cli._id + '_' + comp).set({
+            clienteId: cli._id, clienteNome: cli.nome || empresa.nome, competencia: comp, atualizadoEm: recebidoEm,
+            [v.envio.tipo]: true,
+            detalhes: { [v.envio.tipo]: { origem: 'areaCliente', em: recebidoEm, arquivos: [path.basename(final)] } },
+          }, { merge: true });
+          pendenciasEmCache.delete(cli._id + '_' + comp);
+        }
+      } catch (e) { log('Área do Cliente: a pendência do mês não baixou -', e.message); }
       await contar('envios', token);
       await doc.ref.delete();
       log('Área do Cliente: arquivo recebido -', empresa.codigo + ' ' + empresa.nome, '->', path.relative(DRIVE, final));
-      painel.atividade('area-cliente', 'Arquivou o que o cliente mandou — ' + empresa.codigo + ' ' + empresa.nome, v.envio.nome + ' → ' + path.relative(DRIVE, final));
+      if (guiaDoEnvio) painel.atividade('area-cliente', 'Comprovante de guia recebido — ' + empresa.codigo + ' ' + empresa.nome, doCore().rotuloDoComprovante(guiaDoEnvio) + ' → ' + path.relative(DRIVE, final));
+      else painel.atividade('area-cliente', 'Arquivou o que o cliente mandou — ' + empresa.codigo + ' ' + empresa.nome, v.envio.nome + ' → ' + path.relative(DRIVE, final));
     } catch (err) {
       log('Área do Cliente: envio ficou esperando -', err.message);
       painel.erro('area-cliente', 'Um arquivo da Área do Cliente ficou esperando', err.message);

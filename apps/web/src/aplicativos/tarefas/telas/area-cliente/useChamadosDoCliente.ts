@@ -36,6 +36,10 @@ export function useChamadosDoCliente() {
     carregando: !todos.carregada,
     erro: todos.erro,
     linhas, filtro, setFiltro, busca, setBusca, contagem,
+    // a nota do mês pelas avaliações dos clientes (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
+    notaDoMes: ac.mediaDasAvaliacoes(todos.lista.flatMap(c => (c.avaliacao ? [c.avaliacao] : [])), new Date().toISOString().slice(0, 7)),
+    rotuloDaNota: (n: number) => ac.ROTULO_DA_NOTA[n] ?? '',
+    estrelas: (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n),
     detalhe: aberto ? todos.lista.find(c => c.id === aberto) || null : null,
     abrir(id: string) { setAberto(a => (a === id ? null : id)); setResposta(''); },
     resposta, setResposta, enviando,

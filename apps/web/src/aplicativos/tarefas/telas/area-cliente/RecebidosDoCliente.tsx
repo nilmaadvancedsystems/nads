@@ -35,7 +35,7 @@ export function RecebidosDoCliente() {
               {vm.linhas.map(r => (
                 <tr key={r.id}>
                   <td className="wrap"><span className="num">{r.codigo}</span> · {r.empresa}</td>
-                  <td className="wrap"><Icone nome="fileText" width={16} height={16} /> {r.nome}</td>
+                  <td className="wrap"><Icone nome="fileText" width={16} height={16} /> {r.nome}{r.guia && <div className="hint">{r.guia}</div>}</td>
                   <td><span className="badge badge-neutral">{rotuloDoEnvio(r.tipo)}</span></td>
                   <td className="num">{vm.tamanho(r.tamanho)}</td>
                   <td className="fraco">{vm.data(r.recebidoEm)}</td>

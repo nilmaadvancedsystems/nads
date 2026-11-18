@@ -22,7 +22,7 @@ export function LinhaDeGuia({ guia, codigo, faltam, destaque, ocupado, onBaixar,
     <li className={'cli-linha cli-linha-guia' + (guia.situacao === 'vencida' ? ' cli-g-vencida' : '')}>
       <span className="cli-g-logo"><SiglaDaGuia tipo={guia.tipo} tamanho={40} /></span>
       <div className="cli-g-txt">
-        <b>{ac.ROTULO_DA_GUIA[guia.tipo]}</b>
+        <b>{ac.rotuloDaGuia(guia)}</b>
         <p className="hint" title={'Competência ' + guia.competencia.slice(5, 7) + '/' + guia.competencia.slice(0, 4) + ' · vencimento ' + guia.vencimento}>
           {/* cada pedaço inteiro numa linha: no celular quebra entre eles, nunca no meio da data */}
           <span className="cli-junto">{guia.situacao === 'vencida' ? 'Venceu' : 'Vence'} em {guia.vencimento.slice(0, 5)}{faltam ? ' (' + faltam + ')' : ''}</span>
@@ -34,12 +34,12 @@ export function LinhaDeGuia({ guia, codigo, faltam, destaque, ocupado, onBaixar,
       {/* as ações em três casas fixas (12/11/2026), para ficarem em coluna em todas as linhas: ver · a secundária · a principal */}
       <span className="cli-g-acoes">
         {onVer && guia.temPdf ? (
-          <button type="button" className="icon-btn" disabled={ocupado} onClick={() => onVer(guia.id)} title="Ver a guia" aria-label={'Ver a guia ' + ac.ROTULO_DA_GUIA[guia.tipo]}>
+          <button type="button" className="icon-btn" disabled={ocupado} onClick={() => onVer(guia.id)} title="Ver a guia" aria-label={'Ver a guia ' + ac.rotuloDaGuia(guia)}>
             <Icone nome="olho" width={16} height={16} />
           </button>
         ) : <span className="cli-g-vaga" aria-hidden="true" />}
         {pedirNova ? (
-          <button type="button" className="icon-btn" disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} title="Baixar a guia vencida" aria-label={'Baixar a guia vencida ' + ac.ROTULO_DA_GUIA[guia.tipo]}>
+          <button type="button" className="icon-btn" disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} title="Baixar a guia vencida" aria-label={'Baixar a guia vencida ' + ac.rotuloDaGuia(guia)}>
             <Icone nome="download" width={16} height={16} />
           </button>
         ) : codigo && onCopiar ? (
@@ -50,7 +50,7 @@ export function LinhaDeGuia({ guia, codigo, faltam, destaque, ocupado, onBaixar,
         {pedirNova ? (
           <button type="button" className="btn cli-pedir-nova" onClick={() => onPedirNova?.(guia)}><Icone nome="repeat" width={16} height={16} />Pedir nova</button>
         ) : (
-          <button type="button" className={'btn' + (destaque ? ' btn-primary' : '')} disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} aria-label={'Baixar a guia ' + ac.ROTULO_DA_GUIA[guia.tipo]}>
+          <button type="button" className={'btn' + (destaque ? ' btn-primary' : '')} disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} aria-label={'Baixar a guia ' + ac.rotuloDaGuia(guia)}>
             <Icone nome="download" width={16} height={16} />Baixar
           </button>
         )}

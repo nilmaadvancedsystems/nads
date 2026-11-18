@@ -31,9 +31,13 @@ export * from './regras/protocoloDeTributos';
 export * from './regras/controleDeTributos';
 export * from './regras/protocolosDoAno';
 export * from './regras/prazosDoDp';
+// a tabela única de prazos das etapas (plano do Acessórias, 17/11/2026, ficha E02): o legal, o interno e a multa
+export * from './regras/prazos';
 export * from './regras/despesasDoBalancete';
 export * from './regras/inicio';
 export * from './regras/enviosDoDp';
+// o envio agendado dos lotes do DP e do Fiscal (plano do Acessórias, 17/11/2026, ficha E17)
+export * from './regras/agendamento';
 export * from './regras/configuracoesDoDp';
 // o 13º salário do DP (as parcelas e quando estão prontas; a tabela do DP e o botão da Rota do Entregas)
 export * from './regras/decimoTerceiro';
@@ -53,6 +57,8 @@ export * as delegadas from './regras/delegadas';
 export * as agenda from './regras/agenda';
 // os feriados e os pontos facultativos de Taiobeiras (o calendário do Início; 15/11/2026): tarefas.feriados.*
 export * as feriados from './regras/feriados';
+// o calendário único de dias úteis (plano do Acessórias, 17/11/2026, ficha E01): tarefas.diasUteis.*
+export * as diasUteis from './regras/diasUteis';
 // a tarefa recorrente e o próximo dia útil (18/11/2026): tarefas.recorrencia.*
 export * as recorrencia from './regras/recorrencia';
 // a saudação do Início novo (13/11/2026): pelo turno, a segunda-feira, o aniversário e as frases personalizadas
@@ -60,3 +66,4 @@ export * as saudacao from './regras/saudacao';
 // as reuniões das Notificações do Início novo (13/11/2026): o Sênior pede, o Diretor e o Dono aprovam e marcam direto
 export * as reunioes from './regras/reunioes';
 export * from './regras/historicosDoContabil';
+export * from './regras/insights';

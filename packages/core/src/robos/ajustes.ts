@@ -49,6 +49,17 @@ export const AJUSTES: GrupoDeAjustes[] = [
     { campo: 'iaModeloClaude', nome: 'Modelo do Claude', descricao: 'Em branco, o padrão do robô.', tipo: 'texto', padrao: '', ...MODELO },
     { campo: 'iaModelo', nome: 'Modelo do Gemini', descricao: 'Em branco, o padrão do robô.', tipo: 'texto', padrao: '', ...MODELO },
   ] },
+  // o lembrete de vencimento ao cliente (plano do Acessórias, 17/11/2026, ficha lembrete-de-vencimento): vem desligado e,
+  // enquanto a trava do robo/lembrete-guia.js não for liberada, o e-mail vai só para o escritório
+  { doc: 'lembreteGuia', titulo: 'Lembrete de vencimento ao cliente', robo: 'vigia', campos: [
+    { campo: 'ligado', nome: 'Lembrar o cliente', descricao: 'Manda e-mail das guias que vencem logo e que o cliente ainda não abriu na Área do Cliente.', tipo: 'chave', padrao: false },
+    { campo: 'diasAntes', nome: 'Dias antes', descricao: 'Lembra de N dias antes até o dia do vencimento (0 = só no dia).', tipo: 'numero', padrao: 2, min: 0, max: 10 },
+    { campo: 'maxPorDia', nome: 'E-mails por dia', descricao: 'O máximo de lembretes por dia.', tipo: 'numero', padrao: 100, min: 0, max: 300 },
+  ] },
+  // a Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frase do dono: "Todos os seis"): o robô do PC monta os números a cada 15 min; vem desligada
+  { doc: 'insights', titulo: 'Tela de Insights', robo: 'area-cliente', campos: [
+    { campo: 'ligado', nome: 'Montar os números', descricao: 'A cada 15 minutos, o robô do PC junta os números do escritório para a Tela de Insights (só Diretor e admin veem).', tipo: 'chave', padrao: false },
+  ] },
   { doc: 'avisoCertificados', titulo: 'Certificados', robo: 'vigia', campos: [
     { campo: 'ligado', nome: 'Avisar dos certificados vencendo', descricao: 'Avisa os administradores dos certificados do cofre perto do vencimento.', tipo: 'chave', padrao: true },
   ] },

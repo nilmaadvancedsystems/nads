@@ -14,6 +14,8 @@ export * from './parcelamentos';
 // a entrega de documentos aos clientes (a rota e o painel do Entregas, no nads desde 16/10/2026)
 export * from './documentos';
 export * from './guiasDoPdf';
+// um PDF com guias de vários clientes vira um arquivo por cliente (plano do Acessórias, 17/11/2026, ficha E16)
+export * from './paginasPorCliente';
 export * from './rotaDeEntregas';
 export * from './confirmacaoDaEntrega';
 export * from './clienteDaEntrega';

@@ -11,6 +11,7 @@ import { useOperador, type Operador } from '../../casca/operador';
 import { useExecucoes, useGmailDoEntregas, useLoteDp, useRepo } from '../../dados/repo';
 import type { ArquivoDoLote, EscolhaDoArquivo } from '../../dados/loteDp';
 import { useClientesDoDp } from './useClientesDoDp';
+import { useSepararPorCliente } from '../ferramentas/useSepararPorCliente';
 
 /** os tipos que a pessoa escolhe para o arquivo que o leitor não reconheceu */
 export const TIPOS_DO_LOTE = [
@@ -43,6 +44,7 @@ export function useLoteDoDp() {
   const gmail = useGmailDoEntregas();
   const op = useOperador().operador as Operador;
   const { toast, modal } = useRetorno();
+  const separarPorCliente = useSepararPorCliente();
   const doDp = useClientesDoDp();
   const lotes = repo.lotes();
   const [escolhido, setEscolhido] = useState<string | null>(null);
@@ -152,10 +154,16 @@ export function useLoteDoDp() {
       if (grande) { toast(grande.name + ' passa de 25 MB.'); return; }
       setSubindo({ feitos: 0, total: lista.length });
       try {
-        const lidos = await Promise.all(lista.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+        const escolhidos = await Promise.all(lista.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+      // o PDF com guias de vários clientes vira um arquivo por cliente, se a pessoa confirmar (plano do Acessórias,
+      // 17/11/2026, ficha E16; frase do dono: "Separar PDF (E16)"); cancelou, nada sobe
+        const lidos = await separarPorCliente(escolhidos);
+        if (!lidos) return;
+        if (lidos.length > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' arquivos por lote.'); return; }
+        setSubindo({ feitos: 0, total: lidos.length });
         const id = await repo.subir(lidos, (feitos, total) => setSubindo({ feitos, total }));
         setEscolhido(id);
-        toast(lista.length + (lista.length === 1 ? ' arquivo enviado' : ' arquivos enviados') + ' ao robô para ler.');
+        toast(lidos.length + (lidos.length === 1 ? ' arquivo enviado' : ' arquivos enviados') + ' ao robô para ler.');
       } catch (e) { toast('Não consegui subir: ' + (e instanceof Error ? e.message : String(e))); } finally { setSubindo(null); }
     },
     /** a escolha da revisão: o que mudar (cliente, tipo ou competência) vale sobre o que o robô leu */
@@ -184,22 +192,36 @@ export function useLoteDoDp() {
       toast('Lote salvo. Ele fica em "Salvos" com os arquivos; nada é enviado até você abrir e disparar.');
     },
     /** dispara o lote (os clientes ainda não enviados), depois de confirmar */
-    async disparar() {
+    async disparar(agendar?: { data: string; hora: string }) {
       if (!atual || disparando) return;
+      // o envio agendado (plano do Acessórias, 17/11/2026, ficha E17; frase do dono: "Seguir"): o dia e a hora de Brasília; nada sai antes
+      const agendadoPara = agendar ? t.agendadoParaIso(agendar.data, agendar.hora) : '';
+      if (agendar) { const erro = t.erroDoAgendamento(agendadoPara, new Date()); if (erro) { toast(erro); return; } }
+      const venceAntes = agendadoPara ? t.venceAntesDoEnvio(agendadoPara, (arquivos?.lista || []).map(a => a.leitura?.vencimento || '')) : null;
+      const quando = agendadoPara ? 'Sai ' + t.rotuloDoAgendamento(agendadoPara) + ' (na primeira vez que o robô passar depois dessa hora). '
+        + (venceAntes ? 'Atenção: tem guia que vence em ' + venceAntes + ', antes do envio. ' : '') : '';
       const n = grupos.filter(g => g.resultado?.status !== 'enviado').length;
       if (!n) return;
       const semEmail = grupos.filter(g => g.resultado?.status !== 'enviado' && !g.email).length;
       const ok = await modal({
-        icone: 'envelope', titulo: 'Disparar para ' + n + (n === 1 ? ' cliente?' : ' clientes?'),
-        texto: 'Cada cliente recebe os arquivos dele no e-mail do cadastro; depois o robô grava cada arquivo na pasta do cliente no Drive.' +
+        icone: 'envelope', titulo: (agendadoPara ? 'Agendar para ' : 'Disparar para ') + n + (n === 1 ? ' cliente?' : ' clientes?'),
+        texto: quando + 'Cada cliente recebe os arquivos dele no e-mail do cadastro; depois o robô grava cada arquivo na pasta do cliente no Drive.' +
           (semEmail ? ' ' + semEmail + (semEmail === 1 ? ' cliente está' : ' clientes estão') + ' sem e-mail e vai dar erro.' : '') +
           (faltam.length ? ' ' + faltam.length + (faltam.length === 1 ? ' arquivo sem cliente fica' : ' arquivos sem cliente ficam') + ' de fora.' : ''),
-        botoes: [{ rotulo: 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+        botoes: [{ rotulo: agendadoPara ? 'Agendar' : 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
       });
       if (!ok) return;
       setDisparando(true);
-      try { await repo.disparar(atual.id); } catch (e) { toast('Não consegui disparar: ' + (e instanceof Error ? e.message : String(e))); } finally { setDisparando(false); }
+      try { await repo.disparar(atual.id, agendadoPara || undefined); } catch (e) { toast('Não consegui ' + (agendadoPara ? 'agendar' : 'disparar') + ': ' + (e instanceof Error ? e.message : String(e))); } finally { setDisparando(false); }
     },
+    /** o lote está agendado (ainda não chegou a hora): o selo e o Cancelar agendamento (ficha E17) */
+    agendado: atual && atual.status === 'disparar' && t.aindaAgendado(atual.agendadoPara, Date.now()) ? t.rotuloDoAgendamento(atual.agendadoPara) : '',
+    async cancelarAgendamento() {
+      if (!atual) return;
+      try { await repo.cancelarAgendamento(atual.id); toast('Agendamento cancelado. O lote espera você enviar.'); }
+      catch (e) { toast('Não consegui cancelar: ' + (e instanceof Error ? e.message : String(e))); }
+    },
+
   };
 }
 

@@ -90,8 +90,14 @@ function guiaDoEnvio(envio) {
   return { tipo, vencimento: String(envio.vencimento), valor, valorTexto: texto, codigo, competencia: envio.competencia };
 }
 
-/** "dae-2026-09-58": o mesmo mês e empresa sobrescreve a guia (a nova substitui a velha). */
-function idDaGuiaDoCliente(g) { return g.tipo.toLowerCase() + '-' + g.competencia + '-' + g.codigo; }
+/** "INSS" -> "inss", "PIS/COFINS" -> "pis-cofins" (o tributo no id; o mesmo do idDaGuiaNoEspelho do core). */
+const tributoNoId = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/**
+ * "dae-2026-09-58", "darf-inss-2026-10-58": o mesmo mês e empresa sobrescreve a guia (a nova substitui a velha). O
+ * tributo entra no id da DARF (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)"), senão a do INSS apaga a do IRRF do mesmo mês.
+ */
+function idDaGuiaDoCliente(g) { return [g.tipo.toLowerCase(), tributoNoId(g.tributo)].filter(Boolean).join('-') + '-' + g.competencia + '-' + g.codigo; }
 
 /** 'a vencer' | 'vence hoje' | 'vencida' pela data de hoje (quem mostra recalcula). */
 function situacaoDaGuia(vencimento, hoje) {
@@ -104,7 +110,7 @@ function situacaoDaGuia(vencimento, hoje) {
 /** O documento guias/{id}: só os campos da GuiaDoCliente (lista branca). */
 function docDaGuiaDoCliente(g, hoje) {
   return { id: idDaGuiaDoCliente(g), tipo: g.tipo, competencia: g.competencia, vencimento: g.vencimento, valor: g.valor,
-    situacao: situacaoDaGuia(g.vencimento, hoje || new Date()), temPdf: true };
+    ...(g.tributo ? { tributo: g.tributo } : {}), situacao: situacaoDaGuia(g.vencimento, hoje || new Date()), temPdf: true };
 }
 
 /** O PDF em pedaços de base64: [{ base64, n, total }]. */
@@ -126,6 +132,14 @@ async function tokensDaEmpresa(db, codigo) {
 async function guiaNaAreaDoCliente(db, envio, buffer, log) {
   const g = guiaDoEnvio(envio);
   if (!g) return 0;
+  return gravarGuiaNaArea(db, g, buffer, log);
+}
+
+/**
+ * Grava a guia { tipo, tributo?, vencimento 'dd/mm/aaaa', valor, competencia, codigo } e o PDF no espelho de cada link
+ * da empresa (sem link, nada). Usada pelo envio do nads e pelos lotes do Fiscal e do DP (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)").
+ */
+async function gravarGuiaNaArea(db, g, buffer, log) {
   const tokens = await tokensDaEmpresa(db, g.codigo);
   const doc = docDaGuiaDoCliente(g);
   const pedacos = pedacosDoPdfCliente(buffer);
@@ -139,6 +153,46 @@ async function guiaNaAreaDoCliente(db, envio, buffer, log) {
     log('guia ' + g.tipo + ' na Área do Cliente:', doc.id, '(' + pedacos.length + ' pedaço' + (pedacos.length > 1 ? 's' : '') + ')');
   }
   return tokens.length;
+}
+
+// ---------- as guias dos lotes na Área do Cliente (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)") ----------
+// Os lotes do Fiscal (lote-fiscal.js) e do DP (lote-dp.js) mandam as guias por e-mail, impresso, eContador, SCI Report
+// ou WhatsApp; antes de apagar os pedaços do PDF, cada guia DAS, DARF, DAE ou DAM vai para a Área do Cliente, seja qual for
+// a via. Sem vencimento lido (ou sem valor), a guia não vai e fica anotada no resultado do lote, para a equipe ver.
+
+const TIPOS_DOS_LOTES = ['DAS', 'DARF', 'DAE', 'DAM'];
+
+/** A guia do item do lote ({ vai, leitura }) no formato do gravarGuiaNaArea; null = não é guia da Área ou falta dado. */
+function guiaDoLote(vai, leitura) {
+  const tipo = String((vai && vai.tipo) || '').toUpperCase();
+  if (!TIPOS_DOS_LOTES.includes(tipo)) return null;
+  const vencimento = String((leitura && leitura.vencimento) || '').trim();
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(vencimento);
+  const data = m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+  if (!data || data.getDate() !== Number(m[1]) || data.getMonth() !== Number(m[2]) - 1) return null;
+  const valor = typeof vai.valor === 'number' ? vai.valor : Number(String(vai.valor || '').replace(/[^\d,]/g, '').replace(',', '.'));
+  const codigo = String(vai.codigo == null ? '' : vai.codigo).trim();
+  if (!Number.isFinite(valor) || valor <= 0 || !codigo || !/^20\d{2}-(0[1-9]|1[0-2])$/.test(String(vai.competencia || ''))) return null;
+  // o tributo só na DARF (o DAS, o DAE e o DAM têm um só): texto curto, só letras, espaço e barra
+  const tributo = tipo === 'DARF' ? String(vai.tributo || '').toUpperCase().replace(/[^A-Z /]/g, '').trim().slice(0, 20) : '';
+  return { tipo, ...(tributo ? { tributo } : {}), vencimento, valor, competencia: vai.competencia, codigo };
+}
+
+/**
+ * As guias de um cliente do lote na Área do Cliente. itens: [{ vai, leitura }]; buffers: o PDF de cada um (na mesma
+ * ordem); tipos: as que valem (o lote do DP só a DARF: o FGTS dele já vem do pedidosFgts). Nunca joga erro: devolve
+ * { gravadas, semArea: [nome do arquivo + o porquê] }.
+ */
+async function guiasDoLoteNaArea(db, itens, buffers, log, tipos = TIPOS_DOS_LOTES) {
+  const r = { gravadas: 0, semArea: [] };
+  for (let k = 0; k < itens.length; k++) {
+    const vai = itens[k].vai || {};
+    if (!tipos.includes(String(vai.tipo || '').toUpperCase())) continue;
+    const g = guiaDoLote(vai, itens[k].leitura);
+    if (!g) { r.semArea.push((vai.nome || 'guia') + ': sem vencimento ou valor lido'); continue; }
+    try { if (await gravarGuiaNaArea(db, g, buffers[k], log)) r.gravadas++; } catch (err) { r.semArea.push((vai.nome || 'guia') + ': ' + String(err.message || err).slice(0, 120)); }
+  }
+  return r;
 }
 
 // ---------- o extrato direto na pasta do banco (19/10/2026) ----------
@@ -400,4 +454,5 @@ function iniciarDestinoDosEnvios(db, log) {
   }, log);
 }
 
-module.exports = { extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente, destinoNoArquivamento, iniciarDestinoDosEnvios };
+module.exports = { extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
+  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios };

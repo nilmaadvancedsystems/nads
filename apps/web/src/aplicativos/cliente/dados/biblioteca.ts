@@ -7,7 +7,7 @@ import { areaCliente as ac, formatos } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { ROTULO_DA_AREA, type DocumentoDoCliente, type FormatoDoArquivo } from './areaCliente';
 
-export type PastaDaBiblioteca = 'guias' | 'dp' | 'notas' | 'escritorio' | 'enviados';
+export type PastaDaBiblioteca = 'guias' | 'dp' | 'notas' | 'escritorio' | 'certidoes' | 'enviados';
 
 /** As pastas, com o ícone e o tom do cartão e do selo da linha (13/11/2026: as pastas em cartões no alto). */
 export const PASTAS_DA_BIBLIOTECA: { id: PastaDaBiblioteca; rotulo: string; icone: NomeIcone; tom: 'ambar' | 'azul' | 'verde' | 'carmim' | 'neutro'; /** no cartão, quando o rótulo não cabe */ curto?: string }[] = [
@@ -15,6 +15,8 @@ export const PASTAS_DA_BIBLIOTECA: { id: PastaDaBiblioteca; rotulo: string; icon
   { id: 'dp', rotulo: 'Folha e DP', icone: 'usuario', tom: 'azul' },
   { id: 'notas', rotulo: 'Notas (DANFE)', icone: 'arquivo', tom: 'verde' },
   { id: 'escritorio', rotulo: 'Do escritório', icone: 'pastaAberta', tom: 'carmim' },
+  // as certidões da empresa (plano do Acessórias, 18/11/2026, ficha certidoes): a pasta só aparece com certidão
+  { id: 'certidoes', rotulo: 'Certidões', icone: 'escudo', tom: 'verde' },
   { id: 'enviados', rotulo: 'Enviados por você', icone: 'upload', tom: 'neutro', curto: 'Enviados' },
 ];
 
@@ -59,7 +61,7 @@ export function bibliotecaDoCliente(e: {
   const itens: ItemDaBiblioteca[] = [
     ...e.guias.filter(g => g.temPdf).map(g => ({
       chave: 'guia-' + g.id, pasta: 'guias' as const, nome: 'Guia ' + (g.tipo === 'outra' ? '' : g.tipo + ' ') + mesBr(g.competencia),
-      detalhe: ac.ROTULO_DA_GUIA[g.tipo] + ' · vence em ' + g.vencimento.slice(0, 5) + ' · ' + formatos.reais(g.valor),
+      detalhe: ac.rotuloDaGuia(g) + ' · vence em ' + g.vencimento.slice(0, 5) + ' · ' + formatos.reais(g.valor),
       mes: g.competencia, data: isoDaData(g.vencimento) || g.competencia + '-01', formato: 'PDF' as const, novo: false, abre: true,
       origem: { tipo: 'guia' as const, id: g.id },
     })),
@@ -79,7 +81,7 @@ export function bibliotecaDoCliente(e: {
       };
     }),
     ...e.documentos.map(d => ({
-      chave: 'esc-' + d.id, pasta: 'escritorio' as const, nome: d.nome, detalhe: ROTULO_DA_AREA[d.area] + (d.descricao ? ' · ' + d.descricao : ''),
+      chave: 'esc-' + d.id, pasta: (d.pasta === 'certidoes' ? 'certidoes' : 'escritorio') as PastaDaBiblioteca, nome: d.nome, detalhe: ROTULO_DA_AREA[d.area] + (d.descricao ? ' · ' + d.descricao : ''),
       mes: d.competencia || d.enviadoEm.slice(0, 7), data: d.enviadoEm.slice(0, 10), formato: d.formato, novo: d.novo, abre: true,
       origem: { tipo: 'escritorio' as const, id: d.id },
     })),
@@ -95,7 +97,7 @@ export function bibliotecaDoCliente(e: {
 
 /** Quantos em cada pasta (e no "Tudo"). */
 export function contagemDasPastas(itens: readonly ItemDaBiblioteca[]): Record<PastaDaBiblioteca | 'tudo', number> {
-  const n = { tudo: itens.length, guias: 0, dp: 0, notas: 0, escritorio: 0, enviados: 0 };
+  const n = { tudo: itens.length, guias: 0, dp: 0, notas: 0, escritorio: 0, certidoes: 0, enviados: 0 };
   for (const i of itens) n[i.pasta]++;
   return n;
 }

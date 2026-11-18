@@ -6,7 +6,7 @@ import { execucaoNova } from '../tarefas/regras/execucao';
 import type { Execucao } from '../tarefas/tipos';
 import {
   agendaDaExecucao, agendaDoMes, autorDoEscritorio, competenciaDoMesDeVencimento, chamadoDoCliente, erroDoEnvio, erroDoNovoChamado, guiaDoFgts, guiaPrecisaLiberar, guiasPorCompetencia, mimeDoEnvio, reciboDoEnvio,
-  situacaoDaGuia, tituloDoChamado, valorEmReais, vencimentoDaEtapaNoMes, VENCIMENTOS, type PedidoFgtsInterno,
+  situacaoDaGuia, tituloDoChamado, valorEmReais, vencimentoDaEtapaNoMes, VENCIMENTOS, idDaGuiaNoEspelho, rotuloDaGuia, type PedidoFgtsInterno,
 } from './index';
 
 /** os campos internos que NUNCA podem sair nas projeções */
@@ -83,18 +83,19 @@ describe('a tabela de vencimentos', () => {
     const ids = new Set([...ROTINA_FISCAL.etapas, ...ROTINA_DP.etapas].map(e => e.id));
     for (const x of VENCIMENTOS) expect(ids.has(x.etapa), x.etapa).toBe(true);
   });
-  it('DAS dia 20 do mês seguinte; domingo e sábado antecipam para sexta', () => {
+  it('DAS dia 20 do mês seguinte; fim de semana e feriado postergam (o dono, 17/11/2026: "Posterga (regra oficial)")', () => {
     expect(v('fiscal-simples', '2026-09')).toBe('2026-10-20'); // terça
-    expect(v('fiscal-simples', '2026-10')).toBe('2026-11-20'); // sexta
-    expect(v('fiscal-simples', '2026-11')).toBe('2026-12-18'); // dia 20 é domingo
-    expect(v('fiscal-simples', '2026-05')).toBe('2026-06-19'); // dia 20 é sábado
+    expect(v('fiscal-simples', '2026-10')).toBe('2026-11-23'); // dia 20 é feriado (Consciência Negra) e 21-22 fim de semana
+    expect(v('fiscal-simples', '2026-11')).toBe('2026-12-21'); // dia 20 é domingo
+    expect(v('fiscal-simples', '2026-05')).toBe('2026-06-22'); // dia 20 é sábado
+    expect(v('fiscal-mei', '2026-10')).toBe('2026-11-23'); // o DAS-MEI segue o DAS
   });
   it('vira o ano: dezembro vence em janeiro', () => {
     expect(v('dp-fgts', '2026-12')).toBe('2027-01-20'); // quarta
   });
   it('DCTFWeb e S-1299 no dia 15 (antecipa); DARF e FGTS no dia 20', () => {
     expect(v('dp-dctfweb', '2026-08')).toBe('2026-09-15'); // terça
-    expect(v('dp-dctfweb', '2026-10')).toBe('2026-11-13'); // dia 15 é domingo
+    expect(v('dp-dctfweb', '2026-10')).toBe('2026-11-13'); // dia 15 é domingo e feriado
     expect(v('dp-s1299', '2026-10')).toBe('2026-11-13');
     expect(v('dp-darf', '2026-11')).toBe('2026-12-18');
     expect(v('dp-fgts', '2026-11')).toBe('2026-12-18');
@@ -102,7 +103,14 @@ describe('a tabela de vencimentos', () => {
   it('ICMS (dia 9) e ISS (dia 10) empurram para segunda quando caem no fim de semana', () => {
     expect(v('fiscal-icms', '2026-05')).toBe('2026-06-09'); // terça
     expect(v('fiscal-icms', '2026-07')).toBe('2026-08-10'); // dia 9 é domingo
-    expect(v('fiscal-iss', '2026-09')).toBe('2026-10-12'); // dia 10 é sábado
+    expect(v('fiscal-iss', '2026-09')).toBe('2026-10-13'); // dia 10 é sábado e 12/10 é feriado (desde a E01, 17/11/2026)
+  });
+  it('os feriados pulam o dia na esfera do tributo (ficha E01, 17/11/2026)', () => {
+    expect(v('dp-fgts', '2026-10')).toBe('2026-11-19'); // federal: 20/11 é feriado nacional
+    expect(v('fiscal-piscofins', '2026-11')).toBe('2026-12-24'); // Natal: antecipa para a véspera (meio expediente conta)
+    expect(v('dp-s1299', '2027-10')).toBe('2027-11-12'); // 15/11/2027 é segunda e feriado
+    expect(VENCIMENTOS.find(x => x.id === 'iss')!.esfera).toBe('municipal');
+    expect(VENCIMENTOS.filter(x => x.esfera === 'federal').length).toBe(10);
   });
   it('PIS/COFINS no dia 25', () => {
     expect(v('fiscal-piscofins', '2026-09')).toBe('2026-10-23'); // dia 25 é domingo: antecipa
@@ -237,5 +245,20 @@ describe('os envios', () => {
     expect(mimeDoEnvio('nota.xml')).toBe('application/xml');
     expect(mimeDoEnvio('notas.zip')).toBe('application/zip');
     expect(mimeDoEnvio('virus.exe')).toBe('');
+  });
+});
+
+// as guias dos lotes na Área do Cliente (plano do Acessórias, 17/11/2026, ficha todas-as-guias)
+describe('a DARF e o DAM na Área do Cliente', () => {
+  it('o id no espelho: sem tributo igual ao do envio pelo nads; com tributo, um por tributo', () => {
+    expect(idDaGuiaNoEspelho({ tipo: 'DAS', competencia: '2026-10', codigo: 58 })).toBe('das-2026-10-58');
+    expect(idDaGuiaNoEspelho({ tipo: 'DARF', tributo: 'INSS', competencia: '2026-10', codigo: 58 })).toBe('darf-inss-2026-10-58');
+    expect(idDaGuiaNoEspelho({ tipo: 'DARF', tributo: 'PIS/COFINS', competencia: '2026-10', codigo: '58' })).toBe('darf-pis-cofins-2026-10-58');
+  });
+  it('o rótulo: a DARF com o tributo', () => {
+    expect(rotuloDaGuia({ tipo: 'DARF', tributo: 'INSS' })).toBe('DARF INSS');
+    expect(rotuloDaGuia({ tipo: 'DARF' })).toBe('DARF');
+    expect(rotuloDaGuia({ tipo: 'DAM' })).toBe('DAM (ISS)');
+    expect(rotuloDaGuia({ tipo: 'DAS' })).toBe('DAS (Simples Nacional)');
   });
 });

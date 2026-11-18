@@ -34,6 +34,12 @@ function guiaDeExemplo(hoje: Date, id: string, tipo: ac.TipoDeGuia, dias: number
   return { id: doRobo, tipo, competencia, vencimento: br(venc), valor, ...(numero ? { numero } : {}), situacao: ac.situacaoDaGuia(br(venc), hoje), temPdf: true };
 }
 
+/** A DARF de exemplo com o tributo, com o id do robô: darf-inss-AAAA-MM-codigo (17/11/2026, ficha todas-as-guias). */
+function darfDeExemplo(hoje: Date, tributo: string, dias: number, valor: number): ac.GuiaDoCliente {
+  const g = guiaDeExemplo(hoje, '', 'DARF', dias, valor);
+  return { ...g, id: ac.idDaGuiaNoEspelho({ tipo: 'DARF', tributo, competencia: g.competencia, codigo: 9999 }), tributo };
+}
+
 /** A agenda de dois meses atrás até o mês que vem: o que já passou está feito, o que vem está por fazer. */
 function agendaDeExemplo(hoje: Date): ac.AgendaDoMes[] {
   const meses: ac.AgendaDoMes[] = [];
@@ -62,6 +68,8 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     guiaDeExemplo(hoje, 'g1', 'DAS', -5, 1284.37, '07.18.26277.1234567-8'),
     guiaDeExemplo(hoje, 'g2', 'FGTS', 3, 917.42, '202609001234'),
     guiaDeExemplo(hoje, 'g3', 'DAE', 8, 432.1),
+    // a DARF do INSS, que agora vem do lote do Fiscal e do DP (17/11/2026, ficha todas-as-guias)
+    darfDeExemplo(hoje, 'INSS', 6, 655.3),
   ];
   const meses = agendaDeExemplo(hoje);
 
@@ -86,10 +94,22 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
         { de: 'escritorio', autor: 'Carla', texto: 'Pode tirar 20 dias e vender até 10. Quando ele quiser sair, nos avise com 30 dias de antecedência para a gente preparar o aviso e o recibo.', em: comHora(emDias(hoje, -8), 8, 55) },
       ],
     },
+    // a concluída, para ver a avaliação (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
+    {
+      id: 'c3', tipo: 'documento', titulo: 'Segunda via do contrato social', situacao: 'concluido',
+      mensagens: [
+        { de: 'cliente', autor: 'Você', texto: 'Preciso da segunda via do contrato social para o banco.', em: comHora(emDias(hoje, -15), 9, 10) },
+        { de: 'escritorio', autor: 'Vitor', texto: 'Está em Documentos, na pasta Societário.', em: comHora(emDias(hoje, -14), 16, 30) },
+      ],
+    },
   ];
 
   return {
     carregado: true, valido: true, erro: '', exemplos: true, secoes: TODAS_AS_SECOES, tickets: [],
+    // uma entrega pelo link esperando a confirmação (18/11/2026, ficha confirmar-entrega)
+    // um parcelamento de exemplo (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir")
+    parcelamentos: [{ id: 'pgfn-1', orgao: 'PGFN · Dívida ativa', modalidade: 'Transação tributária', parcela: 12, parcelas: 60, valorParcela: 350.5, vencimento: br(new Date(hoje.getFullYear(), hoje.getMonth() + (hoje.getDate() > 20 ? 1 : 0), 20)) }],
+    entregas: [{ id: 'exemplo-entrega-1', titulo: 'Guias e documentos de ' + formatos.rot(mesDe(hoje)).toLowerCase().split('/')[0], competencia: '' }],
     resumo: {
       empresas: [{ codigo: 9999, nome: 'Personaly Company', cnpj: '00.000.000/0001-91' }],
       escritorio: { telefone: '(31) 3333-0000', email: 'atendimento@nilma.example', whatsapp: '(31) 99999-0000' },
@@ -120,7 +140,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example', whatsapp: '(31) 98888-0001' }, { nome: 'Pessoal', email: 'dp@nilma.example', whatsapp: '(31) 98888-0002' }, { nome: 'Contábil', email: 'contabil@nilma.example', whatsapp: '(31) 98888-0003' }],
     },
     avisos: [
-      { id: 'a1', titulo: 'Extratos de ' + formatos.rot(mesDe(hoje)).toLowerCase(), texto: 'Mande os extratos bancários do mês até o dia 5 de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1))).toLowerCase() + ' para o escritório fechar a contabilidade.', ir: 'documentos' },
+      { id: 'a1', titulo: 'Extratos de ' + formatos.rot(mesDe(hoje)).toLowerCase(), texto: 'Mande os extratos bancários do mês até o dia 5 de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1))).toLowerCase() + ' para o escritório fechar a contabilidade.', ir: 'documentos', tipo: 'extrato' },
     ],
   };
 }
@@ -427,6 +447,15 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
         chamados: e.chamados.map(c => c.id !== id || !ac.chamadoAceitaResposta(c) ? c
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
+    },
+    // a avaliação: no exemplo não vai a lugar nenhum (o robô gravaria no chamado interno) (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
+    async avaliarChamado() {
+      await new Promise(r => setTimeout(r, 300));
+    },
+    // a entrega confirmada sai da lista (o robô faria isso) (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
+    async confirmarRecebido(token, entregaId) {
+      await new Promise(r => setTimeout(r, 300));
+      mudar(token, e => ({ ...e, entregas: e.entregas.filter(x => x.id !== entregaId) }));
     },
     async pedirDanfe(_token, chave) {
       const c = ac.chaveDeNota(chave);

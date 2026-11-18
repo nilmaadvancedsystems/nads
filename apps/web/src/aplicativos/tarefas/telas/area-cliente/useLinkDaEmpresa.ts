@@ -10,6 +10,8 @@ export function useLinkDaEmpresa(codigo: number) {
   const repo = useAreaCliente();
   const lista = repo.links();
   const logos = repo.logos();
+  // as guias que o cliente abriu pelo link desta empresa (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura)
+  const leituras = repo.leituras();
   const acoes = useAcoesDoLink();
   const { toast } = useRetorno();
   const [gravandoLogo, setGravandoLogo] = useState(false);
@@ -37,5 +39,15 @@ export function useLinkDaEmpresa(codigo: number) {
     carregando: !lista.carregada,
     endereco: link ? enderecoDoLink(link.token) : '',
     data: link?.atualizadoEm ? new Date(link.atualizadoEm).toLocaleDateString('pt-BR') : '',
+    /** as guias abertas pelo cliente, a mais recente primeiro ("DAS 10/2026 · aberta em 18/11 às 09:12") (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura) */
+    guiasAbertas: {
+      erro: leituras.erro && /permission|insufficient/i.test(leituras.erro) ? 'O banco ainda não deixa ver quais guias o cliente abriu (falta a regra do Vitor).' : leituras.erro ? 'Não consegui ler as guias abertas.' : '',
+      lista: link ? leituras.lista.filter(l => l.token === link.token).slice(0, 8).map(l => {
+        const d = new Date(l.primeiraEm);
+        const quando = Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const mes = /^\d{4}-\d{2}$/.test(l.competencia) ? ' ' + l.competencia.slice(5) + '/' + l.competencia.slice(0, 4) : '';
+        return { chave: l.guiaId, rotulo: (l.tipo || 'Guia') + mes, quando: 'aberta em ' + quando + (l.vezes > 1 ? ' (' + l.vezes + ' vezes)' : '') };
+      }) : [],
+    },
   };
 }

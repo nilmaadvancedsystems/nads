@@ -10,6 +10,7 @@ import { areaCliente as ac } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useLocation } from 'react-router';
+import { guardarNota, notasDadas } from '../dados/avaliadas';
 import { repoAreaCliente } from '../dados/repo';
 import { partesDaSolicitacao, passoDaSolicitacao, textoDoChamado, textoDosAnexos, whatsappDaSolicitacao } from '../dados/regras';
 import { resumoDasSolicitacoes } from '../dados/solicitacoes';
@@ -25,7 +26,7 @@ const DO_FILTRO: Record<FiltroDasSolicitacoes, (s: ac.SituacaoDoChamado) => bool
   abertas: s => s === 'aberto' || s === 'em andamento', respondidas: s => s === 'respondido', concluidas: s => s === 'concluido', todas: () => true,
 };
 
-export function useChamados({ token, area }: DaCasca) {
+export function useChamados({ token, area, marcarLida }: DaCasca) {
   const { toast } = useRetorno();
   // o pedido que veio com a aba (só na abertura dela)
   const { state } = useLocation();
@@ -45,6 +46,12 @@ export function useChamados({ token, area }: DaCasca) {
   const [anexando, setAnexando] = useState('');
   const [erroDoAnexo, setErroDoAnexo] = useState<{ id: string; texto: string }>({ id: '', texto: '' });
   const whatsapp = area.resumo?.escritorio.whatsapp;
+  // a avaliação da concluída (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
+  const [notas, setNotas] = useState<Record<string, number>>(() => notasDadas(token));
+  const [nota, setNota] = useState(0);
+  const [comentario, setComentario] = useState('');
+  const [avaliando, setAvaliando] = useState(false);
+  const [reavaliar, setReavaliar] = useState(false);
 
   // as respondidas primeiro (esperam o cliente ler); depois as abertas; as concluídas por último
   const peso = (s: ac.SituacaoDoChamado) => (s === 'respondido' ? 0 : s === 'concluido' ? 2 : 1);
@@ -75,6 +82,9 @@ export function useChamados({ token, area }: DaCasca) {
       escolhida: c.id === atualId,
       whatsapp: whatsappDaSolicitacao(whatsapp, c.titulo),
       aceitaArquivo: c.situacao !== 'concluido',
+      // só a concluída pede a nota; a já avaliada neste aparelho mostra o obrigado
+      avaliar: c.situacao === 'concluido',
+      notaDada: notas[c.id] ?? 0,
       anexando: anexando === c.id,
       erroDoAnexo: erroDoAnexo.id === c.id ? erroDoAnexo.texto : '',
     };
@@ -97,6 +107,21 @@ export function useChamados({ token, area }: DaCasca) {
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para enviar a solicitação. Tente de novo.');
     } finally { setEnviando(false); }
+  }
+
+  /** a nota (e o comentário opcional) da concluída: vai para o escritório, não vira conversa */
+  async function avaliar(id: string) {
+    if (!nota || avaliando) return;
+    setAvaliando(true);
+    try {
+      await repoAreaCliente.avaliarChamado(token, id, nota, comentario);
+      guardarNota(token, id, nota);
+      setNotas(n => ({ ...n, [id]: nota }));
+      setNota(0); setComentario(''); setReavaliar(false);
+      toast('Obrigado pela avaliação.');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Não deu para enviar a avaliação. Tente de novo.');
+    } finally { setAvaliando(false); }
   }
 
   /** os arquivos da solicitação: confere todos, manda pela caixa de envios e avisa na própria solicitação */
@@ -129,7 +154,13 @@ export function useChamados({ token, area }: DaCasca) {
     empresa: { nome: area.ficha?.nomeFantasia || area.ficha?.razaoSocial || area.resumo?.empresas?.[0]?.nome || 'Você', logo: area.logo },
     // os passos Recebida › Em andamento › Respondida saíram do painel (16/11/2026: "muita informação"): repetiam o selo
     modo, atual: atual ? vista(atual) : null, painelNoCelular,
-    abrir: (id: string) => { setEscolhida(id); setModo('ver'); setPainelNoCelular(true); },
+    abrir: (id: string) => {
+      setEscolhida(id); setModo('ver'); setPainelNoCelular(true);
+      setNota(0); setComentario(''); setReavaliar(false);
+      // abriu a resposta do escritório: o aviso sai do sino e não volta (ficha aviso-de-resposta, 17/11/2026)
+      const c = area.chamados.find(x => x.id === id);
+      if (c?.situacao === 'respondido') marcarLida?.('c-' + c.id + '-' + c.mensagens.length);
+    },
     nova: () => { setModo('nova'); setErro(''); setPainelNoCelular(true); },
     voltar: () => setPainelNoCelular(false),
     // a nova: primeiro o assunto (os cartões), depois o formulário
@@ -141,5 +172,9 @@ export function useChamados({ token, area }: DaCasca) {
     criar: () => { void criar(); }, erro, enviando,
     cancelarNova: () => { setModo('ver'); setTipo(''); setErro(''); setPainelNoCelular(false); },
     anexar: (id: string, fs: File[]) => { void anexar(id, fs); },
+    // a avaliação (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
+    nota, escolherNota: setNota, comentario, mudarComentario: setComentario, avaliando, reavaliar,
+    mudarNota: () => setReavaliar(true), maiorComentario: ac.MAIOR_COMENTARIO_DA_AVALIACAO, rotuloDaNota: (n: number) => ac.ROTULO_DA_NOTA[n] ?? '',
+    avaliar: (id: string) => { void avaliar(id); },
   };
 }

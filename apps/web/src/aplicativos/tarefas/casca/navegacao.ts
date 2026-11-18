@@ -19,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'desenvolvedor';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -180,6 +180,11 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'entradas', rotulo: 'Entrada de clientes', icone: 'usuario', titulo: 'Entrada de clientes' },
     { id: 'contratos', rotulo: 'Contratos', icone: 'fileText', titulo: 'Contratos', emDesenvolvimento: true },
   ] },
+  // a Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de Insights eu quero", "esses paineis so vao ser vistos por diretor e admin", "Todos os seis"):
+  // só Diretor e admin, e só no modo desenvolvedor até o Vitor aprovar (a novidade 'insights')
+  { id: 'insights', nome: 'Insights', icone: 'barChart', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'painel', rotulo: 'Painel', icone: 'barChart', titulo: 'Insights do escritório' },
+  ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
   // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
@@ -279,6 +284,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)) &&
     // o Administrativo: só o Diretor e o Dono (o nível, não o admin), e só no modo desenvolvedor até o Vitor aprovar
     (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
+    // a Tela de Insights: só Diretor e admin (o dono, 18/11/2026: "esses paineis so vao ser vistos por diretor e admin")
+    (a.id !== 'insights' || (ehDiretor(op) && novidadeLigada('insights'))) &&
     // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
     // link direto não abre
     (a.id !== 'carteira' || modoDesenvolvedor()) &&

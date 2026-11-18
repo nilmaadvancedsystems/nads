@@ -18,7 +18,14 @@
 // - A entrega ao cliente não tem prazo legal: vale o da guia mais cedo que o cliente tem (a guia precisa chegar antes de
 //   vencer). Sem guia, o da folha.
 // - As categorias criadas no nads (x-…) não têm prazo cadastrado: ficam fora do "atrasado".
-import { feriadoNacional, quintoDiaUtilDoMesSeguinte } from './etiquetasDaFolha';
+//
+// Desde 17/11/2026 (plano do Acessórias, ficha E01; frase do dono: "Começar pela E01") o dia útil vem do calendário único
+// (diasUteis.ts), na esfera federal: as mesmas datas de antes, com um lugar só decidindo.
+//
+// Desde 17/11/2026 (ficha E02; frase do dono: "Seguir para a E02") os dias e as fontes moram na tabela única de prazos
+// (prazos.ts, as linhas 'dp-…'); PRAZOS_DO_DP continua aqui, montado de lá, com os mesmos nomes e valores.
+import { quintoDiaUtilDoMesSeguinte } from './etiquetasDaFolha';
+import { PRAZOS, prazoLegal } from './prazos';
 
 export type AjusteDoPrazo = 'antecipa' | 'posterga';
 
@@ -29,52 +36,18 @@ export interface RegraDoPrazo {
   fonte: string;
 }
 
-export const PRAZOS_DO_DP: Readonly<Record<string, RegraDoPrazo>> = {
-  folha: { dia: 'quinto-dia-util', ajuste: 'antecipa', fonte: 'CLT, art. 459, § 1º' },
-  recibos: { dia: 'quinto-dia-util', ajuste: 'antecipa', fonte: 'CLT, art. 459, § 1º' },
-  s1200: { dia: 15, ajuste: 'antecipa', fonte: 'Manual do eSocial (eventos periódicos)' },
-  s1210: { dia: 15, ajuste: 'antecipa', fonte: 'Manual do eSocial (eventos periódicos)' },
-  s1299: { dia: 15, ajuste: 'antecipa', fonte: 'Manual do eSocial (eventos periódicos)' },
-  reinf: { dia: 15, ajuste: 'antecipa', fonte: 'IN RFB 2.043/2021' },
-  dctfweb: { dia: 20, ajuste: 'antecipa', fonte: 'Lei 8.212/1991, art. 30, I, "b" (o DARF da DCTFWeb)' },
-  darf: { dia: 20, ajuste: 'antecipa', fonte: 'Lei 8.212/1991, art. 30; Lei 11.196/2005, art. 70' },
-  fgts: { dia: 20, ajuste: 'antecipa', fonte: 'Lei 8.036/1990, art. 15 (Lei 14.438/2022)' },
-  econsignado: { dia: 20, ajuste: 'antecipa', fonte: 'na guia do FGTS Digital (Lei 8.036/1990, art. 15)' },
-};
+/** As regras do DP pela obrigação (a etapa 'dp-folha' é a obrigação 'folha'), montadas da tabela única (prazos.ts). */
+export const PRAZOS_DO_DP: Readonly<Record<string, RegraDoPrazo>> = Object.fromEntries(PRAZOS
+  .filter(p => p.departamento === 'dp')
+  .map(p => [p.etapa.replace(/^dp-/, ''), { dia: p.dia as RegraDoPrazo['dia'], ajuste: p.ajuste as AjusteDoPrazo, fonte: p.fonte }]));
 
 /** as guias (o que a entrega leva ao cliente) */
 const GUIAS = ['dctfweb', 'darf', 'fgts', 'econsignado'];
 
-const dois = (n: number) => String(n).padStart(2, '0');
-const iso = (d: Date) => d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
-const util = (d: Date) => d.getDay() !== 0 && d.getDay() !== 6 && !feriadoNacional(d);
-
-/** o mês seguinte à competência 'aaaa-mm' (ano, mês base 0) */
-function mesSeguinte(competencia: string): [number, number] | null {
-  const m = /^(\d{4})-(\d{2})$/.exec(competencia);
-  if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]), 1);
-  return [d.getFullYear(), d.getMonth()];
-}
-
-/** o dia de uma regra no mês seguinte, já no dia útil ('aaaa-mm-dd') */
-function diaDaRegra(regra: RegraDoPrazo, competencia: string): string | null {
-  const seg = mesSeguinte(competencia);
-  if (!seg) return null;
-  const [ano, mes] = seg;
-  if (regra.dia === 'quinto-dia-util') {
-    // o sábado conta; o domingo e o feriado nacional não
-    const d = new Date(ano, mes, 1);
-    let uteis = 0;
-    for (;;) {
-      if (d.getDay() !== 0 && !feriadoNacional(d)) uteis++;
-      if (uteis === 5) return iso(d);
-      d.setDate(d.getDate() + 1);
-    }
-  }
-  const d = new Date(ano, mes, regra.dia);
-  while (!util(d)) d.setDate(d.getDate() + (regra.ajuste === 'antecipa' ? -1 : 1));
-  return iso(d);
+/** o dia de uma obrigação no mês seguinte, já no dia útil ('aaaa-mm-dd'), pela linha da tabela única */
+function diaDaRegra(obrigacao: string, competencia: string): string | null {
+  const linha = PRAZOS.find(p => p.departamento === 'dp' && p.etapa === 'dp-' + obrigacao);
+  return linha ? prazoLegal(linha, competencia) : null;
 }
 
 /** O prazo de uma obrigação do DP na competência ('aaaa-mm-dd'); null = sem prazo cadastrado (as categorias x-…). */
@@ -84,8 +57,7 @@ export function prazoDaObrigacaoDp(obrigacao: string, competencia: string, doCli
     const guias = doCliente.filter(o => GUIAS.includes(o)).map(o => prazoDaObrigacaoDp(o, competencia)).filter((x): x is string => !!x).sort();
     return guias[0] || prazoDaObrigacaoDp('folha', competencia);
   }
-  const regra = PRAZOS_DO_DP[obrigacao];
-  return regra ? diaDaRegra(regra, competencia) : null;
+  return diaDaRegra(obrigacao, competencia);
 }
 
 /** Os dias de hoje até o prazo (negativo = venceu há N dias; 0 = vence hoje). */

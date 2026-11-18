@@ -8,14 +8,18 @@
 //   - solicitacoesEmail { tipo: 'envioFiscal' }: o registro de cada e-mail que o robô mandou (a aba "Enviados"; fica, o lote some em 3 dias),
 //     e das guias impressas (via: 'impresso', com o entregaId da entrega que o robô pôs na rota do Entregas; 04/11/2026);
 //   - lotesFiscal/{lote}.vias: { <código>: 'email'|'impresso' }, a via de cada cliente, gravada pela tela antes do disparo;
-//   - config/envioFiscal: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o Fiscal e o admin gravam).
-import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+//   - config/envioFiscal: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o Fiscal e o admin gravam);
+//   - fiscalArquivos/{AAAA-MM}: as guias do Fiscal já arquivadas no Drive, por cliente (o robô grava, a tela lê); o lote
+//     criado delas tem os arquivos { nome, tamanho, driveId, origem: { codigo, competencia, pasta }, status: 'pendente' },
+//     sem os pedaços: o robô lê pelo Drive (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir"). Precisa da regra do Vitor
+//     (docs/acessorias/regra-lote-da-pasta.md).
+import { addDoc as addDocBruto, Bytes, collection, deleteField, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { entregas as e } from '@nads/core';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ModeloDoEnvio } from './enviosDp';
 import { arquivoDoBanco, loteDoBanco } from './loteDp.firestore';
-import { viaDaGuia, type EnvioDasGuias, type GuiaDoLote, type LoteFiscal, type RepoLoteFiscal } from './loteFiscal';
+import { guiasDoDocumento, viaDaGuia, type EnvioDasGuias, type GuiaDoLote, type LoteFiscal, type RepoLoteFiscal } from './loteFiscal';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
@@ -81,6 +85,23 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
         chegou(s.docs.map(x => guiaDoBanco(x.id, x.data())).sort((a, b) => Number(a.id) - Number(b.id)));
       }, () => chegou([]));
     },
+    guiasNaPasta(competencia, chegou) {
+      // um documento por mês (como o dpArquivos do DP); a regra nova ainda não publicada dá permissão negada
+      return onSnapshot(doc(db, 'fiscalArquivos', competencia),
+        s => chegou({ carregadas: true, erro: '', guias: guiasDoDocumento(competencia, s.exists() ? s.data() : null) }),
+        e => chegou({ carregadas: true, erro: /permission/i.test(String(e)) ? 'O banco ainda não deixa ler as guias da pasta (falta a regra do Vitor).' : 'Não consegui ler as guias da pasta.', guias: [] }));
+    },
+    async criarDaPasta(grupo, guias) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      const ref = await addDoc(collection(db, 'lotesFiscal'), { status: 'enviando', grupo, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid, total: guias.length });
+      for (let k = 0; k < guias.length; k++) {
+        const g = guias[k];
+        await setDoc(doc(ref, 'arquivos', String(k)), { nome: g.nome, tamanho: g.tamanho, driveId: g.driveId, origem: { codigo: g.codigo, competencia: g.competencia, pasta: g.pasta }, status: 'pendente' });
+      }
+      await updateDoc(ref, { status: 'pendente' });
+      return ref.id;
+    },
     async subir(grupo, lista, andamento) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
@@ -144,10 +165,15 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
       // a regra deixa mudar só as vias, com o lote parado (lido ou disparado)
       await updateDoc(doc(db, 'lotesFiscal', lote), { vias });
     },
-    async disparar(lote) {
+    async disparar(lote, agendadoPara) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
-      await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'disparar', disparadoPor: q.nome, disparadoPorUid: q.uid, pedidoEm: new Date().toISOString() });
+      // o envio agendado (plano do Acessórias, 17/11/2026, ficha E17): o robô só dispara depois de agendadoPara (precisa da regra do Vitor:
+      // docs/acessorias/regra-envio-agendado.md); sem ele, o pedido é o de sempre
+      await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'disparar', disparadoPor: q.nome, disparadoPorUid: q.uid, pedidoEm: new Date().toISOString(), ...(agendadoPara ? { agendadoPara } : {}) });
+    },
+    async cancelarAgendamento(lote) {
+      await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'lido', agendadoPara: deleteField() });
     },
     enviados(competencia) {
       if (!enviadosDoMes.has(competencia)) {

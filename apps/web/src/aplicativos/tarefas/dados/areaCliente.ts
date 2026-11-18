@@ -30,6 +30,8 @@ export interface ChamadoNaEquipe {
   mensagens: MensagemNaEquipe[];
   criadoEm: string;
   atualizadoEm: string;
+  /** a nota que o cliente deu na concluída (o robô grava) (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir") */
+  avaliacao: { nota: number; comentario: string; em: string } | null;
 }
 
 /** areaClienteRecebidos/{id}: um arquivo que o cliente mandou (o robô guarda no Drive do cliente). */
@@ -45,6 +47,8 @@ export interface RecebidoDoCliente {
   /** o caminho no Drive, para ler (ex.: "292 › 2026 › Bancos") */
   pastaDrive: string;
   recebidoEm: string;
+  /** o comprovante mandado pela guia: de que guia é ("Comprovante do FGTS 10/2026"); '' nos outros (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir") */
+  guia: string;
 }
 
 /** Uma coleção ao vivo: `erro` diz por que não leu (regra do banco), e a lista fica vazia. */
@@ -54,6 +58,9 @@ export interface EmpresaDoLink { codigo: number; nome: string }
 
 /** logosDasEmpresas/{codigo} (12/11/2026): a logo que a Área do Cliente mostra no topo, como data URL (PNG/JPG/WebP). */
 export interface LogoDaEmpresa { codigo: number; logo: string; atualizadoEm: string }
+
+/** Quando o cliente abriu (baixou) uma guia na Área do Cliente (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura): areaClienteLeituras, só o robô grava. */
+export interface LeituraDaGuia { token: string; guiaId: string; tipo: string; competencia: string; primeiraEm: string; ultimaEm: string; vezes: number }
 
 export interface RepoAreaCliente {
   exemplos: boolean;
@@ -69,6 +76,8 @@ export interface RepoAreaCliente {
   revogar(codigo: number): Promise<void>;
   /** as logos das empresas (a Área do Cliente mostra no topo) */
   logos(): ListaAoVivo<LogoDaEmpresa>;
+  /** as guias que os clientes abriram (as dos últimos 4 meses) (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura); erro = a regra do Vitor ainda não saiu */
+  leituras(): ListaAoVivo<LeituraDaGuia>;
   /** grava a logo da empresa (o data URL já diminuído e conferido por erroDaLogo) */
   gravarLogo(codigo: number, logo: string): Promise<void>;
   apagarLogo(codigo: number): Promise<void>;
@@ -125,7 +134,7 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
   let chamados: ChamadoNaEquipe[] = [
     {
       id: 'ex-1', token: tokenDe(462), codigos: [462], empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', tipo: 'admissao',
-      titulo: 'Contratar um ajudante de campo', situacao: 'aberto', criadoEm: ha(190), atualizadoEm: ha(35),
+      titulo: 'Contratar um ajudante de campo', situacao: 'aberto', criadoEm: ha(190), atualizadoEm: ha(35), avaliacao: null,
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Vamos contratar o Marcos como ajudante de campo, começa dia 1º de novembro. O que preciso mandar?', em: ha(190) },
         { de: 'escritorio', autor: 'Camila', texto: 'Oi! Precisamos do RG, CPF, comprovante de residência, carteira de trabalho e o exame admissional.', em: ha(120) },
@@ -134,17 +143,27 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
     },
     {
       id: 'ex-2', token: tokenDe(356), codigos: [356], empresa: 'A7 COMERCIO DE VEICULOS LTDA', tipo: 'documento',
-      titulo: 'Certidão negativa de débitos', situacao: 'respondido', criadoEm: ha(60 * 26), atualizadoEm: ha(60 * 20),
+      titulo: 'Certidão negativa de débitos', situacao: 'respondido', criadoEm: ha(60 * 26), atualizadoEm: ha(60 * 20), avaliacao: null,
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Preciso da certidão negativa federal para uma concorrência.', em: ha(60 * 26) },
         { de: 'escritorio', autor: 'Vitor', texto: 'Emitida e anexada aos Documentos da sua área. Vale por 180 dias.', em: ha(60 * 20) },
       ],
     },
+    // a concluída e avaliada (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
+    {
+      id: 'ex-3', token: tokenDe(515), codigos: [515], empresa: 'A7 MOBILE LTDA', tipo: 'documento',
+      titulo: 'Segunda via do contrato social', situacao: 'concluido', criadoEm: ha(60 * 50), atualizadoEm: ha(60 * 40),
+      avaliacao: { nota: 5, comentario: 'Resolveram no mesmo dia, obrigado!', em: ha(60 * 30) },
+      mensagens: [
+        { de: 'cliente', autor: 'Você', texto: 'Preciso da segunda via do contrato social para o banco.', em: ha(60 * 50) },
+        { de: 'escritorio', autor: 'Vitor', texto: 'Está em Documentos, na pasta Societário.', em: ha(60 * 40) },
+      ],
+    },
   ];
   const recebidos: RecebidoDoCliente[] = [
-    { id: 'rx-1', token: tokenDe(462), codigo: 462, empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', nome: 'extrato-sicoob-setembro.pdf', tipo: 'extrato', tamanho: 482113, pastaDrive: '462 › 2026 › Bancos › Sicoob', recebidoEm: ha(75) },
-    { id: 'rx-2', token: tokenDe(515), codigo: 515, empresa: 'A7 MOBILE LTDA', nome: 'nfe-compra-1043.xml', tipo: 'nota', tamanho: 18340, pastaDrive: '515 › 2026 › Notas', recebidoEm: ha(60 * 6) },
-    { id: 'rx-3', token: tokenDe(356), codigo: 356, empresa: 'A7 COMERCIO DE VEICULOS LTDA', nome: 'comprovante-das-setembro.jpg', tipo: 'comprovante', tamanho: 1294870, pastaDrive: '356 › 2026 › Comprovantes', recebidoEm: ha(60 * 30) },
+    { id: 'rx-1', token: tokenDe(462), codigo: 462, empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', nome: 'extrato-sicoob-setembro.pdf', tipo: 'extrato', tamanho: 482113, pastaDrive: '462 › 2026 › Bancos › Sicoob', recebidoEm: ha(75), guia: '' },
+    { id: 'rx-2', token: tokenDe(515), codigo: 515, empresa: 'A7 MOBILE LTDA', nome: 'nfe-compra-1043.xml', tipo: 'nota', tamanho: 18340, pastaDrive: '515 › 2026 › Notas', recebidoEm: ha(60 * 6), guia: '' },
+    { id: 'rx-3', token: tokenDe(356), codigo: 356, empresa: 'A7 COMERCIO DE VEICULOS LTDA', nome: 'Comprovante DAS 09-2026 - pix.jpg', tipo: 'comprovante', tamanho: 1294870, pastaDrive: '356 › 2026 › Comprovantes', recebidoEm: ha(60 * 30), guia: 'Comprovante do DAS 09/2026' },
   ];
   const vazio = <T,>(lista: readonly T[]): ListaAoVivo<T> => ({ carregada: true, lista, erro: '' });
   let logos: LogoDaEmpresa[] = [];
@@ -152,6 +171,8 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
     exemplos: true,
     links: () => vazio(links),
     logos: () => vazio(logos),
+    // a guia aberta de exemplo (ficha comprovante-de-leitura)
+    leituras: () => vazio([{ token: tokenDe(462), guiaId: 'das-2026-10-462', tipo: 'DAS', competencia: '2026-10', primeiraEm: ha(60 * 20), ultimaEm: ha(60 * 2), vezes: 3 }]),
     async gravarLogo(codigo, logo) { logos = [...logos.filter(l => l.codigo !== codigo), { codigo, logo, atualizadoEm: new Date().toISOString() }]; mudou(); },
     async apagarLogo(codigo) { logos = logos.filter(l => l.codigo !== codigo); mudou(); },
     chamados: () => vazio(chamados),
