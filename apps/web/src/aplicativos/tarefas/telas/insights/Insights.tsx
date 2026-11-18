@@ -1,13 +1,20 @@
 // A Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de Insights eu
-// quero", "Todos os seis", "faz algo bonito assim como no acessorias"). O visual é do NADS (regra 2: sem copiar telas):
-// os destaques do mês, a equipe em cartões com o anel do quanto concluiu, e os painéis em barras, funil e estrelas. O
-// Modo TV mostra um painel por vez, grande, girando.
-import { Alerta, Esqueleto, Icone, Segmentado, useCarregando, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
-import { PAINEIS_DA_TV, SEGUNDOS_POR_PAINEL, useInsights, type Segmento, type Tom } from './useInsights';
+// quero", "Todos os seis", "faz algo bonito assim como no acessorias", "pode dividir em menu lateral", "quer que quando
+// eu clique abra uma visao do que a pessoa ta fazendo", "remove o modo tv"). O visual é do NADS (regra 2: sem copiar
+// telas): os destaques do mês, a equipe em cartões com o anel do quanto concluiu (o clique abre a visão da pessoa), e
+// os painéis em barras, funil e estrelas. Cada assunto tem a página dele no menu lateral.
+import { Alerta, BotaoFechar, Esqueleto, Icone, useCarregando, useJanela, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
+import { useInsights, type Segmento, type Tom } from './useInsights';
 import './insights.css';
 
-type Tela = NonNullable<ReturnType<typeof useInsights>['tela']>;
+type Vm = ReturnType<typeof useInsights>;
+type Tela = NonNullable<Vm['tela']>;
+
+/** a foto de perfil, ou as iniciais quando a pessoa não tem foto */
+function Rosto({ foto, iniciais, classe }: { foto: string | null; iniciais: string; classe: string }) {
+  return foto ? <img className={classe + ' ins-foto'} src={foto} alt="" /> : <span className={classe}>{iniciais}</span>;
+}
 
 /** o anel de progresso (0 a 100), com o conteúdo no meio */
 function Anel({ pct, tom, tamanho = 64, espessura = 6, children }: { pct: number; tom: Tom; tamanho?: number; espessura?: number; children?: ReactNode }) {
@@ -58,23 +65,84 @@ function Cartao({ titulo, subtitulo, icone, children, classe = '' }: { titulo: s
   );
 }
 
-function Equipe({ tela }: { tela: Tela }) {
+function Equipe({ tela, vm }: { tela: Tela; vm: Vm }) {
   return (
-    <Cartao titulo="A equipe no mês" subtitulo="As rotinas do Fiscal e do Contábil, por responsável" icone="equipe" classe="ins-equipe-cartao">
+    <Cartao titulo="A equipe no mês" subtitulo="As rotinas do Fiscal e do Contábil, por responsável · clique na pessoa para ver o que ela está fazendo" icone="equipe">
       {tela.equipe.length ? (
         <div className="ins-equipe">
           {tela.equipe.map(p => (
-            <div key={p.setor + p.nome} className="ins-pessoa">
-              <Anel pct={p.pct} tom={p.tom} tamanho={84} espessura={7}><span className="ins-iniciais">{p.iniciais}</span></Anel>
+            <button key={p.setor + p.nome} type="button" className="ins-pessoa" onClick={() => vm.abrirPessoa(p.setor, p.nome)} aria-label={'Ver o que ' + p.nome + ' está fazendo'}>
+              <Anel pct={p.pct} tom={p.tom} tamanho={84} espessura={7}><Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-iniciais" /></Anel>
               <b className="ins-pessoa-nome">{p.nome}</b>
               <span className="hint">{p.setor}</span>
               <span className={'ins-pilula t-' + p.tom}>{p.pct}% · {p.texto}</span>
               {p.atrasadas > 0 && <span className="ins-pilula t-ruim">{p.atrasadas} {p.atrasadas === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}</span>}
-            </div>
+            </button>
           ))}
         </div>
       ) : <p className="hint">Ninguém com rotina no mês.</p>}
     </Cartao>
+  );
+}
+
+/** a visão da pessoa: o anel grande, as empresas que faltam com a etapa, as concluídas e as tarefas atrasadas */
+function JanelaDaPessoa({ vm }: { vm: Vm }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fecharPessoa);
+  const p = vm.pessoa;
+  if (!p) return null;
+  return (
+    <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.fecharPessoa(); }}>
+      <div ref={janela} className="modal ins-janela" role="dialog" aria-modal="true" aria-label={'O que ' + p.nome + ' está fazendo'}>
+        <header className="ins-janela-topo">
+          <Anel pct={p.pct} tom={p.tom} tamanho={96} espessura={8}><Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-iniciais ins-janela-rosto" /></Anel>
+          <div className="ins-janela-quem">
+            <h3>{p.nome} <span className={'ins-janela-pct t-' + p.tom}>{p.pct}%</span></h3>
+            <span className="hint">{p.setor} · {p.texto} empresas concluídas</span>
+            <div className="ins-janela-pilulas">
+              <span className="ins-pilula t-alerta">{p.faltando.length} {p.faltando.length === 1 ? 'faltando' : 'faltando'}</span>
+              <span className="ins-pilula t-bom">{p.feitas} {p.feitas === 1 ? 'concluída' : 'concluídas'}</span>
+              {p.atrasadas > 0 && <span className="ins-pilula t-ruim">{p.atrasadas} {p.atrasadas === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}</span>}
+            </div>
+          </div>
+          <BotaoFechar onClick={vm.fecharPessoa} />
+        </header>
+        <div className="ins-janela-corpo">
+          {p.tarefas.length > 0 && (
+            <section>
+              <h4><Icone nome="clock" width={16} height={16} />Tarefas atrasadas</h4>
+              <ul className="ins-lista">
+                {p.tarefas.map(t => <li key={t.titulo + t.atraso}><span>{t.titulo}</span><span className="ins-pilula t-ruim">{t.atraso}</span></li>)}
+              </ul>
+            </section>
+          )}
+          <section>
+            <h4><Icone nome="briefcase" width={16} height={16} />Empresas faltando</h4>
+            {p.faltando.length ? (
+              <ul className="ins-lista">
+                {p.faltando.map(e => (
+                  <li key={e.nome} className="ins-empresa">
+                    <div className="ins-empresa-nome"><b>{e.nome}</b><span className="hint">{e.etapa ? 'Agora: ' + e.etapa : 'Ainda não começou'}</span></div>
+                    <div className="ins-empresa-direita">
+                      <span className={'ins-pilula t-' + e.tom}>{e.situacao}</span>
+                      <span className={'ins-trilho t-' + e.tom} title={e.texto}><span style={{ width: e.progresso + '%' }} /></span>
+                      <span className="hint">{e.texto}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="ins-tudo-certo"><Icone nome="checkCircle" width={18} height={18} />Todas as empresas do mês concluídas.</p>}
+          </section>
+          {p.concluidas.length > 0 && (
+            <section>
+              <h4><Icone nome="checkCircle" width={16} height={16} />Concluídas</h4>
+              <ul className="ins-concluidas">{p.concluidas.map(e => <li key={e.nome}>{e.nome}</li>)}</ul>
+            </section>
+          )}
+          {p.foraDaLista > 0 && <p className="hint">Mais {p.foraDaLista} empresas não cabem nesta lista.</p>}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -123,7 +191,7 @@ function Tarefas({ tela }: { tela: Tela }) {
         <ul className="ins-atrasos">
           {tela.tarefas.map(p => (
             <li key={p.nome}>
-              <span className="ins-mini">{p.iniciais}</span><span className="ins-atraso-nome">{p.nome}</span>
+              <Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-mini" /><span className="ins-atraso-nome">{p.nome}</span>
               <span className="ins-trilho t-ruim"><span style={{ width: p.pct + '%' }} /></span><b>{p.atrasadas}</b>
             </li>
           ))}
@@ -133,57 +201,29 @@ function Tarefas({ tela }: { tela: Tela }) {
   );
 }
 
-const DO_PAINEL = { equipe: Equipe, dp: Dp, guias: Guias, clientes: Clientes, entregas: Entregas, tarefas: Tarefas } as const;
+/** as páginas de um assunto só (o menu lateral) */
+const DO_PAINEL = { dp: Dp, guias: Guias, clientes: Clientes, entregas: Entregas, tarefas: Tarefas } as const;
 
-export function Insights() {
+export function Insights({ pagina = 'painel' }: { pagina?: string }) {
   const vm = useInsights();
   useCarregando(vm.carregando);
-  // a tela cheia do Modo TV: entra junto; sair da tela cheia (o Esc do navegador) sai da TV
-  const { tv, sairDaTv } = vm;
-  useEffect(() => {
-    if (!tv) return;
-    document.documentElement.requestFullscreen?.().catch(() => undefined);
-    const aoMudar = () => { if (!document.fullscreenElement) sairDaTv(); };
-    document.addEventListener('fullscreenchange', aoMudar);
-    return () => {
-      document.removeEventListener('fullscreenchange', aoMudar);
-      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined);
-    };
-  }, [tv, sairDaTv]);
-
-  if (vm.tv && vm.tela) {
-    const Painel = DO_PAINEL[vm.painelDaTv];
-    return (
-      <div className="ins-tv" role="dialog" aria-label="Modo TV">
-        <div className="ins-tv-topo"><h2>Indicadores de {vm.tela.competencia}</h2><span className="hint">Atualizado {vm.atualizado}{vm.pausado ? ' · pausado' : ''}</span></div>
-        <div className="ins-tv-corpo" key={vm.painelDaTv}><Painel tela={vm.tela} /></div>
-        <div className="ins-tv-pe">
-          <span className="ins-pontos">
-            {PAINEIS_DA_TV.map((p, i) => <button key={p} type="button" className={i === vm.indice ? 'ativo' : ''} aria-label={'Painel ' + (i + 1)} onClick={() => vm.irPara(i)} />)}
-          </span>
-          <button type="button" className="btn btn-ghost" onClick={vm.pausar}><Icone nome={vm.pausado ? 'play' : 'clock'} width={16} height={16} />{vm.pausado ? 'Continuar' : 'Pausar'}</button>
-          <button type="button" className="btn btn-ghost" onClick={vm.sairDaTv}><Icone nome="x" width={16} height={16} />Sair</button>
-        </div>
-      </div>
-    );
-  }
+  // a página do menu lateral: a Visão geral, a Equipe ou um assunto só (18/11/2026: "pode dividir em menu lateral")
+  const Sozinho = pagina in DO_PAINEL ? DO_PAINEL[pagina as keyof typeof DO_PAINEL] : null;
   return (
     <section className="ins">
       {vm.exemplos && <div className="alerta-linha"><Alerta titulo="Dados de exemplo" texto="Os números são de mentira; no banco, quem monta é o robô do PC a cada 15 minutos." /></div>}
       {vm.erro && <div className="alerta-linha"><Alerta titulo="Sem os números" texto={vm.erro} /></div>}
       {vm.velho && <div className="alerta-linha"><Alerta titulo="Números atrasados" texto={'O robô do PC não atualiza os números há mais de uma hora (última vez ' + vm.atualizado + ').'} /></div>}
       <div className="ins-topo">
-        <div>
-          <h2>Indicadores {vm.tela ? 'de ' + vm.tela.competencia : 'do mês'}</h2>
-          {vm.atualizado && <span className="hint"><span className="ins-ao-vivo" aria-hidden="true" />Atualizado {vm.atualizado}</span>}
-        </div>
-        <span className="tarefas-barra-espaco" />
-        <span className="hint">Cada painel na TV</span>
-        <Segmentado valor={String(vm.segundos)} onMudar={v => vm.mudarSegundos(Number(v))} opcoes={SEGUNDOS_POR_PAINEL.map(s => ({ valor: String(s), rotulo: s + ' s' }))} />
-        <button type="button" className="btn btn-primary" disabled={!vm.tela} onClick={vm.entrarNaTv}><Icone nome="monitor" width={16} height={16} />Modo TV</button>
+        <h2>Indicadores {vm.tela ? 'de ' + vm.tela.competencia : 'do mês'}</h2>
+        {vm.atualizado && <span className="hint"><span className="ins-ao-vivo" aria-hidden="true" />Atualizado {vm.atualizado}</span>}
       </div>
       {vm.carregando ? <Esqueleto linhas={6} /> : vm.semNumeros || !vm.tela ? (
         <p className="hint" style={{ marginTop: 16 }}>Ainda não há números. Ligue a Tela de Insights em Robôs › Ajustes; o robô do PC monta os primeiros em até 15 minutos.</p>
+      ) : pagina === 'equipe' ? (
+        <div className="ins-sozinho"><Equipe tela={vm.tela} vm={vm} /></div>
+      ) : Sozinho ? (
+        <div className="ins-sozinho"><Sozinho tela={vm.tela} /></div>
       ) : (
         <>
           <div className="ins-destaques">
@@ -195,7 +235,7 @@ export function Insights() {
               </div>
             ))}
           </div>
-          <Equipe tela={vm.tela} />
+          <Equipe tela={vm.tela} vm={vm} />
           <div className="ins-grade">
             <Dp tela={vm.tela} />
             <Guias tela={vm.tela} />
@@ -205,6 +245,7 @@ export function Insights() {
           </div>
         </>
       )}
+      {vm.pessoa && <JanelaDaPessoa vm={vm} />}
     </section>
   );
 }

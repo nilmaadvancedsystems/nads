@@ -45,7 +45,8 @@ export const NOVIDADES = {
    *  depois que o admin pergunta); aprovada para todos no mesmo dia ("Aprova para todos") */
   'conversa-feedback': { desde: '16/11/2026', aprovada: true },
   /** a Tela de Insights, só Diretor e admin (18/11/2026: "a Tela de Insights eu quero"; "Todos os seis"): os números do escritório
-   *  em seis painéis e o Modo TV; o robô do PC monta os números (Robôs › Ajustes › Tela de Insights) */
+   *  em seis painéis, um por página no menu lateral, e a visão de cada pessoa (o Modo TV saiu: "remove o modo tv"); o robô do PC
+   *  monta os números (Robôs › Ajustes › Tela de Insights) */
   insights: { desde: '18/11/2026', aprovada: false },
   /** o Lançatudo (17/11/2026: "desenvolver um Mister dentro do nads"): o extrato do banco em lançamentos para o Alterdata, com as
    *  regras de cada empresa; só o Contábil e o admin */

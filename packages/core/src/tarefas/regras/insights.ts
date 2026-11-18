@@ -7,11 +7,15 @@
 import { OBRIGACOES_DP, type ClienteDoDp } from '../../empresas/dp';
 import { mediaDasAvaliacoes } from '../../areaCliente/avaliacao';
 import type { Execucao, Rotina } from '../tipos';
-import { situacaoGeral, estadoDa } from './execucao';
+import { situacaoGeral, estadoDa, progresso, proximaEtapa } from './execucao';
 import { prazoMaisUrgenteDoDp } from './prazosDoDp';
 import { atrasada } from './delegadas';
 
-export interface PessoaNoInsight { nome: string; feitas: number; faltando: number }
+/** uma empresa da pessoa no mês (a visão da pessoa; 18/11/2026: "quer que quando eu clique abra uma visao do que a pessoa ta fazendo") */
+export interface EmpresaDaPessoa { nome: string; situacao: 'concluida' | 'em-andamento' | 'parada' | 'nao-iniciada'; etapa: string; feitas: number; total: number }
+export interface PessoaNoInsight { nome: string; feitas: number; faltando: number; empresas?: EmpresaDaPessoa[] }
+/** uma tarefa delegada atrasada (o título e o prazo 'aaaa-mm-dd') */
+export interface TarefaAtrasada { titulo: string; prazo: string }
 export interface ResumoDosInsights {
   /** ISO */
   atualizadoEm: string;
@@ -20,14 +24,14 @@ export interface ResumoDosInsights {
   guias: { competencia: string; enviadas: number; abertas: number; pagas: number };
   clientes: { abertas: number; respondidas: number; nota: number; avaliacoes: number; documentosFaltando: number; mandeiAbertos: number };
   entregas: { aEntregar: number; noLink: number; confirmadas: number; falhas: number };
-  equipe: { atrasadas: number; pessoas: { nome: string; atrasadas: number }[] };
+  equipe: { atrasadas: number; pessoas: { nome: string; atrasadas: number; tarefas?: TarefaAtrasada[] }[] };
 }
 
 const SEM_RESPONSAVEL = 'Sem responsável';
 
 /** As rotinas do mês de um setor, por responsável: a empresa concluída conta como feita, o resto como faltando. */
 export function rotinasPorPessoa(
-  empresas: readonly { codigo: number; responsavel: string }[],
+  empresas: readonly { codigo: number; responsavel: string; nome?: string }[],
   execucoes: readonly Execucao[],
   rotinaDe: (codigo: number) => Rotina | null,
 ): PessoaNoInsight[] {
@@ -37,10 +41,18 @@ export function rotinasPorPessoa(
     const rotina = rotinaDe(e.codigo);
     if (!rotina) continue;
     const nome = e.responsavel.trim() || SEM_RESPONSAVEL;
-    const p = pessoas.get(nome) ?? { nome, feitas: 0, faltando: 0 };
-    if (situacaoGeral(porCodigo.get(e.codigo) ?? null, rotina) === 'concluida') p.feitas++; else p.faltando++;
+    const p = pessoas.get(nome) ?? { nome, feitas: 0, faltando: 0, empresas: [] };
+    const ex = porCodigo.get(e.codigo) ?? null;
+    const situacao = situacaoGeral(ex, rotina);
+    if (situacao === 'concluida') p.feitas++; else p.faltando++;
+    // a empresa na visão da pessoa: a etapa em que está e quantas já foram
+    const pr = progresso(ex, rotina);
+    p.empresas!.push({ nome: (e.nome || ex?.empresa || 'Empresa ' + e.codigo).slice(0, 80), situacao, etapa: situacao === 'concluida' ? '' : (proximaEtapa(ex, rotina)?.nome ?? '').slice(0, 80), feitas: pr.concluidas, total: pr.total });
     pessoas.set(nome, p);
   }
+  // a parada e a em andamento primeiro; as concluídas no fim (no máximo 80 por pessoa: o documento é um só)
+  const ordem = { parada: 0, 'em-andamento': 1, 'nao-iniciada': 2, concluida: 3 } as const;
+  for (const p of pessoas.values()) p.empresas = p.empresas!.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.nome.localeCompare(b.nome, 'pt-BR')).slice(0, 80);
   // quem tem mais faltando primeiro; "Sem responsável" no fim
   return [...pessoas.values()].sort((a, b) => Number(a.nome === SEM_RESPONSAVEL) - Number(b.nome === SEM_RESPONSAVEL) || b.faltando - a.faltando || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
@@ -93,14 +105,16 @@ export function contarEntregas(entregas: readonly { status?: unknown }[]): Resum
 }
 
 /** As tarefas delegadas atrasadas, por responsável (hoje 'aaaa-mm-dd', agora 'hh:mm'). */
-export function delegadasAtrasadas(lista: readonly { status: string; prazo: string; prazoHora?: string; responsavel?: { nome?: string } | null }[], hoje: string, agora = ''): ResumoDosInsights['equipe'] {
-  const porNome = new Map<string, number>();
+export function delegadasAtrasadas(lista: readonly { status: string; prazo: string; prazoHora?: string; titulo?: string; responsavel?: { nome?: string } | null }[], hoje: string, agora = ''): ResumoDosInsights['equipe'] {
+  const porNome = new Map<string, TarefaAtrasada[]>();
   for (const t of lista) {
     if (!atrasada(t as Parameters<typeof atrasada>[0], hoje, agora)) continue;
     const nome = (t.responsavel?.nome || '').trim() || SEM_RESPONSAVEL;
-    porNome.set(nome, (porNome.get(nome) ?? 0) + 1);
+    porNome.set(nome, [...(porNome.get(nome) ?? []), { titulo: String(t.titulo || 'Tarefa').slice(0, 120), prazo: t.prazo }]);
   }
-  const pessoas = [...porNome].map(([nome, atrasadas]) => ({ nome, atrasadas })).sort((a, b) => b.atrasadas - a.atrasadas || a.nome.localeCompare(b.nome, 'pt-BR'));
+  // a mais atrasada primeiro; no máximo 10 tarefas por pessoa
+  const pessoas = [...porNome].map(([nome, ts]) => ({ nome, atrasadas: ts.length, tarefas: ts.sort((a, b) => a.prazo.localeCompare(b.prazo)).slice(0, 10) }))
+    .sort((a, b) => b.atrasadas - a.atrasadas || a.nome.localeCompare(b.nome, 'pt-BR'));
   return { atrasadas: pessoas.reduce((s, p) => s + p.atrasadas, 0), pessoas };
 }
 
@@ -184,7 +198,11 @@ const comp = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}$/.test(v) ?
 export function lerResumoDosInsights(x: unknown): ResumoDosInsights | null {
   const o = obj(x);
   if (typeof o.atualizadoEm !== 'string' || !o.atualizadoEm) return null;
-  const pessoas = (v: unknown) => (Array.isArray(v) ? v : []).map(obj).filter(p => txt(p.nome)).slice(0, 40).map(p => ({ nome: txt(p.nome), feitas: num(p.feitas), faltando: num(p.faltando) }));
+  const SITUACOES = ['concluida', 'em-andamento', 'parada', 'nao-iniciada'];
+  const empresas = (v: unknown): EmpresaDaPessoa[] => (Array.isArray(v) ? v : []).map(obj).filter(e => txt(e.nome)).slice(0, 80)
+    .map(e => ({ nome: txt(e.nome, 80), situacao: (SITUACOES.includes(String(e.situacao)) ? e.situacao : 'em-andamento') as EmpresaDaPessoa['situacao'], etapa: txt(e.etapa, 80), feitas: num(e.feitas), total: num(e.total) }));
+  const tarefas = (v: unknown): TarefaAtrasada[] => (Array.isArray(v) ? v : []).map(obj).filter(t => txt(t.titulo)).slice(0, 10).map(t => ({ titulo: txt(t.titulo, 120), prazo: /^\d{4}-\d{2}-\d{2}$/.test(txt(t.prazo)) ? txt(t.prazo) : '' }));
+  const pessoas = (v: unknown) => (Array.isArray(v) ? v : []).map(obj).filter(p => txt(p.nome)).slice(0, 40).map(p => ({ nome: txt(p.nome), feitas: num(p.feitas), faltando: num(p.faltando), empresas: empresas(p.empresas) }));
   const dp = obj(o.dp), g = obj(o.guias), c = obj(o.clientes), e = obj(o.entregas), q = obj(o.equipe);
   return {
     atualizadoEm: o.atualizadoEm,
@@ -194,42 +212,54 @@ export function lerResumoDosInsights(x: unknown): ResumoDosInsights | null {
     guias: { competencia: comp(g.competencia), enviadas: num(g.enviadas), abertas: num(g.abertas), pagas: num(g.pagas) },
     clientes: { abertas: num(c.abertas), respondidas: num(c.respondidas), nota: Math.min(5, num(c.nota)), avaliacoes: num(c.avaliacoes), documentosFaltando: num(c.documentosFaltando), mandeiAbertos: num(c.mandeiAbertos) },
     entregas: { aEntregar: num(e.aEntregar), noLink: num(e.noLink), confirmadas: num(e.confirmadas), falhas: num(e.falhas) },
-    equipe: { atrasadas: num(q.atrasadas), pessoas: (Array.isArray(q.pessoas) ? q.pessoas : []).map(obj).filter(p => txt(p.nome)).slice(0, 40).map(p => ({ nome: txt(p.nome), atrasadas: num(p.atrasadas) })) },
+    equipe: { atrasadas: num(q.atrasadas), pessoas: (Array.isArray(q.pessoas) ? q.pessoas : []).map(obj).filter(p => txt(p.nome)).slice(0, 40).map(p => ({ nome: txt(p.nome), atrasadas: num(p.atrasadas), tarefas: tarefas(p.tarefas) })) },
   };
 }
 
 /** Um resumo de exemplo (a tela sem banco e os testes). */
 export function resumoDeExemploDosInsights(agora: Date): ResumoDosInsights {
   const mes = (d: number) => { const x = new Date(agora.getFullYear(), agora.getMonth() + d, 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); };
+  const dia = (d: number) => { const x = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+  // as empresas de mentira de cada pessoa: as que faltam (com a etapa) e as concluídas
+  const empresas = (feitas: number, faltando: number, etapas: readonly string[]): EmpresaDaPessoa[] => [
+    ...Array.from({ length: Math.min(faltando, 8) }, (_, i) => ({ nome: 'EMPRESA EXEMPLO ' + (101 + i) + ' LTDA', situacao: (i === 0 ? 'parada' : i % 3 === 2 ? 'nao-iniciada' : 'em-andamento') as EmpresaDaPessoa['situacao'], etapa: etapas[i % etapas.length], feitas: i % 3 === 2 ? 0 : 3 + (i % 4), total: 9 })),
+    ...Array.from({ length: Math.min(feitas, 6) }, (_, i) => ({ nome: 'COMÉRCIO EXEMPLO ' + (201 + i) + ' LTDA', situacao: 'concluida' as const, etapa: '', feitas: 9, total: 9 })),
+  ];
+  const FISCAL = ['Conferir as saídas no SIEG', 'Apurar o Simples', 'Subir a guia do DAS', 'Conferir as entradas'];
+  const CONTABIL = ['Importar o extrato', 'Conciliar o banco', 'Conferir o balancete', 'Lançar a folha'];
   return {
     atualizadoEm: agora.toISOString(),
     rotinas: [
-      { setor: 'fiscal', competencia: mes(-1), pessoas: [{ nome: 'Heverton', feitas: 38, faltando: 6 }, { nome: 'Adivania', feitas: 41, faltando: 2 }, { nome: 'Gustavo', feitas: 30, faltando: 0 }] },
-      { setor: 'contabil', competencia: mes(-1), pessoas: [{ nome: 'Fernando', feitas: 12, faltando: 9 }, { nome: 'Felipe', feitas: 15, faltando: 4 }, { nome: 'Clara', feitas: 8, faltando: 5 }] },
+      { setor: 'fiscal', competencia: mes(-1), pessoas: [{ nome: 'Heverton', feitas: 38, faltando: 6, empresas: empresas(38, 6, FISCAL) }, { nome: 'Adivania', feitas: 41, faltando: 2, empresas: empresas(41, 2, FISCAL) }, { nome: 'Gustavo', feitas: 30, faltando: 0, empresas: empresas(30, 0, FISCAL) }] },
+      { setor: 'contabil', competencia: mes(-1), pessoas: [{ nome: 'Fernando', feitas: 12, faltando: 9, empresas: empresas(12, 9, CONTABIL) }, { nome: 'Felipe', feitas: 15, faltando: 4, empresas: empresas(15, 4, CONTABIL) }, { nome: 'Clara', feitas: 8, faltando: 5, empresas: empresas(8, 5, CONTABIL) }] },
     ],
     dp: { competencia: mes(-1), feitas: 96, pendentes: 18, atrasadas: 3, sem: 22 },
     guias: { competencia: mes(-1), enviadas: 412, abertas: 287, pagas: 154 },
     clientes: { abertas: 7, respondidas: 4, nota: 4.6, avaliacoes: 11, documentosFaltando: 23, mandeiAbertos: 9 },
     entregas: { aEntregar: 14, noLink: 6, confirmadas: 132, falhas: 1 },
-    equipe: { atrasadas: 5, pessoas: [{ nome: 'Fernando', atrasadas: 3 }, { nome: 'Clara', atrasadas: 2 }] },
+    equipe: { atrasadas: 5, pessoas: [
+      { nome: 'Fernando', atrasadas: 3, tarefas: [{ titulo: 'Conferir o balancete de setembro', prazo: dia(-6) }, { titulo: 'Mandar o contrato social atualizado', prazo: dia(-3) }, { titulo: 'Responder a dúvida do cliente 356', prazo: dia(-1) }] },
+      { nome: 'Clara', atrasadas: 2, tarefas: [{ titulo: 'Atualizar o cadastro dos sócios', prazo: dia(-4) }, { titulo: 'Lançar as notas de entrada', prazo: dia(-2) }] },
+    ] },
   };
 }
 
 // ------------------------------- a equipe em cartões (o visual de 18/11/2026: "faz algo bonito") -------------------------------
 
 export type TomDoInsight = 'bom' | 'alerta' | 'ruim';
-export interface PessoaDaEquipe { nome: string; setor: 'Fiscal' | 'Contábil'; feitas: number; total: number; pct: number; tom: TomDoInsight; atrasadas: number }
+export interface PessoaDaEquipe { nome: string; setor: 'Fiscal' | 'Contábil'; feitas: number; total: number; pct: number; tom: TomDoInsight; atrasadas: number; empresas: EmpresaDaPessoa[]; tarefas: TarefaAtrasada[] }
 
 /** O tom do percentual concluído: 90% ou mais é bom; de 60% a 89%, alerta; abaixo, ruim. */
 export const tomDoPercentual = (pct: number): TomDoInsight => (pct >= 90 ? 'bom' : pct >= 60 ? 'alerta' : 'ruim');
 
 /** Cada pessoa das rotinas (Fiscal e Contábil) com o percentual concluído e as tarefas atrasadas dela; a mais atrasada antes. */
 export function equipeDosInsights(r: ResumoDosInsights): PessoaDaEquipe[] {
-  const atrasadas = new Map(r.equipe.pessoas.map(p => [p.nome.trim().toLowerCase(), p.atrasadas]));
+  const atrasadas = new Map(r.equipe.pessoas.map(p => [p.nome.trim().toLowerCase(), p]));
   const lista = r.rotinas.flatMap(s => s.pessoas.filter(p => p.nome !== SEM_RESPONSAVEL).map(p => {
     const total = p.feitas + p.faltando;
     const pct = total ? Math.round((p.feitas / total) * 100) : 100;
-    return { nome: p.nome, setor: s.setor === 'fiscal' ? 'Fiscal' as const : 'Contábil' as const, feitas: p.feitas, total, pct, tom: tomDoPercentual(pct), atrasadas: atrasadas.get(p.nome.trim().toLowerCase()) ?? 0 };
+    const q = atrasadas.get(p.nome.trim().toLowerCase());
+    return { nome: p.nome, setor: s.setor === 'fiscal' ? 'Fiscal' as const : 'Contábil' as const, feitas: p.feitas, total, pct, tom: tomDoPercentual(pct), atrasadas: q?.atrasadas ?? 0, empresas: p.empresas ?? [], tarefas: q?.tarefas ?? [] };
   }));
   return lista.sort((a, b) => a.pct - b.pct || b.atrasadas - a.atrasadas || a.nome.localeCompare(b.nome, 'pt-BR'));
 }

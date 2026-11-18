@@ -183,7 +183,14 @@ export const APLICACOES: readonly Aplicacao[] = [
   // a Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de Insights eu quero", "esses paineis so vao ser vistos por diretor e admin", "Todos os seis"):
   // só Diretor e admin, e só no modo desenvolvedor até o Vitor aprovar (a novidade 'insights')
   { id: 'insights', nome: 'Insights', icone: 'barChart', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'painel', rotulo: 'Painel', icone: 'barChart', titulo: 'Insights do escritório' },
+    // cada assunto numa página do menu lateral (o dono, 18/11/2026: "pode dividir em menu lateral")
+    { id: 'painel', rotulo: 'Visão geral', icone: 'painel', titulo: 'Insights do escritório' },
+    { id: 'equipe', rotulo: 'Equipe', icone: 'equipe', titulo: 'A equipe no mês' },
+    { id: 'dp', rotulo: 'Departamento Pessoal', icone: 'usuario', titulo: 'Departamento Pessoal' },
+    { id: 'guias', rotulo: 'Guias', icone: 'fileText', titulo: 'Guias' },
+    { id: 'clientes', rotulo: 'Clientes', icone: 'mensagem', titulo: 'Clientes' },
+    { id: 'entregas', rotulo: 'Entregas físicas', icone: 'caminhao', titulo: 'Entregas físicas' },
+    { id: 'tarefas', rotulo: 'Tarefas atrasadas', icone: 'clock', titulo: 'Tarefas atrasadas' },
   ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,

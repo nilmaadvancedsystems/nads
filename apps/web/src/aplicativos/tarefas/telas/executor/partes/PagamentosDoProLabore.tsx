@@ -2,7 +2,7 @@
 // Pró-labore a pagar (importado, o check que vira × e tira) e, com ele, só a conta do crédito, o dia útil do pagamento (1º
 // ao 5º do mês seguinte) e o ícone do "Importar no meu Sistema" (o .xls do Alterdata). A relação do razão não aparece.
 import { CampoArquivo, Icone, MenuSuspenso, MenuSuspenso as Menu } from '@nads/ui';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { usePagamentosDoProLabore } from '../usePagamentosDoProLabore';
 import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../comum/BotaoDiario';
@@ -11,8 +11,18 @@ import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosM
 import type { PagamentosDoProLabore as VmProLabore } from '../usePagamentosDoProLabore';
 
 /** travado: o item Pró-labore marcado no checklist — os botões ficam travados (Vitor, 14/10/2026) */
-export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, meses }: { empresa: string; codigo: number | null; contaDoItem: string; travado?: boolean; meses?: readonly string[] }) {
+export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado, meses, aoFicarTudoPago }: {
+  empresa: string; codigo: number | null; contaDoItem: string; travado?: boolean; meses?: readonly string[];
+  /** tudo pago no período: marca o item do checklist (Vitor, 18/11/2026: "dando tudo pago, voce da o check automatico"); uma vez por tela */
+  aoFicarTudoPago?: () => void;
+}) {
   const vm = usePagamentosDoProLabore(empresa, codigo, contaDoItem, meses);
+  const marcou = useRef(false);
+  useEffect(() => {
+    if (!vm.tudoPago || travado || marcou.current || !aoFicarTudoPago) return;
+    marcou.current = true;
+    aoFicarTudoPago();
+  }, [vm.tudoPago, travado, aoFicarTudoPago]);
   // gerar os lançamentos só se a pessoa quiser (18/11/2026: "so deixa a importacao se o cara quiser, nao deixa aparecer de cara"):
   // a conta, o dia útil e o Baixar ficam atrás do "Gerar lançamentos" (para todos desde 18/11/2026)
   const [gerar, setGerar] = useState(false);
