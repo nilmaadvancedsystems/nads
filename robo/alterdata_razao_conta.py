@@ -431,7 +431,8 @@ BOTOES = {}
 
 
 def preencher(h):
-    contar_tela(h, 'a consulta de lançamentos')
+    # a tela é lida UMA vez, aqui, com a grade vazia (18/11/2026, Vitor: "ta com um delay antes de clicar em exportar": cada leitura
+    # da tela inteira pelo UI Automation leva segundos; a descrição completa da tela só vai para o log quando dá erro, no falhar)
     x0, y0, _, _ = win32gui.GetWindowRect(h)
     its = itens(h)
     # o Imprimir guardado agora, com a grade vazia (17/11/2026, Vitor: "um delay imenso para salvar em excel": depois do Consultar,
@@ -449,7 +450,6 @@ def preencher(h):
     time.sleep(1.5)
     mensagem_na_frente('ao escolher a empresa ' + CODIGO)
     # a conta: a caixa estreita da mesma linha, depois da empresa (as largas são os nomes que o Alterdata mostra)
-    its = itens(h)
     textos = sorted([e for e in its if classe(e) == 'TcxTextEdit'], key=lambda e: (caixa(e)[1] // 20, caixa(e)[0]))
     linha = [e for e in textos if abs(caixa(e)[1] - caixa(emp)[1]) < 15 and caixa(e)[0] > caixa(emp)[0] + 5]
     estreitas = [e for e in linha if caixa(e)[2] - caixa(e)[0] < 250]
@@ -462,7 +462,6 @@ def preencher(h):
     time.sleep(1)
     mensagem_na_frente('ao escolher a conta ' + CONTA)
     passo('período ' + INICIO + ' a ' + FIM)
-    its = itens(h)
     mascaras = sorted([e for e in its if classe(e) == 'TcxMaskEdit'], key=lambda e: (caixa(e)[1] // 20, caixa(e)[0]))
     if len(mascaras) < 2:
         falhar('não achei as duas datas do período')
@@ -476,8 +475,9 @@ def preencher(h):
         falhar('o período na tela (' + ' a '.join(lidos) + ') não é o pedido (' + INICIO + ' a ' + FIM + ')')
     mensagem_na_frente('ao preencher o período')
     passo('consultando')
-    its = itens(h)
     f = next((e for e in its if norm(nome(e)) == 'consultar' and tipo(e) == 'Button'), None)
+    if not f:
+        f = next((e for e in itens(h) if norm(nome(e)) == 'consultar' and tipo(e) == 'Button'), None)
     if not f:
         falhar('não achei o Consultar')
     clicar(f, 'Consultar')
