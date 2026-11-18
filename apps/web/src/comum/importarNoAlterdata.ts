@@ -8,6 +8,7 @@
 import { ligadoAoBanco } from './modoDesenvolvedor';
 import { contaDoEntregas } from '../aplicativos/tarefas/dados/entregas.firestore';
 import { gravarPedidoAlterdata, ouvirPedidoAlterdata } from '../aplicativos/tarefas/dados/importarNoAlterdata.firestore';
+import { roboDePcDoUsuario } from '../aplicativos/tarefas/dados/notasDoFiscal.firestore';
 
 export interface ImportacaoNoAlterdata {
   id: string;
@@ -56,17 +57,20 @@ function doBanco(id: string, d: Record<string, unknown>): ImportacaoNoAlterdata 
  * corrigir"): o botão fica apagado em todas as telas e nenhum pedido sai. Volta quando ele liberar (false).
  */
 export const IMPORTAR_DESLIGADO = true;
+/** desligado para todos, menos para o dono do robô de PC (o botão Vitor, 18/11/2026: o teste do lote "Importacao nads" no PC dele) */
+export const importarDesligado = (): boolean => IMPORTAR_DESLIGADO && !roboDePcDoUsuario();
 export const MOTIVO_DESLIGADO = 'Importar no Alterdata está desligado por enquanto (em correção). Baixe a planilha e importe você.';
 
 export async function pedirImportacao(p: PedidoDeImportacao, quem: string): Promise<string> {
-  if (IMPORTAR_DESLIGADO) throw new Error(MOTIVO_DESLIGADO);
+  if (importarDesligado()) throw new Error(MOTIVO_DESLIGADO);
   const planilha = paraBase64(p.planilha);
   if (planilha.length > LIMITE_BASE64) throw new Error('a planilha passou do tamanho que o robô recebe (' + p.linhas + ' lançamentos); divida em duas');
   if (!ligadoAoBanco()) return exemplo(p);
   const conta = contaDoEntregas();
   if (!conta) throw new Error('entre no nads de novo para mandar ao robô');
   return gravarPedidoAlterdata({
-    status: 'pendente', tipo: 'importar', codigo: p.codigo, empresa: p.empresa.slice(0, 200), lote: p.lote.slice(0, 60),
+    // o dono do robô de PC importa no PC dele (a fila só dele); os outros, no servidor
+    status: roboDePcDoUsuario() ? 'pendentePc' : 'pendente', tipo: 'importar', codigo: p.codigo, empresa: p.empresa.slice(0, 200), lote: p.lote.slice(0, 60),
     origem: p.origem.slice(0, 40), planilha, linhas: p.linhas, criadoEm: new Date().toISOString(),
     criadoPor: (quem || conta.email).slice(0, 200), criadoPorUid: conta.uid,
   });

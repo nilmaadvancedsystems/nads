@@ -337,7 +337,7 @@ function iniciarAlterdata(db, log) {
       const quem = ped.exists ? String(ped.data().criadoPorUid || '') : '';
       // o robô de um PC sem dono no robosDePc.json não pega nada (ALTERDATA_SO_DONO, alterdata-no-pc.js)
       if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
-      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ped.data().tipo === 'fiscal')) return null;
+      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ['fiscal', 'importar'].includes(ped.data().tipo))) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
       // o razão de uma conta usa o Contábil (o de sempre)
       if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
