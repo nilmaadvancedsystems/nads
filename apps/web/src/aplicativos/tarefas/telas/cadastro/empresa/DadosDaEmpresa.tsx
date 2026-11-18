@@ -1,14 +1,16 @@
 // Cadastro › a empresa, no estilo das configurações do Notion (Vitor, 14/10/2026: "adicionando na parte de empresa os
 // dados dela, e melhorando a parametrização no estilo do Notion; parametrizações por setor"). Três telas:
-//   - DadosDaEmpresa (Empresa): a identificação e a situação na Receita (o que o Entregas já tem), o contato e os sócios;
-//     a razão social, que só o diretor troca (13/11/2026);
+//   - DadosDaEmpresa (Empresa): a identificação e a situação na Receita (o que o Entregas já tem e, desde 17/11/2026, o
+//     Consultar na Receita: a consulta na hora, o antes × depois e o gravar só o escolhido), o contato e os sócios; a razão
+//     social, que só o diretor troca (13/11/2026);
 //   - ParametrosContabeis (Contábil › Parâmetros): os cartões, a liquidação de cobrança e a nota de honorário;
 //   - ParametrosFiscais (Fiscal › Parâmetros): o regime tributário, se presta serviços e os parâmetros da planilha do
 //     Fiscal (29/10/2026: segmento, monofásico, ICMS-ST, antecipação, DIFAL, retenções, benefício, parcelamento…).
 // Cada opção numa linha solta (ConfigLinha): o nome, a descrição curta e o controle à direita.
 import { empresas } from '@nads/core';
-import { BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
+import { JanelaDaReceita } from './JanelaDaReceita';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
 const dataBr = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : iso; };
@@ -71,7 +73,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   const d = vm.entregas.dados;
-  const r = d?.receita || null;
+  const nr = vm.naReceita;
   const linhas = [...vm.socios, ...(novo ? [{ nome: '', cpf: '' }] : [])];
   /** grava ao sair do campo: a lista inteira, com esta linha trocada */
   const mudar = (i: number, campo: 'nome' | 'cpf', v: string) => {
@@ -82,16 +84,20 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   };
   const tirar = (i: number) => { if (i >= vm.socios.length) setNovo(false); else vm.definirSocios(vm.socios.filter((_, j) => j !== i)); };
   const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
-  const ativa = !r?.situacao || r.situacao === 'ATIVA';
+  const ativa = !nr.situacao || nr.situacao === 'ATIVA';
+  const simples = nr.mei?.optante ? 'MEI' + (nr.mei.desde ? ' desde ' + dataBr(nr.mei.desde) : '')
+    : nr.simples?.optante ? 'Simples' + (nr.simples.desde ? ' desde ' + dataBr(nr.simples.desde) : '')
+      : nr.simples?.optante === false ? 'Fora do Simples' + (nr.simples.exclusao ? ' (excluída em ' + dataBr(nr.simples.exclusao) + ')' : '') : '';
+  const conferido = vm.conferidoNaReceita;
   return (
     <>
       <ConfigSecao titulo="Identificação">
         <ConfigLinha titulo="CNPJ"><Valor v={vm.cnpj ? empresas.cadastro.cnpjFormatado(vm.cnpj) : ''} /></ConfigLinha>
         <LinhaDaRazaoSocial vm={vm} />
-        <ConfigLinha titulo="Nome fantasia"><Valor v={d?.nomeFantasia || ''} /></ConfigLinha>
+        <ConfigLinha titulo="Nome fantasia"><Valor v={nr.fantasia ?? d?.nomeFantasia ?? ''} /></ConfigLinha>
         <ConfigLinha titulo="Código no Alterdata"><Valor v={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : ''} /></ConfigLinha>
         <ConfigLinha titulo="Inscrição estadual"><Valor v={d?.inscricaoEstadual || ''} /></ConfigLinha>
-        <ConfigLinha titulo="Endereço"><Valor v={[r?.endereco || d?.endereco, !r?.endereco ? d?.cidade : ''].filter(Boolean).join(' · ')} /></ConfigLinha>
+        <ConfigLinha titulo="Endereço"><Valor v={(nr.endereco ? [nr.endereco, nr.complemento, nr.cep ? 'CEP ' + nr.cep : ''] : [d?.endereco, d?.cidade]).filter(Boolean).join(' · ')} /></ConfigLinha>
       </ConfigSecao>
       {/* quem cuida da empresa (17/11/2026: "a função de eu alterar o responsável fiscal e contábil aqui"): o Diretor troca
           direto, sem pedir o aceite; a transferência pedida no departamento cai */}
@@ -109,22 +115,41 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         ))}
       </ConfigSecao>
 
-      <ConfigSecao titulo="Na Receita" acao={r?.conferidoEm ? <span className="hint">conferido em {dataBr(r.conferidoEm.slice(0, 10))}</span> : undefined}>
-        {!r ? (
-          <ConfigLinha titulo="Sem consulta" descricao={vm.entregas.carregado ? 'O Entregas ainda não consultou o CNPJ desta empresa na Receita.' : 'Lendo o Entregas…'} />
+      {/* a situação na Receita: o retrato do vigia do Entregas (toda semana) ou o gravado aqui; "Consultar na Receita" pergunta
+          na hora e abre o antes × depois (17/11/2026) */}
+      <ConfigSecao titulo="Na Receita" acao={(
+        <span className="cfg-razao">
+          {conferido && <span className="hint">conferido em {dataBr(conferido.em.slice(0, 10))}{conferido.por ? ' por ' + conferido.por : ''}</span>}
+          <BotaoAcao className="btn" carregando={vm.consulta.consultando} textoCarregando="Consultando…" disabled={!vm.consulta.temCnpj}
+            title={vm.consulta.temCnpj ? 'Consultar o CNPJ na Receita agora' : 'A empresa não tem CNPJ'} onClick={() => { void vm.consulta.consultar(); }}>
+            <Icone nome="girar" />Consultar na Receita
+          </BotaoAcao>
+        </span>
+      )}>
+        {vm.consulta.erro && <ConfigLinha titulo="A consulta não deu certo" aviso={vm.consulta.erro} />}
+        {!nr.situacao ? (
+          <ConfigLinha titulo="Sem consulta" descricao={vm.entregas.carregado ? 'Ninguém consultou o CNPJ desta empresa na Receita ainda. Use Consultar na Receita.' : 'Lendo o Entregas…'} />
         ) : (
           <>
-            <ConfigLinha titulo="Situação" descricao={r.situacaoDesde ? 'desde ' + dataBr(r.situacaoDesde) : undefined}
+            <ConfigLinha titulo="Situação" descricao={[nr.situacaoDesde ? 'desde ' + dataBr(nr.situacaoDesde) : '', nr.motivoSituacao ? nr.motivoSituacao.toLowerCase() : ''].filter(Boolean).join(' · ') || undefined}
               aviso={!ativa ? 'A empresa não está ativa na Receita.' : undefined}>
-              <span className={'badge ' + (ativa ? 'badge-ok' : 'badge-bad')}>{r.situacao || '—'}</span>
+              <span className={'badge ' + (ativa ? 'badge-ok' : 'badge-bad')}>{nr.situacao}</span>
             </ConfigLinha>
-            <ConfigLinha titulo="Atividade principal" descricao={r.cnaeDescricao || undefined}><Valor v={r.cnae} /></ConfigLinha>
-            <ConfigLinha titulo="Natureza jurídica"><Valor v={r.naturezaJuridica} /></ConfigLinha>
-            <ConfigLinha titulo="Porte"><Valor v={r.porte} /></ConfigLinha>
-            <ConfigLinha titulo="Abertura"><Valor v={dataBr(r.abertura)} /></ConfigLinha>
+            <ConfigLinha titulo="Atividade principal" descricao={nr.cnae?.descricao || undefined}><Valor v={nr.cnae?.codigo || ''} /></ConfigLinha>
+            {nr.cnaesSecundarios && (
+              <ConfigLinha titulo="Atividades secundárias" descricao={nr.cnaesSecundarios.map(a => a.codigo + (a.descricao ? ' ' + a.descricao : '')).join(' · ') || undefined}>
+                <Valor v={nr.cnaesSecundarios.length ? String(nr.cnaesSecundarios.length) : 'Nenhuma'} />
+              </ConfigLinha>
+            )}
+            <ConfigLinha titulo="Natureza jurídica"><Valor v={nr.naturezaJuridica || ''} /></ConfigLinha>
+            <ConfigLinha titulo="Porte"><Valor v={nr.porte || ''} /></ConfigLinha>
+            {nr.capitalSocial != null && <ConfigLinha titulo="Capital social"><Valor v={'R$ ' + nr.capitalSocial.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} /></ConfigLinha>}
+            <ConfigLinha titulo="Simples / MEI"><Valor v={simples} /></ConfigLinha>
+            <ConfigLinha titulo="Abertura"><Valor v={dataBr(nr.abertura || '')} /></ConfigLinha>
           </>
         )}
       </ConfigSecao>
+      {vm.consulta.aberta && <JanelaDaReceita consulta={vm.consulta} />}
 
       {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
       <ConfigSecao titulo="Contato">
