@@ -4391,6 +4391,10 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .registro-busca{display:flex;align-items:center;gap:10px;padding:4px 4px 4px 14px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);}
 .registro-busca:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);}
 .registro-busca.com-erro{border-color:var(--danger);}
+/* o cartão CNPJ em PDF ao lado do Buscar na Receita (18/11/2026); o input do arquivo fica escondido dentro do rótulo */
+.registro-cartao{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;white-space:nowrap;}
+.registro-cartao svg{width:16px;height:16px;}
+@media (max-width:560px){.registro-cartao{font-size:0;gap:0;}.registro-cartao svg{width:18px;height:18px;}}
 .registro-busca > svg{width:18px;height:18px;flex:none;color:var(--ink-muted);}
 .registro-busca input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:var(--fs-18);font-weight:500;padding:8px 0;color:var(--ink);font-variant-numeric:tabular-nums;}
 .registro-busca input::placeholder{color:var(--ink-faint);font-weight:400;}

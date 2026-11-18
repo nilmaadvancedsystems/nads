@@ -6,6 +6,7 @@ export * from './regras';
 export * from './plano';
 export * from './entregas';
 export * from './receita';
+export * from './cartaoCnpj';
 export * from './repo';
 export { criarRepoCadastroMemoria, portaCadastroMemoria } from './repo.memoria';
 export * from './razaoSocial';

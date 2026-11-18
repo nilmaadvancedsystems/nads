@@ -2,7 +2,8 @@
 // ERP, o nome e o regime. Grava o cadastro da empresa (marcada como cadastrada pelo nads) e abre a janela dela.
 // Pelo CNPJ (13/10/2026: "coloca o cadastro por CNPJ via Receita"): a consulta preenche o nome e, no Simples ou no
 // MEI, o regime; fora do Simples, a pessoa escolhe Presumido ou Real. O CNPJ fica no cadastro.
-import { empresas, formatos } from '@nads/core';
+import { empresas, extrator, formatos, tarefas as t } from '@nads/core';
+import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDoCadastro } from '../../../casca/navegacao';
@@ -12,6 +13,8 @@ import { consultarCnpj } from '../../../dados/receita';
 import { useGravarCadastro } from '../../../dados/repo';
 
 export const REGIMES = empresas.cadastro.REGIMES;
+
+extrator.definirWorkerDoPdf(workerDoPdf);
 
 export function useNovaEmpresa(fechar: () => void) {
   const gravar = useGravarCadastro();
@@ -41,6 +44,29 @@ export function useNovaEmpresa(fechar: () => void) {
       setAvisoReceita(err instanceof Error ? err.message : String(err));
     } finally {
       setConsultando(false);
+    }
+  }
+  // o cartão CNPJ em PDF (Vitor, 18/11/2026: "upar o cartao do cnpj em pdf da empresa para realizar o cadastro, (nao e para
+  // armazenar) apenas pegue os dados e deixe digitado"): lido aqui no navegador, nada sobe; preenche o CNPJ e o nome, e o cartão
+  // aparece no lugar do que a Receita diria (o regime não está no cartão: a pessoa escolhe, ou busca na Receita)
+  const [lendoCartao, setLendoCartao] = useState(false);
+  async function lerCartao(f: File | null) {
+    if (!f || lendoCartao) return;
+    setLendoCartao(true);
+    setAvisoReceita('');
+    try {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      if (!extrator.ehPdf(bytes)) throw new Error('Esse arquivo não é um PDF. Use o cartão CNPJ (comprovante de inscrição) em PDF.');
+      const paginas = t.linhasDasPaginas(await extrator.itensDoPdf(bytes));
+      const d = empresas.cadastro.lerCartaoCnpj(paginas.map(l => l.join('\n')).join('\n'));
+      if (!d) throw new Error('Não reconheci o cartão CNPJ nesse PDF. Use o "Comprovante de Inscrição e de Situação Cadastral" da Receita.');
+      setReceita(d);
+      setCnpj(empresas.cadastro.cnpjFormatado(d.cnpj));
+      setNome(d.razaoSocial);
+    } catch (err) {
+      setAvisoReceita(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLendoCartao(false);
     }
   }
   /** o que a Receita disse, numa linha (a situação, o regime, a atividade e a cidade) */
@@ -86,7 +112,7 @@ export function useNovaEmpresa(fechar: () => void) {
   return {
     codigo, setCodigo, nome, setNome, regime, setRegime, erros, salvando, cadastrar, regimes: REGIMES,
     cnpj, setCnpj: (v: string) => { setCnpj(v); setReceita(null); setAvisoReceita(''); },
-    buscar, consultando, avisoReceita, resumoDaReceita, receitaAtiva: !receita || receita.situacao === 'ATIVA',
+    buscar, consultando, avisoReceita, lerCartao, lendoCartao, resumoDaReceita, receitaAtiva: !receita || receita.situacao === 'ATIVA',
     receita, outra, setOutra, feita,
     /** o regime veio da Receita (Simples ou MEI) e ninguém trocou */
     regimeDaReceita: !!receita?.regime && receita.regime === regime,
