@@ -7396,9 +7396,10 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 /* as Notificações em lista, com os filtros no alto (modo desenvolvedor, 18/11/2026) */
 .notif-filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;}
 .notif-filtros .num{opacity:.7;margin-left:4px;}
+.notif-filtros .chip-f{display:inline-flex;align-items:center;gap:6px;}
 .notif-filtros-espaco{flex:1;}
 .notif-lista{padding:0;overflow:hidden;}
-.notif-linha{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(90px,160px) minmax(110px,190px) auto 16px;align-items:center;gap:12px;width:100%;padding:12px 18px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer;}
+.notif-linha{display:grid;grid-template-columns:32px minmax(0,1fr) 130px 170px 130px 16px;align-items:center;gap:12px;width:100%;padding:10px 18px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer;}
 .notif-linha:hover{background:color-mix(in srgb,var(--accent) 6%,transparent);}
 .notif-linha.aberta{background:color-mix(in srgb,var(--accent) 10%,transparent);}
 .notif-linha.pendente .notif-icone{color:var(--warn);}
