@@ -9,8 +9,7 @@ import { BotaoIcone, Icone, LogoBanco, MenuSuspenso, Segmentado, SeletorMes, use
 import { useState, type ReactNode } from 'react';
 import { BotaoImportarNoAlterdata } from '../../../../comum/BotaoImportarNoAlterdata';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
-import { JanelaDoExtrato } from './JanelaDoExtrato';
-import { JanelaDosComprovantes } from './JanelaDosComprovantes';
+import { JanelaDoMes, type AbaDoMes } from './JanelaDoMes';
 import { useComprovantesDoLancatudo } from './useComprovantesDoLancatudo';
 import { Janela, JanelaDaLinha, JanelaDaRegra, JanelaDoPlano } from './Janelas';
 import { useLancatudo, type EmpresaDoLancatudo } from './useLancatudo';
@@ -47,16 +46,14 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
   const rotuloDoBanco = (b: Vm['banco']) => b.nome + (b.conta ? ' ' + b.conta : '');
   // o tutorial (18/11/2026): sozinho na primeira vez que a tela tem lançamentos; de novo pelo botão Tutorial
   const tutorial = useTutorialDoLancatudo(vm.pronto && vm.linhas.length > 0 && !regrasAbertas);
-  // o extrato e o razão do mês aqui mesmo (18/11/2026: "tem que ter como adicionar o extrato aqui ou puxar do drive")
-  const [extratoAberto, setExtratoAberto] = useState(false);
-  // os comprovantes (18/11/2026: "quero a opção de adicionar comprovantes, não só extratos")
+  // o extrato, o razão e os comprovantes do mês aqui mesmo, numa janela só (18/11/2026: "tem que ter como adicionar o extrato
+  // aqui ou puxar do drive"; "quero a opção de adicionar comprovantes"; "comprovantes e extratos na mesma tela")
   const comp = useComprovantesDoLancatudo(vm);
-  const [comprovantesAbertos, setComprovantesAbertos] = useState(false);
+  const [abaDoMes, setAbaDoMes] = useState<AbaDoMes | null>(null);
   return (
     <section className="lt">
-      {extratoAberto && <JanelaDoExtrato empresa={empresa} competencia={entrada.competencia} rotuloDoMes={vm.rotuloDoMes} fechar={() => setExtratoAberto(false)} />}
+      {abaDoMes && <JanelaDoMes vm={vm} c={comp} empresa={empresa} aba={abaDoMes} setAba={setAbaDoMes} fechar={() => setAbaDoMes(null)} />}
       {tutorial.aberto && <TutorialDoLancatudo fechar={tutorial.fechar} />}
-      {comprovantesAbertos && <JanelaDosComprovantes vm={vm} c={comp} fechar={() => setComprovantesAbertos(false)} />}
       {regrasAbertas && (
         <Janela titulo="Regras" fechar={() => setRegrasAbertas(false)} className="lt-janela-regras">
           <div className="registro-corpo"><Regras vm={vm} trocarBanco={entrada.setBanco} /></div>
@@ -74,21 +71,19 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
           itens={vm.bancos.map(b => ({ rotulo: <span className="lt-banco-item"><span className="lt-logo"><LogoBanco banco={b.marca || 'outro'} cor /></span>{rotuloDoBanco(b)}</span>, marcado: b.id === vm.banco.id, onClick: () => entrada.setBanco(b.id) }))} />
         </span>
         <span className="tarefas-barra-espaco" />
-        <button type="button" className="btn btn-outline" data-tut="lt-extrato" onClick={() => setExtratoAberto(true)} title="Importar o extrato e o razão do mês: do computador, do Drive ou do e-mail">
-          <Icone nome="upload" />Extrato e razão
+        <button type="button" className="btn btn-outline" data-tut="lt-extrato" onClick={() => setAbaDoMes('extrato')} title="O extrato, o razão e os comprovantes do mês: do computador, do Drive ou do e-mail">
+          <Icone nome="upload" />Extrato e comprovantes{vm.comprovantes.length > 0 && <span className="menu-contador" title="Comprovantes do mês">{vm.comprovantes.length}</span>}
         </button>
-        <button type="button" className="btn btn-outline" data-tut="lt-comprovantes" onClick={() => setComprovantesAbertos(true)} title="Os comprovantes do mês: do computador ou do Drive. Eles dizem quem é o cliente ou o fornecedor">
-          <Icone nome="clipe" />Comprovantes{vm.comprovantes.length > 0 && <span className="menu-contador">{vm.comprovantes.length}</span>}
-        </button>
-        {vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
         <button type="button" className="btn btn-outline" data-tut="lt-regras" onClick={() => setRegrasAbertas(true)} title="As regras da empresa e as contas que o nads aprendeu">
           <Icone nome="settings" />Regras<span className="menu-contador">{vm.regras.length}</span>
         </button>
+        {/* o Tutorial por último (18/11/2026: "tutorial fica por último") */}
+        {vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro lt-dica"><Icone nome="alert" />O banco recusou: {vm.erro}</p>}
       {vm.pronto && !vm.contaDoBanco && <ContaDoBanco vm={vm} rotulo={rotuloDoBanco(vm.banco)} />}
       {vm.semPlano && <p className="registro-dica lt-dica"><Icone nome="ajuda" />A empresa ainda não tem plano de contas no Cadastro: o código da conta vale como for digitado, sem conferir.</p>}
-      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setExtratoAberto(true)} verComprovante={comp.ver} />
+      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setAbaDoMes('extrato')} verComprovante={comp.ver} />
     </section>
   );
 }

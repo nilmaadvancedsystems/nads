@@ -7442,7 +7442,6 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .lcdpr-cod-nome.lt-cod-nome-c:not(.vazio){color:light-dark(#b42318,#ff8f86);}
 .lcdpr-partida-dc.lt-dc-credito{background:color-mix(in srgb,#d93a41 18%,transparent);color:light-dark(#b42318,#ff8f86);}
 .lt-banco-campo{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:8px;background:color-mix(in srgb,var(--ink) 6%,transparent);font-size:var(--fs-14);white-space:nowrap;overflow:hidden;}
-.lt-janela-extrato{margin:0;padding:8px 10px;border-radius:8px;background:var(--surface-2);font:var(--fs-13)/1.4 var(--font-mono, ui-monospace, monospace);color:var(--ink);word-break:break-word;}
 @media (max-width:720px){.lt-janela-linha .lcdpr-grade > .c-3,.lt-janela-linha .lcdpr-grade > .c-4,.lt-janela-linha .lcdpr-grade > .c-5{grid-column:span 12;}}
 
 /* o plano de contas em árvore (o eContador) */
@@ -7972,8 +7971,8 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .lt-conta-banco-texto svg{flex:none;width:15px;height:15px;color:var(--warn);}
 .lt-conta-banco-campo{width:110px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--ink);font:inherit;font-size:var(--fs-13);font-variant-numeric:tabular-nums;}
 .lt-conta-banco-campo:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);}
-.modal.lt-janela.lt-janela-extrato{max-width:1240px;width:min(1240px,100%);height:min(88dvh,900px);display:flex;flex-direction:column;}
-.lt-janela-extrato .lt-extrato-corpo{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 18px 18px;}
+.modal.lt-janela.lt-janela-mes{max-width:1240px;width:min(1240px,100%);height:min(88dvh,900px);display:flex;flex-direction:column;}
+.lt-janela-mes .lt-extrato-corpo{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 18px 18px;}
 .lt-extrato-avisos:empty{display:none;}
 .lt-conta-banco input.lt-conta-banco-campo{flex:none;width:110px;min-width:0;}
 .lt-conta-banco .btn{flex:none;}
@@ -7990,8 +7989,6 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .lt-quem-clipe svg{width:14px;height:14px;}
 @container (max-width:1000px){.lt-registro .c-quem{width:18%;}}
 /* Lançatudo: a janela dos comprovantes (18/11/2026) */
-.modal.lt-janela.lt-janela-comprovantes{max-width:1100px;width:min(1100px,100%);}
-.lt-janela-comprovantes .lt-comp-corpo{gap:12px;max-height:calc(100dvh - 150px);overflow-y:auto;padding:14px 20px 20px;}
 .lt-comp-soltar{padding:16px;}
 .lt-comp-botoes{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .lt-comp-botoes .btn svg,.lt-comp-botoes .btn img{width:16px;height:16px;}
@@ -8027,3 +8024,6 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
   .lt-registro td.lt-quem > *{display:none;}
   .lt-hist-quem{display:flex;}
 }
+/* Lançatudo: a janela do mês com as abas Extrato e razão · Comprovantes (18/11/2026) */
+.lt-mes-abas{display:flex;align-items:center;gap:10px;padding:10px 18px 0;}
+.lt-janela-mes .lt-comp-corpo{display:flex;flex-direction:column;gap:12px;}

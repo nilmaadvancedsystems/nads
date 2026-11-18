@@ -1,10 +1,9 @@
-// Os comprovantes do mês numa janela (18/11/2026: "quero a opção de adicionar comprovantes, não só extratos"; "com os
+// Os comprovantes do mês, a aba da janela do mês (18/11/2026: "quero a opção de adicionar comprovantes, não só extratos"; "com os
 // comprovantes tem como saber o cliente e afins… ele também precisa puxar os comprovantes do drive"). Em cima, do computador
 // (ou soltando os arquivos) e do Drive; o andamento da leitura e o que deu certo ou não. Embaixo, cada comprovante lido: o
 // arquivo (abre), a data, o valor, quem (o nome e o CPF/CNPJ) e a linha do extrato em que ele caiu (dá para trocar).
 import { Icone, LogoDrive, SoltarArquivos, Vazio } from '@nads/ui';
 import { useRef } from 'react';
-import { Janela } from './Janelas';
 import type { useComprovantesDoLancatudo } from './useComprovantesDoLancatudo';
 import type { useRegistroDoLancatudo } from './useRegistroDoLancatudo';
 
@@ -13,14 +12,12 @@ type Comp = ReturnType<typeof useComprovantesDoLancatudo>;
 
 const ROTULO_DO_TIPO: Record<string, string> = { pix: 'Pix', transferencia: 'TED', boleto: 'Boleto', guia: 'Guia', outro: 'Outro' };
 
-export function JanelaDosComprovantes({ vm, c, fechar }: { vm: Vm; c: Comp; fechar: () => void }) {
+export function ComprovantesDoMes({ vm, c }: { vm: Vm; c: Comp }) {
   const input = useRef<HTMLInputElement>(null);
   const lista = [...vm.comprovantes].sort((a, b) => (a.data || '9').localeCompare(b.data || '9') || a.nome.localeCompare(b.nome));
   const semLinha = lista.filter(x => !vm.linhaDoComprovante(x.id)).length;
   return (
-    <Janela titulo={'Comprovantes de ' + vm.rotuloDoMes.toLowerCase()} fechar={fechar} className="lt-janela-comprovantes"
-      selo={<span className="badge badge-neutral">{vm.banco.nome}{vm.banco.conta ? ' ' + vm.banco.conta : ''}</span>}>
-      <div className="registro-corpo lt-comp-corpo">
+      <div className="lt-comp-corpo">
         <SoltarArquivos aceitar={c.aceitar} multiplo onArquivos={c.doComputador} desabilitada={!!c.lendo} className="lt-comp-soltar"
           titulo="Solte os comprovantes aqui" dica="PDF ou imagem. O nads lê a data, o valor e quem recebeu ou pagou, e acha a linha do extrato.">
           <div className="lt-comp-botoes">
@@ -86,6 +83,5 @@ export function JanelaDosComprovantes({ vm, c, fechar }: { vm: Vm; c: Comp; fech
           </>
         ) : !c.lendo && <Vazio compacto icone="clipe" titulo="Nenhum comprovante neste mês" texto="Envie do computador ou puxe do Drive: cada comprovante vira o cliente ou o fornecedor da linha do extrato, e o CPF/CNPJ ajuda a achar a conta." />}
       </div>
-    </Janela>
   );
 }
