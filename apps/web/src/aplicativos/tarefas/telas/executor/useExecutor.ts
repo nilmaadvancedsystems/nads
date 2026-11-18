@@ -85,8 +85,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const minhas = dev ? [] : t.delegadas.etapasDaPessoaEmConjunto(listaDelegadas.tarefas, rotaEmpresa, periodo, euNaDelegacao).filter(id => rotina.etapas.some(e => e.id === id));
   const soAsMinhas = minhas.length > 0;
   const minhaPendente = (id: string) => (soAsMinhas && minhas.includes(id) && meses.some(c => !concluidaEm(id, c)) ? rotina.etapas.find(e => e.id === id) || null : null);
-  // a primeira que falta em algum mês do período
-  const primeira = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  // as etapas delegadas a outra pessoa, em aberto: quem delegou segue para as próximas enquanto ela faz (Vitor, 18/11/2026: "deleguei
+  // a tarefa pra clara, tenho que fazer as outras coisas"); só no modo desenvolvedor por enquanto
+  const comOutros = new Set(dev ? listaDelegadas.tarefas.filter(x => !!x.etapaDelegada && x.etapaDelegada.rota === rotaEmpresa && x.etapaDelegada.periodo === periodo
+    && x.status !== 'cancelada' && x.status !== 'concluida' && x.responsavel.uid !== euNaDelegacao).map(x => x.etapaDelegada!.etapa) : []);
+  const falta = (e: t.Etapa) => meses.some(c => !concluidaEm(e.id, c));
+  // a primeira que falta em algum mês do período (a delegada a outra pessoa fica para depois)
+  const primeira = empresa && meses.length ? rotina.etapas.find(e => !comOutros.has(e.id) && falta(e)) || rotina.etapas.find(falta) || null : null;
   // a rotina concluída em todos os meses (o "Tudo pronto"): dá para rever as etapas e reabrir a empresa (11/11/2026)
   const tudoPronto = !!empresa && carregada && meses.length > 0 && !primeira;
   // a pendente do grupo que dá para abrir fora da ordem (t.etapaLivre)
