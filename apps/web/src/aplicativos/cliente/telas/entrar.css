@@ -1,0 +1,11 @@
+/* A tela de entrar da Área do Cliente (18/11/2026: "a area de cliente vai ter senha de acesso") */
+.cli-entrar { max-width: 420px; width: 100%; justify-self: center; align-self: center; margin: 6vh auto 0; padding: 28px 28px 22px; display: grid; justify-items: center; gap: 12px; text-align: center; }
+.cli-entrar h1 { margin: 6px 0 0; font-size: 22px; }
+.cli-entrar-empresa { margin: 0; color: var(--ink-muted); font-size: var(--fs-14); }
+.cli-entrar-form { width: 100%; display: grid; gap: 12px; text-align: left; margin-top: 6px; }
+.cli-entrar-form label { display: grid; gap: 4px; }
+.cli-entrar-form label span { font-size: var(--fs-13); color: var(--ink-muted); }
+.cli-entrar-form input { width: 100%; }
+.cli-entrar-form .btn { width: 100%; justify-content: center; margin-top: 4px; }
+.cli-entrar-aviso { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: var(--fs-13); color: var(--success); }
+.cli-entrar-dica { margin: 4px 0 0; font-size: var(--fs-12); color: var(--ink-muted); }

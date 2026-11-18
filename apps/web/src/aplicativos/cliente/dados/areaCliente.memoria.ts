@@ -14,6 +14,8 @@ import { documentoFormatado, estadoDoEspelho } from './espelho';
 
 export const TOKEN_DE_EXEMPLO = 'exemplo';
 export const TOKEN_COMO_NO_BANCO = 'exemplo-real';
+/** o link de exemplo que pede senha (18/11/2026: "a area de cliente vai ter senha de acesso"): só a tela de entrar */
+export const TOKEN_COM_SENHA = 'exemplo-senha';
 export const TOKEN_COMO_NO_BANCO_VAZIO = 'exemplo-real-vazio';
 
 const dois = (n: number) => String(n).padStart(2, '0');
@@ -105,7 +107,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
   ];
 
   return {
-    carregado: true, valido: true, erro: '', exemplos: true, secoes: TODAS_AS_SECOES, tickets: [],
+    carregado: true, valido: true, pedeLogin: null, erro: '', exemplos: true, secoes: TODAS_AS_SECOES, tickets: [],
     // uma entrega pelo link esperando a confirmação (18/11/2026, ficha confirmar-entrega)
     // um parcelamento de exemplo (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir")
     parcelamentos: [{ id: 'pgfn-1', orgao: 'PGFN · Dívida ativa', modalidade: 'Transação tributária', parcela: 12, parcelas: 60, valorParcela: 350.5, vencimento: br(new Date(hoje.getFullYear(), hoje.getMonth() + (hoje.getDate() > 20 ? 1 : 0), 20)) }],
@@ -413,6 +415,7 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
 
   return {
     assinar(token, aoMudar) {
+      if (token === TOKEN_COM_SENHA) { aoMudar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: 'PERSONALY COMPANY LTDA' } }); return () => undefined; }
       if (!de(token)) { aoMudar({ ...AREA_VAZIA, carregado: true }); return () => undefined; }
       // os tickets do Mandei das empresas do link (11/11/2026), os do exemplo do Mandei neste navegador
       const avisar = () => {
@@ -448,6 +451,10 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
     },
+    // a senha (no exemplo, nunca pede) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa")
+    async entrar() { await new Promise(r => setTimeout(r, 300)); throw new Error('Na versão de exemplo ninguém entra: é só para ver a tela.'); },
+    async criarSenha() { await new Promise(r => setTimeout(r, 300)); },
+    async sair() { /* nada a sair */ },
     // a avaliação: no exemplo não vai a lugar nenhum (o robô gravaria no chamado interno) (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
     async avaliarChamado() {
       await new Promise(r => setTimeout(r, 300));
