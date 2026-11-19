@@ -7,19 +7,15 @@ import { modoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { EtapaProvider, type EtapaAberta } from '../executor/etapas/contexto';
 import { PonteDaEtapaProvider } from '../executor/etapas/ponte';
 import { TelaDaEtapa } from '../executor/etapas/TelaDaEtapa';
-import { Janela } from './Janelas';
 
 const nada = () => {};
 const PONTE = { porMes: {}, periodo: null, etapaConcluida: false, marcarSemMovimento: nada, trocarCompetencia: nada, encerrarPeriodo: nada, assinarDestaque: () => nada };
 
-export function JanelaDoExtrato({ empresa, competencia, rotuloDoMes, fechar }: {
-  empresa: { codigo: number; nome: string }; competencia: string; rotuloDoMes: string; fechar: () => void;
-}) {
+export function ExtratoDoMes({ empresa, competencia }: { empresa: { codigo: number; nome: string }; competencia: string }) {
   const [alvoDosAvisos, setAlvo] = useState<HTMLElement | null>(null);
   const etapa: EtapaAberta = { nome: empresa.nome, codigo: empresa.codigo, competencia, meses: [competencia], dev: modoDesenvolvedor(), prestaServico: null, mesesDaTarefa: false };
   return (
-    <Janela titulo={'Extrato e razão de ' + rotuloDoMes.toLowerCase()} fechar={fechar} className="lt-janela-extrato">
-      <div className="registro-corpo lt-extrato-corpo">
+    <>
         <div ref={setAlvo} className="lt-extrato-avisos" />
         <div className="executor-ferramenta">
           <EtapaProvider etapa={etapa} onRequisitos={nada} onTeste={nada} onAbas={nada} onBalancete={nada} alvoDosAvisos={alvoDosAvisos}>
@@ -28,7 +24,6 @@ export function JanelaDoExtrato({ empresa, competencia, rotuloDoMes, fechar }: {
             </PonteDaEtapaProvider>
           </EtapaProvider>
         </div>
-      </div>
-    </Janela>
+    </>
   );
 }
