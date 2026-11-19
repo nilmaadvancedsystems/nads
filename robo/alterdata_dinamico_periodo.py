@@ -368,7 +368,11 @@ def meses_do_periodo():
 
 def principal_do_contabil():
     hs = [h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmPrincipal']
-    return hs[0] if len(hs) == 1 else None
+    # mais de um Contábil aberto (Vitor, 19/11/2026): usa um deles, o que não está travado por uma janela
+    hs.sort(key=lambda h: 0 if win32gui.IsWindowEnabled(h) else 1)
+    if len(hs) > 1:
+        print('TELA: ' + str(len(hs)) + ' Contábil abertos: usei um deles', flush=True)
+    return hs[0] if hs else None
 
 
 class _W:
@@ -403,9 +407,11 @@ def abrir_a_consulta(principal):
     except Exception as e:
         falhar('não achei Consultas → Balancete Dinâmico: ' + str(e)[:300])
 
+    # com mais de um Contábil aberto (19/11/2026), só a do Contábil escolhido
+    pid = proc.pid_da_janela(principal)
     def nova():
         fechar_novidades()
-        return next((h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmBalanceteDinamicoConsulta'), None)
+        return next((h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmBalanceteDinamicoConsulta' and proc.pid_da_janela(h) == pid), None)
     h = esperar(nova, 40)
     if not h:
         mensagem_na_frente('ao abrir o Balancete Dinâmico')
@@ -579,7 +585,7 @@ try:
         fim(ok=False, erro='o Alterdata Contábil está na tela de login')
     principal = principal_do_contabil()
     if not principal:
-        fim(ok=False, erro='o Alterdata Contábil não está aberto (ou há dois abertos)')
+        fim(ok=False, erro='o Alterdata Contábil não está aberto')
     win32gui.ShowWindow(principal, win32con.SW_MAXIMIZE)
     try:
         win32gui.SetForegroundWindow(principal)

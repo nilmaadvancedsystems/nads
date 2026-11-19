@@ -37,15 +37,15 @@ function faixaDosAlertas(): HTMLElement {
  * Aparece de novo quando o título ou o texto mudam, ou quando a tela abre outra vez. naLinha: na própria tela (o catálogo).
  * A pergunta (pergunta, ou o título que acaba em "?") não some nem tem ×: fica até a pessoa responder (Vitor, 08/10/2026).
  */
-export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; naLinha?: boolean; pergunta?: boolean; className?: string }) {
+export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; /** no lugar do ícone do tom (na linha) */ icone?: NomeIcone; children?: ReactNode; onFechar?: () => void; naLinha?: boolean; pergunta?: boolean; className?: string }) {
   if (p.naLinha) return <CaixaDoAlerta {...p} />;
   return <AlertaNoTopo key={p.titulo + '|' + (typeof p.texto === 'string' || typeof p.texto === 'number' ? p.texto : '')} {...p} />;
 }
 
-function CaixaDoAlerta({ titulo, texto, tom, children, fechar, className }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; fechar?: () => void; className?: string }) {
+function CaixaDoAlerta({ titulo, texto, tom, icone, children, fechar, className }: { titulo: string; texto?: ReactNode; tom?: 'ok'; icone?: NomeIcone; children?: ReactNode; fechar?: () => void; className?: string }) {
   return (
     <div className={'alert' + (tom === 'ok' ? ' alert-ok' : '') + (className ? ' ' + className : '')} role="status">
-      <Icone nome={tom === 'ok' ? 'checkCircle' : 'alert'} />
+      <Icone nome={icone || (tom === 'ok' ? 'checkCircle' : 'alert')} />
       <div>
         {titulo && <p className="alert-title">{titulo}</p>}
         {texto != null && texto !== '' && <p className="alert-text">{texto}</p>}

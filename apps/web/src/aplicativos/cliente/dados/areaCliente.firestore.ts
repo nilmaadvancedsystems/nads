@@ -64,7 +64,10 @@ function erroDoLogin(e: unknown): string {
   if (c === 'auth/too-many-requests') return 'Muitas tentativas. Espere alguns minutos e tente de novo.';
   if (c === 'auth/network-request-failed') return 'Sem internet agora. Confira a conexão e tente de novo.';
   if (c === 'auth/invalid-email') return 'Este e-mail não parece certo.';
-  return 'E-mail ou senha não conferem. Se for o primeiro acesso, use "Criar ou trocar a senha".';
+  if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials')
+    return 'E-mail ou senha não conferem. Se for o primeiro acesso, use "Criar ou trocar a senha".';
+  // o resto (um problema do lado do escritório): o código ajuda o escritório a achar a causa
+  return 'Não deu certo agora' + (c ? ' (' + c.replace('auth/', '') + ')' : '') + '. Tente de novo; se continuar, avise o escritório.';
 }
 
 const LINK_RUIM = 'Este link não vale mais. Peça um novo ao escritório.';
@@ -192,19 +195,20 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       const aoLink = (s: DocumentSnapshot) => {
         ultimaFoto = s;
         if (!s.exists()) { invalido(); return; }
+        const nome = s.get('nome');
+        nomeDoLink = typeof nome === 'string' ? nome.trim() : '';
+        // a senha vem antes de tudo, também na empresa de teste (assim dá para testar a tela de entrar nela; 18/11/2026)
+        if (s.get('exigeSenha') === true && !autorizado) {
+          ouvirLogin();
+          if (!ouvindoEspelho && !pararTeste) mostrar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: nomeDoLink } });
+          return;
+        }
         // a empresa de teste: para de ouvir o banco e mostra os dados de exemplo
         if (teste && linkDaEmpresaDeTeste(s.get('codigos'))) {
           if (pararTeste) return;
           parar();
           deTeste.add(token);
           pararTeste = teste.repo.assinar(teste.token, aoMudar);
-          return;
-        }
-        const nome = s.get('nome');
-        nomeDoLink = typeof nome === 'string' ? nome.trim() : '';
-        if (s.get('exigeSenha') === true && !autorizado) {
-          ouvirLogin();
-          if (!ouvindoEspelho) mostrar({ ...AREA_VAZIA, carregado: true, valido: true, pedeLogin: { nome: nomeDoLink } });
           return;
         }
         if (ouvindoEspelho) { desenhar(); return; }
@@ -273,11 +277,16 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     async criarSenha(token, email) {
       const e = email.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(e)) throw new Error('Este e-mail não parece certo.');
-      // volta para este link depois de criar a senha; o Firebase não diz se o e-mail existe (não deixa adivinhar quem tem acesso)
+      // volta para este link depois de criar a senha; o Firebase não diz se o e-mail existe (não deixa adivinhar quem tem acesso).
+      // Se o domínio da Área ainda não estiver na lista do login do Firebase (19/11/2026: UNAUTHORIZED_DOMAIN), manda sem a
+      // volta: a pessoa cria a senha na página do Firebase e abre o link de novo
+      const codigo = (err: unknown) => String((err as { code?: string } | null)?.code ?? '');
       try { await sendPasswordResetEmail(loginDoCliente(), e, { url: location.origin + '/cliente/' + token }); }
       catch (err) {
-        const c = String((err as { code?: string } | null)?.code ?? '');
-        if (c !== 'auth/user-not-found') throw new Error(erroDoLogin(err), { cause: err });
+        if (codigo(err) === 'auth/user-not-found') return;
+        if (!/unauthorized-(continue-uri|domain)|invalid-continue-uri/.test(codigo(err))) throw new Error(erroDoLogin(err), { cause: err });
+        try { await sendPasswordResetEmail(loginDoCliente(), e); }
+        catch (err2) { if (codigo(err2) !== 'auth/user-not-found') throw new Error(erroDoLogin(err2), { cause: err2 }); }
       }
     },
     async sair() {

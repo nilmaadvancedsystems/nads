@@ -9,11 +9,11 @@ import { useRazaoDaContaPeloRobo } from './useRazaoDaContaPeloRobo';
 import { useDinamicoPeloRobo } from './useDinamicoPeloRobo';
 
 /** O robô para o menu do ⬆: o nome no item, se está puxando e o pedir. */
-export interface RoboDoImportar { rotulo: string; andando: boolean; pedir: () => void; titulo?: string; /** a barra (0 a 100) e o Cancelar */ pct?: number; cancelar?: () => void }
+export interface RoboDoImportar { rotulo: string; andando: boolean; pedir: () => void; titulo?: string; /** a barra (0 a 100) e o Cancelar */ pct?: number; cancelar?: () => void; /** clicado, o robô ainda não conectou: a barra carregando (19/11/2026) */ conectando?: boolean }
 
 export function ComRoboDoRazao(p: { codigo: number | null; empresa: string; conta: string; meses: readonly string[]; importar: (f: File) => unknown; retomar?: boolean; children: (robo: RoboDoImportar | undefined) => ReactNode }) {
   const r = useRazaoDaContaPeloRobo(p);
-  const robo = r.disponivel ? { rotulo: r.rotulo, andando: r.andando, pct: r.pct, cancelar: r.cancelar, pedir: () => { void r.pedir(); }, titulo: 'Puxar o razão da conta ' + p.conta + ' do Alterdata' } : undefined;
+  const robo = r.disponivel ? { rotulo: r.rotulo, andando: r.andando, pct: r.pct, conectando: r.conectando, cancelar: r.cancelar, pedir: () => { void r.pedir(); }, titulo: 'Puxar o razão da conta ' + p.conta + ' do Alterdata' } : undefined;
   return (
     <>
       {p.children(robo)}
@@ -28,8 +28,9 @@ export function MenuDeImportar({ titulo, aceitar, travado, onArquivos, robo, gra
   // puxando (17/11/2026, Vitor: "coloca a opção de cancelar... coloca uma barra de progresso tbm"): a barra e o ×
   if (robo.andando) {
     return (
-      <span className="imp-robo-mini" title={'O robô de ' + robo.rotulo + ' está puxando ' + titulo}>
-        <span className="imp-robo-barra"><span style={{ width: Math.max(6, robo.pct || 0) + '%' }} /></span>
+      <span className="imp-robo-mini" role="status" title={robo.conectando ? 'Conectando ao robô de ' + robo.rotulo + '…' : 'O robô de ' + robo.rotulo + ' está puxando ' + titulo}>
+        {/* clicado e o robô ainda não conectou: a barra carregando, de um lado ao outro (19/11/2026) */}
+        <span className={'imp-robo-barra' + (robo.conectando ? ' conectando' : '')}><span style={robo.conectando ? undefined : { width: Math.max(6, robo.pct || 0) + '%' }} /></span>
         {robo.cancelar && <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={robo.cancelar} title="Cancelar: o robô para e volta o Alterdata ao ponto de antes" aria-label="Cancelar o robô"><Icone nome="x" /></button>}
       </span>
     );
@@ -56,7 +57,7 @@ export function MenuDeImportar({ titulo, aceitar, travado, onArquivos, robo, gra
 /** O mesmo para o Balancete dinâmico do período (17/11/2026). */
 export function ComRoboDoDinamico(p: { codigo: number | null; empresa: string; meses: readonly string[]; importar: (f: File) => unknown; children: (robo: RoboDoImportar | undefined) => ReactNode }) {
   const r = useDinamicoPeloRobo(p);
-  const robo = r.disponivel ? { rotulo: r.rotulo, andando: r.andando, pct: r.pct, cancelar: r.cancelar, pedir: () => { void r.pedir(); }, titulo: 'Puxar o Balancete Dinâmico do período do Alterdata' } : undefined;
+  const robo = r.disponivel ? { rotulo: r.rotulo, andando: r.andando, pct: r.pct, conectando: r.conectando, cancelar: r.cancelar, pedir: () => { void r.pedir(); }, titulo: 'Puxar o Balancete Dinâmico do período do Alterdata' } : undefined;
   return (
     <>
       {p.children(robo)}

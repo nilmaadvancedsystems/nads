@@ -370,7 +370,11 @@ def meses_do_periodo():
 
 def principal_do_contabil():
     hs = [h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmPrincipal']
-    return hs[0] if len(hs) == 1 else None
+    # mais de um Contábil aberto (Vitor, 19/11/2026): usa um deles, o que não está travado por uma janela
+    hs.sort(key=lambda h: 0 if win32gui.IsWindowEnabled(h) else 1)
+    if len(hs) > 1:
+        print('TELA: ' + str(len(hs)) + ' Contábil abertos: usei um deles', flush=True)
+    return hs[0] if hs else None
 
 
 class _W:
@@ -393,12 +397,18 @@ def abrir_a_consulta(principal):
     except Exception as e:
         falhar('não achei Consultas → Lançamentos: ' + str(e)[:300])
 
+    # com mais de um Contábil aberto (19/11/2026), só as janelas do Contábil escolhido; a consulta que já estava aberta nele é
+    # reaproveitada (o Contábil traz a mesma para a frente em vez de abrir outra; antes o robô esperava uma nova e desistia)
+    pid = proc.pid_da_janela(principal)
     def nova():
         for h in topo_do_fiscal():
-            if h not in antes and h != principal and win32gui.GetClassName(h).startswith('Tfrm') and 'aviso' not in win32gui.GetClassName(h).lower():
+            if h not in antes and h != principal and proc.pid_da_janela(h) == pid and win32gui.GetClassName(h).startswith('Tfrm') and 'aviso' not in win32gui.GetClassName(h).lower():
                 return h
         for h in janelas_dentro(principal):
             if win32gui.GetClassName(h) == 'TfrmConsultaMovimento':
+                return h
+        for h in topo_do_fiscal():
+            if win32gui.GetClassName(h) == 'TfrmConsultaMovimento' and proc.pid_da_janela(h) == pid:
                 return h
         return None
     h = esperar(nova, 40)
@@ -596,7 +606,7 @@ try:
         fim(ok=False, erro='o Alterdata Contábil está na tela de login')
     principal = principal_do_contabil()
     if not principal:
-        fim(ok=False, erro='o Alterdata Contábil não está aberto (ou há dois abertos)')
+        fim(ok=False, erro='o Alterdata Contábil não está aberto')
     win32gui.ShowWindow(principal, win32con.SW_MAXIMIZE)
     try:
         win32gui.SetForegroundWindow(principal)

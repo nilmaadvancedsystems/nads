@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { useContaDoTipo } from '../../useContaDoTipo';
 
 /** a cor pela natureza (Vitor, 07/10/2026): credor em vermelho, devedor em azul, zerado sem cor */
 const corDoSaldo = (saldo: number) => (saldo > 0.005 ? 'ext-neg' : saldo < -0.005 ? 'ext-azul' : '');
@@ -28,6 +29,9 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   const [semMovimento, setSemMovimento] = useGuardado<boolean>(chave + '|sem-mais-movimento', false);
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  // o botão Vitor do razão (19/11/2026): a informada na etapa ou, sem ela, a do balancete pelo nome ("adiantamento a fornecedores";
+  // Vitor, 19/11/2026: "tenta pegar do balancete... normalmente sao nomes obvios"); sem nenhuma, a etapa pede
+  const contaDoRobo = useContaDoTipo(s.nome, s.codigo, 'adiantamento-' + lado, '');
   const daImportacao = contabil.razaoDoTipo(lado === 'fornecedores' ? 'adiantamento-fornecedores' : 'adiantamento-clientes');
   const razao = proprio || (daImportacao ? { nome: rotuloDaImportacao(daImportacao), r: daImportacao.razao } : null);
 
@@ -62,6 +66,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   return {
+    robo: s.nome ? { empresa: s.nome, codigo: s.codigo, conta: contaDoRobo.conta, informar: contaDoRobo.informar, meses } : null,
     lado, nome, errado,
     semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
     /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */

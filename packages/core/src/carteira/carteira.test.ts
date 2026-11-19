@@ -37,9 +37,9 @@ describe('Carteira', () => {
     expect(mesDoPagamento(new Date(2026, 11, 31))).toBe('2027-01');
   });
 
-  it('os serviços comissionados: os 9 do começo, um novo sem repetir o id e a conferência', () => {
+  it('os serviços comissionados: os 10 do começo (a Alteração de MEI, 19/11/2026), um novo sem repetir o id e a conferência', () => {
     const l = servicosPadrao();
-    expect(l).toHaveLength(9);
+    expect(l).toHaveLength(10);
     expect(l[0]).toEqual({ id: 'emissao-de-nfe', nome: 'Emissão de NFE', percentual: 0 });
     expect(novoServico(l, 'Emissão de NFE ').id).toBe('emissao-de-nfe-2');
     expect(conferirServicos(l)).toEqual([]);

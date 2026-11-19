@@ -1,16 +1,23 @@
 // A etapa Adiantamento salarial (Vitor, 16/10/2026): a linha do razão (como a da folha: o importar; importado, o check que
-// vira × e tira), a grade dos meses — o descontado na folha, o pagamento e o dia dele, o dia certo (15 ou o útil antes), o
-// saldo (tem de zerar) e o que falta — e, faltando pagamento, as duas contas e o .xls de importação do Alterdata, na linha.
+// vira × e tira) e, como no Pró-labore (19/11/2026), a grade pago / não pago do período — o descontado na folha, o pago, o que
+// falta e o saldo — e, faltando pagamento, o "Gerar lançamentos" (o banco no menu e o .xls de importação do Alterdata).
 import { CampoArquivo, Icone } from '@nads/ui';
+import { ImportarRazaoComRobo } from '../../partes/ImportarRazaoComRobo';
 import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
-import { useId } from 'react';
+import { useId, useState } from 'react';
+import { MenuDaContaDoPagamento } from '../../partes/PagamentosDoProLabore';
+import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
+import type { VmAdiantamentoSalarial } from './useAdiantamentoSalarial';
 import { useAdiantamentoSalarial } from './useAdiantamentoSalarial';
 import { BotaoSemMovimento } from '../../partes/BotaoSemMovimento';
 
 export function AdiantamentoSalarial() {
   const vm = useAdiantamentoSalarial();
   const id = useId();
+  // o desenho do Pró-labore (19/11/2026: "remove isso, muito confuso"; "deixa a mesma coisa que o pro-labore"):
+  // sem o arquivo e o resumo no alto; as contas e o Baixar só atrás do "Gerar lançamentos"; embaixo, a grade pago / não pago
+  const [gerar, setGerar] = useState(false);
   return (
     <section>
       <header className="topbar">
@@ -23,23 +30,9 @@ export function AdiantamentoSalarial() {
           <div className="imp-linha">
             <span className="imp-ico"><Icone nome="dinheiro" /></span>
             <div className="imp-txt imp-txt-larga">
-              <span><b>Adiantamento salarial</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
-              <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
+              <span><b>Adiantamento salarial</b></span>
             </div>
             <div className="imp-grupos">
-              {/* faltando pagamento: as duas contas digitadas e o .xls do Alterdata (o desenho dos pagamentos do Pró-labore) */}
-              {vm.qtd > 0 && (
-                <div className="imp-grupo" aria-label="Os pagamentos que faltam">
-                  <input type="text" inputMode="numeric" placeholder="Adiantamento" aria-label="Conta do adiantamento (débito)" title="O código da conta do Adiantamento salarial (débito)"
-                    value={vm.contaAdiantamento} onChange={e => vm.digitarContaAdiantamento(e.target.value)} style={{ width: 104 }} />
-                  <input type="text" inputMode="numeric" placeholder="Banco" aria-label="Conta do banco (crédito)" title="O código da conta do banco que pagou (crédito)"
-                    value={vm.contaBanco} onChange={e => vm.digitarContaBanco(e.target.value)} style={{ width: 96 }} />
-                  <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeExportar} motivo="Informe as duas contas" />
-                  <button type="button" className="icon-btn icon-btn-sm" disabled={!vm.podeExportar} onClick={vm.baixarXls}
-                    title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + (vm.qtd === 1 ? 'o pagamento que falta' : 'os ' + vm.qtd + ' pagamentos que faltam') : 'Informe as duas contas'}
-                    aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
-                </div>
-              )}
               {/* zerou em todos os meses: o Ok padrão (o selo, como nos Bancos) */}
               {vm.ok && <span className="badge badge-ok" title="O Adiantamento salarial zerou em todos os meses do período">Ok</span>}
               <div className="imp-grupo" aria-label="Razão do Adiantamento salarial">
@@ -51,31 +44,74 @@ export function AdiantamentoSalarial() {
                 ) : (
                   <>
                     <BotaoDiario onClick={vm.usarDiario} />
-                    <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title="Importar o razão do Adiantamento salarial (XLS da conciliação do Alterdata)" aria-label="Importar o razão do Adiantamento salarial"><Icone nome="upload" /></label>
-                    <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                    <ImportarRazaoComRobo robo={vm.robo} titulo="o razão do Adiantamento salarial" importar={f => vm.importar(f)}>
+                      <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title="Importar o razão do Adiantamento salarial (XLS da conciliação do Alterdata)" aria-label="Importar o razão do Adiantamento salarial"><Icone nome="upload" /></label>
+                      <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                    </ImportarRazaoComRobo>
                   </>
                 )}
               </div>
             </div>
           </div>
-          {vm.temRazao && vm.meses.length > 0 && (
-            <div className="table-wrap" style={{ margin: '0 16px 16px' }}>
-              <table className="table-compact">
-                <thead><tr><th />{vm.meses.map(m => <th key={m.mes} className="num">{m.rotulo}</th>)}</tr></thead>
-                <tbody>
-                  <tr><th scope="row">Desconto na folha</th>{vm.meses.map(m => <td key={m.mes} className="num">{m.provisao}</td>)}</tr>
-                  <tr><th scope="row">Pagamento</th>{vm.meses.map(m => <td key={m.mes} className="num" title={m.diaDoPagamento ? 'Pago em ' + m.diaDoPagamento : undefined}>{m.pagamento || '—'}</td>)}</tr>
-                  <tr><th scope="row">Pago em</th>{vm.meses.map(m => <td key={m.mes} className={'num' + (m.foraDoDia ? ' ext-neg' : '')} title={m.foraDoDia ? 'Fora do dia certo (' + m.dataEsperada + ')' : undefined}>{m.diaDoPagamento || '—'}</td>)}</tr>
-                  <tr><th scope="row">Dia certo</th>{vm.meses.map(m => <td key={m.mes} className="num hint">{m.dataEsperada}</td>)}</tr>
-                  <tr><th scope="row">Saldo</th>{vm.meses.map(m => <td key={m.mes} className={'num' + (m.zerou ? '' : ' ext-neg')}>{m.saldo}</td>)}</tr>
-                  <tr><th scope="row">Falta pagar</th>{vm.meses.map(m => <td key={m.mes} className={'num' + (m.falta ? ' ext-neg' : '')}>{m.falta || '—'}</td>)}</tr>
-                </tbody>
-              </table>
+          {/* os lançamentos que faltam, só se a pessoa quiser (como no Pró-labore) */}
+          {vm.temRazao && vm.qtd > 0 && (
+            <div className="btn-row adiantamento-gerar">
+              {!gerar ? (
+                <button type="button" className="btn btn-outline" onClick={() => setGerar(true)}
+                  title={'Montar ' + (vm.qtd === 1 ? 'o pagamento que falta' : 'os ' + vm.qtd + ' pagamentos que faltam') + ' para importar no Alterdata'}>
+                  <Icone nome="plus" />Gerar lançamentos
+                </button>
+              ) : (
+                <>
+                  {!vm.contaAdiantamento && (
+                    <input type="text" inputMode="numeric" placeholder="Conta do adiantamento" aria-label="Conta do adiantamento (débito)" title="O código da conta do Adiantamento salarial (débito)"
+                      value={vm.contaAdiantamento} onChange={e => vm.digitarContaAdiantamento(e.target.value)} style={{ width: 180 }} />
+                  )}
+                  <MenuDaContaDoPagamento valor={vm.contaBanco} nome={vm.nomeDoBanco} contas={vm.contasDePagamento} travado={false} onEscolher={vm.escolherBanco} />
+                  <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeExportar} motivo="Escolha a conta do crédito" baixar={vm.baixarXls} />
+                </>
+              )}
             </div>
           )}
+          {/* a grade pago / não pago do período (19/11/2026) */}
+          {vm.grade && vm.grade.length > 0 && <GradeDoAdiantamento grade={vm.grade} />}
         </div>
       </div>
 
     </section>
+  );
+}
+
+const SITUACAO = {
+  pago: { texto: 'Pago', classe: 'badge badge-ok' },
+  parcial: { texto: 'Parcial', classe: 'badge badge-warn' },
+  falta: { texto: 'Não pago', classe: 'badge badge-bad' },
+  sem: { texto: '—', classe: 'hint' },
+} as const;
+
+/** O Adiantamento salarial mês a mês, no desenho da grade do Pró-labore (19/11/2026): a situação e, embaixo, os valores. */
+function GradeDoAdiantamento({ grade }: { grade: NonNullable<VmAdiantamentoSalarial['grade']> }) {
+  const g = useColunaAjustavel('adiantamento-salarial', '96px', grade.length);
+  const abertos = grade.filter(m => m.falta);
+  const linha = (rotulo: string, valor: (m: (typeof grade)[number]) => string, titulo?: string, classe?: (m: (typeof grade)[number]) => string) => (
+    <tr><th scope="row" title={titulo}>{rotulo}</th>{grade.map(m => <td key={m.mes} className={'num ' + (classe ? classe(m) : '')}>{valor(m) ? <ValorNaGrade texto={valor(m)} /> : '—'}</td>)}</tr>
+  );
+  return (
+    <div className="prolabore-meses adiantamento-grade">
+      <p className="hint">{abertos.length ? abertos.length + (abertos.length === 1 ? ' mês sem pagar tudo' : ' meses sem pagar tudo') : 'Tudo pago no período'}</p>
+      <table className="imp-meses" style={g.tabela}>
+        <colgroup><col style={{ width: g.largura }} /></colgroup>
+        <thead><tr><th scope="col"><span className="sr-only">Mês</span>{g.alca}</th>{grade.map(m => <th key={m.mes} scope="col"><span className="imp-meses-mes">{m.rotulo}</span></th>)}</tr></thead>
+        <tbody>
+          <tr><th scope="row">Situação</th>{grade.map(m => (
+            <td key={m.mes} title={m.pagoEm ? 'Pago em ' + m.pagoEm + ' (dia certo ' + m.diaCerto + ')' : 'Dia certo ' + m.diaCerto}><span className={SITUACAO[m.situacao].classe}>{SITUACAO[m.situacao].texto}</span></td>
+          ))}</tr>
+          {linha('Descontado', m => m.descontado, 'O adiantamento descontado na folha do mês')}
+          {linha('Pago', m => m.pago, 'O pagamento do adiantamento (o dia 15, ou o útil antes)')}
+          {linha('Falta', m => m.falta, 'O que ainda falta pagar do mês', m => (m.falta ? 'ext-neg' : ''))}
+          {linha('Saldo', m => m.saldo, 'O saldo da conta no fim do mês')}
+        </tbody>
+      </table>
+    </div>
   );
 }

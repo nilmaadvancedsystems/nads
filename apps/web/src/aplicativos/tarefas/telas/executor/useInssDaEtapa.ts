@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { useContaDoTipo } from './useContaDoTipo';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
@@ -48,13 +49,15 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   const [contrapartidas, setContrapartidas] = useGuardado<Record<string, string>>('inss-contrapartidas|' + chave, {});
   const contabil = useContabilDaEmpresa(empresa);
   const daImportacao = empresa ? contabil.razaoDoTipo('inss') : null;
+  const contaDoRobo = useContaDoTipo(empresa, codigoDaEmpresa, empresa ? 'inss' : null, empresa ? contabil.contaDoTipo('inss') : '');
   const proprio = razao && razao.chave === chave ? razao : null;
   const r = proprio || (daImportacao ? { chave, arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null);
   const g = guias && guias.chave === chave ? guias : null;
   const modelos = useModelosDeHistorico();
   // as guias que a pessoa marcou como não pagas, por competência (Vitor, 10/11/2026: no "Falta", o botão "Não pago")
   const [naoPagas, setNaoPagas] = useGuardado<string[]>('inss-nao-pagas|' + chave, []);
-  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos, naoPagas) : null;
+  // só as verbas exatas nos lançamentos sugeridos (Vitor, 19/11/2026; na final)
+  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos, naoPagas, { soExatas: true }) : null;
 
   async function importarRazao(f: File | null) {
     if (!f) return;
@@ -107,6 +110,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
 
   return {
     importarRazao, importarGuias, lendo,
+    /** o botão Vitor do razão do INSS (19/11/2026): a conta do balancete (ou a digitada), senão a do dinâmico */
+    robo: empresa ? { empresa, codigo: codigoDaEmpresa, conta: (contaInss.trim() || contaDoRobo.conta), informar: contaDoRobo.informar, meses } : null,
     temRazao: !!r, temGuias: !!g, pronto: !!c,
     arquivoRazao: r?.arquivo || '',
     removerRazao: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); }, removerGuias: () => setGuias(null),

@@ -41,7 +41,7 @@ export function HoleritesEPagamentos() {
         <Numero rotulo="Recebido do escritório" icone="check" tom="ok" valor={carregando ? '—' : formatos.reais(recebido.recebido)}
           dica={recebido.aReceber ? formatos.reais(recebido.aReceber) + ' a receber' : 'Pagamentos com comprovante'} />
         <Numero rotulo="Comissões" icone="dinheiro" tom="aviso" valor={carregando ? '—' : formatos.reais(t.total)}
-          dica={t.aprovadas ? formatos.reais(t.aprovadas) + ' aprovadas, a receber' : t.lancadas ? formatos.reais(t.lancadas) + ' esperando aprovação' : t.quantas ? 'Todas pagas' : 'Nenhuma no mês'} />
+          dica={t.aprovadas + t.lancadas ? formatos.reais(t.aprovadas + t.lancadas) + ' a receber' : t.quantas ? 'Todas pagas' : 'Nenhuma no mês'} />
       </div>
 
       <section className="card cart-cartao">

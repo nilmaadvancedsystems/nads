@@ -6,6 +6,8 @@ import { formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useGuardado } from '../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { codigoDaEmpresa } from '../../etapas/dados/cadastro';
+import { useContaDoTipo } from './useContaDoTipo';
 
 const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar', simples: 'Simples Nacional a recolher' };
 
@@ -18,6 +20,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   // o da Importação (o upload único dos razões), pela conta reconhecida no dinâmico
   const contabil = useContabilDaEmpresa(empresa);
   const daImportacao = empresa ? contabil.razaoDoTipo(conta) : null;
+  const contaDoRobo = useContaDoTipo(empresa, codigoDaEmpresa(empresa), empresa ? conta : null, empresa ? contabil.contaDoTipo(conta) : '');
   const proprio = razao && razao.chave === chave ? razao : null;
   const r = proprio || (daImportacao ? { chave, arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null);
 
@@ -37,6 +40,8 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   const sobras = t.CONTAS_QUE_ZERAM.includes(conta) && !soImportar ? t.sobrasDaFolha(doPeriodo) : [];
   return {
     conta, nome: NOME[conta],
+    /** o botão Vitor do razão (19/11/2026): a conta pelo dinâmico */
+    robo: empresa ? { empresa, codigo: codigoDaEmpresa(empresa), conta: contaDoRobo.conta, informar: contaDoRobo.informar, meses } : null,
     temRazao: !!r, arquivo: r?.arquivo || '',
     /** o razão importado (o Honorários tira dele a conta de despesa das provisões de antes) */
     razao: r?.razao ?? null,

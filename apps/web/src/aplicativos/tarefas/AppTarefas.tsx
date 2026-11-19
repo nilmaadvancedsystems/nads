@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Outlet } from 'react-router';
 import { ColetaDeUso } from './casca/ColetaDeUso';
 import { MapaNaTela } from './casca/MapaNaTela';
+import { useCofreSozinho } from './casca/useCofreSozinho';
 import { OperadorProvider, operadorDaConta, useOperador } from './casca/operador';
 import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
@@ -45,6 +46,8 @@ function usePresenca(ligada: boolean) {
 function PrecisaDeOperador({ children }: { children: ReactNode }) {
   const { operador } = useOperador();
   usePresenca(!!operador);
+  // o cofre liberado sozinho para a equipe (19/11/2026)
+  useCofreSozinho();
   return operador ? <>{children}</> : <QuemSouEu />;
 }
 

@@ -145,7 +145,12 @@ try:
     if not principais:
         fim(erro='o Alterdata Contábil não está aberto neste PC: abra e entre, e peça de novo')
     if len(principais) > 1:
-        fim(erro='há dois Contábil abertos neste PC: feche um e peça de novo')
+        # mais de um Contábil aberto (Vitor, 19/11/2026: "se tiver mais de um contabil aberto, ele escolher qualquer um e usar,
+        # fechar as janelas abertas e executar a acao"): usa o que não está travado por uma janela; as janelas abertas fecham
+        # no limpar/liberar de sempre
+        import win32gui
+        principais.sort(key=lambda w: 0 if win32gui.IsWindowEnabled(w.handle) else 1)
+        print('TELA: ' + str(len(principais)) + ' Contábil abertos: usei um deles', flush=True)
     principal = principais[0]
     limpar()
     preparar_tela()

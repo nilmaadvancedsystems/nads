@@ -8039,3 +8039,91 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .ac-exige-senha input { margin-top: 3px; }
 .lt-painel-nota.lt-nota-erro{color:var(--danger);}
 .lt-atualizar .btn-spinner{width:14px;height:14px;}
+/* a conta do razão que o nads não achou, informada na linha (o botão Vitor; 19/11/2026) */
+.razao-informar{display:inline-flex;align-items:center;gap:4px;}
+.razao-informar input{width:78px;height:28px;padding:2px 8px;font-size:var(--fs-12);}
+/* os empréstimos com o botão Vitor: as contas informadas, cada uma com o robô, e o campo para mais uma (19/11/2026) */
+.emprestimos-robo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 12px;}
+.emprestimos-robo .hint{margin:0;}
+.emprestimos-robo-conta{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border:1px solid var(--border);border-radius:999px;font-size:var(--fs-13);}
+/* a grade do Adiantamento salarial (a mesma do Pró-labore, dentro do bloco) */
+.adiantamento-grade{padding:0 16px 16px;}
+.adiantamento-gerar{padding:0 16px 12px;justify-content:flex-start;align-items:center;}
+/* o botão Vitor clicado, o robô do PC ainda conectando (19/11/2026): a barra carregando de um lado ao outro */
+.imp-robo-barra.conectando{position:relative;}
+.imp-robo-barra.conectando > span{position:absolute;inset:0 auto 0 0;width:35%;animation:roboConectando 1s ease-in-out infinite;}
+@keyframes roboConectando{from{transform:translateX(-100%);}to{transform:translateX(290%);}}
+@media (prefers-reduced-motion:reduce){.imp-robo-barra.conectando > span{animation:none;width:100%;opacity:.5;}}
+/* a etapa delegada (19/11/2026): o aviãozinho de papel no lugar da caixinha, sem a borda */
+.subnav-caixa.delegada{border-color:transparent;color:var(--ink-muted);}
+.subnav-caixa.delegada svg{width:15px;height:15px;}
+/* o botão na célula da grade dos meses acompanha a coluna (Vitor, 19/11/2026: "ajusta os botoes baixa do inss ou de paginas que usam
+   esse tipo de tabela e botao, diminuir com o grid"): não passa da célula, fica mais baixo e o texto encolhe */
+.imp-meses td > .btn:not(.icon-btn){max-width:calc(100% - 6px);min-width:0;height:28px;padding:0 6px;font-size:var(--fs-12);overflow:hidden;text-overflow:ellipsis;}
+.imp-meses td > .btn.inss-baixa{width:calc(100% - 6px);max-width:84px;padding:0 4px;}
+/* a data com o calendário ao lado (19/11/2026): o campo e o 📅 numa linha; aberto, o calendário do mês */
+.campo-data-cal{display:inline-flex;align-items:center;gap:6px;}
+.campo-data-cal-pop{padding:8px;}
+/* o MEI na comissão (19/11/2026): o cartão CNPJ lido e a senha gov numa linha */
+.mei-cartao,.mei-senha{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;}
+.mei-cartao-txt{display:flex;flex-direction:column;min-width:0;line-height:1.3;}
+.mei-cartao-txt .hint{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;}
+.registro-prop-valor .mei-senha input{width:140px;flex:none;border:1px solid var(--border);}
+/* a comissão grande no alto, à direita da janela (19/11/2026): as duas primeiras linhas deixam o lugar dela */
+.registro-corpo.comissao-com-destaque{position:relative;}
+.comissao-destaque{position:absolute;top:14px;right:18px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right;pointer-events:none;}
+.comissao-destaque span{font-size:var(--fs-12);color:var(--ink-muted);}
+.comissao-destaque b{font-size:28px;line-height:1.1;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:190px;}
+@media (max-width:560px){.comissao-destaque{position:static;align-items:flex-start;}.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:0;}}
+.mei-cartao-registro{font-size:var(--fs-12);}
+/* a % da comissão do Diretor (19/11/2026): o campo curto com o % ao lado */
+.comissao-pct{display:inline-flex;align-items:center;gap:6px;}
+.registro-prop-valor .comissao-pct input{width:72px;flex:none;text-align:right;border:1px solid var(--border);border-radius:6px;background:transparent;padding:7px 8px;font-size:var(--fs-14);color:var(--ink);}
+/* a Carteira › Financeiro (19/11/2026): as comissões e os holerites numa tela só, cada parte com o título */
+.carteira-financeiro{display:flex;flex-direction:column;gap:8px;}
+.carteira-secao{margin:8px 0 0;font-size:var(--fs-16, 16px);font-weight:600;color:var(--ink);}
+.carteira-financeiro .carteira-secao + section{margin-top:0;}
+.carteira-financeiro .carteira-secao:not(:first-child){margin-top:24px;padding-top:20px;border-top:1px solid var(--border-muted);}
+/* as impressões e os materiais na janela da Carteira (19/11/2026) */
+.carteira-materiais{display:flex;justify-content:flex-end;margin-bottom:-4px;}
+.modal.registro-novo.janela-materiais{max-width:920px;}
+.janela-materiais .registro-corpo{padding:12px 18px 18px;}
+.insumos-na-janela{padding:0;}
+/* Financeiro › Equipe (19/11/2026): o menu da esquerda e a tela escolhida; o Plano de contas na janela das Configurações */
+.fin-equipe{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;align-items:start;}
+.fin-equipe-menu{display:flex;flex-direction:column;gap:2px;position:sticky;top:12px;}
+.fin-equipe-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:none;border-radius:6px;background:none;color:var(--ink-muted);font:inherit;font-size:var(--fs-14);text-align:left;cursor:pointer;}
+.fin-equipe-item svg{width:16px;height:16px;flex:none;}
+.fin-equipe-item:hover{background:var(--hover-bg);color:var(--ink);}
+.fin-equipe-item.ativo{background:var(--surface-2);color:var(--ink);font-weight:600;}
+.fin-equipe-corpo{min-width:0;}
+@media (max-width:760px){.fin-equipe{grid-template-columns:1fr;}.fin-equipe-menu{position:static;flex-direction:row;overflow-x:auto;}}
+.modal.registro-novo.janela-plano{max-width:960px;height:calc(100dvh - 64px);}
+.janela-plano .registro-corpo{padding:12px 18px 18px;}
+/* Financeiro › Equipe › Por cliente (19/11/2026): o cliente aberto e as transações dele embaixo */
+.por-cliente .busca-curta{margin-left:8px;}
+.por-cliente-aberto td{background:var(--surface-2);}
+.por-cliente-detalhe > td{padding:0 12px 10px 32px;background:var(--surface-2);}
+.por-cliente-transacoes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.por-cliente-transacoes li{display:grid;grid-template-columns:56px minmax(0,1fr) minmax(0,160px) 120px;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--border-muted);font-size:var(--fs-13);}
+.por-cliente-transacoes li b{text-align:right;}
+.por-cliente-transacoes li svg{vertical-align:-2px;color:var(--ink-muted);}
+/* as caixinhas dos insumos na janela da Carteira (19/11/2026): o ícone à esquerda, o nome, a quantidade grande e o valor */
+.insumo-caixas{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
+.insumo-caixa{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);min-width:0;}
+.insumo-caixa-icone{width:36px;height:36px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;background:var(--surface-3);color:var(--ink-muted);}
+.insumo-caixa-icone svg{width:18px;height:18px;}
+.insumo-caixa.tem .insumo-caixa-icone{background:var(--accent-soft);color:var(--accent);}
+.insumo-caixa-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25;}
+.insumo-caixa-nome{font-size:var(--fs-12);color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.insumo-caixa-txt b{font-size:20px;font-weight:700;color:var(--ink);}
+.insumo-caixa-valor{font-size:var(--fs-12);color:var(--ink-muted);}
+.insumo-caixa-total{background:var(--surface);}
+.insumo-caixa-total .insumo-caixa-icone{background:color-mix(in srgb, var(--success) 18%, transparent);color:var(--success);}
+.insumo-caixa-total b{font-size:18px;}
+/* a % da comissão embaixo do valor (19/11/2026): o destaque recebe o clique só no select */
+.comissao-destaque .popover-wrap{pointer-events:auto;margin-top:6px;}
+.comissao-destaque .comissao-pct-menu{height:30px;padding:0 10px;font-size:var(--fs-13);}
+.comissao-destaque .comissao-pct-menu.vazio{color:var(--ink-muted);}
+.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+3){padding-right:190px;}
