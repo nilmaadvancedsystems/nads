@@ -46,6 +46,15 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
   });
 });
 
+describe('o Plano de contas do Financeiro é aba (19/11/2026: "pode colocar de volta em uma aba separada")', () => {
+  const paginas = (o: Operador) => aplicacoesDe(o).find(a => a.id === 'financeiro')?.paginas.map(p => p.id) ?? [];
+  it('o Diretor vê a aba Plano de contas, junto com a Equipe; quem tem o papel Financeiro também', () => {
+    expect(paginas(op('diretor'))).toContain('plano');
+    expect(paginas(op('diretor'))).toContain('equipe');
+    expect(paginas({ ...op('pleno'), financeiro: true })).toContain('plano');
+  });
+});
+
 describe('a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026)', () => {
   const vê = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'area-cliente');
   it('o Fiscal não vê (nem o diretor); o admin, o Contábil e o DP veem', () => {

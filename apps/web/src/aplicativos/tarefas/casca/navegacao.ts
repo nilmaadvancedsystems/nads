@@ -326,9 +326,11 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
     // o Financeiro dos diretores (19/11/2026: "pode publicar tudo para versao final, apenas para diretores"): a aba Equipe no lugar das
-    // Comissões da equipe, do Enviar holerites e dos Insumos, e o Plano de contas nas Configurações; os outros, as abas de antes
+    // Comissões da equipe, do Enviar holerites e dos Insumos; os outros, as abas de antes. O Plano de contas voltou a ser aba para
+    // todos (19/11/2026: "pode colocar de volta em uma aba separada so que com o visual bonito"); o Configurar das Configurações
+    // continua abrindo a mesma tela numa janela
     .map(a => (a.id !== 'financeiro' ? a : usuarios.nivelDeDiretor(op.nivel)
-      ? { ...a, paginas: a.paginas.filter(p => !['plano', 'comissoes-equipe', 'holerites-equipe', 'insumos-equipe'].includes(p.id)) }
+      ? { ...a, paginas: a.paginas.filter(p => !['comissoes-equipe', 'holerites-equipe', 'insumos-equipe'].includes(p.id)) }
       : { ...a, paginas: a.paginas.filter(p => p.id !== 'equipe') }))
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))
     // a lista dos usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026: "O sênior, pleno e júnior não pode em

@@ -16,8 +16,8 @@ const URL_DA_PREFEITURA = 'https://mg-taiobeiras-pm-nfs.cloud.el.com.br';
 
 export function ConfiguracoesDoFinanceiro() {
   const vm = useConfiguracoesDoFinanceiro();
-  // o Plano de contas saiu das abas e abre daqui, numa janela (19/11/2026): para o Diretor e o Dono (Vitor: "pode publicar tudo para
-  // versao final, apenas para diretores"); os outros continuam com a aba
+  // o Plano de contas abre daqui também, numa janela (19/11/2026), para o Diretor e o Dono; a aba dele voltou no mesmo dia ("pode
+  // colocar de volta em uma aba separada so que com o visual bonito"), então os dois caminhos levam à mesma tela
   const dev = usuarios.nivelDeDiretor(useOperador().operador?.nivel);
   const [modoDev] = useModoDesenvolvedor();
   const [plano, setPlano] = useState(false);

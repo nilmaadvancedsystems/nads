@@ -5302,6 +5302,28 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-conta-grupo{font-weight:600;}
 .fin-conta-inativa{opacity:.55;}
 .fin-conta .badge svg{width:12px;height:12px;}
+/* o visual do plano (19/11/2026: "quero que fique visualmente bonito"): a cor do tipo em cada bloco (a faixa e o selo do grupo de
+   cima, a linha-guia do recuo nas de dentro), o código em coluna fixa e a seta de abrir só ao passar o mouse */
+.fin-plano-linha{--tipo:var(--ink-muted);--tipo-soft:var(--hover-bg);}
+.fin-tipo-ativo{--tipo:var(--info);--tipo-soft:var(--info-soft);}
+.fin-tipo-passivo{--tipo:var(--danger);--tipo-soft:var(--danger-soft);}
+.fin-tipo-patrimonio_liquido{--tipo:var(--warn);--tipo-soft:var(--warn-soft);}
+.fin-tipo-receita{--tipo:var(--success);--tipo-soft:var(--success-soft);}
+.fin-tipo-despesa{--tipo:var(--accent);--tipo-soft:var(--accent-soft);}
+.fin-arvore{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.fin-arvore .fin-conta{gap:10px;min-height:42px;padding:6px 14px 6px 0;border-left:3px solid transparent;border-bottom-color:var(--border-muted);}
+.fin-arvore li:last-child .fin-conta{border-bottom:0;}
+.fin-arvore .fin-conta-codigo{min-width:64px;padding-left:14px;font-size:var(--fs-13);font-variant-numeric:tabular-nums;}
+.fin-plano-raiz .fin-conta{min-height:48px;border-left-color:var(--tipo);background:var(--tipo-soft);}
+.fin-plano-raiz:not(:first-child) .fin-conta{border-top:1px solid var(--border);}
+.fin-plano-raiz .fin-conta-codigo{color:var(--tipo);font-weight:600;}
+.fin-plano-raiz .fin-conta-nome{font-size:var(--fs-14);font-weight:700;letter-spacing:.03em;}
+.fin-conta-recuo{flex:none;align-self:stretch;margin:-6px -10px -6px 0;background:linear-gradient(var(--tipo),var(--tipo)) right 0 top 0/2px 100% no-repeat;opacity:.35;}
+.fin-conta-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.fin-tipo-selo{flex:none;padding:2px 10px;border:1px solid var(--tipo);border-radius:999px;font-size:var(--fs-12);font-weight:600;color:var(--tipo);background:var(--surface,transparent);}
+.fin-conta-abrir{flex:none;color:var(--ink-muted);opacity:0;transition:opacity .12s;}
+.fin-conta:hover .fin-conta-abrir,.fin-conta:focus-visible .fin-conta-abrir{opacity:1;}
+.fin-plano-raiz .fin-conta:hover{background:var(--tipo-soft);filter:brightness(1.08);}
 @media (max-width:640px){.fin-periodo{flex-wrap:wrap;}.fin-cedulas{grid-template-columns:1fr;}}
 
 /* revisão da UI, 21/10/2026 ("essas telas estão estranhas"): Nova nota e Contagem de cédulas. A janela cabe na tela (corpo
