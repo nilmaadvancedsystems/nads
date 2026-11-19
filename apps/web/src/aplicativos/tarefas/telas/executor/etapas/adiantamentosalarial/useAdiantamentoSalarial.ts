@@ -49,6 +49,11 @@ export function useAdiantamentoSalarial() {
 
   const modelos = useModelosDeHistorico();
   const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses, modelos) : []), [razao, s.meses, modelos]);
+  // a grade pago / não pago do período lá em cima, como a do Pró-labore (Vitor, 19/11/2026: "Adiantamento salarial tinha que aparecer
+  // pago e nao pago igual o pro labore"); por enquanto no modo desenvolvedor
+  const periodo = s.periodo?.length ? s.periodo : s.meses;
+  const chaveDoPeriodo = periodo.join(',');
+  const daGrade = useMemo(() => (razao && s.dev ? t.conferirAdiantamentoSalarial(razao.razao, periodo, modelos) : []), [razao, s.dev, chaveDoPeriodo, modelos]); // eslint-disable-line react-hooks/exhaustive-deps
   const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005 && !m.zeraDepois);
   // o que falta pagar, também dos meses antes dos da etapa, que é de onde vem o saldo que não zera (Vitor, 26/10/2026)
   const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1], modelos) : []), [razao, s.meses, modelos]);
@@ -91,6 +96,18 @@ export function useAdiantamentoSalarial() {
       zerou: Math.abs(m.saldoFinal) <= 0.005 || m.zeraDepois,
       falta: m.falta > 0.005 ? reais(m.falta) : '',
     })),
+    /** a grade do modo desenvolvedor: cada mês do período pago, parcial, não pago ou sem desconto */
+    grade: s.dev && razao ? daGrade.map(m => {
+      const pago = Math.round(m.pagamentos.reduce((x, p) => x + p.valor, 0) * 100) / 100;
+      const situacao: 'pago' | 'parcial' | 'falta' | 'sem' = m.provisao <= 0.005 && pago <= 0.005 ? 'sem'
+        : m.falta <= 0.005 && (Math.abs(m.saldoFinal) <= 0.005 || m.zeraDepois || pago > 0) ? 'pago' : pago > 0.005 ? 'parcial' : 'falta';
+      return {
+        mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), situacao,
+        descontado: m.provisao ? reais(m.provisao) : '', pago: pago ? reais(pago) : '', falta: m.falta > 0.005 ? reais(m.falta) : '',
+        saldo: formatos.brl(Math.abs(m.saldoFinal)) + (m.saldoFinal > 0.005 ? ' C' : m.saldoFinal < -0.005 ? ' D' : ''),
+        pagoEm: m.pagamentos.map(p => dataBR(p.data).slice(0, 5)).join(', '), diaCerto: dataBR(m.dataEsperada).slice(0, 5),
+      };
+    }) : null,
     contaAdiantamento, contaBanco,
     /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
     importacao: {
@@ -108,3 +125,4 @@ export function useAdiantamentoSalarial() {
     },
   };
 }
+export type VmAdiantamentoSalarial = ReturnType<typeof useAdiantamentoSalarial>;

@@ -8044,3 +8044,5 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .emprestimos-robo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 12px;}
 .emprestimos-robo .hint{margin:0;}
 .emprestimos-robo-conta{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border:1px solid var(--border);border-radius:999px;font-size:var(--fs-13);}
+/* a grade do Adiantamento salarial (a mesma do Pró-labore, dentro do bloco) */
+.adiantamento-grade{padding:0 16px 16px;}
