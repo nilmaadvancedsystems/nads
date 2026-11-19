@@ -101,6 +101,8 @@ export function Casca(p: {
     grupo?: string;
   }[];
   onAplicativo?: (id: string) => void;
+  /** um dos aplicativos também no alto da gaveta, ao lado do × (Vitor, 19/11/2026: "Deixa o icone do ihul aqui"); só se estiver na lista */
+  atalhoNaGaveta?: string;
   /**
    * Como as seções aparecem à esquerda: "barra" (padrão; a barra lateral que oculta) ou "caixa"
    * (lista com borda ao lado da página, no estilo "Insights" do GitHub) ou "nenhuma" (a página na tela toda).
@@ -287,6 +289,13 @@ export function Casca(p: {
         <aside ref={gavetaEl} className="drawer" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="drawer-head">
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
+            {(() => {
+              const a = p.atalhoNaGaveta ? p.aplicativos?.find(x => x.id === p.atalhoNaGaveta) : undefined;
+              return a ? (
+                <button type="button" className={'drawer-atalho' + (a.ativo ? ' active' : '')} title={a.nome} aria-label={a.nome} aria-current={a.ativo ? 'page' : undefined}
+                  onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}><Icone nome={a.icone} /></button>
+              ) : null;
+            })()}
             <BotaoFechar rotulo="Fechar menu" onClick={fecharGaveta} />
           </div>
           {!p.semInicio && (

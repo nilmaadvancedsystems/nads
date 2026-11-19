@@ -349,7 +349,7 @@ export function Executor() {
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""
       onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : () => {}} onInicio={vm.sair} onAplicativos={casca.inicio}
-      onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}
+      onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao} atalhoNaGaveta="carteira"
       peDaGaveta={peDaGaveta(casca, () => setFeedbacks(true))}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {conjunto.aberta && <JanelaEmConjunto vm={conjunto} />}
