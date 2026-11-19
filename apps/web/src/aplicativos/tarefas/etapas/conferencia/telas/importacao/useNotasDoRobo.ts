@@ -8,6 +8,7 @@
 import { conferencia as c } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { useEsperaDoPc } from '../../../../dados/useEsperaDoPc';
+import { marcarPedidoFeito, semConectar, useConexaoDoRobo } from '../../../../dados/useConexaoDoRobo';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { cancelarPedidoDoFiscal, ouvirBalancetesDoPeriodo, ouvirPedidosDoFiscal, pedirBalancetePeriodo, pedirNotasDoFiscal, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal, type RelatorioDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
 
@@ -60,11 +61,12 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
 
   async function pedir() {
     if (!disponivel || !o.codigo || pedindo || (!balancete && !relatorio)) return;
-    setPedindo(true); setFalha('');
+    setPedindo(true); setFalha(''); conexao.limpar();
     try {
       const id = balancete ? await pedirBalancetePeriodo({ codigo: o.codigo, empresa: o.empresa, competencia, ate })
         : await pedirNotasDoFiscal({ codigo: o.codigo, empresa: o.empresa, relatorio: relatorio!, competencia, ate });
       VISTOS.add(id);
+      marcarPedidoFeito(id);
     } catch (e) {
       setFalha(e instanceof Error ? e.message : String(e));
     } finally { setPedindo(false); }
@@ -78,6 +80,8 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const andando = !!atual && ANDANDO.includes(atual.status);
   // parado na fila do PC: o porquê (o Contábil aberto duas vezes, fechado, na tela de login; o robô desligado)
   const espera = useEsperaDoPc(atual, !balancete);
+  // 3 s sem o robô do PC conectar: cancela e o botão volta, com o erro (19/11/2026)
+  const conexao = useConexaoDoRobo(atual, espera);
   // a tela travada enquanto o robô está no Alterdata ou a planilha está entrando (Vitor, 17/11/2026: "so bloqueia toda a acao
   // da tela"); na fila (sem máquina pronta pode demorar) só o botão fica carregando
   // só enquanto o robô mexe no Alterdata; a importação que vem depois tem a pergunta dela (17/11/2026: a camada ficava por cima
@@ -88,8 +92,8 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   const situacao = !atual ? '' : atual.status === 'pendente' || atual.status === 'pendentePc' ? (espera || 'Na fila do robô') : atual.status === 'trabalhando' ? (atual.etapa || (balancete ? 'O robô está no Alterdata Contábil' : 'O robô está no Alterdata Fiscal'))
     : atual.status === 'erro' ? 'O robô não conseguiu puxar do Alterdata: ' + (erroLimpo(atual.erro) || 'sem detalhe') : '';
   return {
-    disponivel, pedindo, andando, lendo, bloqueia, dev, espera, rotulo: doPc?.rotulo || '', pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',
-    erro: atual?.status === 'erro' && !andando, falha, pedir, cancelar,
+    disponivel, pedindo, andando, lendo, conectando: pedindo || semConectar(atual), bloqueia, dev, espera, rotulo: doPc?.rotulo || '', pct: atual?.pct || 0, situacao, clique: andando && dev ? atual?.clique || '' : '',
+    erro: atual?.status === 'erro' && !andando, falha: falha || conexao.erro, pedir, cancelar,
     /** o que o robô viu nas telas do Fiscal (o modo desenvolvedor mostra embaixo) */
     diag: !andando && dev ? atual?.diag || [] : [],
   };

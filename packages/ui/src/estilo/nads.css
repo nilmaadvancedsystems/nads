@@ -8047,3 +8047,8 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 /* a grade do Adiantamento salarial (a mesma do Pró-labore, dentro do bloco) */
 .adiantamento-grade{padding:0 16px 16px;}
 .adiantamento-gerar{padding:0 16px 12px;justify-content:flex-start;align-items:center;}
+/* o botão Vitor clicado, o robô do PC ainda conectando (19/11/2026): a barra carregando de um lado ao outro */
+.imp-robo-barra.conectando{position:relative;}
+.imp-robo-barra.conectando > span{position:absolute;inset:0 auto 0 0;width:35%;animation:roboConectando 1s ease-in-out infinite;}
+@keyframes roboConectando{from{transform:translateX(-100%);}to{transform:translateX(290%);}}
+@media (prefers-reduced-motion:reduce){.imp-robo-barra.conectando > span{animation:none;width:100%;opacity:.5;}}

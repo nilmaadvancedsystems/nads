@@ -21,6 +21,8 @@ export interface ImportacaoNoAlterdata {
   erro: string;
   /** a mesma planilha já tinha sido importada (o id do pedido que importou) */
   mesmoQue: string;
+  /** o robô do PC já viu o pedido (recebidoEm; 19/11/2026) */
+  recebido: boolean;
 }
 
 export interface PedidoDeImportacao {
@@ -48,7 +50,7 @@ const STATUS = ['pendente', 'trabalhando', 'pronto', 'erro', 'cancelado'] as con
 function doBanco(id: string, d: Record<string, unknown>): ImportacaoNoAlterdata {
   const a = (d.andamento && typeof d.andamento === 'object' ? d.andamento : {}) as Record<string, unknown>;
   const st = STATUS.find(s => s === d.status) ?? 'pendente';
-  return { id, status: st, pct: Math.max(0, Math.min(100, Number(a.pct) || 0)), etapa: texto(a.etapa), clique: texto(a.clique), resultado: texto(d.resultado), erro: texto(d.erro), mesmoQue: texto(d.mesmoQue) };
+  return { id, status: st, pct: Math.max(0, Math.min(100, Number(a.pct) || 0)), etapa: texto(a.etapa), clique: texto(a.clique), resultado: texto(d.resultado), erro: texto(d.erro), mesmoQue: texto(d.mesmoQue), recebido: !!d.recebidoEm };
 }
 
 /** Manda a planilha ao robô; devolve o id do pedido. */
@@ -92,7 +94,7 @@ function exemplo(p: PedidoDeImportacao): string {
 const PASSOS_EXEMPLO = ['abrindo Lançamentos → Importação financeira', 'empresa', 'lote', 'planilha', 'layout Importação Personalizada - Excel', 'importando no Alterdata'];
 function acompanharExemplo(id: string, chegou: (i: ImportacaoNoAlterdata) => void): () => void {
   const e = exemplos.get(id) ?? { inicio: Date.now() };
-  const base: ImportacaoNoAlterdata = { id, status: 'pendente', pct: 0, etapa: '', clique: '', resultado: '', erro: '', mesmoQue: '' };
+  const base: ImportacaoNoAlterdata = { id, status: 'pendente', pct: 0, etapa: '', clique: '', resultado: '', erro: '', mesmoQue: '', recebido: false };
   const tique = () => {
     const s = (Date.now() - e.inicio) / 1000;
     if (s < 2) return chegou(base);

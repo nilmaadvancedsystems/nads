@@ -3,6 +3,7 @@
 // Só para o dono do robô (robosDePc).
 import { useEffect, useRef, useState } from 'react';
 import { useEsperaDoPc } from '../../../../dados/useEsperaDoPc';
+import { marcarPedidoFeito, semConectar, useConexaoDoRobo } from '../../../../dados/useConexaoDoRobo';
 import { cancelarPedidoDoFiscal, ouvirDinamicos, pedirDinamico, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal } from '../../../../dados/notasDoFiscal.firestore';
 
 const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
@@ -16,6 +17,8 @@ export function useDinamicoPeloRobo(o: { codigo: number | null; empresa: string;
   const disponivel = !!doPc && !!o.codigo && !!competencia;
   const [pedidos, setPedidos] = useState<PedidoDoFiscal[]>([]);
   const [falha, setFalha] = useState('');
+  // o clique: a barra já no primeiro segundo, antes de o pedido chegar ao banco (19/11/2026)
+  const [pedindo, setPedindo] = useState(false);
   const importar = useRef(o.importar);
   importar.current = o.importar;
   useEffect(() => {
@@ -30,17 +33,19 @@ export function useDinamicoPeloRobo(o: { codigo: number | null; empresa: string;
     IMPORTADOS.add(atual.id);
     planilhaDoFiscal(atual).then(f => { void importar.current(f); }, e => setFalha('Não consegui baixar o balancete do robô: ' + (e instanceof Error ? e.message : String(e))));
   }, [atual]);
-  const andando = !!atual && ANDANDO.includes(atual.status);
+  const andando = pedindo || (!!atual && ANDANDO.includes(atual.status));
   const espera = useEsperaDoPc(atual);
+  // 3 s sem o robô do PC conectar: cancela e o botão volta, com o erro (19/11/2026)
+  const conexao = useConexaoDoRobo(atual, espera);
   return {
-    disponivel, rotulo: doPc?.rotulo || '', andando, pct: atual?.pct || 0,
+    disponivel, rotulo: doPc?.rotulo || '', andando, pct: atual?.pct || 0, conectando: pedindo || semConectar(atual),
     // o Cancelar (17/11/2026): o robô para na hora e volta o Alterdata ao ponto de antes
-    cancelar: () => { if (atual && andando) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
-    erro: falha || espera || (atual?.status === 'erro' ? 'O robô não conseguiu puxar o balancete: ' + atual.erro.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '') : ''),
+    cancelar: () => { if (atual && ANDANDO.includes(atual.status)) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
+    erro: falha || conexao.erro || espera || (atual?.status === 'erro' ? 'O robô não conseguiu puxar o balancete: ' + atual.erro.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '') : ''),
     pedir: async () => {
       if (!disponivel || !o.codigo || andando) return;
-      setFalha('');
-      try { VISTOS.add(await pedirDinamico({ codigo: o.codigo, empresa: o.empresa, competencia, ate })); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); }
+      setFalha(''); conexao.limpar(); setPedindo(true);
+      try { const id = await pedirDinamico({ codigo: o.codigo, empresa: o.empresa, competencia, ate }); VISTOS.add(id); marcarPedidoFeito(id); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); } finally { setPedindo(false); }
     },
   };
 }

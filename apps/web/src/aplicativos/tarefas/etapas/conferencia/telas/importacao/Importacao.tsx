@@ -115,13 +115,13 @@ export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImp
  * desenvolvedor vê também o que o robô está fazendo e o Cancelar.
  */
 function RoboDoFiscal({ r }: { r: NotasDoRobo }) {
-  if (!r.situacao && !r.falha && !r.lendo) return null;
-  const barra = r.andando || r.lendo;
+  if (!r.situacao && !r.falha && !r.lendo && !r.pedindo) return null;
+  const barra = r.andando || r.lendo || r.pedindo;
   // parado na fila do PC: o porquê aparece para todos (17/11/2026: o Contábil aberto duas vezes e o botão só esperava)
   const texto = r.falha || r.espera || (r.erro ? r.situacao : r.dev ? (r.lendo ? 'A planilha chegou: importando…' : r.situacao) + (r.clique ? ' · ' + r.clique : '') : '');
   return (
     <div className={'imp-robo-fiscal' + (r.erro || r.falha ? ' ext-neg' : '')} role="status" aria-label={barra ? 'Puxando do Alterdata' : undefined}>
-      {barra && <div className="imp-robo-barra"><span style={{ width: (r.lendo ? 100 : Math.max(4, r.pct)) + '%' }} /></div>}
+      {barra && <div className={'imp-robo-barra' + (r.conectando && !r.lendo ? ' conectando' : '')}><span style={r.conectando && !r.lendo ? undefined : { width: (r.lendo ? 100 : Math.max(4, r.pct)) + '%' }} /></div>}
       {texto && <span>{texto}</span>}
       {r.andando && <button type="button" className="btn btn-ghost btn-sm imp-robo-cancelar" onClick={() => { void r.cancelar(); }} title="O robô para e volta o Alterdata ao ponto de antes">Cancelar</button>}
       {r.bloqueia && <div className="imp-robo-bloqueio" aria-hidden="true" />}
