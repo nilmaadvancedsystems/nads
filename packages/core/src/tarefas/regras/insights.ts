@@ -25,7 +25,9 @@ export interface ResumoDosInsights {
   dp: { competencia: string; feitas: number; pendentes: number; atrasadas: number; sem: number };
   guias: { competencia: string; enviadas: number; abertas: number; pagas: number };
   clientes: { abertas: number; respondidas: number; nota: number; avaliacoes: number; documentosFaltando: number; mandeiAbertos: number };
-  entregas: { aEntregar: number; noLink: number; confirmadas: number; falhas: number };
+  /** protocoladas: as entregas da competência no Entregas, menos as do link do cliente (o que o office boy tem para entregar;
+   *  19/11/2026: "precisa aparecer baseado no que ta protocolado la no entregas em comparacao com oque ele ja entregou") */
+  entregas: { aEntregar: number; noLink: number; confirmadas: number; falhas: number; protocoladas?: number };
   equipe: { atrasadas: number; pessoas: { nome: string; atrasadas: number; tarefas?: TarefaAtrasada[] }[] };
   /** a equipe pelos usuários do nads, cada um com o setor (19/11/2026; o dono: "ta faltando felipe e gustavo aqui"); sem ele, a
    *  equipe sai das rotinas (como antes) */
@@ -133,7 +135,8 @@ export function empresasDoInsight(
   const codigos = new Set<number>([...daLista.keys(), ...porCodigo.keys()]);
   const vale = (dep: 'fiscal' | 'contabil', nome: string) => !!nome && (!equipe.length || equipe.some(u => u.setor === dep && chaveDoNome(u.nome) === chaveDoNome(nome)));
   // o mesmo nome escrito do mesmo jeito (a planilha em maiúsculas, o Cadastro não): o do usuário, quando bate
-  const nomeDe = (nome: string) => (nome ? equipe.find(u => chaveDoNome(u.nome) === chaveDoNome(nome))?.nome ?? nome : '');
+  // (só alguém do mesmo setor: o Gustavo do Fiscal não é o Gustavo.S do office boy)
+  const nomeDe = (dep: 'fiscal' | 'contabil', nome: string) => (nome ? equipe.find(u => u.setor === dep && chaveDoNome(u.nome) === chaveDoNome(nome))?.nome ?? nome : '');
   return [...codigos].map(codigo => {
     const lista = daLista.get(codigo);
     const cad = porCodigo.get(codigo) || (lista ? porSlug.get(slug(lista.nome)) : null) || null;
@@ -142,8 +145,8 @@ export function empresasDoInsight(
       codigo,
       nome: txt(cad?.nome) || lista?.nome || '',
       regime: txt(cad?.regime) || txt(cad?.nova?.regime) || (lista?.regime ?? ''),
-      fiscal: nomeDe(vale('fiscal', escolhido.fiscal) ? escolhido.fiscal : (clienteDoDp(codigo)?.responsavel || '')),
-      contabil: nomeDe(vale('contabil', escolhido.contabil) ? escolhido.contabil : ''),
+      fiscal: nomeDe('fiscal', vale('fiscal', escolhido.fiscal) ? escolhido.fiscal : (clienteDoDp(codigo)?.responsavel || '')),
+      contabil: nomeDe('contabil', vale('contabil', escolhido.contabil) ? escolhido.contabil : ''),
     };
   });
 }
@@ -307,7 +310,7 @@ export function lerResumoDosInsights(x: unknown): ResumoDosInsights | null {
     dp: { competencia: comp(dp.competencia), feitas: num(dp.feitas), pendentes: num(dp.pendentes), atrasadas: num(dp.atrasadas), sem: num(dp.sem) },
     guias: { competencia: comp(g.competencia), enviadas: num(g.enviadas), abertas: num(g.abertas), pagas: num(g.pagas) },
     clientes: { abertas: num(c.abertas), respondidas: num(c.respondidas), nota: Math.min(5, num(c.nota)), avaliacoes: num(c.avaliacoes), documentosFaltando: num(c.documentosFaltando), mandeiAbertos: num(c.mandeiAbertos) },
-    entregas: { aEntregar: num(e.aEntregar), noLink: num(e.noLink), confirmadas: num(e.confirmadas), falhas: num(e.falhas) },
+    entregas: { aEntregar: num(e.aEntregar), noLink: num(e.noLink), confirmadas: num(e.confirmadas), falhas: num(e.falhas), ...(typeof e.protocoladas === 'number' ? { protocoladas: num(e.protocoladas) } : {}) },
     equipe: { atrasadas: num(q.atrasadas), pessoas: (Array.isArray(q.pessoas) ? q.pessoas : []).map(obj).filter(p => txt(p.nome)).slice(0, 40).map(p => ({ nome: txt(p.nome), atrasadas: num(p.atrasadas), tarefas: tarefas(p.tarefas) })) },
     ...(Array.isArray(o.time) ? { time: o.time.map(obj).filter(p => txt(p.nome) && typeof p.setor === 'string' && p.setor in ROTULO_DO_SETOR).slice(0, 40).map(p => ({ nome: txt(p.nome, 60), setor: p.setor as SetorDaPessoa })) } : {}),
   };
@@ -367,13 +370,20 @@ export function equipeDosInsights(r: ResumoDosInsights): PessoaDaEquipe[] {
     return ordenar(r.rotinas.flatMap(s => s.pessoas.filter(p => p.nome !== SEM_RESPONSAVEL)
       .map(p => cartao(p.nome, s.setor === 'fiscal' ? 'Fiscal' : 'Contábil', p.feitas, p.feitas + p.faltando, p.empresas ?? [], 'empresas concluídas'))));
   }
-  const doSetor = (setor: 'fiscal' | 'contabil', nome: string) => r.rotinas.find(s => s.setor === setor)?.pessoas.find(p => p.nome !== SEM_RESPONSAVEL && chaveDoNome(p.nome) === chaveDoNome(nome));
+  const doSetor = (setor: 'fiscal' | 'contabil', nome: string) => {
+    const pessoas = r.rotinas.find(s => s.setor === setor)?.pessoas.filter(p => p.nome !== SEM_RESPONSAVEL) ?? [];
+    return pessoas.find(p => p.nome.trim().toLowerCase() === nome.trim().toLowerCase()) ?? pessoas.find(p => chaveDoNome(p.nome) === chaveDoNome(nome));
+  };
   const dpTotal = r.dp.feitas + r.dp.pendentes + r.dp.atrasadas;
-  const entregasTotal = r.entregas.confirmadas + r.entregas.aEntregar + r.entregas.noLink;
+  // o office boy: as entregues de quantas foram protocoladas na competência (sem o número, o de antes)
+  const entregasTotal = r.entregas.protocoladas ?? r.entregas.confirmadas + r.entregas.aEntregar + r.entregas.noLink;
+  // dois da equipe com o mesmo primeiro nome (o Gustavo do Fiscal e o Gustavo.S): o cartão leva o nome inteiro, e a foto
+  // sai certa (19/11/2026; o dono: "E Gustavo.S nao esse gustavo")
+  const repetidos = new Set(r.time.map(u => chaveDoNome(u.nome)).filter((k, i, l) => l.indexOf(k) !== i));
   return ordenar(r.time.map(u => {
-    const nome = nomeDoCartao(u.nome);
+    const nome = repetidos.has(chaveDoNome(u.nome)) ? u.nome.trim() : nomeDoCartao(u.nome);
     if (u.setor === 'dp') return cartao(nome, ROTULO_DO_SETOR.dp, r.dp.feitas, dpTotal, [], 'clientes do DP fechados');
-    if (u.setor === 'office-boy') return cartao(nome, ROTULO_DO_SETOR['office-boy'], r.entregas.confirmadas, entregasTotal, [], 'entregas feitas');
+    if (u.setor === 'office-boy') return cartao(nome, ROTULO_DO_SETOR['office-boy'], r.entregas.confirmadas, entregasTotal, [], 'entregas feitas das protocoladas');
     const p = doSetor(u.setor, u.nome);
     return cartao(nome, ROTULO_DO_SETOR[u.setor], p?.feitas ?? 0, (p?.feitas ?? 0) + (p?.faltando ?? 0), p?.empresas ?? [], 'empresas concluídas');
   }));
