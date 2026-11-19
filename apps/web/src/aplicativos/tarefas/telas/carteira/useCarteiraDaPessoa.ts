@@ -17,21 +17,46 @@ import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 const pagamentosDe = (contas: readonly financeiro.ContaAPagar[]) => carteira.pagamentosDaCarteira(contas, contas[0]?.funcionario?.uid ?? '');
 
 /** As comissões da pessoa, pelo mês do pagamento: abre no mês seguinte, onde entram as que ela registra (12/11/2026). */
-export function useMinhasComissoes() {
+/** mesDeFora: o mês que a tela da Carteira escolhe uma vez só, para as comissões e os holerites (19/11/2026: "repetindo referencia") */
+export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const repo = useCarteira();
-  const m = useMes('comecar');
+  const proprio = useMes('comecar');
+  const m = mesDeFora ?? proprio;
   const [aberta, setAberta] = useState<carteira.Comissao | null | 'nova'>(null);
   const todas = repo.minhasComissoes();
   const lista = todas.lista.filter(c => c.competencia === m.mes);
   // a escondida conta como comissão, mas o valor dela não entra no total (16/11/2026: "não deixe essa informação visualizável")
   const totais = { ...carteira.totaisDasComissoes(carteira.comValorParaAPessoa(lista)), quantas: lista.filter(c => c.situacao !== 'recusada').length };
-  return { m, exemplos: repo.exemplos, carregada: todas.carregada, erro: todas.erro, lista, totais, aberta, setAberta };
+  // o salário no total do mês (Vitor, 19/11/2026: "Total de dezembro, vc vai somar as comissoes com o salario (salario vc soma depois do
+  // pagamento e o holerite upadas)"): o líquido do holerite do mês, só com o holerite e o pagamento (com comprovante) já no nads
+  const docs = repo.meusDocumentos(), contas = repo.minhasContas();
+  const salarioDoHolerite = carteira.salarioDoMes(docs.lista, m.mes);
+  const salarioPago = salarioDoHolerite != null && carteira.recebidoNoMes(pagamentosDe(contas.lista), m.mes).recebido > 0;
+  const salario = salarioPago ? salarioDoHolerite! : 0;
+  return {
+    m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
+    salario, salarioPago, temHolerite: salarioDoHolerite != null, totalDoMes: totais.total + salario,
+  };
 }
 
 /** O cliente do cadastro no menu da comissão (pelo código do ERP). */
 export interface ClienteDaLista { codigo: number; nome: string }
 
 /** Os clientes do escritório para o menu da comissão: a lista do escritório e as empresas cadastradas pelo nads (com código). */
+/** As empresas do Cadastro ainda sem o código do ERP (o MEI registrado pelo cartão CNPJ; 19/11/2026: "ja ta no sistema, ok, porque
+ *  nao consigo selecionar?"): entram na comissão como avulsas, com o nome e o porte (o MEI pelo regime). */
+export interface ClienteSemCodigo { nome: string; porte: carteira.Porte | null }
+
+function useClientesSemCodigo(): ClienteSemCodigo[] {
+  const cadastros = useTodosOsCadastros();
+  return useMemo(() => {
+    const nomes = new Map<string, ClienteSemCodigo>();
+    for (const e of empresasNovas()) if (e.codigo == null && e.nome.trim() && !nomes.has(e.nome.trim())) nomes.set(e.nome.trim(), { nome: e.nome.trim(), porte: e.regime === 'MEI' ? 'MEI' : null });
+    return [...nomes.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cadastros]);
+}
+
 function useClientesDoEscritorio(): ClienteDaLista[] {
   const cadastros = useTodosOsCadastros();
   return useMemo(() => {
@@ -52,6 +77,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const { toast, modal } = useRetorno();
   const equipe = useAcesso().equipe();
   const clientes = useClientesDoEscritorio();
+  const clientesSemCodigo = useClientesSemCodigo();
   const servicos = repo.servicos();
   // a comissão escondida (16/11/2026): quem tem a % própria registra sem ver a comissão; o robô da nuvem calcula. Pelo
   // Financeiro, como sempre (a % do serviço)
@@ -91,6 +117,9 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     clientes, avulso, clienteCodigo, cliente, nomeAvulso, setNomeAvulso, porte, setPorte,
     escolherCliente: (codigo: number) => { setAvulso(false); setClienteCodigo(codigo); },
     marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
+    clientesSemCodigo,
+    /** a empresa do Cadastro sem código (ou a do cartão CNPJ do MEI): avulsa, com o nome e o porte dela */
+    escolherSemCodigo: (nome: string, porteDela: carteira.Porte | null) => { setAvulso(true); setClienteCodigo(null); setNomeAvulso(nome); if (porteDela) setPorte(porteDela); },
     servicos: servicos.lista, servico, setServico, percentual, oculta,
     /** só o Diretor e o Dono definem a % no lançamento; o texto digitado ('' = a do serviço) e a do serviço, para o lugar vazio */
     podeDefinirPercentual: diretor && !oculta, pctDoDiretor, setPctDoDiretor: (v: string) => setPctDoDiretor(v.replace(/[^\d,.]/g, '').slice(0, 6)),
@@ -163,10 +192,11 @@ export function useJanelaDosServicos(fechar: () => void) {
 }
 
 /** Holerites e pagamentos (12/11/2026: os valores da Visão geral vieram para cá): o mês, os números e os últimos 6 meses. */
-export function useHoleritesEPagamentos() {
+export function useHoleritesEPagamentos(mesDeFora?: ReturnType<typeof useMes>) {
   const repo = useCarteira();
   const { toast } = useRetorno();
-  const m = useMes();
+  const proprio = useMes();
+  const m = mesDeFora ?? proprio;
   const comissoes = repo.minhasComissoes(), docs = repo.meusDocumentos(), contas = repo.minhasContas();
   const pags = pagamentosDe(contas.lista);
   // a escondida fica fora dos valores da pessoa (16/11/2026)

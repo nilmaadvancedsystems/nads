@@ -2,7 +2,8 @@
 // recusada com o motivo). Em cima, o total do mês com a barra das partes; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
 import { Icone, useCarregando, Vazio } from '@nads/ui';
-import { DadosDeTesteDaCarteira, SeletorDoMes, SeloDaComissao } from './comum';
+import type { ReactNode } from 'react';
+import { DadosDeTesteDaCarteira, SeletorDoMes, type useMes, SeloDaComissao } from './comum';
 import { JanelaDaComissao } from './JanelaDaComissao';
 import { useMinhasComissoes } from './useCarteiraDaPessoa';
 
@@ -17,14 +18,17 @@ const ddmm = (d: string) => d.slice(0, 10).split('-').reverse().join('/').slice(
  * sem a aprovação desde 19/11/2026; as cores das cápsulas da lista); e, no lugar da tabela, a lista em linhas: a data num bloquinho, o cliente
  * com o serviço embaixo, o valor e a situação à direita.
  */
-export function MinhasComissoes() {
-  const vm = useMinhasComissoes();
+/** extra: o que vai na linha do mês, antes do Registrar (o Impressões e materiais da Carteira; 19/11/2026) */
+export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?: ReturnType<typeof useMes> } = {}) {
+  const vm = useMinhasComissoes(mesDeFora);
   const { m, lista, totais: t, aberta, setAberta } = vm;
   useCarregando(!vm.carregada);
   // sem a aprovação (Vitor, 19/11/2026: "nao existe isso, nao existe aprovacao"): o que falta receber e o que já foi pago
   const partes = [
     { id: 'aprovada', rotulo: 'A receber', valor: t.lancadas + t.aprovadas },
     { id: 'paga', rotulo: 'Pagas', valor: t.pagas },
+    // o salário entra no total do mês com o holerite e o pagamento (19/11/2026)
+    { id: 'salario', rotulo: 'Salário', valor: vm.salario },
   ];
   const nomeDoMes = carteira.mesPorExtenso(m.mes).split(' ')[0];
   return (
@@ -35,6 +39,7 @@ export function MinhasComissoes() {
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         <DadosDeTesteDaCarteira />
+        {extra}
         <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
@@ -42,16 +47,16 @@ export function MinhasComissoes() {
       <section className="card cmc-resumo" aria-label={'O total de ' + nomeDoMes}>
         <div className="cmc-total">
           <span className="cmc-rotulo">Total de {nomeDoMes}</span>
-          <b className="cmc-valor num">{vm.carregada ? formatos.reais(t.total) : '—'}</b>
-          <span className="hint">{t.quantas === 1 ? '1 comissão' : t.quantas + ' comissões'}{t.recusadas > 0 ? ' · ' + formatos.reais(t.recusadas) + ' recusado' : ''}</span>
+          <b className="cmc-valor num">{vm.carregada ? formatos.reais(vm.totalDoMes) : '—'}</b>
+          <span className="hint">{t.quantas === 1 ? '1 comissão' : t.quantas + ' comissões'}{vm.salarioPago ? ' + o salário' : ''}{t.recusadas > 0 ? ' · ' + formatos.reais(t.recusadas) + ' recusado' : ''}</span>
         </div>
         <div className="cmc-partes">
           <div className="cmc-barra" aria-hidden="true">
-            {t.total > 0 && partes.filter(x => x.valor > 0).map(x => <i key={x.id} className={'cmc-' + x.id} style={{ flexGrow: x.valor }} />)}
+            {vm.totalDoMes > 0 && partes.filter(x => x.valor > 0).map(x => <i key={x.id} className={'cmc-' + x.id} style={{ flexGrow: x.valor }} />)}
           </div>
           <ul className="cmc-legenda">
             {partes.map(x => (
-              <li key={x.id}>
+              <li key={x.id} title={x.id === 'salario' && !vm.salarioPago ? (vm.temHolerite ? 'Entra no total quando o pagamento (com o comprovante) chegar' : 'Entra no total quando o holerite e o pagamento chegarem') : undefined}>
                 <span className={'cmc-ponto cmc-' + x.id} aria-hidden="true" />
                 <span className="cmc-rotulo">{x.rotulo}</span>
                 <b className="num">{vm.carregada ? formatos.reais(x.valor) : '—'}</b>

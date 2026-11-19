@@ -8125,3 +8125,5 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .comissao-destaque .comissao-pct-menu{height:30px;padding:0 10px;font-size:var(--fs-13);}
 .comissao-destaque .comissao-pct-menu.vazio{color:var(--ink-muted);}
 .comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+3){padding-right:190px;}
+.cmc-salario{background:var(--accent);}
+.mei-cartao-txt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;}
