@@ -4,7 +4,7 @@ Pedido do Vitor: a pessoa entra e tem acesso às ferramentas "por demanda da tar
 **etapas guiadas**: numa tela cheia, uma etapa por vez, com a ferramenta dela no meio, as objeções comuns ao
 lado e, embaixo, **Interromper** e **Próximo**.
 
-Link: https://tarefas-nilma.web.app (ligado ao banco). Código: `apps/web/src/aplicativos/tarefas` e
+Link: https://nilma-nads.web.app (ligado ao banco; no projeto do Entregas desde 19/11/2026, o antigo tarefas-nilma.web.app leva para cá). Código: `apps/web/src/aplicativos/tarefas` e
 `packages/core/src/tarefas`.
 
 ## O que tem

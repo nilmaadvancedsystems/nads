@@ -54,7 +54,11 @@ const SITES = {
   'cliente-previa': { site: 'componentes-nilma', nome: 'Área do Cliente (prévia)', tipo: 'app', aplicativo: 'cliente', soCanal: true, pasta: 'componentes' },
   // o site próprio da Área do Cliente (cliente.nilmacontabilidade.com), ligado ao banco do Entregas (17/10/2026): lê só o
   // espelho do link (areasCliente/{token}) e o pacote leva só a Área do Cliente (vite.config.ts, nads-rotas-proprias)
-  cliente: { site: 'cliente-nilma', nome: 'Área do Cliente', tipo: 'app', aplicativo: 'cliente', banco: true },
+  // (19/11/2026) no projeto pago do Entregas (o dono: "Muda os dois"): o espaço de hospedagem do conferencia-nilma, no plano
+  // gratuito, encheu e travou as publicações. O endereço cliente.nilmacontabilidade.com passa para este site; o antigo
+  // (cliente-nilma) leva para lá com o mesmo caminho (firebase.json, redirects)
+  cliente: { site: 'nilma-cliente', nome: 'Área do Cliente', tipo: 'app', aplicativo: 'cliente', banco: true, projeto: 'entregas-2e5e2' },
+  'cliente-antigo': { site: 'cliente-nilma', nome: 'Área do Cliente (endereço antigo)', tipo: 'mudou', para: 'cliente' },
   // o site só para admin (Vitor, 21/10/2026; admin.nilmacontabilidade.com): o robô, o uso do sistema, a saúde do banco, a
   // cota, os feedbacks e o sistema e agentes. O pacote leva só o site do admin (vite.config.ts, nads-rotas-proprias)
   admin: { site: 'admin-nilma', nome: 'Admin', tipo: 'app', banco: true },
@@ -62,7 +66,10 @@ const SITES = {
   // fechada. No projeto do Entregas (o login é dele: os endereços *.web.app do próprio projeto já valem para o login). O
   // pacote leva só a central (vite.config.ts, nads-rotas-proprias)
   robos: { site: 'robos-nilma', nome: 'Central dos robôs', tipo: 'app', banco: true, projeto: 'entregas-2e5e2' },
-  tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
+  // (19/11/2026) o nads da equipe no projeto pago do Entregas, nilma-nads.web.app (o dono: "Muda os dois"; o login já é o do
+  // Entregas). O endereço antigo (tarefas-nilma) leva para o novo com o mesmo caminho (firebase.json, redirects)
+  tarefas: { site: 'nilma-nads', nome: 'Tarefas', tipo: 'app', banco: true, projeto: 'entregas-2e5e2' },
+  'tarefas-antigo': { site: 'tarefas-nilma', nome: 'Tarefas (endereço antigo)', tipo: 'mudou', para: 'tarefas' },
   // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)
   conversor: { site: 'conversor-nilma', nome: 'Conversor', tipo: 'app' },
   // as ferramentas que eram aplicativos à parte (Vitor, 06/11/2026: "não quero essas aplicações rodando externas, deixa

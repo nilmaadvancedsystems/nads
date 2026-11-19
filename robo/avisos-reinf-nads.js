@@ -7,7 +7,7 @@
 const { ouvir } = require('./ouvinte');
 
 // tocar abre as Obrigações do DP (a tabela com a coluna REINF), no mês da transmissão
-const LINK = c => 'https://tarefas-nilma.web.app/tarefas/dp/obrigacoes?competencia=' + c;
+const LINK = c => 'https://nilma-nads.web.app/tarefas/dp/obrigacoes?competencia=' + c;
 const VELHO_MS = 2 * 24 * 60 * 60 * 1000;
 
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();

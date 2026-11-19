@@ -65,7 +65,7 @@ function textoDoEmail(lista, todos) {
       'Todos os vencidos e os que vencem em até 30 dias:',
       ...proximos.map(linha),
       '',
-      'Para subir o certificado novo: nads › Senhas › Certificados (https://tarefas-nilma.web.app/tarefas/senhas/certificados).',
+      'Para subir o certificado novo: nads › Senhas › Certificados (https://nilma-nads.web.app/tarefas/senhas/certificados).',
     ].join('\n'),
   };
 }

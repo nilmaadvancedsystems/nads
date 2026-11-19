@@ -5,7 +5,7 @@
 // Pedido com mais de 30 min não avisa (já venceu para o admin); cada pedido avisa uma vez só.
 const { ouvir } = require('./ouvinte');
 
-const LINK = 'https://tarefas-nilma.web.app/';
+const LINK = 'https://nilma-nads.web.app/';
 const VELHO_MS = 30 * 60 * 1000;
 
 /** O aviso de um pedido (ou null quando ele não deve avisar). */

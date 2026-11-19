@@ -212,6 +212,42 @@
     },
     {
       "site": "tarefas-nilma",
+      "public": "dist-sites/tarefas-antigo",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "!/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ],
+      "redirects": [
+        {
+          "source": "/:caminho*",
+          "destination": "https://nilma-nads.web.app/:caminho*",
+          "type": 301
+        }
+      ]
+    },
+    {
+      "site": "nilma-nads",
       "public": "dist-sites/tarefas",
       "ignore": [
         "firebase.json",
@@ -387,6 +423,50 @@
     },
     {
       "site": "cliente-nilma",
+      "public": "dist-sites/cliente-antigo",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "!/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "no-referrer"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ],
+      "redirects": [
+        {
+          "source": "/:caminho*",
+          "destination": "https://cliente.nilmacontabilidade.com/:caminho*",
+          "type": 301
+        }
+      ]
+    },
+    {
+      "site": "nilma-cliente",
       "public": "dist-sites/cliente",
       "ignore": [
         "firebase.json",

@@ -4,8 +4,8 @@
 //   - vigiaDeLogin: o login do Claude venceu → avisa o admin na 1ª vez, de novo no máximo 1x por dia, e avisa quando volta;
 //     e devolve a espera até a próxima tentativa (10 min, 20, 40, até 1 h)
 //   - avisoDoPedidoFgts: o pedido do FGTS terminou em erro → quem pediu (ou o admin) com a empresa e o motivo
-const LINK_SUPORTE = 'https://tarefas-nilma.web.app/';
-const LINK_FGTS = 'https://tarefas-nilma.web.app/tarefas/dp/fgts';
+const LINK_SUPORTE = 'https://nilma-nads.web.app/';
+const LINK_FGTS = 'https://nilma-nads.web.app/tarefas/dp/fgts';
 const ESPERA_INICIAL_MS = 10 * 60000;
 const ESPERA_MAXIMA_MS = 60 * 60000;
 const REPETIR_AVISO_MS = 24 * 3600000;

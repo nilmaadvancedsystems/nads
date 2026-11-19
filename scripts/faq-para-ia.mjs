@@ -18,7 +18,7 @@ if (!fs.existsSync(guia)) { console.error('faq: não achei o guia da IA em ' + g
 const INICIO = '<!-- FAQ-TAREFAS:INICIO (gerado pelo nads: npm run faq; não edite aqui, edite o faq-tarefas.md) -->';
 const FIM = '<!-- FAQ-TAREFAS:FIM -->';
 const corpo = fs.readFileSync(faq, 'utf8').replace(/\r\n/g, '\n').trim()
-  .replace(/^## (.+)$/gm, '## Tarefas (nads, tarefas-nilma.web.app) — $1');
+  .replace(/^## (.+)$/gm, '## Tarefas (nads, nilma-nads.web.app) — $1');
 const bloco = INICIO + '\n' + corpo + '\n' + FIM;
 let texto = fs.readFileSync(guia, 'utf8');
 const i = texto.indexOf('<!-- FAQ-TAREFAS:INICIO');

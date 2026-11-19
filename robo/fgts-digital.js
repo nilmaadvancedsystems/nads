@@ -54,7 +54,7 @@ const ESPERA_PESSOA_MS = 10 * 60 * 1000;
 const LIMITE_MS = 6 * 60 * 1000 + ESPERA_PESSOA_MS;
 const LARGURA = 1280;
 const ALTURA = 900;
-const LINK_FGTS = 'https://tarefas-nilma.web.app/tarefas/dp/fgts';
+const LINK_FGTS = 'https://nilma-nads.web.app/tarefas/dp/fgts';
 
 // Os textos do caminho no portal (sem acento e minúsculos para comparar). Ajustar aqui quando o ensaio mostrar o
 // nome certo de cada botão.
