@@ -8099,3 +8099,24 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 @media (max-width:760px){.fin-equipe{grid-template-columns:1fr;}.fin-equipe-menu{position:static;flex-direction:row;overflow-x:auto;}}
 .modal.registro-novo.janela-plano{max-width:960px;height:calc(100dvh - 64px);}
 .janela-plano .registro-corpo{padding:12px 18px 18px;}
+/* Financeiro › Equipe › Por cliente (19/11/2026): o cliente aberto e as transações dele embaixo */
+.por-cliente .busca-curta{margin-left:8px;}
+.por-cliente-aberto td{background:var(--surface-2);}
+.por-cliente-detalhe > td{padding:0 12px 10px 32px;background:var(--surface-2);}
+.por-cliente-transacoes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.por-cliente-transacoes li{display:grid;grid-template-columns:56px minmax(0,1fr) minmax(0,160px) 120px;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--border-muted);font-size:var(--fs-13);}
+.por-cliente-transacoes li b{text-align:right;}
+.por-cliente-transacoes li svg{vertical-align:-2px;color:var(--ink-muted);}
+/* as caixinhas dos insumos na janela da Carteira (19/11/2026): o ícone à esquerda, o nome, a quantidade grande e o valor */
+.insumo-caixas{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
+.insumo-caixa{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);min-width:0;}
+.insumo-caixa-icone{width:36px;height:36px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;background:var(--surface-3);color:var(--ink-muted);}
+.insumo-caixa-icone svg{width:18px;height:18px;}
+.insumo-caixa.tem .insumo-caixa-icone{background:var(--accent-soft);color:var(--accent);}
+.insumo-caixa-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25;}
+.insumo-caixa-nome{font-size:var(--fs-12);color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.insumo-caixa-txt b{font-size:20px;font-weight:700;color:var(--ink);}
+.insumo-caixa-valor{font-size:var(--fs-12);color:var(--ink-muted);}
+.insumo-caixa-total{background:var(--surface);}
+.insumo-caixa-total .insumo-caixa-icone{background:color-mix(in srgb, var(--success) 18%, transparent);color:var(--success);}
+.insumo-caixa-total b{font-size:18px;}

@@ -1,16 +1,19 @@
 // Financeiro › Equipe (Vitor, 19/11/2026: "Deixa so uma aba 'equipe', onde voce vai colocar Enviar holerites, insumos, comissoes da
-// equipe, em um menu lateral"): as três telas da equipe numa aba só, escolhidas no menu da esquerda (a escolhida fica no endereço,
+// equipe, em um menu lateral"): as telas da equipe numa aba só, escolhidas no menu da esquerda (a escolhida fica no endereço,
 // ?parte=). Para o Diretor e o Dono.
 import { Icone, type NomeIcone } from '@nads/ui';
 import { useSearchParams } from 'react-router';
 import { ComissoesDaEquipe } from '../carteira/ComissoesDaEquipe';
 import { EnviarHolerites } from '../carteira/EnviarHolerites';
 import { Insumos } from '../carteira/Insumos';
+import { PorCliente } from '../carteira/PorCliente';
 
 const PARTES: readonly { id: string; rotulo: string; icone: NomeIcone }[] = [
   { id: 'comissoes', rotulo: 'Comissões da equipe', icone: 'checklist' },
   { id: 'holerites', rotulo: 'Enviar holerites', icone: 'upload' },
   { id: 'insumos', rotulo: 'Insumos', icone: 'impressora' },
+  // os serviços e os insumos do mês juntos por cliente (19/11/2026)
+  { id: 'clientes', rotulo: 'Por cliente', icone: 'predio' },
 ];
 
 export function EquipeDoFinanceiro() {
@@ -27,7 +30,7 @@ export function EquipeDoFinanceiro() {
         ))}
       </nav>
       <div className="fin-equipe-corpo">
-        {parte === 'holerites' ? <EnviarHolerites /> : parte === 'insumos' ? <Insumos /> : <ComissoesDaEquipe />}
+        {parte === 'holerites' ? <EnviarHolerites /> : parte === 'insumos' ? <Insumos /> : parte === 'clientes' ? <PorCliente /> : <ComissoesDaEquipe />}
       </div>
     </div>
   );
