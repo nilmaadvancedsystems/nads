@@ -1,9 +1,11 @@
 // Financeiro › Boletos (10/11/2026): o lote de boletos de honorários do mês. Os PDFs prontos sobem aqui; cada linha mostra o
 // cliente, o valor e o vencimento do PDF, para quem vai e a situação (com o motivo, quando trava ou deu erro). Só um Diretor dispara.
-// Em 19/11/2026: o Emitir pelo Efí (o boleto com Pix dos clientes do mês; o robô emite e põe aqui) e a faixa dos pedidos.
+// Em 19/11/2026: o Emitir pelo Efí (o boleto com Pix dos clientes do mês; o robô emite e põe aqui) e a faixa dos pedidos —
+// só no modo desenvolvedor por enquanto ("deixa só no dev pro enquanto"), até o teste na homologação do Efí.
 import { financeiro, formatos } from '@nads/core';
 import { BotaoAcao, BotaoIcone, CampoArquivos, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { dataBr } from './formatosDaNota';
 import { JanelaDosContratos } from './JanelaDosContratos';
 import { JanelaDoBoleto } from './JanelaDoBoleto';
@@ -23,6 +25,7 @@ function Motivo({ l }: { l: LinhaDoLote }) {
 export function Boletos() {
   const vm = useLoteDeBoletos();
   const efi = useBoletosDoEfi(vm.competencia, vm.contratosNoLote);
+  const [dev] = useModoDesenvolvedor();
   // a janela Clientes dos honorários (o valor de cada um): Honorários saiu do menu em 30/10/2026
   const [gerenciando, setGerenciando] = useState(false);
   useCarregando(vm.carregando);
@@ -61,11 +64,11 @@ export function Boletos() {
         <MenuSuspenso rotulo="Mais" titulo="O valor e o dia de vencimento de cada cliente" direita largura={240}
           itens={[{ rotulo: 'Gerenciar clientes', icone: 'briefcase', onClick: () => setGerenciando(true) }]} />
         {/* o boleto com Pix pelo Efí (19/11/2026): os clientes do mês ainda sem boleto; o robô emite e o boleto entra na lista */}
-        <span title={efi.podem ? 'Emite pelo Efí o boleto com Pix de cada cliente do mês ainda sem boleto' : 'Nenhum cliente do mês sem boleto (ativo, com valor e CNPJ, em aberto)'}>
+        {dev && <span title={efi.podem ? 'Emite pelo Efí o boleto com Pix de cada cliente do mês ainda sem boleto' : 'Nenhum cliente do mês sem boleto (ativo, com valor e CNPJ, em aberto)'}>
           <BotaoAcao className="btn btn-outline" carregando={efi.pedindo} textoCarregando="Pedindo…" disabled={!efi.podem} onClick={efi.emitir}>
             <Icone nome="dinheiro" />Emitir pelo Efí{efi.podem ? ' · ' + efi.podem : ''}
           </BotaoAcao>
-        </span>
+        </span>}
         {vm.temLinhas && <CampoArquivos id="boletos-subir" compacto aceitar=".pdf" rotulo="Subir mais boletos (PDF)" desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />}
         {/* a exclusão em lote (10/11/2026): os marcados que ainda não saíram, com a confirmação */}
         {vm.quantasParaExcluir > 0 && (
@@ -80,7 +83,7 @@ export function Boletos() {
         </span>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
-      {efi.situacao && (
+      {dev && efi.situacao && (
         <p className={'registro-dica' + (efi.situacao.erros.length ? ' registro-dica-erro' : '')} title={efi.situacao.erros.map(e => e.nome + ': ' + e.erro).join('\n')}>
           <Icone nome={efi.situacao.erros.length ? 'alert' : 'clock'} />
           {[

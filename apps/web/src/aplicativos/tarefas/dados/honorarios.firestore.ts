@@ -7,6 +7,7 @@
 // robo/boletos-efi.js emite e grava o resultado); a multa, os juros e o dia padrão em config/boletoEfi (só o admin grava).
 import { financeiro } from '@nads/core';
 import { addDoc, collection, deleteDoc as deleteDocBruto, deleteField, doc, onSnapshot, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+import { travar } from '../../../comum/disjuntorDeGravacao';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import type { ListaAoVivo } from './agentes';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -15,6 +16,11 @@ import type { RepoHonorarios } from './honorarios';
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
+// o boleto do Efí (19/11/2026, "deixa só no dev pro enquanto"): a tela só aparece no modo desenvolvedor e o que ela grava
+// (o pedido, o dia de vencimento e config/boletoEfi) vale de verdade, como o Lançatudo — senão o robô nunca recebe o pedido.
+// Passa só pelo disjuntor (o ciclo de gravação), não pela trava do modo.
+const updateDocDoEfi = travar(updateDocBruto) as typeof updateDocBruto;
+const setDocDoEfi = travar(setDocBruto) as typeof setDocBruto;
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const FORMAS = financeiro.FORMAS_DE_RECEBIMENTO.map(f => f.valor);
@@ -115,11 +121,11 @@ export function criarHonorariosFirestore(): RepoHonorarios {
     },
     async desfazer(contratoId, competencia) { await deleteDoc(doc(db, 'financeiroRecebimentos', financeiro.idDoRecebimento(contratoId, competencia))); },
     async definirDiaVencimento(id, dia, quem) {
-      await updateDoc(doc(db, 'financeiroHonorarios', id), { diaVencimento: dia ?? deleteField(), atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
+      await updateDocDoEfi(doc(db, 'financeiroHonorarios', id), { diaVencimento: dia ?? deleteField(), atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
     },
     async pedirBoletos(pedidos) {
       // o campo com caminho (boletosEfi.2026-10) muda só essa competência
-      for (const p of pedidos) await updateDoc(doc(db, 'financeiroHonorarios', p.contratoId), { ['boletosEfi.' + p.competencia]: p.boleto });
+      for (const p of pedidos) await updateDocDoEfi(doc(db, 'financeiroHonorarios', p.contratoId), { ['boletosEfi.' + p.competencia]: p.boleto });
     },
     configDoBoleto() {
       if (!configDoBoleto) {
@@ -133,7 +139,7 @@ export function criarHonorariosFirestore(): RepoHonorarios {
     },
     async salvarConfigDoBoleto(c, quem) {
       try {
-        await setDoc(doc(db, 'config', 'boletoEfi'), { multa: c.multa, jurosAoMes: c.jurosAoMes, diaPadrao: c.diaPadrao, atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
+        await setDocDoEfi(doc(db, 'config', 'boletoEfi'), { multa: c.multa, jurosAoMes: c.jurosAoMes, diaPadrao: c.diaPadrao, atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(/permission|insufficient/i.test(msg) ? 'Só o admin muda a configuração do boleto.' : msg, { cause: err });

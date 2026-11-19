@@ -8,6 +8,7 @@ import { JanelaDoPlanoDeContas } from './JanelaDoPlanoDeContas';
 import { usuarios } from '@nads/core';
 import { useOperador } from '../../casca/operador';
 import { useState } from 'react';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { AMBIENTES, PROVEDORES, OPCOES_DA_APURACAO, OPCOES_DO_SIMPLES, useConfiguracoesDoFinanceiro } from './useConfiguracoesDoFinanceiro';
 
 const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
@@ -18,6 +19,7 @@ export function ConfiguracoesDoFinanceiro() {
   // o Plano de contas saiu das abas e abre daqui, numa janela (19/11/2026): para o Diretor e o Dono (Vitor: "pode publicar tudo para
   // versao final, apenas para diretores"); os outros continuam com a aba
   const dev = usuarios.nivelDeDiretor(useOperador().operador?.nivel);
+  const [modoDev] = useModoDesenvolvedor();
   const [plano, setPlano] = useState(false);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
@@ -137,7 +139,8 @@ export function ConfiguracoesDoFinanceiro() {
         </ConfigLinha>
       </ConfigSecao>}
 
-      <ConfigDoBoleto />
+      {/* o boleto do Efí: só no modo desenvolvedor por enquanto (19/11/2026) */}
+      {modoDev && <ConfigDoBoleto />}
 
       <ConfigSecao titulo="O robô">
         <ConfigLinha titulo="Robô da nuvem" descricao={r.ligado ? undefined : r.motivo || undefined}>
