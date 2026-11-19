@@ -7,7 +7,7 @@
 //   - confere o pedido (core: pedidoDeSenha) e os limites (3 por e-mail e 100 no total por dia);
 //   - só manda se o login daquele e-mail tem o link nas permissões (o mesmo que a regra do banco confere) e não é da equipe;
 //   - gera o código pelo Firebase (generatePasswordResetLink) e manda o e-mail da Nilma, em português, com o link da
-//     página própria (/cliente/senha), pela caixa do robô e no freio de envios dele.
+//     página própria (/cliente/senha), pela caixa naoresponda (Hostinger; reserva: a do robô), no freio de envios do robô.
 // E-mail sem acesso: nada sai e nada fica registrado com o e-mail (só a contagem no log).
 
 const POR_EMAIL_POR_DIA = 3;
