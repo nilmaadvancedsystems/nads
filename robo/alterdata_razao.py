@@ -94,13 +94,25 @@ def pagina(w):
     return p[0].window_text() if p else ''
 
 
+def apertar(b):
+    """Aperta um botão ao limpar: o clique de verdade e, sem área de trabalho (o acesso remoto caiu no meio, 19/11/2026),
+    a mensagem de clique (BM_CLICK), que não precisa do mouse. Um botão que falha não impede os outros de fechar."""
+    try:
+        b.click_input()
+    except Exception:
+        try:
+            b.click()
+        except Exception:
+            pass
+
+
 def limpar():
     """Fecha o que este roteiro abre (pergunta, visualização, o assistente do Razão), sem gerar nada."""
     fechou = False   # só espera quando fechou alguma coisa
     for w in janelas('TMessageForm'):   # pergunta aberta: Não (ou Cancelar), nunca Sim
         for b in filhos(w):
             if sem_e(b.window_text()) in ('Não', 'Nao', 'Cancelar'):
-                b.click_input()
+                apertar(b)
                 fechou = True
                 break
     for w in janelas('TAlterdataTppPrintPreview'):
@@ -111,7 +123,7 @@ def limpar():
     for w in janelas('TfrmRazaoDlg'):
         b = botao(w, 'Fechar') or botao(w, 'Cancelar')
         if b:
-            b.click_input()
+            apertar(b)
         else:
             w.close()
         time.sleep(.5)

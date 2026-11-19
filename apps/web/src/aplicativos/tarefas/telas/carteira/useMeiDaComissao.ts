@@ -18,7 +18,8 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 /** Abertura de MEI, Alteração de MEI: a comissão ganha o cartão CNPJ e a senha gov */
 export const ehServicoDeMei = (servico: string): boolean => /\bmei\b/i.test(servico) && /abertura|alteracao/i.test(semAcento(servico));
 
-export function useMeiDaComissao(nome: string) {
+/** aoLerCartao: o cartão lido, com o nome da empresa (a janela preenche o cliente) */
+export function useMeiDaComissao(nome: string, aoLerCartao?: (nomeDaEmpresa: string) => void) {
   const cofre = useCofre();
   const gravar = useGravarCadastro();
   const por = useOperador().operador?.nome || '';
@@ -35,6 +36,8 @@ export function useMeiDaComissao(nome: string) {
   // o MEI tem o CPF do dono no fim do nome empresarial ("FULANO DE TAL 12345678900")
   const cpfDoCartao = cartao ? (cartao.razaoSocial.match(/(\d{11})\s*$/) || [])[1] || '' : '';
   const nomeDaEmpresa = cartao ? cartao.razaoSocial.trim().toUpperCase() : '';
+  // o nome do cliente em destaque (Vitor, 19/11/2026: "priorize o nome do cliente"): sem o começo do CNPJ que o MEI leva no nome
+  const nomeDoCartao = nomeDaEmpresa.replace(/^[\d./-]+\s+/, '').replace(/\s+\d{11}$/, '').trim() || nomeDaEmpresa;
   const cnpj = cartao ? empresas.cadastro.cnpjFormatado(cartao.cnpj) : '';
   const noSistema = (n: string) => [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]
     .some(e => formatos.slug(e.nome) === formatos.slug(n) || formatos.slug(empresas.nomeParaMostrar(e)) === formatos.slug(n));
@@ -42,7 +45,7 @@ export function useMeiDaComissao(nome: string) {
   const existente = nomeDoCliente ? cofre.contasGov.find(x => formatos.slug(x.nome) === formatos.slug(nomeDoCliente)) || null : null;
 
   return {
-    cartao, cnpj, nomeDaEmpresa, lendo, erro, registro,
+    cartao, cnpj, nomeDaEmpresa, nomeDoCartao, lendo, erro, registro,
     /** lê o cartão CNPJ em PDF (nada sobe) */
     async lerCartao(f: File | null) {
       if (!f || lendo) return;
@@ -54,6 +57,7 @@ export function useMeiDaComissao(nome: string) {
         const d = empresas.cadastro.lerCartaoCnpj(paginas.map(l => l.join('\n')).join('\n'));
         if (!d) throw new Error('Não reconheci o cartão CNPJ nesse PDF. Use o "Comprovante de Inscrição e de Situação Cadastral" da Receita.');
         setCartao(d);
+        aoLerCartao?.(d.razaoSocial.trim().toUpperCase());
         // já registra no Cadastro, com o regime MEI e o CNPJ do cartão (o que já está no sistema fica como está)
         const n = d.razaoSocial.trim().toUpperCase();
         if (noSistema(n)) { setRegistro('ja'); return; }

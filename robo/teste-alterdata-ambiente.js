@@ -5,7 +5,9 @@
 //   3. se continuar falhando, a fila pausa, os pedidos ficam pendentes "esperando o Contábil" (não viram erro) e o admin é avisado 1x;
 //   4. passada a pausa, a fila volta a tentar e, com o Contábil bom, os pedidos saem;
 //   5. SendInput sem eventos (servidor sem tela ativa) pausa sem queimar a fila e avisa;
-//   6. a mensagem final é clara; erro que não é de ambiente segue como era.
+//   6. a mensagem final é clara; erro que não é de ambiente segue como era;
+//   7. alguém no servidor por acesso remoto (19/11/2026): o razão nem tenta, o pedido espera sem reabrir o Contábil nem queimar
+//      a fila e, passada a pausa, sai; esperou demais, vira erro com a frase clara.
 // Rodar: node robo/teste-alterdata-ambiente.js
 'use strict';
 const assert = require('assert');
@@ -110,7 +112,8 @@ function montar() {
     const ids = []; for (let i = 0; i < 5; i++) { ids.push('s' + i); c.novo('s' + i, 600 + i, '2026-09'); }
     for (const id of ids) c.fila.chegou(id);
     await espera(5); await c.fila.ocioso();
-    assert.strictEqual(c.estado.roteiros, 2, 'queimou a fila: ' + c.estado.roteiros);
+    // sem tela, o razão do mesmo pedido nem tenta (19/11/2026): um roteiro só
+    assert.strictEqual(c.estado.roteiros, 1, 'queimou a fila: ' + c.estado.roteiros);
     for (const id of ids) assert.strictEqual(st(c, id), 'pendente', id);
     assert.match(c.pedidos.get('s0').esperandoContabil, /sem sessão de tela ativa/);
     assert.match(c.pedidos.get('s3').esperandoContabil, /sem sessão de tela ativa/);
@@ -131,6 +134,37 @@ function montar() {
     assert.strictEqual(st(c, 'z'), 'erro');
     assert.match(c.pedidos.get('z').erro, /^balancete: empresa 571 não encontrada/);
     console.log('6. erro comum segue igual: ok');
+  }
+
+  // 7. alguém no servidor por acesso remoto
+  {
+    const c = mk(false, { pausaRemotoMs: 400 });
+    c.estado.erroAmb = 'alguém está usando o servidor por acesso remoto (a sessão do robô está conectada pela área de trabalho remota)';
+    const ids = []; for (let i = 0; i < 4; i++) { ids.push('r' + i); c.novo('r' + i, 183, '2026-0' + (i + 1)); }
+    for (const id of ids) c.fila.chegou(id);
+    await espera(5); await c.fila.ocioso();
+    assert.strictEqual(c.estado.roteiros, 1, 'o razão tentou com alguém conectado, ou a fila queimou: ' + c.estado.roteiros);
+    for (const id of ids) assert.strictEqual(st(c, id), 'pendente', id);
+    assert.match(c.pedidos.get('r0').esperandoContabil, /acesso remoto/);
+    assert.match(c.pedidos.get('r2').esperandoContabil, /acesso remoto/);
+    assert.strictEqual(c.estado.reabriu, 0, 'não reabre o Contábil por causa de quem está conectado');
+    assert.strictEqual(c.estado.avisos.length, 0, 'não é erro do Contábil');
+    c.estado.bom = true;
+    await espera(500); await c.fila.ocioso();
+    for (const id of ids) assert.strictEqual(st(c, id), 'pronto', id);
+    console.log('7a. acesso remoto: esperou sem queimar nem reabrir, depois saiu: ok');
+
+    // esperou o máximo: vira erro com a frase clara
+    const d = mk(false, { pausaRemotoMs: 1 });
+    d.estado.erroAmb = c.estado.erroAmb;
+    d.novo('t', 183, '2026-09'); d.pedidos.set('t', { ...d.pedidos.get('t'), esperas: 6 });
+    d.fila.chegou('t');
+    await espera(5); await d.fila.ocioso();
+    assert.strictEqual(st(d, 't'), 'erro');
+    assert.match(d.pedidos.get('t').erro, /^Alguém está usando o servidor por acesso remoto.*Feche a conexão remota/);
+    assert.strictEqual(classeDoErro(['o roteiro parou: Handle 1 is not a vaild window handle', c.estado.erroAmb]), '');
+    assert.strictEqual(classeDoErro(['a janela do Razão não abriu', c.estado.erroAmb]), 'remoto');
+    console.log('7b. acesso remoto demais: erro claro: ok');
   }
   fs.rmSync(BASE, { recursive: true, force: true });
 })().catch(err => { console.error('FALHOU:', err.stack || err.message); process.exit(1); });

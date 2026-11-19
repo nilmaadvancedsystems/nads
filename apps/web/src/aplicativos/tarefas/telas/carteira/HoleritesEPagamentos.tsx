@@ -5,7 +5,7 @@
 import { carteira, formatos } from '@nads/core';
 import { Icone, useCarregando, Vazio, type NomeIcone } from '@nads/ui';
 import { dataBr } from '../financeiro/formatosDaNota';
-import { DadosDeTesteDaCarteira, mesCurto, SeletorDoMes, tamanhoBr } from './comum';
+import { DadosDeTesteDaCarteira, mesCurto, SeletorDoMes, tamanhoBr, type useMes } from './comum';
 
 function Numero({ rotulo, valor, dica, icone, tom }: { rotulo: string; valor: string; dica: string; icone: NomeIcone; tom: 'neutro' | 'aviso' | 'ok' }) {
   return (
@@ -19,16 +19,19 @@ function Numero({ rotulo, valor, dica, icone, tom }: { rotulo: string; valor: st
 }
 import { useHoleritesEPagamentos } from './useCarteiraDaPessoa';
 
-export function HoleritesEPagamentos() {
-  const vm = useHoleritesEPagamentos();
-  const { m, pags, erro, salario, recebido, totais: t, hist, maior, carregando } = vm;
+/** m: o mês da tela da Carteira (um seletor só, o das comissões; 19/11/2026): sem o seletor aqui */
+/** soGrafico: na tela da Carteira, só os últimos 6 meses (os números saíram e os documentos e pagamentos foram para os lançamentos; 19/11/2026) */
+export function HoleritesEPagamentos({ m: mesDeFora, soGrafico = false }: { m?: ReturnType<typeof useMes>; soGrafico?: boolean } = {}) {
+  const vm = useHoleritesEPagamentos(mesDeFora);
+  const { m, pags, erro, salario, totais: t, hist, maior, carregando } = vm;
   const docs = { carregada: vm.docsCarregados, lista: vm.docs };
   const contas = { carregada: vm.contasCarregadas };
   useCarregando(vm.carregando);
   return (
     <section className="dp-painel cart-painel">
+      {!soGrafico && (<>
       <div className="tarefas-barra-topo dp-filtros-linha">
-        <SeletorDoMes {...m} />
+        {!mesDeFora && <SeletorDoMes {...m} />}
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         <DadosDeTesteDaCarteira />
@@ -38,12 +41,12 @@ export function HoleritesEPagamentos() {
       <div className="stat-grid dp-numeros">
         <Numero rotulo="Salário" icone="recibo" tom="neutro" valor={carregando || salario == null ? '—' : formatos.reais(salario)}
           dica={salario == null ? 'O holerite do mês ainda não chegou' : 'Líquido do holerite'} />
-        <Numero rotulo="Recebido do escritório" icone="check" tom="ok" valor={carregando ? '—' : formatos.reais(recebido.recebido)}
-          dica={recebido.aReceber ? formatos.reais(recebido.aReceber) + ' a receber' : 'Pagamentos com comprovante'} />
+        {/* o Recebido do escritório saiu (Vitor, 19/11/2026: "remove isso") */}
         <Numero rotulo="Comissões" icone="dinheiro" tom="aviso" valor={carregando ? '—' : formatos.reais(t.total)}
           dica={t.aprovadas + t.lancadas ? formatos.reais(t.aprovadas + t.lancadas) + ' a receber' : t.quantas ? 'Todas pagas' : 'Nenhuma no mês'} />
       </div>
 
+      </>)}
       <section className="card cart-cartao">
         <h3 className="cart-titulo">Últimos 6 meses</h3>
         <div className="cart-grafico" role="img" aria-label="Salário e comissões nos últimos 6 meses">
@@ -60,6 +63,7 @@ export function HoleritesEPagamentos() {
         <p className="cart-legenda"><span className="cart-ponto salario" />Salário <span className="cart-ponto comissao" />Comissões</p>
       </section>
 
+      {!soGrafico && (<>
       <section className="card cart-cartao">
         <h3 className="cart-titulo">Holerites e comprovantes</h3>
         {docs.carregada && !docs.lista.length ? <Vazio compacto icone="recibo" titulo="Nenhum documento ainda" texto="Quando o Financeiro subir o seu holerite, ele aparece aqui." /> : (
@@ -105,6 +109,7 @@ export function HoleritesEPagamentos() {
           </div>
         )}
       </section>
+      </>)}
     </section>
   );
 }

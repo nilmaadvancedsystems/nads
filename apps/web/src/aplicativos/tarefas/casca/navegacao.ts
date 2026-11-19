@@ -180,7 +180,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'carteira', nome: 'Carteira', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
     // as Comissões e os Holerites numa tela só, o Financeiro (Vitor, 19/11/2026: "Consegue colocar tudo em uma tela so? comissoes e
     // holerites"; "Primeira pagina, Financeiro / Segunda Insumos"); os links antigos (comissoes, documentos) caem nela
-    { id: 'financeiro', rotulo: 'Financeiro', icone: 'dinheiro', titulo: 'Financeiro' },
+    { id: 'financeiro', rotulo: 'Financeiro', icone: 'dinheiro', titulo: 'Seu Financeiro' },
     // os Insumos (Vitor, 12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e caixas
     // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira
     { id: 'insumos', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos' },
