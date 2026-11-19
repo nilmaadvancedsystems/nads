@@ -1,18 +1,16 @@
 // O que já foi delegado nesta etapa (Vitor, 10/11/2026: "traz um feedback de delegado, e que eu posso remover"): para quem,
 // quantas contas e quantas a pessoa já marcou, com o Remover. Só para quem delegou.
 import { Alerta } from '@nads/ui';
-import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import type { VmDelegacao } from './useDelegacaoDaEtapa';
 
 export function FaixaDelegado({ vm }: { vm: VmDelegacao }) {
   if (!vm.delegadas.length) return null;
   // o aviãozinho de papel no lugar do check (Vitor, 19/11/2026: "troca o icone do check para o icone do aviaozinho de papel, para
-  // mostrar que aquela etapa esta delegada"); por enquanto no modo desenvolvedor
-  const icone = modoDesenvolvedor() ? 'aviao' as const : undefined;
+  // mostrar que aquela etapa esta delegada"; na final desde 19/11/2026)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
       {vm.delegadas.map(x => (
-        <Alerta key={x.id} naLinha tom="ok" icone={icone} titulo={'Delegado para ' + x.para} texto={x.resumo}>
+        <Alerta key={x.id} naLinha tom="ok" icone="aviao" titulo={'Delegado para ' + x.para} texto={x.resumo}>
           <div className="btn-row"><button type="button" className="btn btn-outline" onClick={() => { void vm.remover(x.id, x.para); }}>Remover delegação</button></div>
         </Alerta>
       ))}
