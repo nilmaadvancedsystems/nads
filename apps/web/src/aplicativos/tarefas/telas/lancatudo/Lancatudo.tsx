@@ -15,6 +15,7 @@ import { Janela, JanelaDaLinha, JanelaDaRegra, JanelaDoPlano } from './Janelas';
 import { useLancatudo, type EmpresaDoLancatudo } from './useLancatudo';
 import { useRegistroDoLancatudo } from './useRegistroDoLancatudo';
 import { TutorialDoLancatudo } from './TutorialDoLancatudo';
+import { useRazaoDoServidor } from './useRazaoDoServidor';
 import { useTutorialDoLancatudo } from './useTutorialDoLancatudo';
 
 type Vm = ReturnType<typeof useRegistroDoLancatudo>;
@@ -39,7 +40,9 @@ export function Lancatudo({ pagina }: { pagina: string }) {
 }
 
 function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatudo; entrada: Entrada; pagina: string }) {
-  const vm = useRegistroDoLancatudo(empresa, entrada.competencia, entrada.banco);
+  // o Atualizar (19/11/2026: "atualizar o balancete, ele vai chamar o alterdata do servidor"): o razão do mês pelo robô
+  const servidor = useRazaoDoServidor(empresa.codigo, empresa.nome, entrada.competencia);
+  const vm = useRegistroDoLancatudo(empresa, entrada.competencia, entrada.banco, servidor.lancamentos);
   useCarregando(!vm.pronto);
   // as Regras numa janela (18/11/2026: a barra lateral saiu); o link antigo das Regras já abre com ela
   const [regrasAbertas, setRegrasAbertas] = useState(pagina === 'regras');
@@ -83,7 +86,7 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
       {vm.erro && <p className="registro-dica registro-dica-erro lt-dica"><Icone nome="alert" />O banco recusou: {vm.erro}</p>}
       {vm.pronto && !vm.contaDoBanco && <ContaDoBanco vm={vm} rotulo={rotuloDoBanco(vm.banco)} />}
       {vm.semPlano && <p className="registro-dica lt-dica"><Icone nome="ajuda" />A empresa ainda não tem plano de contas no Cadastro: o código da conta vale como for digitado, sem conferir.</p>}
-      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setAbaDoMes('extrato')} verComprovante={comp.ver} />
+      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setAbaDoMes('extrato')} verComprovante={comp.ver} servidor={servidor} />
     </section>
   );
 }
@@ -107,7 +110,7 @@ function ContaDoBanco({ vm, rotulo }: { vm: Vm; rotulo: string }) {
   );
 }
 
-function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void; verComprovante: (c: NonNullable<Linha['comprovante']>) => void }) {
+function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante, servidor }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void; verComprovante: (c: NonNullable<Linha['comprovante']>) => void; servidor: ReturnType<typeof useRazaoDoServidor> }) {
   const t = vm.totais;
   if (vm.semExtrato) {
     const temOutros = vm.mesesComExtrato.length > 0;
@@ -158,6 +161,12 @@ function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante }: { vm: Vm;
         </div>
         <div className="lt-painel-acoes">
           <div className="lt-painel-botoes" data-tut="lt-exportar">
+            {servidor.disponivel && (
+              <button type="button" className="btn btn-outline lt-atualizar" disabled={servidor.andando} onClick={servidor.atualizar}
+                title="Pede ao robô do Alterdata do servidor o razão e o balancete do mês: o que já está lançado no Alterdata fica em Fora">
+                {servidor.andando ? <span className="btn-spinner" /> : <Icone nome="repeat" />}Atualizar do Alterdata
+              </button>
+            )}
             <BotaoImportarNoAlterdata codigo={vm.empresa.codigo} empresa={vm.empresa.nome} lote={vm.lote} origem="lancatudo" planilha={vm.planilhaParaOAlterdata}
               disabled={!!vm.motivoSemExportar} motivo={vm.motivoSemExportar} quem={vm.quem} baixar={vm.baixarArquivo} />
             <MenuSuspenso rotulo="Ações" className="btn btn-primary" titulo="Ações" direita flutuante largura={340} itens={[
@@ -171,6 +180,7 @@ function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante }: { vm: Vm;
               { rotulo: 'Selecionar os não conciliados', icone: 'alert', onClick: vm.marcarRevisar },
             ]} />
           </div>
+          {servidor.texto && <small className={'lt-painel-nota' + (servidor.comErro ? ' lt-nota-erro' : '')}>{servidor.texto}</small>}
           <small className="lt-painel-nota">{vm.ultimaExportacao || (vm.razaoDoMes ? 'O razão do mês já foi importado: o que já está nele fica em Fora.' : 'Ainda não exportado neste mês.')}</small>
         </div>
       </section>

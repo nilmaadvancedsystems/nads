@@ -1,7 +1,7 @@
 // ViewModel do Lançatudo aberto numa empresa: as linhas do extrato do mês (o que o Extrator já leu) com a contrapartida,
 // as regras da empresa e a saída para o Alterdata. As regras do negócio são do core (lancatudo); aqui só junta os dados
 // (Extrator, Cadastro e o próprio Lançatudo no banco), guarda o que a pessoa faz e prepara o que a View mostra.
-import { creditor, extrator, formatos, lancatudo as lt } from '@nads/core';
+import { creditor, extrator, formatos, lancatudo as lt, type tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
@@ -34,7 +34,7 @@ const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' +
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const rotuloDoMes = (c: string) => MESES[Number(c.slice(5, 7)) - 1] + ' de ' + c.slice(0, 4);
 
-export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia: string, bancoEscolhido: string | null) {
+export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia: string, bancoEscolhido: string | null, razaoDoServidor: readonly tarefas.LancamentoDoRobo[] | null = null) {
   const { operador } = useOperador();
   const quem = operador?.nome || '';
   const { aviso } = useRetorno();
@@ -57,7 +57,11 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
   const contasDoPlano = useMemo((): { codigo: string; nome: string }[] => (plano || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [plano]);
   const nomeDaConta = (codigo: string) => plano?.find(c => c.codigo === codigo)?.nome || '';
 
-  const dados = useMemo(() => lt.dadosDoBanco(e, banco.id, primeiro, competencia), [e, banco.id, primeiro, competencia]);
+  // o razão do Alterdata do servidor (19/11/2026: o Atualizar), quando já chegou, toma o lugar do razão do Extrator no mês
+  const dados = useMemo(() => {
+    const doExtrator = lt.dadosDoBanco(e, banco.id, primeiro, competencia);
+    return razaoDoServidor && contaDoBanco ? lt.comRazaoDoServidor(doExtrator, lt.razaoDaContaDoServidor(razaoDoServidor, contaDoBanco, competencia)) : doExtrator;
+  }, [e, banco.id, primeiro, competencia, razaoDoServidor, contaDoBanco]);
   const decisoes = mesNoBanco.mes.decisoes[banco.id];
   // os meses com extrato deste banco (a tela vazia oferece, quando o mês escolhido não tem; os 6 mais novos)
   const mesesComExtrato = useMemo(() => lt.mesesComExtrato(e, banco.id, primeiro).filter(m => m !== competencia).slice(0, 6)

@@ -8037,3 +8037,5 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .ac-pessoa-nova input { flex: 1 1 160px; min-width: 0; }
 .ac-exige-senha { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; cursor: pointer; }
 .ac-exige-senha input { margin-top: 3px; }
+.lt-painel-nota.lt-nota-erro{color:var(--danger);}
+.lt-atualizar .btn-spinner{width:14px;height:14px;}
