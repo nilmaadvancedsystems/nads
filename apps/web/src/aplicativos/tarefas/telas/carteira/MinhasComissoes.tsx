@@ -28,8 +28,6 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
   const partes = [
     { id: 'aprovada', rotulo: 'A receber', valor: t.lancadas + t.aprovadas },
     { id: 'paga', rotulo: 'Pagas', valor: t.pagas },
-    // o salário entra no total do mês com o holerite e o pagamento (19/11/2026)
-    { id: 'salario', rotulo: 'Salário', valor: vm.salario },
   ];
   const nomeDoMes = carteira.mesPorExtenso(m.mes).split(' ')[0];
   return (
@@ -51,7 +49,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         <div className="cmc-total">
           <span className="cmc-rotulo">Total de {nomeDoMes}</span>
           <b className="cmc-valor num">{vm.carregada ? <ValorQueSobe key={m.mes} valor={vm.totalDoMes} /> : '—'}</b>
-          <span className="hint">{t.quantas === 1 ? '1 comissão' : t.quantas + ' comissões'}{vm.salarioPago ? ' + o salário' : ''}{t.recusadas > 0 ? ' · ' + formatos.reais(t.recusadas) + ' recusado' : ''}</span>
+          <span className="hint">{t.quantas === 1 ? '1 comissão' : t.quantas + ' comissões'}{t.recusadas > 0 ? ' · ' + formatos.reais(t.recusadas) + ' recusado' : ''}</span>
         </div>
         <div className="cmc-partes">
           <div className="cmc-barra" aria-hidden="true" key={m.mes}>
@@ -59,7 +57,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
           </div>
           <ul className="cmc-legenda">
             {partes.map(x => (
-              <li key={x.id} title={x.id === 'salario' && !vm.salarioPago ? (vm.temHolerite ? 'Entra no total quando o pagamento (com o comprovante) chegar' : 'Entra no total quando o holerite e o pagamento chegarem') : undefined}>
+              <li key={x.id}>
                 <span className={'cmc-ponto cmc-' + x.id} aria-hidden="true" />
                 <span className="cmc-rotulo">{x.rotulo}</span>
                 <b className="num">{vm.carregada ? <ValorQueSobe key={m.mes} valor={x.valor} /> : '—'}</b>

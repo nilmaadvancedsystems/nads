@@ -27,12 +27,9 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const lista = todas.lista.filter(c => c.competencia === m.mes);
   // a escondida conta como comissão, mas o valor dela não entra no total (16/11/2026: "não deixe essa informação visualizável")
   const totais = { ...carteira.totaisDasComissoes(carteira.comValorParaAPessoa(lista)), quantas: lista.filter(c => c.situacao !== 'recusada').length };
-  // o salário no total do mês (Vitor, 19/11/2026: "Total de dezembro, vc vai somar as comissoes com o salario (salario vc soma depois do
-  // pagamento e o holerite upadas)"): o líquido do holerite do mês, só com o holerite e o pagamento (com comprovante) já no nads
+  // o total do mês é só das comissões (Vitor, 19/11/2026: o salário só aparece quando o DP gera a folha; "Só comissões"): o holerite e o
+  // pagamento ficam nos lançamentos e no gráfico
   const docs = repo.meusDocumentos(), contas = repo.minhasContas();
-  const salarioDoHolerite = carteira.salarioDoMes(docs.lista, m.mes);
-  const salarioPago = salarioDoHolerite != null && carteira.recebidoNoMes(pagamentosDe(contas.lista), m.mes).recebido > 0;
-  const salario = salarioPago ? salarioDoHolerite! : 0;
   // os lançamentos do mês numa lista só (Vitor, 19/11/2026: "Essas boxes da pra unificar em uma unica box de lancamentos"): as comissões,
   // os holerites e comprovantes do mês e os pagamentos do escritório que vencem ou foram pagos no mês
   const { toast } = useRetorno();
@@ -40,7 +37,7 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const pagsDoMes = pagamentosDe(contas.lista).filter(p => p.vencimento.startsWith(m.mes) || (p.pagoEm || '').startsWith(m.mes));
   return {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
-    salario, salarioPago, temHolerite: salarioDoHolerite != null, totalDoMes: totais.total + salario,
+    totalDoMes: totais.total,
     docsDoMes, pagsDoMes,
     abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     baixarDocumento: (d: carteira.DocumentoDaCarteira) => void baixarDaCarteira(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
