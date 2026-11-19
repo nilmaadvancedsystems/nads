@@ -8,6 +8,7 @@ import type { clientes as cl, tarefas as t } from '@nads/core';
 import { getAuth } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
 import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
+import { travarPedido } from '../../../comum/disjuntorDeGravacao';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
 import { pedidoAproveitavel } from './razaoDoRobo.regras';
@@ -15,6 +16,10 @@ import { statusDoPedido } from './notasDoFiscal.firestore';
 
 // a trava do modo desenvolvedor: com o modo ligado, só ver — o pedido não sai
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
+// o pedido mensal do Lançatudo sai mesmo no modo desenvolvedor (19/11/2026: o Lançatudo só existe nesse modo, e o dono escolheu
+// "liberar só o mensal"): o robô só gera o razão e o balancete no Contábil do servidor, sem lançar nada. Continua com o disjuntor;
+// os pedidos de importação (que lançam no Alterdata) seguem travados.
+const addDocDoMensal = travarPedido(addDoc) as typeof addDoc;
 
 function banco(): Firestore {
   return abrirBancoDoEntregas(appDoEntregas());
@@ -79,18 +84,18 @@ export function ouvirPedidosDoRazao(codigo: number, chegou: (l: PedidoDoRazao[])
 /** Pede ao robô o balancete e o razão do mês (a mesma fila da página Alterdata). Antes de criar, procura (uma consulta, até 10 docs)
  *  o pedido da mesma empresa e mês que já esteja andando, ou pronto há pouco: se existe, devolve o id dele e não cria outro.
  *  `novoDeProposito`: o usuário quer o razão de novo, então só o que ainda está andando é reaproveitado. */
-export function pedirRazaoDoMes(codigo: number, empresa: string, competencia: string, novoDeProposito = false): Promise<{ id: string; reaproveitado: boolean }> {
+export function pedirRazaoDoMes(codigo: number, empresa: string, competencia: string, novoDeProposito = false, livreNoModoDev = false): Promise<{ id: string; reaproveitado: boolean }> {
   // duas telas pedindo o mesmo mês ao mesmo tempo (a Importação e o Bancos) dividem a mesma chamada: uma consulta, um pedido
   const chave = codigo + '|' + competencia + '|' + novoDeProposito;
   const andando = emVoo.get(chave);
   if (andando) return andando;
-  const p = pedirDeVerdade(codigo, empresa, competencia, novoDeProposito).finally(() => { emVoo.delete(chave); });
+  const p = pedirDeVerdade(codigo, empresa, competencia, novoDeProposito, livreNoModoDev).finally(() => { emVoo.delete(chave); });
   emVoo.set(chave, p);
   return p;
 }
 const emVoo = new Map<string, Promise<{ id: string; reaproveitado: boolean }>>();
 
-async function pedirDeVerdade(codigo: number, empresa: string, competencia: string, novoDeProposito: boolean): Promise<{ id: string; reaproveitado: boolean }> {
+async function pedirDeVerdade(codigo: number, empresa: string, competencia: string, novoDeProposito: boolean, livreNoModoDev: boolean): Promise<{ id: string; reaproveitado: boolean }> {
   const u = getAuth(appDoEntregas()).currentUser;
   if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
   const db = banco();
@@ -101,7 +106,7 @@ async function pedirDeVerdade(codigo: number, empresa: string, competencia: stri
     return { id: p.id, status: p.status, criadoEm: p.criadoEm, fimEm: texto(x.data().fimEm), razaoLido: p.razaoLido };
   }), Date.now(), !novoDeProposito);
   if (achado) return { id: achado, reaproveitado: true };
-  const ref = await addDocGuardado(collection(db, 'pedidosAlterdata'), {
+  const ref = await (livreNoModoDev ? addDocDoMensal : addDocGuardado)(collection(db, 'pedidosAlterdata'), {
     status: statusDoPedido(), tipo: 'mensal', codigo, empresa: empresa.slice(0, 200), competencia,
     criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
   });
