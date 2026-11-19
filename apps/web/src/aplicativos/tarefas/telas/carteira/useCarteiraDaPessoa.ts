@@ -46,7 +46,7 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
 }
 
 /** O cliente do cadastro no menu da comissão (pelo código do ERP). */
-export interface ClienteDaLista { codigo: number; nome: string }
+export interface ClienteDaLista { codigo: number; nome: string; regime: string }
 
 /** Os clientes do escritório para o menu da comissão: a lista do escritório e as empresas cadastradas pelo nads (com código). */
 /** As empresas do Cadastro ainda sem o código do ERP (o MEI registrado pelo cartão CNPJ; 19/11/2026: "ja ta no sistema, ok, porque
@@ -66,9 +66,9 @@ function useClientesSemCodigo(): ClienteSemCodigo[] {
 function useClientesDoEscritorio(): ClienteDaLista[] {
   const cadastros = useTodosOsCadastros();
   return useMemo(() => {
-    const porCodigo = new Map<number, string>();
-    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) if (e.codigo != null && !porCodigo.has(e.codigo)) porCodigo.set(e.codigo, e.nome);
-    return [...porCodigo].map(([codigo, nome]) => ({ codigo, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    const porCodigo = new Map<number, { nome: string; regime: string }>();
+    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) if (e.codigo != null && !porCodigo.has(e.codigo)) porCodigo.set(e.codigo, { nome: e.nome, regime: e.regime });
+    return [...porCodigo].map(([codigo, x]) => ({ codigo, ...x })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     // as empresas novas vêm do cadastro: refaz quando ele muda
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cadastros]);
@@ -125,7 +125,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
     clientesSemCodigo,
     /** a empresa do Cadastro sem código (ou a do cartão CNPJ do MEI): avulsa, com o nome e o porte dela */
-    escolherSemCodigo: (nome: string, porteDela: carteira.Porte | null) => { setAvulso(true); setClienteCodigo(null); setNomeAvulso(nome); if (porteDela) setPorte(porteDela); },
+    escolherSemCodigo: (nome: string, porteDela: carteira.Porte | null) => { setAvulso(true); setClienteCodigo(null); setNomeAvulso(porteDela === 'MEI' ? nome.replace(/^[\d./-]+\s+/, '').trim() || nome : nome); if (porteDela) setPorte(porteDela); },
     servicos: servicos.lista, servico, setServico, percentual, oculta,
     /** só o Diretor e o Dono definem a % no lançamento; o texto digitado ('' = a do serviço) e a do serviço, para o lugar vazio */
     podeDefinirPercentual: diretor && !oculta, pctDoDiretor, setPctDoDiretor: (v: string) => setPctDoDiretor(v.replace(/[^\d,.]/g, '').slice(0, 6)),

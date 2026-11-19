@@ -127,20 +127,22 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               </Propriedade>
             )}
             <Propriedade icone="calendar" rotulo="Data">{travada ? <span>{vm.data}</span> : (dev ? <CampoDataComCalendario valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" /> : <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" />)}</Propriedade>
+            {/* o porte antes do cliente (Vitor, 19/11/2026: "Antes de selecionar o cliente, colocar porte, antes de tudo, se for MEI, so carregue
+                os meis registrados"): com MEI, a lista de clientes traz só as empresas do regime MEI */}
+            <Propriedade icone="briefcase" rotulo="Porte">
+              {travada ? <span>{vm.porte || '—'}</span> : (
+                <MenuSuspenso rotulo={vm.porte || 'Escolher o porte'} className={ESCOLHA + (vm.porte ? '' : ' vazio')} titulo="O porte do cliente" flutuante largura={200}
+                  itens={carteira.PORTES.map(p => ({ rotulo: p, marcado: p === vm.porte, onClick: () => vm.setPorte(p) }))} />
+              )}
+            </Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
-              <EscolherCliente clientes={vm.clientes} semCodigo={vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
+              <EscolherCliente clientes={vm.porte === 'MEI' ? vm.clientes.filter(c => c.regime === 'MEI') : vm.clientes} semCodigo={vm.porte === 'MEI' ? vm.clientesSemCodigo.filter(c => c.porte === 'MEI') : vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
                 onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} onSemCodigo={c => vm.escolherSemCodigo(c.nome, c.porte)} />
             </Propriedade>
             {vm.avulso && (
               <>
                 <Propriedade icone="fileText" rotulo="Nome">
                   <input type="text" autoFocus={!comissao} value={vm.nomeAvulso} disabled={travada} maxLength={150} onChange={e => vm.setNomeAvulso(e.target.value)} placeholder="O nome do cliente" aria-label="Nome do cliente avulso" />
-                </Propriedade>
-                <Propriedade icone="briefcase" rotulo="Porte">
-                  {travada ? <span>{vm.porte || '—'}</span> : (
-                    <MenuSuspenso rotulo={vm.porte || 'Escolher o porte'} className={ESCOLHA + (vm.porte ? '' : ' vazio')} titulo="O porte do cliente" flutuante largura={200}
-                      itens={carteira.PORTES.map(p => ({ rotulo: p, marcado: p === vm.porte, onClick: () => vm.setPorte(p) }))} />
-                  )}
                 </Propriedade>
               </>
             )}
