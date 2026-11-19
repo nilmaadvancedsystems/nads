@@ -2,6 +2,7 @@
 // ícone importa; importado, o ✓ que exclui), a grade dos meses (clicar abre o mês; de novo, volta para o período todo) e
 // a faixa Pontos de atenção (a Lançamentos saiu em 14/10/2026). Em cima, o aviso do Creditor quando o caixa tem liquidação de cobrança.
 import { Alerta, CampoArquivo, Icone } from '@nads/ui';
+import { ImportarRazaoComRobo } from './ImportarRazaoComRobo';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
@@ -90,10 +91,12 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                   <>
                     <BotaoDeTeste itens={teste} />
                     <BotaoDiario onClick={razao.usarDiario} />
-                    <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + conta + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão do ' + conta}>
-                      <Icone nome="upload" />
-                    </label>
-                    <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void razao.importar(f); }} />
+                    <ImportarRazaoComRobo robo={razao.robo} titulo={'o razão do ' + conta} importar={f => razao.importar(f)}>
+                      <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + conta + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão do ' + conta}>
+                        <Icone nome="upload" />
+                      </label>
+                      <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void razao.importar(f); }} />
+                    </ImportarRazaoComRobo>
                   </>
                 )}
               </div>

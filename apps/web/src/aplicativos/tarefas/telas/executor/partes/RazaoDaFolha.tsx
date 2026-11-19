@@ -5,6 +5,7 @@ import { CampoArquivo, Icone, LogoFgts } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { BotaoDiario } from '../../../../../comum/BotaoDiario';
+import { ImportarRazaoComRobo } from './ImportarRazaoComRobo';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { RazaoDaFolha as Vm } from '../useRazaoDaFolha';
 
@@ -37,8 +38,10 @@ export function RazaoDaFolha({ vm, dev }: { vm: Vm; dev: boolean }) {
               <>
                 <BotaoDeTeste itens={teste} />
                 <BotaoDiario onClick={vm.usarDiario} />
-                <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão de ' + vm.nome + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão de ' + vm.nome}><Icone nome="upload" /></label>
-                <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                <ImportarRazaoComRobo robo={vm.robo} titulo={'o razão de ' + vm.nome} importar={f => vm.importar(f)}>
+                  <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão de ' + vm.nome + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão de ' + vm.nome}><Icone nome="upload" /></label>
+                  <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                </ImportarRazaoComRobo>
               </>
             )}
           </div>

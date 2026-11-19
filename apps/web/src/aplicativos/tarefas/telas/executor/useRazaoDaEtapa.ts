@@ -7,6 +7,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { useContaDoTipo } from './useContaDoTipo';
 import { useCaixaNoBancoDoRazao } from './etapas/caixabancos/useCaixaNoBanco';
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
@@ -34,6 +35,7 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
   // o da Importação (o upload único dos razões), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(empresa?.nome || '', empresa?.codigo ?? null);
   const daImportacao = empresa?.caixa ? contabil.razaoDoTipo('caixa') : null;
+  const contaDoRobo = useContaDoTipo(empresa?.caixa ? empresa.nome : '', 'caixa', empresa?.caixa ? contabil.contaDoTipo('caixa') : '');
   const proprio = lido && lido.chave === chave ? lido : null;
   const atual = proprio || (daImportacao ? { chave, arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null);
   // o da Importação também põe o Creditor nos meses com liquidação de cobrança (uma vez por razão)
@@ -105,6 +107,8 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
 
   return {
     importar,
+    /** o botão Vitor do razão do caixa (19/11/2026): a conta pelo dinâmico */
+    robo: empresa?.caixa ? { empresa: empresa.nome, codigo: empresa.codigo, conta: contaDoRobo, meses } : null,
     carregado: !!atual,
     arquivo: atual?.arquivo || '',
     remover: () => { setLido(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
