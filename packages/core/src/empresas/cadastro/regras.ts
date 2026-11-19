@@ -357,14 +357,30 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
  * mudado em outro campo. campos: o que pôr (o campo inteiro); apagar: o que a pessoa tirou de propósito (estava e não
  * está mais). O nome, o código e a data vão sempre; o histórico, quando muda ou quando o documento ainda não existe (a
  * regra do banco pede os dois na criação).
+ * nulosNoBanco (19/11/2026): os campos que estão gravados como null no documento e que a regra do banco não aceita assim
+ * (camposNulosQueORegraRecusa); vão junto em `apagar`, senão o banco recusa toda gravação da empresa.
  */
-export function gravacaoDoCadastro(antes: CadastroDaEmpresa, depois: CadastroDaEmpresa, existe = true): { campos: Record<string, unknown>; apagar: string[] } {
+export function gravacaoDoCadastro(antes: CadastroDaEmpresa, depois: CadastroDaEmpresa, existe = true, nulosNoBanco: readonly string[] = []): { campos: Record<string, unknown>; apagar: string[] } {
   const a = documentoDoCadastro(antes), d = documentoDoCadastro(depois);
   const campos: Record<string, unknown> = { nome: d.nome, codigo: d.codigo, atualizadoEm: d.atualizadoEm };
   for (const k of Object.keys(d)) if (!(k in campos) && JSON.stringify(a[k]) !== JSON.stringify(d[k])) campos[k] = d[k];
   if (!existe) campos.historico = d.historico;
   const apagar = Object.keys(a).filter(k => !(k in d));
+  for (const k of nulosNoBanco) if (!(k in campos) && !apagar.includes(k)) apagar.push(k);
   return { campos, apagar };
+}
+
+/**
+ * Os campos do cadastro que a regra do banco só aceita ausentes ou do tipo certo (bancos: lista; contasPadrao: mapa).
+ * 19/11/2026 (o Consultar na Receita na 610: "Missing or insufficient permissions"): a importação de 13/10/2026 ("Importado
+ * do Toriba") gravou os dois como null em algumas empresas (a 332, a 580 e a 610), e o banco passou a recusar qualquer
+ * gravação nelas. Null aqui quer dizer o mesmo que ausente (nunca cadastrado): a próxima gravação tira o campo.
+ */
+const CAMPOS_SEM_NULO = ['bancos', 'contasPadrao'] as const;
+
+/** Os campos do documento que estão como null e que a regra do banco recusa (a gravação seguinte apaga). */
+export function camposNulosQueORegraRecusa(doc: Record<string, unknown> | null | undefined): string[] {
+  return doc ? CAMPOS_SEM_NULO.filter(k => k in doc && doc[k] === null) : [];
 }
 
 /** O documento `cadastro/{slug}/plano/atual` conferido (null = a empresa ainda não tem plano). */
