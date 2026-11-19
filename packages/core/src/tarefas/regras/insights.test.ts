@@ -122,9 +122,21 @@ describe('a equipe pelos usuários e pelo tabelão do setor', () => {
     expect(Object.keys(por).sort()).toEqual(['Felipe', 'Gustavo', 'Heverton', 'Novato', 'Savio']);
     expect([por.Savio.setor, por.Savio.feitas, por.Savio.total, por.Savio.conta]).toEqual(['DP', 96, 96 + 18 + 3, 'clientes do DP fechados']);
     expect([por.Gustavo.setor, por.Gustavo.feitas, por.Gustavo.total]).toEqual(['Office boy', 132, 132 + 14 + 6]);
+    r.entregas.protocoladas = 160;
+    expect(ins.equipeDosInsights(r).find(p => p.nome === 'Gustavo')?.total).toBe(160);
     expect([por.Heverton.setor, por.Heverton.feitas, por.Heverton.total]).toEqual(['Fiscal', 38, 44]);
     expect([por.Felipe.feitas, por.Felipe.total]).toEqual([15, 19]);
     expect([por.Novato.total, por.Novato.pct]).toEqual([0, 100]);
+  });
+  it('dois com o mesmo primeiro nome: o cartão leva o nome inteiro e cada um conta pelo seu setor', () => {
+    const r = ins.resumoDeExemploDosInsights(new Date(2026, 10, 19));
+    r.rotinas[0].pessoas.push({ nome: 'Gustavo', feitas: 5, faltando: 5, empresas: [] });
+    r.time = [{ nome: 'Gustavo', setor: 'fiscal' }, { nome: 'Gustavo.S', setor: 'office-boy' }];
+    const e = ins.equipeDosInsights(r).map(p => [p.nome, p.setor]);
+    expect(e).toContainEqual(['Gustavo', 'Fiscal']);
+    expect(e).toContainEqual(['Gustavo.S', 'Office boy']);
+    const l = ins.empresasDoInsight(new Map(), new Map(), [{ nome: 'Gustavo.S', setor: 'office-boy' }, { nome: 'Gustavo', setor: 'fiscal' }]);
+    expect(l.find(x => x.codigo === 51)?.fiscal).toBe('Gustavo');
   });
   it('a leitura guarda o time e joga fora o setor torto', () => {
     const r = ins.lerResumoDosInsights({ atualizadoEm: '2026-11-19T10:00:00Z', time: [{ nome: 'Savio', setor: 'dp' }, { nome: 'X', setor: 'chefe' }] });

@@ -41,6 +41,8 @@ const CONTAS = {
   'entregas status=="link"': 6,
   'entregas status=="confirmada" competencia=="2026-10"': 132,
   'entregas status=="falha"': 1,
+  'entregas competencia=="2026-10"': 150,
+  'entregas competencia=="2026-10" status=="link"': 10,
 };
 
 const fontes = {
@@ -82,7 +84,7 @@ const fontes = {
     const d = gravados[0].d;
     assert.strictEqual(gravados[0].caminho, 'nadsInsights/atual');
     assert.deepStrictEqual(d.guias, { competencia: '2026-10', enviadas: 412, abertas: 287, pagas: 154 });
-    assert.deepStrictEqual(d.entregas, { aEntregar: 14, noLink: 6, confirmadas: 132, falhas: 1 });
+    assert.deepStrictEqual(d.entregas, { aEntregar: 14, noLink: 6, confirmadas: 132, falhas: 1, protocoladas: 140 });
     assert.deepStrictEqual(d.clientes, { abertas: 1, respondidas: 0, nota: 5, avaliacoes: 1, documentosFaltando: 1, mandeiAbertos: 0 });
     assert.deepStrictEqual(d.equipe, { atrasadas: 1, pessoas: [{ nome: 'Clara', atrasadas: 1, tarefas: [{ titulo: 'Conferir o balancete', prazo: '2026-11-10' }] }] });
     // o Fiscal pelo tabelão: a entregue conta como feita, a sem linha como não iniciada
@@ -99,7 +101,7 @@ const fontes = {
     assert.ok(d.dp.atrasadas + d.dp.pendentes + d.dp.feitas + d.dp.sem === core().CLIENTES_DO_DP.length, 'o DP conta todos os clientes da tabela');
     assert.strictEqual(d.dp.competencia, '2026-10', 'o DP no mês anterior, como o Fiscal e o Contábil');
     assert.ok(!JSON.stringify(d).match(/cli1|cli2/), 'nenhum id de cliente no resumo');
-    assert.strictEqual(contagens.length, 7, 'sete contagens por volta');
+    assert.strictEqual(contagens.length, 9, 'nove contagens por volta');
 
     // os mesmos números: não grava de novo (e a equipe não é relida na mesma hora)
     await r.talvez();
