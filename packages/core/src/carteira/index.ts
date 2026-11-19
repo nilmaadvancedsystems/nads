@@ -68,8 +68,9 @@ export interface Comissao {
 export type CalculoDaComissao = 'fila' | 'feito' | 'erro';
 
 /** O porte do cliente avulso (Vitor, 12/11/2026). */
-export type Porte = 'MEI' | 'ME' | 'EPP' | 'Demais';
-export const PORTES: readonly Porte[] = ['MEI', 'ME', 'EPP', 'Demais'];
+// a pessoa física também (Vitor, 19/11/2026: "Em porte, coloca o tipo, pessoa fisica")
+export type Porte = 'MEI' | 'ME' | 'EPP' | 'Demais' | 'Pessoa física';
+export const PORTES: readonly Porte[] = ['Pessoa física', 'MEI', 'ME', 'EPP', 'Demais'];
 
 /**
  * O que a pessoa registra: o cliente (do cadastro, ou avulso com o porte), o serviço comissionado e quanto o cliente pagou

@@ -110,7 +110,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
           {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
           {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : comissao!.situacao === 'lancada' ? 'O mês virou: a comissão está travada. Só o Financeiro muda.' : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
-          {doFinanceiro && <p className="registro-dica"><Icone nome="lampada" />Registrada pelo Financeiro, a comissão já entra aprovada e aparece na Carteira da pessoa.</p>}
+          {doFinanceiro && <p className="registro-dica"><Icone nome="lampada" />Registrada pelo Financeiro, a comissão aparece na Carteira da pessoa, a pagar.</p>}
           <div className="registro-props">
             {doFinanceiro && (
               <Propriedade icone="usuario" rotulo="Pessoa">
@@ -136,7 +136,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               )}
             </Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
-              <EscolherCliente clientes={vm.porte === 'MEI' ? vm.clientes.filter(c => c.regime === 'MEI') : vm.clientes} semCodigo={vm.porte === 'MEI' ? vm.clientesSemCodigo.filter(c => c.porte === 'MEI') : vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
+              <EscolherCliente clientes={vm.porte === 'MEI' ? vm.clientes.filter(c => c.regime === 'MEI') : vm.porte === 'Pessoa física' ? vm.clientes.filter(c => c.regime === 'Física') : vm.clientes} semCodigo={vm.porte === 'MEI' ? vm.clientesSemCodigo.filter(c => c.porte === 'MEI') : vm.porte === 'Pessoa física' ? [] : vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
                 onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} onSemCodigo={c => vm.escolherSemCodigo(c.nome, c.porte)} />
             </Propriedade>
             {vm.avulso && (
