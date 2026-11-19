@@ -4,7 +4,8 @@
 // cliente) e a tela ouve só esse documento, para uma TV ligada o dia todo não ler o banco inteiro.
 // Não usa o "Prazos do mês" (apagado: o DP usa só a tabela). O DP não tem número por pessoa: o Savio responde por todas
 // (memória "DP: Savio responsável por todas"). Só a lógica.
-import { OBRIGACOES_DP, type ClienteDoDp } from '../../empresas/dp';
+import { clienteDoDp, OBRIGACOES_DP, type ClienteDoDp } from '../../empresas/dp';
+import { slug } from '../../formatos';
 import { mediaDasAvaliacoes } from '../../areaCliente/avaliacao';
 import type { Execucao, Rotina } from '../tipos';
 import { situacaoGeral, estadoDa, progresso, proximaEtapa } from './execucao';
@@ -111,20 +112,45 @@ export function fiscalPorPessoa(
   return [...pessoas.values()].sort((a, b) => Number(a.nome === SEM_RESPONSAVEL) - Number(b.nome === SEM_RESPONSAVEL) || b.faltando - a.faltando || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+/** A ficha do Cadastro como o robô a recebe (só o que o Insights usa). */
+export interface CadastroNoInsight { nome?: unknown; codigo?: unknown; regime?: unknown; nova?: { regime?: unknown } | null; responsaveis?: { fiscal?: unknown; contabil?: unknown } | null }
+
 /**
- * As empresas do tabelão do Fiscal (as do Relatório do Fiscal: a lista do escritório e as cadastradas pelo nads, do Simples
- * ou do Presumido pelo regime do Cadastro, senão o da lista), com o responsável do Fiscal no Cadastro.
+ * As empresas do escritório com o responsável de cada setor, pela mesma regra de Cadastro › Empresas por responsável e de
+ * Minhas empresas (19/11/2026; o dono: "cada um tem um monte de empresas entao pq tem tao poucas?"):
+ *   - a ficha do Cadastro pelo código ou, sem ele na ficha, pelo nome (o id da ficha é o nome em slug);
+ *   - o escolhido no Cadastro vale só se é da equipe daquele setor;
+ *   - no Fiscal, sem escolhido que valha, vale o responsável da planilha (a coluna do Fiscal na tabela do DP).
+ * equipe vazia (a lista de usuários não abriu): vale o escolhido, como antes.
  */
-export function empresasDoTabelaoFiscal(cadastro: ReadonlyMap<number, { nome?: unknown; regime?: unknown; nova?: { regime?: unknown } | null; responsaveis?: { fiscal?: unknown } | null } | null>): { codigo: number; responsavel: string; nome: string }[] {
-  const daLista = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo as number, e]));
-  const codigos = new Set<number>([...daLista.keys(), ...cadastro.keys()]);
+export function empresasDoInsight(
+  porCodigo: ReadonlyMap<number, CadastroNoInsight | null>,
+  porSlug: ReadonlyMap<string, CadastroNoInsight | null>,
+  equipe: readonly { nome: string; setor: SetorDaPessoa }[],
+): { codigo: number; nome: string; regime: string; fiscal: string; contabil: string }[] {
   const txt = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const daLista = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo as number, e]));
+  const codigos = new Set<number>([...daLista.keys(), ...porCodigo.keys()]);
+  const vale = (dep: 'fiscal' | 'contabil', nome: string) => !!nome && (!equipe.length || equipe.some(u => u.setor === dep && chaveDoNome(u.nome) === chaveDoNome(nome)));
+  // o mesmo nome escrito do mesmo jeito (a planilha em maiúsculas, o Cadastro não): o do usuário, quando bate
+  const nomeDe = (nome: string) => (nome ? equipe.find(u => chaveDoNome(u.nome) === chaveDoNome(nome))?.nome ?? nome : '');
   return [...codigos].map(codigo => {
-    const cad = cadastro.get(codigo) || null;
     const lista = daLista.get(codigo);
-    const regime = txt(cad?.regime) || txt(cad?.nova?.regime) || (lista?.regime ?? '');
-    return { codigo, regime, responsavel: txt(cad?.responsaveis?.fiscal), nome: txt(cad?.nome) || lista?.nome || '' };
-  }).filter(e => e.regime === 'Simples' || e.regime === 'Presumido').map(({ codigo, responsavel, nome }) => ({ codigo, responsavel, nome }));
+    const cad = porCodigo.get(codigo) || (lista ? porSlug.get(slug(lista.nome)) : null) || null;
+    const escolhido = { fiscal: txt(cad?.responsaveis?.fiscal), contabil: txt(cad?.responsaveis?.contabil) };
+    return {
+      codigo,
+      nome: txt(cad?.nome) || lista?.nome || '',
+      regime: txt(cad?.regime) || txt(cad?.nova?.regime) || (lista?.regime ?? ''),
+      fiscal: nomeDe(vale('fiscal', escolhido.fiscal) ? escolhido.fiscal : (clienteDoDp(codigo)?.responsavel || '')),
+      contabil: nomeDe(vale('contabil', escolhido.contabil) ? escolhido.contabil : ''),
+    };
+  });
+}
+
+/** As empresas do tabelão do Fiscal (as do Relatório do Fiscal): só as do Simples e do Presumido. */
+export function empresasDoTabelaoFiscal(empresas: ReturnType<typeof empresasDoInsight>): { codigo: number; responsavel: string; nome: string }[] {
+  return empresas.filter(e => e.regime === 'Simples' || e.regime === 'Presumido').map(e => ({ codigo: e.codigo, responsavel: e.fiscal, nome: e.nome }));
 }
 
 export type SituacaoDoDpNoInsight = 'feita' | 'pendente' | 'atrasada' | 'sem';

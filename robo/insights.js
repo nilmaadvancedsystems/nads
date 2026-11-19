@@ -95,20 +95,21 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
     const execs = [...fontes.execucoes.values()];
     const doSetor = (dep, comp) => execs.filter(e => e.departamento === dep && e.competencia === comp);
 
-    // 1. o Contábil pelas rotinas (a competência anterior), por responsável do Cadastro; o Fiscal pelo tabelão (o Relatório
-    // do Fiscal: as empresas do Simples e do Presumido, concluída quando a entrega foi marcada), por responsável do Fiscal
+    // 0. a equipe toda (os usuários do nads com o setor): a tela conta cada um pelo tabelão do setor dele, e o responsável
+    // escolhido no Cadastro só vale se é da equipe daquele setor
+    const time = await timeDaEquipe(P);
+    const empresas = P.empresasDoInsight(fontes.cadastroPorCodigo, fontes.cadastroPorSlug || new Map(), time);
+
+    // 1. o Fiscal pelo tabelão (o Relatório do Fiscal: as empresas do Simples e do Presumido, concluída quando a entrega foi
+    // marcada) e o Contábil pelas rotinas (a competência anterior), cada um pelo responsável do setor
     const fiscal = { setor: 'fiscal', competencia: compAnterior, pessoas: P.fiscalPorPessoa(
-      P.empresasDoTabelaoFiscal(new Map([...fontes.cadastroPorCodigo].map(([c, cad]) => [Number(c), cad]))),
+      P.empresasDoTabelaoFiscal(empresas),
       codigo => { const l = tabelaoFiscal.get(codigo); return l ? P.situacaoDaLinha({ valores: l.valores || {}, marcas: l.marcas || {}, data: l.data || '', entregue: l.entregue || '' }) : 'branco'; },
     ) };
-    const rotinas = [fiscal].concat(['contabil'].map(setor => {
-      const lista = doSetor(setor, compAnterior);
-      const codigos = new Set(lista.map(e => Number(e.codigo)).filter(Boolean));
-      for (const [codigo, cad] of fontes.cadastroPorCodigo) if (cad && cad.responsaveis && cad.responsaveis[setor]) codigos.add(codigo);
-      // o nome vai junto: a visão da pessoa mostra as empresas dela (18/11/2026: "abra uma visao do que a pessoa ta fazendo")
-      const empresas = [...codigos].map(codigo => { const cad = fontes.cadastroPorCodigo.get(codigo) || {}; return { codigo, responsavel: String((cad.responsaveis || {})[setor] || ''), nome: String(cad.nome || '') }; });
-      return { setor, competencia: compAnterior, pessoas: P.rotinasPorPessoa(empresas, lista, codigo => P.rotinaDaEmpresa(setor, codigo)) };
-    }));
+    const contabil = { setor: 'contabil', competencia: compAnterior, pessoas: P.rotinasPorPessoa(
+      empresas.map(e => ({ codigo: e.codigo, responsavel: e.contabil, nome: e.nome })), doSetor('contabil', compAnterior), codigo => P.rotinaDaEmpresa('contabil', codigo),
+    ) };
+    const rotinas = [fiscal, contabil];
 
     // 2. a tabela do DP (a competência de trabalho), a mesma conta do Painel do DP
     const doDp = new Map(doSetor('dp', compDp).map(e => [Number(e.codigo), e]));
@@ -149,9 +150,6 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
     // 6. as tarefas delegadas atrasadas, por responsável
     const hh = String(hoje.getHours()).padStart(2, '0') + ':' + String(hoje.getMinutes()).padStart(2, '0');
     const equipeAtrasada = P.delegadasAtrasadas([...delegadas.values()], diaIso(hoje), hh);
-
-    // 7. a equipe toda (os usuários do nads com o setor): a tela conta cada um pelo tabelão do setor dele
-    const time = await timeDaEquipe(P);
 
     return { rotinas, dp, guias, clientes, entregas, equipe: equipeAtrasada, time };
   }

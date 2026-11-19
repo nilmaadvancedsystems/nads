@@ -993,7 +993,7 @@ function iniciarAreaDoCliente(db, log) {
   require('./insights').iniciarInsights({
     db, log, ouvir, core: doCore,
     fontes: {
-      execucoes, cadastroPorCodigo, chamados, ticketsAbertos,
+      execucoes, cadastroPorCodigo, cadastroPorSlug, chamados, ticketsAbertos,
       guiasPagas: comp => new Set([...pagasNoEspelho.keys()].map(k => k.split('/').pop()).filter(id => id.includes('-' + comp + '-'))).size,
       clientesAtivos: async () => (await require('./clientes-cache').clientesAtivos(db)).map(d => Object.assign({ id: d.id }, d.data())),
     },

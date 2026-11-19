@@ -100,11 +100,19 @@ describe('a equipe pelos usuários e pelo tabelão do setor', () => {
     expect(p.map(x => [x.nome, x.feitas, x.faltando])).toEqual([['HEVERTON', 1, 2]]);
     expect(p[0].empresas!.map(e => [e.nome, e.situacao, e.total])).toEqual([['B', 'em-andamento', 0], ['C', 'nao-iniciada', 0], ['A', 'concluida', 0]]);
   });
-  it('as empresas do tabelão do Fiscal: só Simples e Presumido, com o responsável do Cadastro', () => {
-    const l = ins.empresasDoTabelaoFiscal(new Map([[999001, { nome: 'NOVA LTDA', regime: 'Simples', responsaveis: { fiscal: 'Adivania' } }], [999002, { nome: 'MEI X', regime: 'MEI' }]]));
-    expect(l.find(e => e.codigo === 999001)).toEqual({ codigo: 999001, responsavel: 'Adivania', nome: 'NOVA LTDA' });
-    expect(l.some(e => e.codigo === 999002)).toBe(false);
-    expect(l.length).toBeGreaterThan(10);
+  it('as empresas pelo responsável, como em Empresas por responsável: ficha pelo código ou pelo nome, planilha no Fiscal, só quem é do setor', () => {
+    const equipe = [{ nome: 'Heverton', setor: 'fiscal' as const }, { nome: 'Vitor', setor: 'contabil' as const }, { nome: 'Savio', setor: 'dp' as const }];
+    const porCodigo = new Map([[999001, { nome: 'NOVA LTDA', regime: 'Simples', responsaveis: { fiscal: 'Heverton', contabil: 'vitor' } }], [999002, { nome: 'MEI X', regime: 'MEI' }]]);
+    // a 10 (DORNAS HAVANA) tem a ficha sem o código (achada pelo nome) e o Savio (do DP) escolhido no Fiscal: vale a planilha
+    const porSlug = new Map([['dornas-havana-ltda', { responsaveis: { fiscal: 'Savio', contabil: 'Vitor' } }]]);
+    const l = ins.empresasDoInsight(porCodigo, porSlug, equipe);
+    const de = (c: number) => l.find(e => e.codigo === c);
+    expect(de(999001)).toEqual({ codigo: 999001, nome: 'NOVA LTDA', regime: 'Simples', fiscal: 'Heverton', contabil: 'Vitor' });
+    expect(de(10)?.fiscal).toBe('Heverton');
+    expect(de(10)?.contabil).toBe('Vitor');
+    const t = ins.empresasDoTabelaoFiscal(l);
+    expect(t.some(e => e.codigo === 999002)).toBe(false);
+    expect(t.filter(e => e.responsavel === 'Heverton').length).toBeGreaterThan(5);
   });
   it('com o time, todo mundo aparece, contado pelo setor', () => {
     const r = ins.resumoDeExemploDosInsights(new Date(2026, 10, 19));

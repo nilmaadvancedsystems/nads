@@ -20,7 +20,7 @@ function consulta(colecao, filtros = []) {
 // a equipe (usuarios): um get por hora
 let leiturasDaEquipe = 0;
 const USUARIOS = [
-  { nome: 'savio', departamento: 'dp' }, { nome: 'Felipe', departamento: 'contabil' }, { nome: 'gustavo', roles: ['staff', 'office_boy'] },
+  { nome: 'savio', departamento: 'dp' }, { nome: 'Felipe', departamento: 'contabil' }, { nome: 'Fernando', departamento: 'contabil' }, { nome: 'gustavo', roles: ['staff', 'office_boy'] },
   { nome: 'Heverton', departamento: 'fiscal' }, { nome: 'Gustavo.S', roles: ['admin'] }, { nome: 'Antiga', departamento: 'fiscal', ativo: false },
 ];
 const db = {
@@ -88,12 +88,14 @@ const fontes = {
     // o Fiscal pelo tabelão: a entregue conta como feita, a sem linha como não iniciada
     const fiscal = d.rotinas.find(x => x.setor === 'fiscal').pessoas;
     const hev = fiscal.find(p => p.nome === 'Heverton');
-    assert.deepStrictEqual([hev.feitas, hev.faltando], [1, 1]);
-    assert.deepStrictEqual(hev.empresas.map(e => [e.nome, e.situacao]), [['PADARIA BOA LTDA', 'nao-iniciada'], ['MERCADO NOVO LTDA', 'concluida']], 'a visão da pessoa leva o nome da empresa');
+    assert.strictEqual(hev.feitas, 1, 'a entregue conta como feita');
+    assert.ok(hev.faltando > 5, 'as da planilha (HEVERTON) entram com as do Cadastro');
+    assert.ok(!fiscal.some(p => p.nome === 'HEVERTON'), 'a planilha e o Cadastro são a mesma pessoa');
+    assert.deepStrictEqual(hev.empresas.filter(e => /PADARIA|MERCADO NOVO/.test(e.nome)).map(e => [e.nome, e.situacao]).sort(), [['MERCADO NOVO LTDA', 'concluida'], ['PADARIA BOA LTDA', 'nao-iniciada']], 'a visão da pessoa leva o nome da empresa');
     // a equipe pelos usuários: o desativado e o admin sem departamento ficam de fora
-    assert.deepStrictEqual(d.time.map(u => [u.nome, u.setor]), [['Felipe', 'contabil'], ['gustavo', 'office-boy'], ['Heverton', 'fiscal'], ['savio', 'dp']]);
+    assert.deepStrictEqual(d.time.map(u => [u.nome, u.setor]), [['Felipe', 'contabil'], ['Fernando', 'contabil'], ['gustavo', 'office-boy'], ['Heverton', 'fiscal'], ['savio', 'dp']]);
     assert.strictEqual(leiturasDaEquipe, 1);
-    assert.deepStrictEqual(d.rotinas.find(x => x.setor === 'contabil').pessoas.map(p => [p.nome, p.feitas, p.faltando]), [['Fernando', 0, 1]]);
+    assert.deepStrictEqual(d.rotinas.find(x => x.setor === 'contabil').pessoas.filter(p => p.nome !== 'Sem responsável').map(p => [p.nome, p.feitas, p.faltando]), [['Fernando', 0, 1]]);
     assert.ok(d.dp.atrasadas + d.dp.pendentes + d.dp.feitas + d.dp.sem === core().CLIENTES_DO_DP.length, 'o DP conta todos os clientes da tabela');
     assert.ok(!JSON.stringify(d).match(/cli1|cli2/), 'nenhum id de cliente no resumo');
     assert.strictEqual(contagens.length, 7, 'sete contagens por volta');

@@ -57,7 +57,7 @@ const codigo = [
   // o e-mail de senha pelo robô (19/11/2026)
   'export { pedidoDeSenha, linkDaPaginaDeSenha, emailDeSenha } from ' + caminho('packages/core/src/areaCliente/emailDeSenha.ts') + ';',
   // a Tela de Insights (18/11/2026, ficha tela-de-insights)
-  'export { rotinasPorPessoa, situacaoDoClienteDp, contarDp, contarChamados, contarEntregas, delegadasAtrasadas, fiscalPorPessoa, setorDoUsuario, empresasDoTabelaoFiscal } from ' + caminho('packages/core/src/tarefas/regras/insights.ts') + ';',
+  'export { rotinasPorPessoa, situacaoDoClienteDp, contarDp, contarChamados, contarEntregas, delegadasAtrasadas, fiscalPorPessoa, setorDoUsuario, empresasDoTabelaoFiscal, empresasDoInsight } from ' + caminho('packages/core/src/tarefas/regras/insights.ts') + ';',
   // o tabelão do Fiscal, para o Insights (19/11/2026)
   'export { situacaoDaLinha } from ' + caminho('packages/core/src/tarefas/regras/controleDeTributos.ts') + ';',
   'export { competenciaDeTrabalhoDoDp } from ' + caminho('packages/core/src/tarefas/regras/prazosDoDp.ts') + ';',
