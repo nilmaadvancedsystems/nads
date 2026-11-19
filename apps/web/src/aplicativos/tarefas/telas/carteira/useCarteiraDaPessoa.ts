@@ -16,7 +16,7 @@ import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 /** as contas ligadas à pessoa (a consulta já é só dela) como os pagamentos da Carteira */
 const pagamentosDe = (contas: readonly financeiro.ContaAPagar[]) => carteira.pagamentosDaCarteira(contas, contas[0]?.funcionario?.uid ?? '');
 
-/** As comissões da pessoa, pelo mês do pagamento: abre no mês seguinte, onde entram as que ela registra (12/11/2026). */
+/** As comissões da pessoa, pelo mês do serviço (a data; 19/11/2026), que abre no mês de hoje; o pagamento é no mês seguinte. */
 /** mesDeFora: o mês que a tela da Carteira escolhe uma vez só, para as comissões e os holerites (19/11/2026: "repetindo referencia") */
 export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const repo = useCarteira();
@@ -24,7 +24,9 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const m = mesDeFora ?? proprio;
   const [aberta, setAberta] = useState<carteira.Comissao | null | 'nova'>(null);
   const todas = repo.minhasComissoes();
-  const lista = todas.lista.filter(c => c.competencia === m.mes);
+  // pelo mês do serviço (Vitor, 19/11/2026: "nao ta upando as comissoes na tabela"): a registrada em novembro aparece em novembro, a
+  // receber, e é paga no mês seguinte (a competência do pagamento continua a do mês seguinte)
+  const lista = todas.lista.filter(c => c.data.startsWith(m.mes));
   // a escondida conta como comissão, mas o valor dela não entra no total (16/11/2026: "não deixe essa informação visualizável")
   const totais = { ...carteira.totaisDasComissoes(carteira.comValorParaAPessoa(lista)), quantas: lista.filter(c => c.situacao !== 'recusada').length };
   // o total do mês é só das comissões (Vitor, 19/11/2026: o salário só aparece quando o DP gera a folha; "Só comissões"): o holerite e o
@@ -44,6 +46,13 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   }));
   return {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
+    /** a linha dos últimos 6 meses (o total das comissões de cada mês, pela data; no topo, como num app de banco; 19/11/2026) */
+    serie: (() => {
+      const [a, mm] = m.mes.split('-').map(Number);
+      const meses = Array.from({ length: 6 }, (_, i) => { const d = new Date(a, mm - 6 + i, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); });
+      const validas = carteira.comValorParaAPessoa(todas.lista).filter(c => c.situacao !== 'recusada');
+      return meses.map(x => ({ mes: x, valor: validas.filter(c => c.data.startsWith(x)).reduce((t, c) => t + c.valor, 0) }));
+    })(),
     totalDoMes: totais.total,
     docsDoMes, pagsDoMes, materiaisDoMes,
     /** a tabela dos lançamentos em planilha (Vitor, 19/11/2026: "Coloca a opcao excel, para exportar em planilha"): as mesmas colunas da
@@ -186,8 +195,8 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
       if (problemas.length) return;
       setSalvando(true);
       try {
-        if (doFinanceiro) { await repo.registrarComissaoDe(para!, c); toast('Comissão registrada para ' + para!.nome + ', já aprovada.'); }
-        else { await repo.salvarComissao(c, comissao?.id); toast(comissao ? 'Comissão alterada.' : 'Comissão registrada. O Financeiro vê e aprova.'); }
+        if (doFinanceiro) { await repo.registrarComissaoDe(para!, c); toast('Comissão registrada para ' + para!.nome + '.'); }
+        else { await repo.salvarComissao(c, comissao?.id); toast(comissao ? 'Comissão alterada.' : 'Comissão registrada.'); }
         fechar();
       } catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
       finally { setSalvando(false); }
@@ -288,7 +297,7 @@ export function useComissoesDaEquipe() {
         motivo = digitado;
       }
       if (situacao === 'paga') {
-        const sim = await modal<boolean>({ icone: 'dinheiro', titulo: 'Marcar como pago?', texto: ids.length + (ids.length === 1 ? ' comissão aprovada passa' : ' comissões aprovadas passam') + ' para Paga. A pessoa vê na Carteira.',
+        const sim = await modal<boolean>({ icone: 'dinheiro', titulo: 'Marcar como pago?', texto: ids.length + (ids.length === 1 ? ' comissão passa' : ' comissões passam') + ' para Paga. A pessoa vê na Carteira.',
           botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Marcar como pago', valor: true, variante: 'btn-primary' }] });
         if (!sim) return;
       }

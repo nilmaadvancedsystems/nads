@@ -18,7 +18,7 @@ export function JanelaDoDocumento({ para, competencia, fechar }: { para: { uid: 
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget && !enviando) fechar(); }}>
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="upload" />Carteira<Icone nome="chevronRight" /><b>{titulo}</b></span>
+          <span className="registro-caminho"><Icone nome="upload" />Ihul!<Icone nome="chevronRight" /><b>{titulo}</b></span>
           <BotaoFechar onClick={fechar} disabled={enviando} />
         </header>
         <div className="registro-corpo">

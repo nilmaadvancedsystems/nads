@@ -8,8 +8,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useJanelaDaComissao, type ClienteDaLista, type ClienteSemCodigo } from './useCarteiraDaPessoa';
-import { MeiDaComissao } from './MeiDaComissao';
-import { ehServicoDeMei } from './useMeiDaComissao';
 
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -86,7 +84,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="dinheiro" />{doFinanceiro ? 'Comissões da equipe' : 'Carteira'}<Icone nome="chevronRight" /><b>{titulo}</b></span>
+          <span className="registro-caminho"><Icone nome="dinheiro" />{doFinanceiro ? 'Comissões da equipe' : 'Ihul!'}<Icone nome="chevronRight" /><b>{titulo}</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className={'registro-corpo' + (destaque ? ' comissao-com-destaque' : '')}>
@@ -110,7 +108,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
           {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
           {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : comissao!.situacao === 'lancada' ? 'O mês virou: a comissão está travada. Só o Financeiro muda.' : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
-          {doFinanceiro && <p className="registro-dica"><Icone nome="lampada" />Registrada pelo Financeiro, a comissão já entra aprovada e aparece na Carteira da pessoa.</p>}
+          {doFinanceiro && <p className="registro-dica"><Icone nome="lampada" />Registrada pelo Financeiro, a comissão aparece na Carteira da pessoa, a pagar.</p>}
           <div className="registro-props">
             {doFinanceiro && (
               <Propriedade icone="usuario" rotulo="Pessoa">
@@ -136,7 +134,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               )}
             </Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
-              <EscolherCliente clientes={vm.porte === 'MEI' ? vm.clientes.filter(c => c.regime === 'MEI') : vm.clientes} semCodigo={vm.porte === 'MEI' ? vm.clientesSemCodigo.filter(c => c.porte === 'MEI') : vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
+              <EscolherCliente clientes={vm.porte === 'MEI' ? vm.clientes.filter(c => c.regime === 'MEI') : vm.porte === 'Pessoa física' ? vm.clientes.filter(c => c.regime === 'Física') : vm.clientes} semCodigo={vm.porte === 'MEI' ? vm.clientesSemCodigo.filter(c => c.porte === 'MEI') : vm.porte === 'Pessoa física' ? [] : vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
                 onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} onSemCodigo={c => vm.escolherSemCodigo(c.nome, c.porte)} />
             </Propriedade>
             {vm.avulso && (
@@ -153,7 +151,6 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               )}
             </Propriedade>
             {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026) */}
-            {dev && !travada && ehServicoDeMei(vm.servico) && <MeiDaComissao nome={vm.avulso ? vm.nomeAvulso : vm.cliente} aoLerCartao={nome => { if (vm.clienteCodigo == null && !vm.nomeAvulso.trim()) vm.escolherSemCodigo(nome, 'MEI'); else if (vm.avulso && !vm.porte) vm.setPorte('MEI'); }} />}
             {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
             {!(vm.oculta && comissao) && (
               <Propriedade icone="dinheiro" rotulo="Valor do serviço">

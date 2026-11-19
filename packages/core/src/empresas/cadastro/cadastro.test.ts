@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -513,6 +513,57 @@ describe('gravar só o que mudou no cadastro (30/10/2026)', () => {
     expect(gravacaoDoCadastro(antes, definirRegime(antes, null, 'V', AGORA)).apagar).toEqual(['regime']);
     expect(gravacaoDoCadastro(antes, antes).campos).toEqual({ nome: 'FITO', codigo: 292, atualizadoEm: documentoDoCadastro(antes).atualizadoEm });
     expect(gravacaoDoCadastro(antes, antes, false).campos).toHaveProperty('historico');
+  });
+  // 19/11/2026: a 610 (e a 332 e a 580) tinha bancos e contasPadrao gravados como null pela importação de 13/10; a regra do
+  // banco só aceita os dois ausentes ou do tipo certo, e recusava toda gravação ("Missing or insufficient permissions")
+  it('o campo null que a regra do banco recusa vai junto para apagar', () => {
+    expect(camposNulosQueORegraRecusa({ nome: 'GAS', bancos: null, contasPadrao: null, codigo: null })).toEqual(['bancos', 'contasPadrao']);
+    expect(camposNulosQueORegraRecusa({ nome: 'GAS', bancos: [], contasPadrao: {} })).toEqual([]);
+    expect(camposNulosQueORegraRecusa(null)).toEqual([]);
+    const antes = vazio();
+    const g = gravacaoDoCadastro(antes, definirCartao(antes, 'vendeNoCartao', true, 'V', AGORA), true, ['bancos', 'contasPadrao']);
+    expect(g.apagar).toEqual(['bancos', 'contasPadrao']);
+    // quem cadastra os bancos agora grava a lista (não apaga)
+    const comBancos = confirmarPontoDePartida(antes, pontoDePartida(292), 'V', AGORA);
+    const g2 = gravacaoDoCadastro(antes, comBancos, true, ['bancos', 'contasPadrao']);
+    expect(g2.campos).toHaveProperty('bancos');
+    expect(g2.apagar).toEqual(['contasPadrao']);
+  });
+  it('a empresa com bancos null no banco volta a gravar, e o salvar diz se gravou', async () => {
+    // o documento como estava no banco, e a regra do banco: bancos ou contasPadrao null no documento final = recusa
+    let banco: Record<string, unknown> = { nome: 'GAS TAIOBEIRAS LTDA', codigo: 610, bancos: null, contasPadrao: null, historico: [] };
+    const recebidos: { campos: Record<string, unknown>; apagar: readonly string[] }[] = [];
+    const repo = criarRepoCadastro({
+      ouvirCadastro: (_id, chegou) => { queueMicrotask(() => chegou(banco)); return () => {}; },
+      ouvirPlano: (_id, chegou) => { queueMicrotask(() => chegou(null)); return () => {}; },
+      ouvirTodos: () => () => {},
+      async gravarCampos(_id, campos, apagar) {
+        recebidos.push({ campos, apagar });
+        const final: Record<string, unknown> = { ...banco, ...campos };
+        for (const k of apagar) delete final[k];
+        if (final.bancos === null || final.contasPadrao === null) throw new Error('Missing or insufficient permissions.');
+        banco = final;
+      },
+    }, false);
+    repo.cadastro('GAS TAIOBEIRAS LTDA', 610);
+    await Promise.resolve(); await Promise.resolve();
+    expect(repo.carregada('GAS TAIOBEIRAS LTDA')).toBe(true);
+    const ok = await repo.salvar('GAS TAIOBEIRAS LTDA', definirSocios(repo.cadastro('GAS TAIOBEIRAS LTDA', 610), [{ nome: 'SÓCIA', cpf: '' }], 'V', AGORA));
+    expect(ok).toBe(true);
+    expect(recebidos[0].apagar).toEqual(['bancos', 'contasPadrao']);
+    expect(banco).not.toHaveProperty('bancos');
+    expect(banco).not.toHaveProperty('contasPadrao');
+    expect(banco).toMatchObject({ socios: [{ nome: 'SÓCIA', cpf: '' }] });
+  });
+  it('o salvar devolve false quando o banco recusa', async () => {
+    const porta = portaCadastroMemoria({ cadastros: { fito: { nome: 'FITO', codigo: 292, historico: [] } }, planos: {} });
+    const avisos: string[] = [];
+    const repo = criarRepoCadastro({ ...porta, gravarCampos: async () => { throw new Error('Missing or insufficient permissions.'); } }, true);
+    repo.definirAviso(m => avisos.push(m));
+    repo.cadastro('FITO', 292);
+    await Promise.resolve(); await Promise.resolve();
+    expect(await repo.salvar('FITO', definirCartao(repo.cadastro('FITO', 292), 'vendeNoCartao', true, 'V', AGORA))).toBe(false);
+    expect(avisos[0]).toMatch(/insufficient permissions/);
   });
   it('o campo que esta versão não conhece fica no banco (a aba antiga não apaga o novo)', async () => {
     const porta = portaCadastroMemoria({ cadastros: { fito: { nome: 'FITO', codigo: 292, historico: [], regime: 'Simples', campoDoFuturo: { a: 1 } } }, planos: {} });

@@ -64,7 +64,7 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       lateral={telaInteira || semLateral || vm.soAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || vm.semTitulo || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
-      onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
+      onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao} atalhoNaGaveta="carteira"
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={vm.abrirTarefas} />}
       // o pé da gaveta: Feedbacks, Ferramentas e Configurações (PeDaGaveta.tsx; o mesmo dentro da Tarefa)
