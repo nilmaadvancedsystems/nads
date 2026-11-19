@@ -54,10 +54,10 @@ export function useAdiantamentoSalarial() {
   const modelos = useModelosDeHistorico();
   const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses, modelos) : []), [razao, s.meses, modelos]);
   // a grade pago / não pago do período lá em cima, como a do Pró-labore (Vitor, 19/11/2026: "Adiantamento salarial tinha que aparecer
-  // pago e nao pago igual o pro labore"); por enquanto no modo desenvolvedor
+  // pago e nao pago igual o pro labore"; na final desde 19/11/2026)
   const periodo = s.periodo?.length ? s.periodo : s.meses;
   const chaveDoPeriodo = periodo.join(',');
-  const daGrade = useMemo(() => (razao && s.dev ? t.conferirAdiantamentoSalarial(razao.razao, periodo, modelos) : []), [razao, s.dev, chaveDoPeriodo, modelos]); // eslint-disable-line react-hooks/exhaustive-deps
+  const daGrade = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, periodo, modelos) : []), [razao, chaveDoPeriodo, modelos]); // eslint-disable-line react-hooks/exhaustive-deps
   const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005 && !m.zeraDepois);
   // o que falta pagar, também dos meses antes dos da etapa, que é de onde vem o saldo que não zera (Vitor, 26/10/2026)
   const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1], modelos) : []), [razao, s.meses, modelos]);
@@ -76,7 +76,6 @@ export function useAdiantamentoSalarial() {
   const reais = formatos.reais;
   return {
     robo: s.nome ? { empresa: s.nome, codigo: s.codigo, conta: contaDoRobo.conta, informar: contaDoRobo.informar, meses: s.meses } : null,
-    dev: s.dev,
     semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
     /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */
     mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
@@ -84,25 +83,10 @@ export function useAdiantamentoSalarial() {
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     /** o Diário do adiantamento salarial (a Importação preenche; o razão próprio desta etapa, se houver, sai) */
     usarDiario: () => { if (contabil.usarDiarioDoTipo('adiantamento-salarial', 'Adiantamento salarial')) setRazao(null); },
-    // o Ok é o selo padrão (Vitor, 26/10/2026: "deixe o ok padrão"); no resumo, só o que falta
-    resumo: razao ? [
-      ...(naoZerou.length ? ['Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
-      ...(faltando.length ? ['Falta pagar ' + reais(faltando.reduce((x, p) => x + p.valor, 0)) + ' (' + faltando.map(p => t.rotuloNumericoCompetencia(p.mes)).join(', ') + ')'] : []),
-    ] : [],
+    // o Ok é o selo padrão (Vitor, 26/10/2026: "deixe o ok padrão")
     ok: !!razao && !naoZerou.length,
-    meses: meses.map(m => ({
-      mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes),
-      provisao: reais(m.provisao),
-      pagamento: m.pagamentos.length ? reais(m.pagamentos.reduce((x, p) => x + p.valor, 0)) : '',
-      diaDoPagamento: m.pagamentos.map(p => dataBR(p.data)).join(', '),
-      foraDoDia: !m.ferias && m.pagamentos.some(p => p.data !== m.dataEsperada),
-      dataEsperada: dataBR(m.dataEsperada),
-      saldo: formatos.brl(Math.abs(m.saldoFinal)) + (m.saldoFinal > 0.005 ? ' C' : m.saldoFinal < -0.005 ? ' D' : ''),
-      zerou: Math.abs(m.saldoFinal) <= 0.005 || m.zeraDepois,
-      falta: m.falta > 0.005 ? reais(m.falta) : '',
-    })),
-    /** a grade do modo desenvolvedor: cada mês do período pago, parcial, não pago ou sem desconto */
-    grade: s.dev && razao ? daGrade.map(m => {
+    /** a grade: cada mês do período pago, parcial, não pago ou sem desconto */
+    grade: razao ? daGrade.map(m => {
       const pago = Math.round(m.pagamentos.reduce((x, p) => x + p.valor, 0) * 100) / 100;
       const situacao: 'pago' | 'parcial' | 'falta' | 'sem' = m.provisao <= 0.005 && pago <= 0.005 ? 'sem'
         : m.falta <= 0.005 && (Math.abs(m.saldoFinal) <= 0.005 || m.zeraDepois || pago > 0) ? 'pago' : pago > 0.005 ? 'parcial' : 'falta';
