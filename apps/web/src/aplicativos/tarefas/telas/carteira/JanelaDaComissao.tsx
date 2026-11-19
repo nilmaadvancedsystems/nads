@@ -172,7 +172,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           {erros.length > 0 && <ul className="registro-erros">{erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
         <footer className="registro-pe">
-          {vm.podeApagar && <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.apagar()}><Icone nome="lixeira" />Apagar</button>}
+          {vm.podeApagar && <button type="button" className="btn btn-apagar-cheio" onClick={() => void vm.apagar()} title="Apagar" aria-label="Apagar"><Icone nome="lixeira" /></button>}
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={fechar}>{travada ? 'Fechar' : 'Cancelar'}</button>
           {!travada && <button type="button" className="btn btn-primary" disabled={salvando} onClick={() => void vm.salvar()} title="Gravar (Ctrl+Enter)"><Icone nome="check" />{comissao ? 'Gravar' : 'Registrar'}</button>}

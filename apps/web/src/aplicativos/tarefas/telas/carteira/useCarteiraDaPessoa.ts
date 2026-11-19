@@ -61,6 +61,14 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
       const nome = 'Lançamentos ' + carteira.mesPorExtenso(m.mes) + '.xlsx';
       return { bytes: tf.planilhaXlsx('Lançamentos', ['Data', 'Cliente', 'Porte', 'Tipo', 'Valor', 'Status'], linhas.map(x => x.l)), nome };
     },
+    /** o Extrato de comissões do mês em planilha (a caixa dos anexos; 19/11/2026) */
+    extratoDeComissoes() {
+      const br = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+      const semCnpj = (n: string) => n.replace(/^[\d./-]{6,}\s+/, '').trim() || n;
+      const linhas = [...lista].sort((a, b) => a.data.localeCompare(b.data)).map(c => [br(c.data), semCnpj(c.cliente), c.porte || '', c.descricao, c.oculta ? '' : c.valor,
+        c.situacao === 'paga' ? 'Paga' + (c.pagoEm ? ' em ' + br(c.pagoEm) : '') : c.situacao === 'recusada' ? 'Recusada' : 'A receber']);
+      return { bytes: tf.planilhaXlsx('Comissões', ['Data', 'Cliente', 'Porte', 'Serviço', 'Comissão', 'Status'], linhas), nome: 'Extrato de comissões ' + carteira.mesPorExtenso(m.mes) + '.xlsx' };
+    },
     /** os ⋯ da tabela (19/11/2026: "coloca a opcao de editar e excluir, um 3 pontinhos"): só a comissão ainda lançada muda ou sai */
     podeMexer: (c: carteira.Comissao) => carteira.podeEditar(c),
     async excluir(c: carteira.Comissao) {

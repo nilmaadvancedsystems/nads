@@ -8189,3 +8189,26 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 /* a janela do insumo no desenho da comissão (19/11/2026) */
 .insumo-destaque-conta{font-size:var(--fs-12);color:var(--ink-muted);}
 .registro-prop-valor > input.insumo-qtd{flex:0 0 120px;border:1px solid var(--border);text-align:right;}
+/* os anexos do mês em 4 caixas (19/11/2026): cada uma com a sua cor, o selo do ícone, o nome, o que tem e o Abrir/Baixar; sem nada, apagada */
+.cmc-anexos-caixas{list-style:none;margin:0 0 16px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.cmc-anexo-caixa{--cor:var(--accent);position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px 16px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--cor) 30%,var(--border));
+  background:radial-gradient(130% 120% at 100% 0%,color-mix(in srgb,var(--cor) 16%,transparent) 0%,transparent 60%),var(--surface);overflow:hidden;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;}
+.cmc-anexo-caixa:not(.vazio):hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--cor) 55%,var(--border));box-shadow:0 8px 24px -12px color-mix(in srgb,var(--cor) 60%,transparent);}
+.cmc-anexo-holerite{--cor:#3B82F6;}
+.cmc-anexo-extrato{--cor:#F59E0B;}
+.cmc-anexo-pagamento{--cor:#22C55E;}
+.cmc-anexo-comissoes{--cor:#A855F7;}
+.cmc-anexo-selo{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;margin-bottom:4px;
+  background:color-mix(in srgb,var(--cor) 18%,transparent);color:var(--cor);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cor) 30%,transparent);}
+.cmc-anexo-selo svg{width:21px;height:21px;}
+.cmc-anexo-nome{font-size:var(--fs-15, 15px);font-weight:700;color:var(--ink);}
+.cmc-anexo-sub{font-size:var(--fs-12);color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cmc-anexo-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:30px;}
+.cmc-anexo-caixa.vazio{opacity:.55;border-style:dashed;}
+.cmc-anexo-caixa.vazio .cmc-anexo-selo{filter:grayscale(.6);}
+@media (max-width:900px){.cmc-anexos-caixas{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:520px){.cmc-anexos-caixas{grid-template-columns:1fr;}}
+/* o Apagar das janelas da Carteira (19/11/2026: "Icone de lixeira com botao todo em vermelho") */
+.btn.btn-apagar-cheio{width:36px;padding:0;justify-content:center;background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
+.btn.btn-apagar-cheio:hover:not(:disabled){filter:brightness(1.1);}
+.btn.btn-apagar-cheio svg{width:17px;height:17px;}
