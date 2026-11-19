@@ -5,7 +5,8 @@ import { BotaoFechar, Icone, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { Insumos } from './Insumos';
 
-export function JanelaDeMateriais({ fechar }: { fechar: () => void }) {
+/** mes: o mês da tela da Carteira (sem outro seletor aqui; 19/11/2026) */
+export function JanelaDeMateriais({ fechar, mes }: { fechar: () => void; mes: string }) {
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
   return (
@@ -15,7 +16,7 @@ export function JanelaDeMateriais({ fechar }: { fechar: () => void }) {
           <span className="registro-caminho"><Icone nome="dinheiro" />Carteira<Icone nome="chevronRight" /><b>Impressões e materiais</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
-        <div className="registro-corpo"><Insumos emJanela /></div>
+        <div className="registro-corpo"><Insumos emJanela mes={mes} /></div>
       </div>
     </div>
   );

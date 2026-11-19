@@ -1231,6 +1231,16 @@ async function iniciar() {
   // o lembrete de vencimento ao cliente (17/11/2026, ficha lembrete-de-vencimento): desligado e travado até liberar
   try { require('./lembrete-guia').iniciarLembreteDeGuias({ db, log, correio }); }
   catch (err) { log('lembrete de vencimento desligado:', err.message); }
+  // o e-mail de criar ou trocar a senha da Área do Cliente (19/11/2026; o dono: "Sim, pelo robô"): só na nuvem. Sai pela
+  // caixa naoresponda@nilmacontabilidade.com (Hostinger, por SMTP) quando a senha dela está no metadado; senão, pela do robô
+  if (process.env.ROBO_NA_NUVEM) {
+    try {
+      const naoresponda = require('./smtp-naoresponda').criarCorreioNaoresponda({ reserva: correioDoRobo, log });
+      const correioDaSenha = Object.assign({}, correioDoRobo, { enviar: naoresponda.enviar });
+      require('./senha-cliente').iniciarSenhaDoCliente({ db, auth: require('firebase-admin/auth').getAuth(), log, ouvir: require('./ouvinte').ouvir, core: () => require('./gerado/danfse'), correio: correioDaSenha });
+    }
+    catch (err) { log('e-mail de senha do cliente desligado:', err.message); }
+  }
   // o e-mail ao cliente quando o escritório responde (17/11/2026, ficha aviso-de-resposta): só na nuvem, travado até liberar
   if (process.env.ROBO_NA_NUVEM) {
     try { require('./aviso-de-resposta').iniciarAvisoDeResposta({ db, log, correio }); }

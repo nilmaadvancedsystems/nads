@@ -136,6 +136,11 @@ export interface LinhaDoRegistro {
   comprovante?: Pick<ComprovanteDoLancatudo, 'id' | 'nome' | 'driveId' | 'favorecido' | 'documento' | 'tipo'>;
   /** o texto de onde sai a chave do que o nads aprende (o CPF/CNPJ do comprovante na frente); sem = o historicoDoBanco */
   textoParaAprender?: string;
+  /**
+   * o lançamento do razão do mês com que a linha casou (19/11/2026: "quando estiver no razão, quero ver o lançamento do razão
+   * em que levou a conciliação"): o dia, o valor (positivo), a contrapartida e o histórico como o Alterdata tem
+   */
+  doRazao?: { data: string; valor: number; conta: string; historico: string };
 }
 
 /** Os números do mês do banco. */

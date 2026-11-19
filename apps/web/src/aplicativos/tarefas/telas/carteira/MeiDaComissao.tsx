@@ -5,15 +5,15 @@ import { useId } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useMeiDaComissao } from './useMeiDaComissao';
 
-export function MeiDaComissao({ nome }: { nome: string }) {
-  const vm = useMeiDaComissao(nome);
+export function MeiDaComissao({ nome, aoLerCartao }: { nome: string; aoLerCartao?: (nomeDaEmpresa: string) => void }) {
+  const vm = useMeiDaComissao(nome, aoLerCartao);
   const id = useId();
   return (
     <>
       <Propriedade icone="fileText" rotulo="Cartão CNPJ">
         {vm.cartao ? (
           <span className="mei-cartao">
-            <span className="mei-cartao-txt"><b>{vm.cnpj}</b><span className="hint" title={vm.nomeDaEmpresa}>{vm.nomeDaEmpresa}</span>
+            <span className="mei-cartao-txt"><b title={vm.nomeDaEmpresa}>{vm.nomeDoCartao}</b><span className="hint num">CNPJ {vm.cnpj}</span>
               {/* já registrada ao upar: só o aviso, numa linha (19/11/2026) */}
               {vm.registro && <span className="hint mei-cartao-registro">{vm.registro === 'registrando' ? 'Registrando no sistema…' : vm.registro === 'ja' ? 'Já estava no sistema' : 'Registrada no sistema como MEI'}</span>}</span>
             <button type="button" className="icon-btn icon-btn-sm" onClick={vm.tirarCartao} title="Tirar o cartão" aria-label="Tirar o cartão CNPJ"><Icone nome="x" /></button>

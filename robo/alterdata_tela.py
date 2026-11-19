@@ -167,7 +167,23 @@ def resumo_do_erro(motivo, nome):
 def preparar_tela():
     """Antes dos cliques de um roteiro: pede ao Windows a tela ligada enquanto o Python roda (o pedido some quando ele sai)
     e mexe o mouse 1 ponto e volta, para acender a tela que já apagou (a mesma técnica do FGTS, f7f359bc). Nada fica
-    gravado. Devolve '' (nada a dizer) ou o porquê de não ter dado."""
+    gravado. Devolve '' (nada a dizer) ou o porquê de não ter dado.
+    Antes disso, a sessão (alterdata_sessao.py, 19/11/2026): desconectada, vai para o console e espera a tela voltar; com
+    alguém usando o servidor por acesso remoto (ou sem área de trabalho nenhuma), o roteiro termina aqui com o erro claro
+    (RESULTADO e saída), antes do primeiro clique. A sessão do começo sai numa linha SESSAO: (o robô compara com a do fim)."""
+    try:
+        import alterdata_sessao
+    except Exception:
+        alterdata_sessao = None
+    if alterdata_sessao:
+        try:
+            s = alterdata_sessao.garantir(avisar=lambda t: print('TELA: ' + t, flush=True))
+            print('SESSAO: ' + json.dumps(s, ensure_ascii=False), flush=True)
+        except (alterdata_sessao.Ocupada, alterdata_sessao.SemTela) as e:
+            print('RESULTADO: ' + json.dumps({'ok': False, 'erro': str(e)}, ensure_ascii=False), flush=True)
+            sys.exit(1)
+        except Exception as e:
+            print('TELA: não vi a sessão: ' + type(e).__name__ + ': ' + str(e)[:120], flush=True)
     try:
         import ctypes
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)   # ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED

@@ -65,31 +65,41 @@ const CLIQUE_MS = 700;
 // avisado uma vez. Sem sessão de tela ativa (SendInput com 0 eventos) o clique nem existe: pausa curta, sem queimar a fila.
 const RE_JANELA = /n[ãa]o abriu|not responding|n[ãa]o respond/i;
 const RE_SEM_TELA = /SendInput|no active desktop|sem sess[ãa]o de tela/i;
+// Alguém no servidor por acesso remoto (19/11/2026: o dono entrou de um notebook com outra resolução e os pedidos falharam no
+// meio): a frase vem do sessao-no-console.js / alterdata_sessao.py. Não é culpa do Contábil: não conta para reabrir, o pedido
+// volta para a fila e espera (pausaRemotoMs, até MAX_ESPERAS_REMOTO vezes) e só então vira erro com a frase clara.
+const RE_REMOTO = /usando o servidor por acesso remoto|a tela do servidor mudou/i;
 const FALHAS_PARA_REABRIR = 3;
 const MAX_ESPERAS = 3;
+const MAX_ESPERAS_REMOTO = 6;
 
-/** 'semTela' | 'janela' | '' — o que as mensagens de erro de um pedido dizem sobre o ambiente (todas precisam ser de ambiente). */
+/** 'remoto' | 'semTela' | 'janela' | '' — o que as mensagens de erro de um pedido dizem sobre o ambiente (todas precisam ser de ambiente). */
 function classeDoErro(erros) {
   const l = (erros || []).map(e => String(e || '')).filter(Boolean);
   if (!l.length) return '';
-  if (l.some(e => RE_SEM_TELA.test(e)) && l.every(e => RE_SEM_TELA.test(e) || RE_JANELA.test(e))) return 'semTela';
+  const deAmbiente = e => RE_REMOTO.test(e) || RE_SEM_TELA.test(e) || RE_JANELA.test(e);
+  if (l.some(e => RE_REMOTO.test(e)) && l.every(deAmbiente)) return 'remoto';
+  if (l.some(e => RE_SEM_TELA.test(e)) && l.every(deAmbiente)) return 'semTela';
   return l.every(e => RE_JANELA.test(e)) ? 'janela' : '';
 }
 
 /** A frase para quem pediu (o detalhe técnico vai junto, no fim). */
 function mensagemClara(classe, erros, extra) {
   const detalhe = [...new Set((erros || []).map(e => String(e).trim()).filter(Boolean))].join(' · ');
-  const base = classe === 'semTela'
+  const base = classe === 'remoto'
+    ? 'Alguém está usando o servidor por acesso remoto e o robô não clica no Contábil junto com uma pessoa, então nada foi gerado.'
+    : classe === 'semTela'
     ? 'O robô não conseguiu clicar no Contábil: o servidor está sem sessão de tela ativa.'
     : classe === 'janela'
       ? 'O Contábil não respondeu ao robô (as janelas dos relatórios não abriram), então nada foi gerado.'
       : '';
   if (!base) return detalhe;
-  return (base + (extra ? ' ' + extra : ' Peça de novo em alguns minutos; se continuar, avise o suporte.') + ' Detalhe: ' + detalhe).slice(0, 500);
+  const depois = classe === 'remoto' ? ' Feche a conexão remota (desconectar, sem sair do Windows) e peça de novo.' : ' Peça de novo em alguns minutos; se continuar, avise o suporte.';
+  return (base + (extra ? ' ' + extra : depois) + ' Detalhe: ' + detalhe).slice(0, 500);
 }
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true,
-  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false, copiarPara = '',
+  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausaRemotoMs = 5 * 60 * 1000, pausado = () => false, copiarPara = '',
   limparTela = null, cancelarVerificarMs = 2000 }) {
   const fila = [];
   let ocupado = false;
@@ -104,6 +114,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   let pausaTimer = null;
   let avisouPausa = false;
   let avisouSemTela = false;
+  let avisouRemoto = false;
   const marcados = new Set();
   // o login do robô no Fiscal que não deu: nenhum pedido do Fiscal tenta de novo até reiniciar
   let fiscalSemLogin = '';
@@ -124,6 +135,12 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
 
   /** Depois de um pedido que não saiu por causa do ambiente: 'esperar' (volta para a fila, pausada) ou 'erro' (termina com a mensagem). */
   function aposFalhaDeAmbiente(classe, esperasAntes) {
+    if (classe === 'remoto') {
+      if (!avisouRemoto) { avisouRemoto = true; log('Alterdata: alguém está usando o servidor por acesso remoto; os pedidos esperam a conexão fechar'); }
+      if (esperasAntes >= MAX_ESPERAS_REMOTO) return 'erro';
+      pausar(pausaRemotoMs, 'alguém está usando o servidor por acesso remoto');
+      return 'esperar';
+    }
     if (classe === 'semTela') {
       if (!avisouSemTela) { avisouSemTela = true; if (painel) painel.erro('alterdata', 'O servidor está sem sessão de tela ativa', 'o robô não consegue clicar no Contábil (SendInput sem eventos); a fila foi pausada e os pedidos esperam'); }
       if (esperasAntes >= MAX_ESPERAS) return 'erro';
@@ -138,7 +155,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     pausar(pausaMs, 'esperando o Contábil');
     return 'esperar';
   }
-  function deuCerto() { falhasSeguidas = 0; jaReabriu = false; avisouPausa = false; avisouSemTela = false; }
+  function deuCerto() { falhasSeguidas = 0; jaReabriu = false; avisouPausa = false; avisouSemTela = false; avisouRemoto = false; }
   const textoEspera = () => (pausaMotivo === 'esperando o Contábil' ? 'esperando o Contábil voltar a responder' : pausaMotivo);
   const camposEspera = () => ({ esperandoContabil: textoEspera(), andamento: { pct: 0, etapa: textoEspera(), clique: '', em: agora() } });
 
@@ -291,6 +308,13 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
         // estourou o prazo: o Contábil provavelmente travou; o próximo relatório deste pedido nem tenta
         if (r.prazo) {
           for (const resto of relatorios.slice(relatorios.indexOf(rel) + 1)) arquivos[resto] = { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: 'não tentei: o ' + rotulo + ' travou antes' };
+          break;
+        }
+        // alguém no servidor por acesso remoto, ou sem tela (19/11/2026): o próximo relatório também não clicaria; o pedido
+        // inteiro volta para a fila com o mesmo motivo
+        const cl = classeDoErro([arquivos[rel].erro]);
+        if (cl === 'remoto' || cl === 'semTela') {
+          for (const resto of relatorios.slice(relatorios.indexOf(rel) + 1)) arquivos[resto] = { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: arquivos[rel].erro };
           break;
         }
         continue;
@@ -493,11 +517,21 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       return;
     }
     const arquivo = r.ok ? [r.arquivo, destino].find(x => x && fs.existsSync(x)) : '';
-    // deu errado: o Alterdata volta ao ponto de antes (17/11/2026: a consulta e o aviso que ficavam abertos travavam o próximo)
-    if (!arquivo && !r.semMovimento && limparTela) { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois do erro', err.message); } }
+    // alguém no servidor por acesso remoto ou sem tela (19/11/2026): o pedido volta para a fila e espera, como o mensal
+    const classe = arquivo ? '' : classeDoErro([r.erro]);
+    // deu errado: o Alterdata volta ao ponto de antes (17/11/2026: a consulta e o aviso que ficavam abertos travavam o próximo);
+    // com alguém usando a tela, nada é fechado debaixo da pessoa
+    if (!arquivo && !r.semMovimento && limparTela && classe !== 'remoto') { try { await limparTela(); } catch (err) { log('Alterdata: não limpei a tela depois do erro', err.message); } }
+    if ((classe === 'remoto' || classe === 'semTela') && aposFalhaDeAmbiente(classe, Number(p.esperas || 0)) === 'esperar') {
+      try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (_) { /* segue */ }
+      await banco.atualizar(id, { status: p.status === 'pendentePc' ? 'pendentePc' : 'pendente', onde: '', esperas: Number(p.esperas || 0) + 1, ...camposEspera(), erro: '', fimEm: '' });
+      fila.unshift(id);
+      log('Alterdata: pedido de volta para a fila,', textoEspera(), id);
+      return;
+    }
     if (!arquivo) {
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
-      const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
+      const msg = (classe === 'remoto' ? mensagemClara(classe, [r.erro]) : String(r.erro || 'a planilha não apareceu')).slice(0, 500);
       await banco.atualizar(id, { status: 'erro', erro: msg, semMovimento: !!r.semMovimento, diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
       if (painel) painel.erro('alterdata', (doContabil ? 'Contábil ' : 'Fiscal ') + rotuloRel + ' ' + codigo + ' ' + lote, msg, { pedido: id });
       log('Alterdata: fim do Fiscal', id, 'erro:', msg);

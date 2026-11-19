@@ -51,6 +51,9 @@ export const NOVIDADES = {
   /** o Lançatudo (17/11/2026: "desenvolver um Mister dentro do nads"): o extrato do banco em lançamentos para o Alterdata, com as
    *  regras de cada empresa; só o Contábil e o admin */
   lancatudo: { desde: '17/11/2026', aprovada: false },
+  /** o Arquivo físico (19/11/2026: "preciso montar no nads um controle do arquivo físico do escritório"): as caixas e os envelopes,
+   *  a busca, a retirada e a devolução, o descarte pelo prazo e as etiquetas com QR; aprovada para todo o escritório no mesmo dia ("Liberar para todos") */
+  'arquivo-fisico': { desde: '19/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

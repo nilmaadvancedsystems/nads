@@ -5,7 +5,13 @@
 // "um por folha, todos devem ser assim"). A logo vem pronta (o SVG) de quem chama, desenhada uma vez só no documento.
 import { competenciaParaEtiqueta } from './etiquetasDaFolha';
 
-export interface EtiquetaDoEnvelope { codigo: number | null; nome: string; caixa: string }
+export interface EtiquetaDoEnvelope {
+  codigo: number | null; nome: string; caixa: string;
+  /** o mês desta etiqueta, quando cada uma é de um mês (os envelopes do arquivo físico); sem ele, o do pedido */
+  competencia?: string;
+  /** o QR code (o SVG) no canto, que abre a caixa do arquivo físico no nads (19/11/2026) */
+  qr?: string;
+}
 export const DEPARTAMENTOS_DO_ENVELOPE = ['Fiscal', 'Contábil', 'Pessoal'] as const;
 export type DepartamentoDoEnvelope = (typeof DEPARTAMENTOS_DO_ENVELOPE)[number];
 
@@ -47,13 +53,13 @@ function etiqueta(e: EtiquetaDoEnvelope, movimento: string, departamento: string
 <div class="env-cod">${esc(codigoNaEtiqueta(e.codigo))}</div>
 <div class="env-nome">${esc(e.nome)}</div>
 <div class="env-caixa-linha"><span class="env-caixa">${esc(e.caixa) || '&nbsp;'}</span></div>
-<div class="env-dep">DEPARTAMENTO ${esc(departamento.toUpperCase())}</div></div>`;
+<div class="env-dep">DEPARTAMENTO ${esc(departamento.toUpperCase())}</div>${e.qr ? `<div class="env-qr">${e.qr}</div>` : ''}</div>`;
 }
 
 /** O documento A4 para imprimir: uma etiqueta por folha, deitada, ocupando a folha inteira */
 export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   const movimento = competenciaParaEtiqueta(p.competencia.trim());
-  const paginas = p.etiquetas.map(e => `<section class="pagina">${etiqueta(e, movimento, p.departamento, p.logo.uso)}</section>`);
+  const paginas = p.etiquetas.map(e => `<section class="pagina">${etiqueta(e, e.competencia ? competenciaParaEtiqueta(e.competencia.trim()) : movimento, p.departamento, p.logo.uso)}</section>`);
   // a folha deitada: a etiqueta na altura útil inteira (210 − 2 × 8 de margem = 194 mm), nos tamanhos da planilha
   // (MOVIMENTO 45, código 72, nome 40, caixa 48, departamento 36)
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas ${esc(movimento)} — ${esc(p.departamento)}</title>
@@ -65,7 +71,7 @@ export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   body{font-family:Calibri,"Segoe UI",Arial,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .pagina{break-after:page;page-break-after:always}
   .pagina:last-child{break-after:auto;page-break-after:auto}
-  .env{break-inside:avoid;page-break-inside:avoid;height:194mm;border:.4mm solid #000;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+  .env{position:relative;break-inside:avoid;page-break-inside:avoid;height:194mm;border:.4mm solid #000;display:flex;flex-direction:column;align-items:center;overflow:hidden}
   .env-faixa{width:100%;background:#000;color:#fff;display:flex;align-items:center;gap:8mm;padding:4mm 6.5mm;height:28.6mm}
   .env-logo{height:100%;display:flex;align-items:center}
   .env-logo svg{height:19.5mm;width:auto;display:block}
@@ -75,5 +81,7 @@ export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   .env-caixa-linha{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
   .env-caixa{display:inline-block;min-width:91mm;border:.4mm solid #000;padding:4mm 10mm;font-size:48pt;text-align:center}
   .env-dep{font-size:36pt;font-weight:700;padding-bottom:6.5mm}
+  .env-qr{position:absolute;right:6mm;bottom:6mm}
+  .env-qr svg{width:30mm;height:30mm;display:block}
 </style></head><body>${p.logo.definicao}${paginas.join('')}</body></html>`;
 }

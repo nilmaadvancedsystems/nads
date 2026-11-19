@@ -12,7 +12,19 @@
 #   - aba(nome) e botao(nome): acham a aba e o botão pelo nome que o Contábil expõe ao UI Automation (o DevExpress publica:
 #     TabItem "Livros e Relatórios", Button "Balancete Dinâmico"…) e clicam no meio deles, seja qual for a largura da tela;
 #   - item_do_menu(nome): o item do menu que um botão de lista (Razão ▾) abre, também pelo nome.
+#
+# 19/11/2026 (o dono entrou no servidor por acesso remoto com o robô rodando): o Balancete Dinâmico parou no meio ("There is
+# no active desktop") e deixou a consulta (TfrmBalanceteDinamicoConsulta) e a novidade do Alterdata (TfrmAvaNotificacaoEstendida)
+# abertas por cima da faixa; o clique do Razão em "Livros e Relatórios" caiu nelas e a aba à mostra continuou "Consultas".
+# Agora, antes de clicar na faixa:
+#   - abrir_caminho(): fecha (WM_CLOSE, sem mouse) as consultas, visualizações e avisos do Alterdata que ficaram abertos,
+#     do robô ou de quem usou o servidor (são só consulta: nada a salvar);
+#   - o ponto do clique é conferido (WindowFromPoint): se outra janela está por cima da faixa, fecha a que pode fechar,
+#     minimiza a de outro programa e, se não sair, para com o nome dela em vez de clicar no lugar errado;
+#   - a aba que não trocou com o clique troca pelo UI Automation (selecionar), que não depende da posição nem da escala.
+import ctypes
 import time
+from ctypes import wintypes
 
 import win32con
 import win32gui
@@ -20,6 +32,12 @@ import win32process
 from pywinauto import Desktop, mouse
 
 NAO = ('Não', 'Nao', '&Não', '&Nao', 'Cancelar', '&Cancelar')
+# as janelas do Alterdata que são só consulta, visualização ou aviso: fechar não perde nada
+FECHAVEIS = ('TfrmBalanceteDinamicoConsulta', 'TAlterdataTppPrintPreview', 'TfrmAvaNotificacaoEstendida')
+
+
+def _fechavel(cls):
+    return cls in FECHAVEIS or cls.startswith('TfrmAvaNotificacao')
 
 
 class Falha(Exception):
@@ -90,6 +108,100 @@ def liberar(principal):
     return fechadas
 
 
+def abrir_caminho(principal):
+    """Fecha as consultas, visualizações e avisos do Alterdata abertos por cima da principal (de um pedido que parou no meio
+    ou de quem usou o servidor). Sem mouse (WM_CLOSE): dá certo até sem área de trabalho. Devolve as classes fechadas."""
+    pid = _pid(principal.handle)
+    alvos = []
+
+    def junta(h, _):
+        try:
+            if h != principal.handle and win32gui.IsWindowVisible(h):
+                cls = win32gui.GetClassName(h)
+                # a novidade do Alterdata pode vir de outro programa do Alterdata; as consultas, só do Contábil
+                if (cls.startswith('TfrmAvaNotificacao') or (_pid(h) == pid and _fechavel(cls))):
+                    alvos.append(h)
+        except Exception:
+            pass
+        return True
+
+    win32gui.EnumWindows(junta, None)
+    fechadas = []
+    for h in alvos:
+        try:
+            fechadas.append(win32gui.GetClassName(h))
+            win32gui.PostMessage(h, win32con.WM_CLOSE, 0, 0)
+        except Exception:
+            pass
+    limite = time.time() + 4
+    while alvos and time.time() < limite:
+        time.sleep(.25)
+        alvos = [h for h in alvos if win32gui.IsWindow(h) and win32gui.IsWindowVisible(h)]
+    return fechadas
+
+
+def _raiz_no_ponto(x, y):
+    u = ctypes.windll.user32
+    u.WindowFromPoint.restype = ctypes.c_void_p
+    u.WindowFromPoint.argtypes = [wintypes.POINT]
+    u.GetAncestor.restype = ctypes.c_void_p
+    u.GetAncestor.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+    h = u.WindowFromPoint(wintypes.POINT(int(x), int(y)))
+    return int(u.GetAncestor(ctypes.c_void_p(h), 2) or 0) if h else 0   # GA_ROOT
+
+
+def _livre(principal, x, y, oque):
+    """O ponto (x, y) mostra a principal do Contábil? Se outra janela está por cima: a que pode fechar fecha, a de outro
+    programa minimiza; se continuar, Falha com o nome dela (antes o clique caía nela e o roteiro seguia às cegas)."""
+    h = principal.handle
+    for _ in range(3):
+        r = _raiz_no_ponto(x, y)
+        if not r or r == h:
+            return
+        try:
+            cls = win32gui.GetClassName(r)
+        except Exception:
+            return   # a janela sumiu entre uma leitura e outra
+        if _fechavel(cls):
+            win32gui.PostMessage(r, win32con.WM_CLOSE, 0, 0)
+        elif _pid(r) == _pid(h):
+            # outra janela do próprio Contábil (uma dica, um menu): o clique segue como antes, só fica no log
+            print('TELA: no ponto do ' + oque + ' está a janela ' + cls + ' do Contábil; cliquei assim mesmo', flush=True)
+            return
+        elif win32gui.GetWindowLong(r, win32con.GWL_STYLE) & win32con.WS_MINIMIZEBOX:
+            win32gui.ShowWindow(r, win32con.SW_MINIMIZE)
+        else:
+            # sem minimizar (um aviso de outro programa): a principal para a frente e confere de novo
+            try:
+                principal.set_focus()
+            except Exception:
+                pass
+        time.sleep(.8)
+    r = _raiz_no_ponto(x, y)
+    if r and r != h and _pid(r) != _pid(h):
+        raise Falha('a janela ' + win32gui.GetClassName(r) + ' (' + (win32gui.GetWindowText(r) or '')[:40] + ') está na frente do '
+                    + oque + ' e não saiu; não cliquei')
+
+
+def _clicar_livre(principal, e, oque, embaixo=False):
+    x, y = _meio(e, embaixo)
+    _livre(principal, x, y, oque)
+    mouse.click(coords=(x, y))
+
+
+def _selecionar(aba_uia, trocou):
+    """Troca a aba sem o mouse: o Select do UI Automation ou a ação padrão (o mesmo que o clique) do MSAA; cada jeito é
+    conferido por trocou() antes do próximo. Devolve se trocou."""
+    for jeito in (lambda: aba_uia.iface_selection_item.Select(), lambda: aba_uia.iface_legacy_iaccessible.DoDefaultAction()):
+        try:
+            jeito()
+        except Exception:
+            continue
+        if trocou(3):
+            return True
+    return False
+
+
 def _uia(h):
     return Desktop(backend='uia').window(handle=h)
 
@@ -125,6 +237,9 @@ def _aba_ativa(faixa):
 
 
 def aba(principal, nome):
+    fechadas = abrir_caminho(principal)
+    if fechadas:
+        print('TELA: fechei o que estava aberto por cima do Contábil: ' + ', '.join(fechadas), flush=True)
     faixa = _faixa(principal)
     if _aba_ativa(faixa) == nome:
         return
@@ -132,13 +247,24 @@ def aba(principal, nome):
     alvo = [t for t in abas if _nome(t) == nome]
     if not alvo:
         raise Falha('não achei a aba "' + nome + '" (abas: ' + ', '.join(_nome(t) for t in abas) + ')')
-    mouse.click(coords=_meio(alvo[0]))
-    limite = time.time() + 5
-    while time.time() < limite:
-        if _aba_ativa(_faixa(principal)) == nome:
-            time.sleep(.3)
-            return
-        time.sleep(.25)
+
+    def trocou(segundos):
+        limite = time.time() + segundos
+        while time.time() < limite:
+            if _aba_ativa(_faixa(principal)) == nome:
+                time.sleep(.3)
+                return True
+            time.sleep(.25)
+        return False
+
+    _clicar_livre(principal, alvo[0], 'aba "' + nome + '"')
+    if trocou(5):
+        return
+    # o clique não trocou a aba (a escala da tela mudou, uma janela passou na frente): pelo UI Automation, sem posição
+    antes = _aba_ativa(_faixa(principal))
+    if _selecionar(alvo[0], trocou):
+        print('TELA: a aba "' + nome + '" não trocou com o clique (à mostra: "' + antes + '"); troquei pelo UI Automation', flush=True)
+        return
     raise Falha('cliquei na aba "' + nome + '" e ela não ficou à mostra (à mostra: "' + _aba_ativa(_faixa(principal)) + '")')
 
 
@@ -157,7 +283,7 @@ def botao(principal, nome, embaixo=False, pedacos=None):
             alvo = parecidos
     if not alvo:
         raise Falha('não achei o botão "' + nome + '" na aba "' + _aba_ativa(faixa) + '" (itens: ' + ', '.join(_nome(b) + '/' + str(b.element_info.control_type) for b in bs if _nome(b))[:400] + ')')
-    mouse.click(coords=_meio(alvo[0], embaixo))
+    _clicar_livre(principal, alvo[0], 'botão "' + nome + '"', embaixo)
     return alvo[0]
 
 

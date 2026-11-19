@@ -8127,3 +8127,105 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .comissao-destaque .comissao-pct-menu{height:30px;padding:0 10px;font-size:var(--fs-13);}
 .comissao-destaque .comissao-pct-menu.vazio{color:var(--ink-muted);}
 .comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+3){padding-right:190px;}
+.cmc-salario{background:var(--accent);}
+.mei-cartao-txt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;}
+/* Lançatudo: o lançamento do razão que levou à conciliação, na janela da linha (19/11/2026) */
+.lt-cad-razao{gap:8px;border-color:color-mix(in srgb,var(--info) 35%,var(--border));}
+.lt-cad-razao .lcdpr-rotulo{display:inline-flex;align-items:center;gap:6px;}
+.lt-cad-razao .lcdpr-rotulo svg{width:14px;height:14px;color:var(--info);}
+.lt-cad-razao-linha{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:var(--fs-14);}
+.lt-cad-razao-linha b{font-size:var(--fs-16);}
+.lt-cad-razao-conta{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:var(--fs-13);}
+.lt-cad-razao-conta > span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-muted);}
+.lt-cad-razao-rotulo{flex:none;font-size:var(--fs-12);color:var(--ink-muted);}
+.lt-cad-razao-hist{margin:0;font-size:var(--fs-13);line-height:1.45;color:var(--ink);word-break:break-word;}
+/* a caixa do total da Carteira (19/11/2026): o valor grande que sobe ao entrar, a barra que cresce e as partes em cartõezinhos */
+.cmc-resumo.cmc-novo{grid-template-columns:minmax(260px,auto) 1fr;gap:36px;padding:28px 28px;border-radius:14px;border-color:color-mix(in srgb,var(--accent) 28%,var(--border));
+  background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--accent) 16%,transparent) 0%,transparent 55%),var(--surface);}
+.cmc-novo .cmc-total{gap:4px;}
+.cmc-novo .cmc-total .cmc-rotulo{font-size:var(--fs-13);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);}
+.cmc-novo .cmc-valor{font-size:46px;font-weight:800;letter-spacing:-.02em;line-height:1.05;font-variant-numeric:tabular-nums;}
+.cmc-novo .cmc-partes{gap:16px;}
+.cmc-novo .cmc-barra{height:12px;}
+.cmc-novo .cmc-barra i{transform-origin:left center;animation:cmcCresce .9s cubic-bezier(.2,.8,.2,1) both;}
+.cmc-novo .cmc-legenda{gap:10px;}
+.cmc-novo .cmc-legenda li{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--surface-2) 85%,transparent);}
+.cmc-novo .cmc-legenda b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;}
+@keyframes cmcCresce{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+@media (prefers-reduced-motion:reduce){.cmc-novo .cmc-barra i{animation:none;}}
+@media (max-width:760px){.cmc-resumo.cmc-novo{grid-template-columns:1fr;gap:20px;padding:20px;}.cmc-novo .cmc-valor{font-size:38px;}.cmc-novo .cmc-legenda{grid-template-columns:1fr;}}
+/* os lançamentos do mês numa caixa só (19/11/2026): o título no alto e as linhas dos holerites e pagamentos no desenho das comissões */
+.cmc-lista > .cart-titulo{padding:14px 16px 6px;margin:0;}
+.cmc-linha-doc{cursor:default;}
+.cmc-linha .cmc-quem .fraco svg{vertical-align:-2px;}
+.cmc-linha-doc .cmc-situacao{display:flex;align-items:center;gap:4px;}
+.card.cmc-lista > h3.cart-titulo{padding:12px 16px;}
+.cmc-linha.cmc-linha-doc .cmc-situacao{flex-direction:row;justify-content:flex-end;flex-wrap:nowrap;white-space:nowrap;}
+.cmc-novo .cmc-legenda{grid-template-columns:repeat(2,minmax(0,1fr));}
+@media (max-width:760px){.cmc-novo .cmc-legenda{grid-template-columns:1fr;}}
+/* os lançamentos da Carteira em tabela (19/11/2026): Data, Cliente, Porte, Tipo, Valor e Status */
+section.card.cmc-lista{padding:0;overflow:hidden;}
+section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.cmc-lista .table-wrap{margin:0;border:0;border-radius:0;}
+.cmc-tabela td{vertical-align:middle;}
+.cmc-tabela td svg{vertical-align:-2px;color:var(--ink-muted);}
+.cmc-tabela .cmc-riscado b{text-decoration:line-through;color:var(--ink-muted);}
+.cmc-tabela .cmc-acoes{white-space:nowrap;}
+.cmc-tabela .cmc-acoes .btn{margin-left:4px;}
+.cmc-tabela .cmc-dia{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:left;color:var(--ink-muted);}
+.cmc-tabela th:first-child,.cmc-tabela td:first-child{padding-left:16px;}
+/* os anexos do mês na Carteira (19/11/2026): o holerite e os comprovantes, cada um com o Abrir */
+.cmc-anexos{padding:14px 16px;}
+.cmc-anexos-titulo{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:var(--fs-14);font-weight:600;}
+.cmc-anexos-titulo svg{width:16px;height:16px;color:var(--ink-muted);}
+.cmc-anexos-lista{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;}
+.cmc-anexos-lista li{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);min-width:0;}
+.cmc-anexo-icone{width:34px;height:34px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:var(--surface-3);color:var(--ink-muted);}
+.cmc-anexo-icone svg{width:17px;height:17px;}
+.cmc-anexo-txt{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.3;}
+.cmc-anexo-txt .fraco{font-size:var(--fs-12);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cmc-anexos-vazio{margin:0;}
+.cmc-tabela .cmc-mais,.cmc-tabela .cmc-mais-th{width:44px;text-align:right;padding-right:10px;}
+/* a janela do insumo no desenho da comissão (19/11/2026) */
+.insumo-destaque-conta{font-size:var(--fs-12);color:var(--ink-muted);}
+.registro-prop-valor > input.insumo-qtd{flex:0 0 120px;border:1px solid var(--border);text-align:right;}
+/* os anexos do mês em 4 caixas (19/11/2026): cada uma com a sua cor, o selo do ícone, o nome, o que tem e o Abrir/Baixar; sem nada, apagada */
+.cmc-anexos-caixas{list-style:none;margin:0 0 16px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.cmc-anexo-caixa{--cor:var(--accent);position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px 16px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--cor) 30%,var(--border));
+  background:radial-gradient(130% 120% at 100% 0%,color-mix(in srgb,var(--cor) 16%,transparent) 0%,transparent 60%),var(--surface);overflow:hidden;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;}
+.cmc-anexo-caixa:not(.vazio):hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--cor) 55%,var(--border));box-shadow:0 8px 24px -12px color-mix(in srgb,var(--cor) 60%,transparent);}
+.cmc-anexo-holerite{--cor:#3B82F6;}
+.cmc-anexo-extrato{--cor:#F59E0B;}
+.cmc-anexo-pagamento{--cor:#22C55E;}
+.cmc-anexo-comissoes{--cor:#A855F7;}
+.cmc-anexo-selo{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;margin-bottom:4px;
+  background:color-mix(in srgb,var(--cor) 18%,transparent);color:var(--cor);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cor) 30%,transparent);}
+.cmc-anexo-selo svg{width:21px;height:21px;}
+.cmc-anexo-nome{font-size:var(--fs-15, 15px);font-weight:700;color:var(--ink);}
+.cmc-anexo-sub{font-size:var(--fs-12);color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cmc-anexo-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:30px;}
+.cmc-anexo-caixa.vazio{opacity:.55;border-style:dashed;}
+.cmc-anexo-caixa.vazio .cmc-anexo-selo{filter:grayscale(.6);}
+@media (max-width:900px){.cmc-anexos-caixas{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:520px){.cmc-anexos-caixas{grid-template-columns:1fr;}}
+/* o Apagar das janelas da Carteira (19/11/2026: "Icone de lixeira com botao todo em vermelho") */
+.btn.btn-apagar-cheio{width:36px;padding:0;justify-content:center;background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
+.btn.btn-apagar-cheio:hover:not(:disabled){filter:brightness(1.1);}
+.btn.btn-apagar-cheio svg{width:17px;height:17px;}
+/* o Excel no cabeçalho da tabela dos lançamentos (19/11/2026): o quadradinho verde do X */
+.cmc-tabela .cmc-excel{color:#1D6F42;}
+.cmc-tabela .cmc-excel svg{width:18px;height:18px;}
+.cmc-tabela .cmc-excel:hover{color:#21A366;}
+/* as 4 caixas dos anexos mais limpas (19/11/2026: "muito colorido, deixa mais clean"; "pode deixar os icones das boxes em pagas"): o fundo e
+   a borda neutros, o ícone na cor do Pagas */
+.cmc-anexo-caixa,.cmc-anexo-holerite,.cmc-anexo-extrato,.cmc-anexo-pagamento,.cmc-anexo-comissoes{--cor:var(--success);}
+.cmc-anexo-caixa{background:var(--surface);border-color:var(--border);}
+.cmc-anexo-caixa:not(.vazio):hover{border-color:var(--border-strong);box-shadow:none;transform:none;}
+.cmc-anexo-caixa.vazio{opacity:.6;border-style:solid;}
+.cmc-anexo-caixa.vazio .cmc-anexo-selo{filter:none;}
+/* os anexos do mês em ícones dentro do Pagas (19/11/2026) */
+.cmc-novo .cmc-legenda li{position:relative;}
+.cmc-anexos-icones{position:absolute;top:10px;right:10px;display:flex;gap:4px;}
+.cmc-anexo-icone-btn{color:var(--success);}
+.cmc-anexo-icone-btn:disabled{color:var(--ink-faint, var(--ink-muted));opacity:.45;cursor:default;}
+.cmc-anexo-icone-btn svg{width:16px;height:16px;}
