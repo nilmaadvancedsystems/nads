@@ -8083,3 +8083,8 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .carteira-secao{margin:8px 0 0;font-size:var(--fs-16, 16px);font-weight:600;color:var(--ink);}
 .carteira-financeiro .carteira-secao + section{margin-top:0;}
 .carteira-financeiro .carteira-secao:not(:first-child){margin-top:24px;padding-top:20px;border-top:1px solid var(--border-muted);}
+/* as impressões e os materiais na janela da Carteira (19/11/2026) */
+.carteira-materiais{display:flex;justify-content:flex-end;margin-bottom:-4px;}
+.modal.registro-novo.janela-materiais{max-width:920px;}
+.janela-materiais .registro-corpo{padding:12px 18px 18px;}
+.insumos-na-janela{padding:0;}

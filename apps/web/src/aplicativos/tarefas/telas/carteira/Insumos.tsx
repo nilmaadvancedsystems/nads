@@ -15,12 +15,13 @@ import { useInsumos } from './useInsumos';
 const ICONE: Record<string, NomeIcone> = { impressao: 'impressora', pasta: 'pasta', envelope: 'envelope', caixa: 'arquivo' };
 const icone = (tipo: string): NomeIcone => ICONE[tipo] ?? 'list';
 
-export function Insumos() {
+/** emJanela: dentro da janela Impressões e materiais da Carteira (19/11/2026); o botão vira só "Registrar" */
+export function Insumos({ emJanela = false }: { emJanela?: boolean } = {}) {
   const vm = useInsumos();
   const { m, lista, totais, aberto, setAberto, veTodos } = vm;
   useCarregando(!vm.carregada);
   return (
-    <section className="dp-painel">
+    <section className={'dp-painel' + (emJanela ? ' insumos-na-janela' : '')}>
       {aberto && <JanelaDoInsumo insumo={aberto === 'novo' ? null : aberto} fechar={() => setAberto(null)} />}
       {vm.configurando && <JanelaDosInsumos fechar={() => vm.setConfigurando(false)} />}
       <div className="tarefas-barra-topo dp-filtros-linha">
@@ -30,7 +31,7 @@ export function Insumos() {
         <DadosDeTesteDaCarteira />
         {/* o Financeiro decide quais insumos são e o preço de cada um (15/11/2026) */}
         {veTodos && <button type="button" className="btn btn-outline" onClick={() => vm.setConfigurando(true)}><Icone nome="settings" />Insumos e preços</button>}
-        <button type="button" className="btn btn-primary" onClick={() => setAberto('novo')}><Icone nome="plus" />Registrar insumo</button>
+        <button type="button" className="btn btn-primary" onClick={() => setAberto('novo')}><Icone nome="plus" />{emJanela ? 'Registrar' : 'Registrar insumo'}</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       {vm.semLiberacao && <p className="registro-dica"><Icone nome="lock" />Aqui estão só os seus. Os de toda a equipe e os preços ficam no Financeiro › Insumos da equipe, que abre com o login liberado.</p>}
