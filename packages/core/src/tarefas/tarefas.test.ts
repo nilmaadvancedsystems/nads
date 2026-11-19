@@ -106,13 +106,13 @@ describe('as etapas livres dentro do grupo (10/11/2026)', () => {
   const de = (id: string) => R.etapas.find(e => e.id === id)!;
 
   it('abre qualquer uma do grupo da primeira que falta, nunca a de outro grupo', () => {
-    expect(etapaLivre(R, de('caixa'), 'bens')?.id).toBe('bens');
-    expect(etapaLivre(R, de('caixa'), 'fornecedores')).toBeNull();
+    expect(etapaLivre(R, de('clientes'), 'bens')?.id).toBe('bens');
+    expect(etapaLivre(R, de('clientes'), 'fornecedores')).toBeNull();
   });
 
   it('a Importação vem antes de tudo; fora do Contábil, segue uma por vez', () => {
     expect(etapaLivre(R, de('extratos'), 'fiscal')).toBeNull();
-    expect(etapaLivre({ ...R, departamento: 'fiscal' }, de('caixa'), 'bens')).toBeNull();
+    expect(etapaLivre({ ...R, departamento: 'fiscal' }, de('clientes'), 'bens')).toBeNull();
     expect(etapaLivre(R, null, 'bens')).toBeNull();
   });
 });

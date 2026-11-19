@@ -121,42 +121,7 @@ export const ROTINA_CONTABIL: Rotina = {
     },
 
     // ─── Ativo ────────────────────────────────────────────────────────────────
-    {
-      id: 'caixa',
-      secao: 'Ativo',
-      nome: 'Caixa',
-      descricao: 'O caixa nunca fica credor.',
-      verificacao: 'manual',
-      // o botão de importar o razão do caixa (Vitor, 05/10/2026)
-      razao: { conta: 'caixa' },
-      conferir: [
-        'O saldo do caixa é devedor (ou zero) no fim do mês e em nenhum dia fica credor.',
-        'Caixa credor: procure pagamentos lançados no caixa que saíram pelo banco e vendas à vista que faltam.',
-        'O saldo está de acordo com o tamanho da empresa (caixa alto demais também é sinal de lançamento errado).',
-      ],
-      objecoes: [
-        { id: 'caixa-credor', texto: 'O caixa ficou credor e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
-        nao('sem-caixa', 'A empresa não usa caixa'),
-      ],
-    },
-    {
-      id: 'bancos',
-      secao: 'Ativo',
-      nome: 'Bancos',
-      descricao: 'O saldo de cada banco é o do extrato no último dia; banco negativo vai para o cheque especial.',
-      // só o relatório do que passou pelos bancos no período (Vitor, 06/10/2026): a pessoa vê os saldos e dá Próximo
-      tela: { id: 'bancos', periodo: true },
-      verificacao: 'manual',
-      conferir: [
-        'O saldo contábil de cada banco é igual ao saldo do extrato no último dia do mês.',
-        'Banco com saldo credor: gere o ajuste do cheque especial (saldo negativo).',
-      ],
-      objecoes: [
-        { id: 'saldo-diferente', texto: 'O saldo não bate com o extrato', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Volte na Importação e confira extrato × razão do banco: o lançamento que falta ou sobra aparece lá.' } },
-        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'O saldo de cada dia sai do razão do banco: gere o razão da conta no Alterdata e importe na Importação.' } },
-        nao('sem-negativo', 'Nenhum banco ficou negativo', 'Nenhum banco negativo'),
-      ],
-    },
+    // o Caixa e o Bancos saíram da rotina (Vitor, 19/11/2026: "remove esse bancos"; "remove o caixa tbm dessa tela")
     {
       id: 'clientes',
       secao: 'Ativo',

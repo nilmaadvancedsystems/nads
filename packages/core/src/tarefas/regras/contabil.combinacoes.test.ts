@@ -476,7 +476,7 @@ describe('a visão de cima pelo regime', () => {
     usarRegimesDoCadastro(() => '');
     const rs = resumoPorEtapaDasEmpresas([], [1, 2], rotinaDe, '2026-05');
     expect(rs.find(x => x.etapa === simples)).toMatchObject({ total: 2, pendentes: 2 });
-    expect(rs.find(x => x.etapa === 'bancos')).toMatchObject({ total: 2, pendentes: 2 });
+    expect(rs.find(x => x.etapa === 'clientes')).toMatchObject({ total: 2, pendentes: 2 });
   });
 });
 
