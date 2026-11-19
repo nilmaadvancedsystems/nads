@@ -8163,3 +8163,14 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .cmc-linha.cmc-linha-doc .cmc-situacao{flex-direction:row;justify-content:flex-end;flex-wrap:nowrap;white-space:nowrap;}
 .cmc-novo .cmc-legenda{grid-template-columns:repeat(2,minmax(0,1fr));}
 @media (max-width:760px){.cmc-novo .cmc-legenda{grid-template-columns:1fr;}}
+/* os lançamentos da Carteira em tabela (19/11/2026): Data, Cliente, Porte, Tipo, Valor e Status */
+section.card.cmc-lista{padding:0;overflow:hidden;}
+section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.cmc-lista .table-wrap{margin:0;border:0;border-radius:0;}
+.cmc-tabela td{vertical-align:middle;}
+.cmc-tabela td svg{vertical-align:-2px;color:var(--ink-muted);}
+.cmc-tabela .cmc-riscado b{text-decoration:line-through;color:var(--ink-muted);}
+.cmc-tabela .cmc-acoes{white-space:nowrap;}
+.cmc-tabela .cmc-acoes .btn{margin-left:4px;}
+.cmc-tabela .cmc-dia{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:left;color:var(--ink-muted);}
+.cmc-tabela th:first-child,.cmc-tabela td:first-child{padding-left:16px;}

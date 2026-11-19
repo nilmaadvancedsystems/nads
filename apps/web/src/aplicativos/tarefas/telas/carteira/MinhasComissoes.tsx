@@ -8,10 +8,10 @@ import { DadosDeTesteDaCarteira, SeletorDoMes, type useMes, SeloDaComissao } fro
 import { JanelaDaComissao } from './JanelaDaComissao';
 import { useMinhasComissoes } from './useCarteiraDaPessoa';
 
-const MES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-/** '2026-11-15' → { dia: '15', mes: 'nov' } */
-const diaEMes = (d: string) => ({ dia: d.slice(8, 10), mes: MES_CURTO[Number(d.slice(5, 7)) - 1] || '' });
 const ddmm = (d: string) => d.slice(0, 10).split('-').reverse().join('/').slice(0, 5);
+const ddmmaa = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+/** o nome do cliente sem o começo do CNPJ que o MEI leva no nome ("70.162.470 FELIPE…" → "FELIPE…") */
+const nomeDoCliente = (n: string) => n.replace(/^[\d./-]{6,}\s+/, '').trim() || n;
 
 /**
  * O topo redesenhado (Vitor, 15/11/2026: "melhora o visual desse inicio da carteira, não to achando legal, refaça de outra
@@ -67,76 +67,70 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         </div>
       </section>
 
-      {/* os lançamentos do mês numa caixa só (Vitor, 19/11/2026: "Essas boxes da pra unificar em uma unica box de lancamentos"): as
-          comissões, os holerites e comprovantes e os pagamentos do escritório, pela data */}
+      {/* os lançamentos do mês numa tabela (Vitor, 19/11/2026: "Data, nome do cliente, porte, tipo: Comissao, salario, materiais, valor,
+          status. Faz uma tabela disso"): as comissões, os holerites, os pagamentos do escritório e os materiais, pela data */}
       <section className="card cmc-lista" aria-label="Os lançamentos do mês">
         <h3 className="cart-titulo">Lançamentos de {nomeDoMes}</h3>
-        {vm.carregada && !lista.length && !vm.docsDoMes.length && !vm.pagsDoMes.length ? (
-          <Vazio compacto icone="dinheiro" titulo={'Nada em ' + carteira.mesPorExtenso(m.mes)} texto="As comissões que você registrar, os holerites e os pagamentos do escritório do mês aparecem aqui." />
+        {vm.carregada && !lista.length && !vm.docsDoMes.length && !vm.pagsDoMes.length && !vm.materiaisDoMes.length ? (
+          <Vazio compacto icone="dinheiro" titulo={'Nada em ' + carteira.mesPorExtenso(m.mes)} texto="As comissões que você registrar, os holerites, os pagamentos do escritório e os materiais do mês aparecem aqui." />
         ) : (
-          <ul>
-            {lista.map(c => {
-              const d = diaEMes(c.data);
-              return (
-                <li key={'c' + c.id}>
-                  <button type="button" className={'cmc-linha ' + c.situacao} title="Abrir a comissão" onClick={() => setAberta(c)}>
-                    <span className="cmc-data" aria-label={c.data.split('-').reverse().join('/')}><b>{d.dia}</b><span>{d.mes}</span></span>
-                    <span className="cmc-quem">
-                      <b>{c.cliente}{c.porte && <span className="fraco"> · {c.porte}</span>}</b>
-                      <span className="fraco"><Icone nome="dinheiro" width={12} height={12} /> Comissão · {c.descricao}</span>
-                      {c.situacao === 'recusada' && c.motivo && <span className="cmc-motivo">Recusada: {c.motivo}</span>}
-                    </span>
-                    {/* a escondida (16/11/2026): sem o valor */}
-                    <b className="cmc-quanto num">{c.oculta ? '—' : formatos.reais(c.valor)}</b>
-                    <span className="cmc-situacao">
-                      <SeloDaComissao s={c.situacao} semAprovacao />
-                      {c.pagoEm && <span className="fraco">em {ddmm(c.pagoEm)}</span>}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-            {vm.docsDoMes.map(doc => {
-              const d = diaEMes(doc.enviadoEm.slice(0, 10));
-              return (
-                <li key={'d' + doc.id}>
-                  <div className="cmc-linha cmc-linha-doc">
-                    <span className="cmc-data"><b>{d.dia}</b><span>{d.mes}</span></span>
-                    <span className="cmc-quem">
-                      <b>{carteira.rotuloDoDocumento(doc.tipo)}</b>
-                      <span className="fraco"><Icone nome={doc.tipo === 'holerite' ? 'recibo' : 'checkCircle'} width={12} height={12} /> {doc.arquivo}</span>
-                    </span>
-                    <b className="cmc-quanto num">{doc.valor != null ? formatos.reais(doc.valor) : ''}</b>
-                    <span className="cmc-situacao">
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirDocumento(doc)}><Icone nome="olho" />Abrir</button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.baixarDocumento(doc)} aria-label="Baixar"><Icone nome="download" /></button>
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-            {vm.pagsDoMes.map(p => {
-              const d = diaEMes(p.pago && p.pagoEm ? p.pagoEm : p.vencimento);
-              return (
-                <li key={'p' + p.id}>
-                  <div className="cmc-linha cmc-linha-doc">
-                    <span className="cmc-data"><b>{d.dia}</b><span>{d.mes}</span></span>
-                    <span className="cmc-quem">
-                      <b>{p.rotulo}</b>
-                      <span className="fraco"><Icone nome="landmark" width={12} height={12} /> Pagamento do escritório{p.pago ? '' : ' · vence ' + ddmm(p.vencimento)}</span>
-                    </span>
-                    <b className="cmc-quanto num">{formatos.reais(p.pago ? p.valorPago ?? p.valor : p.valor)}</b>
-                    <span className="cmc-situacao">
-                      {p.pago ? <span className="badge badge-ok">Pago</span> : <span className="badge badge-suave badge-info">A receber</span>}
-                      {p.comprovantes.map(c => (
-                        <button key={c.id} type="button" className="btn btn-ghost btn-sm" title={c.nome} onClick={() => vm.abrirComprovante(p.id, c)} aria-label="Abrir o comprovante"><Icone nome="clipe" /></button>
-                      ))}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="table-wrap">
+            <table className="dp-tabela cmc-tabela">
+              <thead><tr><th>Data</th><th>Cliente</th><th>Porte</th><th>Tipo</th><th className="num">Valor</th><th>Status</th></tr></thead>
+              <tbody>
+                {[
+                  ...lista.map(c => ({ data: c.data, chave: 'c' + c.id, linha: (
+                    <tr key={'c' + c.id} className={'linha-abre cmc-tr-' + c.situacao} tabIndex={0} title="Abrir a comissão" onClick={() => setAberta(c)} onKeyDown={e => { if (e.key === 'Enter') setAberta(c); }}>
+                      <td className="cmc-dia">{ddmmaa(c.data)}</td>
+                      <td><b>{nomeDoCliente(c.cliente)}</b></td>
+                      <td>{c.porte || <span className="fraco">—</span>}</td>
+                      <td><Icone nome="dinheiro" width={14} height={14} /> Comissão<span className="fraco"> · {c.descricao}</span></td>
+                      <td className={'num' + (c.situacao === 'recusada' ? ' cmc-riscado' : '')}><b>{c.oculta ? '—' : formatos.reais(c.valor)}</b></td>
+                      <td><SeloDaComissao s={c.situacao} semAprovacao />{c.pagoEm && <span className="fraco"> em {ddmm(c.pagoEm)}</span>}{c.situacao === 'recusada' && c.motivo && <span className="fraco" title={c.motivo}> · {c.motivo}</span>}</td>
+                    </tr>
+                  ) })),
+                  ...vm.docsDoMes.map(doc => ({ data: doc.enviadoEm.slice(0, 10), chave: 'd' + doc.id, linha: (
+                    <tr key={'d' + doc.id}>
+                      <td className="cmc-dia">{ddmmaa(doc.enviadoEm.slice(0, 10))}</td>
+                      <td><span className="fraco">—</span></td>
+                      <td><span className="fraco">—</span></td>
+                      <td><Icone nome={doc.tipo === 'holerite' ? 'recibo' : 'checkCircle'} width={14} height={14} /> {doc.tipo === 'holerite' ? 'Salário · holerite' : carteira.rotuloDoDocumento(doc.tipo)}</td>
+                      <td className="num"><b>{doc.valor != null ? formatos.reais(doc.valor) : '—'}</b></td>
+                      <td className="cmc-acoes">
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirDocumento(doc)}><Icone nome="olho" />Abrir</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.baixarDocumento(doc)} aria-label="Baixar" title="Baixar"><Icone nome="download" /></button>
+                      </td>
+                    </tr>
+                  ) })),
+                  ...vm.pagsDoMes.map(p => ({ data: p.pago && p.pagoEm ? p.pagoEm : p.vencimento, chave: 'p' + p.id, linha: (
+                    <tr key={'p' + p.id}>
+                      <td className="cmc-dia">{ddmmaa(p.pago && p.pagoEm ? p.pagoEm : p.vencimento)}</td>
+                      <td><span className="fraco">—</span></td>
+                      <td><span className="fraco">—</span></td>
+                      <td><Icone nome="landmark" width={14} height={14} /> {p.rotulo}</td>
+                      <td className="num"><b>{formatos.reais(p.pago ? p.valorPago ?? p.valor : p.valor)}</b></td>
+                      <td className="cmc-acoes">
+                        {p.pago ? <span className="badge badge-ok">Pago</span> : <span className="badge badge-suave badge-info">A receber</span>}
+                        {p.comprovantes.map(c => (
+                          <button key={c.id} type="button" className="btn btn-ghost btn-sm" title={'Comprovante: ' + c.nome} onClick={() => vm.abrirComprovante(p.id, c)} aria-label="Abrir o comprovante"><Icone nome="clipe" /></button>
+                        ))}
+                      </td>
+                    </tr>
+                  ) })),
+                  ...vm.materiaisDoMes.map(x => ({ data: x.data, chave: 'm' + x.id, linha: (
+                    <tr key={'m' + x.id}>
+                      <td className="cmc-dia">{ddmmaa(x.data)}</td>
+                      <td><b>{x.cliente}</b>{x.codigo != null && <span className="fraco num"> · {x.codigo}</span>}</td>
+                      <td><span className="fraco">—</span></td>
+                      <td><Icone nome="impressora" width={14} height={14} /> Materiais<span className="fraco"> · {x.nome} × {x.quantidade.toLocaleString('pt-BR')}</span></td>
+                      <td className="num"><b>{x.valor ? formatos.reais(x.valor) : '—'}</b></td>
+                      <td><span className="badge badge-neutral">Registrado</span></td>
+                    </tr>
+                  ) })),
+                ].sort((a, b) => a.data.localeCompare(b.data)).map(x => x.linha)}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </section>

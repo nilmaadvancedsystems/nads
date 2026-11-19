@@ -8,7 +8,7 @@ import { empresasNovas } from '../../dados/fonte';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
 import { useOperador } from '../../casca/operador';
-import { useAcesso, useCarteira, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
+import { useAcesso, useCarteira, useInsumos as useRepoDosInsumos, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 
@@ -35,10 +35,17 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const { toast } = useRetorno();
   const docsDoMes = docs.lista.filter(d => d.competencia === m.mes);
   const pagsDoMes = pagamentosDe(contas.lista).filter(p => p.vencimento.startsWith(m.mes) || (p.pagoEm || '').startsWith(m.mes));
+  // os materiais (os insumos) que a pessoa registrou no mês, na mesma tabela (19/11/2026: "tipo: Comissao, salario, materiais")
+  const repoInsumos = useRepoDosInsumos();
+  const insumos = repoInsumos.meusInsumos();
+  const tiposDeInsumo = repoInsumos.tipos();
+  const materiaisDoMes = insumos.lista.filter(x => x.competencia === m.mes).map(x => ({
+    id: x.id, data: x.data, cliente: x.cliente, codigo: x.codigo, nome: carteira.rotuloDoInsumo(x, tiposDeInsumo.lista), quantidade: x.quantidade, valor: carteira.valorDoInsumo(x),
+  }));
   return {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
     totalDoMes: totais.total,
-    docsDoMes, pagsDoMes,
+    docsDoMes, pagsDoMes, materiaisDoMes,
     abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     baixarDocumento: (d: carteira.DocumentoDaCarteira) => void baixarDaCarteira(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     abrirComprovante: (contaId: string, c: { id: string; nome: string }) => void abrirBytes(() => repo.bytesDoComprovante(contaId, c.id), c.nome, toast),
