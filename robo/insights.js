@@ -11,8 +11,8 @@
 //   - reaproveita o que o robô da Área do Cliente já ouve (rotinas, cadastro, chamados, tickets): zero leitura a mais;
 //   - dois ouvintes só quando ligado: as tarefas delegadas em aberto e o documentosMensal do mês (a leitura inicial e
 //     depois só o que muda);
-//   - as contagens (guias enviadas e abertas, entregas) com count(): cerca de uma leitura por contagem, 7 por volta,
-//     ~700 por dia;
+//   - as contagens (guias enviadas e abertas, entregas) com count(): cerca de uma leitura por contagem, 9 por volta,
+//     ~900 por dia;
 //   - grava só quando algum número muda (no máximo 96 por dia).
 
 const A_CADA_MS = 15 * 60 * 1000;
@@ -148,6 +148,9 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
       confirmadas: await contar(db.collection('entregas').where('status', '==', 'confirmada').where('competencia', '==', compAnterior)),
       falhas: await contar(db.collection('entregas').where('status', '==', 'falha')),
     };
+    // o que foi protocolado na competência para o office boy entregar: todas as entregas do mês menos as do link do cliente
+    entregas.protocoladas = Math.max(0, (await contar(db.collection('entregas').where('competencia', '==', compAnterior)))
+      - (await contar(db.collection('entregas').where('competencia', '==', compAnterior).where('status', '==', 'link'))));
 
     // 6. as tarefas delegadas atrasadas, por responsável
     const hh = String(hoje.getHours()).padStart(2, '0') + ':' + String(hoje.getMinutes()).padStart(2, '0');
