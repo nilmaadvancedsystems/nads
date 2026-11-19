@@ -124,6 +124,17 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
   const deTeste = new Set<string>();
   let db: Firestore | null = null;
   const abrir = () => (db ??= banco());
+  // as empresas (os links) que um login abre, com o nome do documento do link (a regra do banco deixa ler o próprio)
+  const empresasDoLogin = async (claims: object): Promise<{ token: string; nome: string }[]> => {
+    const a = (claims as { a?: unknown }).a;
+    const tokens = Array.isArray(a) ? a.filter((t): t is string => typeof t === 'string' && ehTokenDoLink(t)) : [];
+    const b = abrir();
+    return Promise.all(tokens.map(async token => {
+      const s = await getDoc(doc(b, 'areasCliente', token)).catch(() => null);
+      const nome = s?.exists() ? s.get('nome') : '';
+      return { token, nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Sua empresa' };
+    }));
+  };
 
   // o que o cliente mandou nesta página e o robô ainda não devolveu pelo espelho (por token)
   const novos = new Map<string, ChamadoPendente[]>();
@@ -321,15 +332,22 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       // já entra com a senha nova e acha as empresas que esta pessoa abre (o nome vem do documento do link)
       try {
         const c = await signInWithEmailAndPassword(auth, email, senha);
-        const claims = (await c.user.getIdTokenResult(true)).claims as { a?: unknown };
-        const tokens = Array.isArray(claims.a) ? claims.a.filter((t): t is string => typeof t === 'string' && ehTokenDoLink(t)) : [];
-        const banco = abrir();
-        return await Promise.all(tokens.map(async token => {
-          const s = await getDoc(doc(banco, 'areasCliente', token)).catch(() => null);
-          const nome = s?.exists() ? s.get('nome') : '';
-          return { token, nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Sua empresa' };
-        }));
+        return await empresasDoLogin((await c.user.getIdTokenResult(true)).claims);
       } catch { return []; }
+    },
+
+    acompanharConta(aoMudar) {
+      let vivo = true;
+      // cada mudança do login vale só se for a última (entrar e sair rápido não mistura as respostas)
+      let vez = 0;
+      const parar = onAuthStateChanged(loginDoCliente(), u => {
+        const minha = ++vez;
+        if (!u || !u.email) { aoMudar(null); return; }
+        const email = u.email;
+        void u.getIdTokenResult().then(r => empresasDoLogin(r.claims)).catch(() => [])
+          .then(empresas => { if (vivo && minha === vez) aoMudar(empresas.length ? { email, empresas } : null); });
+      });
+      return () => { vivo = false; parar(); };
     },
 
     async abrirChamado(token, { tipo, texto }) {
@@ -531,6 +549,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     entrar: (token, email, senha) => doBanco.entrar(token, email, senha),
     criarSenha: (token, email) => doBanco.criarSenha(token, email),
     sair: () => doBanco.sair(),
+    acompanharConta: aoMudar => doBanco.acompanharConta(aoMudar),
     conferirCodigoDaSenha: codigo => doBanco.conferirCodigoDaSenha(codigo),
     gravarSenha: (codigo, senha) => doBanco.gravarSenha(codigo, senha),
   };

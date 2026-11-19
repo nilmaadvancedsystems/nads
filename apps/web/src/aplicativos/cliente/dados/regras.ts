@@ -336,6 +336,18 @@ export function perfisComEste(lista: readonly PerfilGuardado[], atual: PerfilGua
 }
 
 /**
+ * As empresas da conta no menu de troca (19/11/2026, senha parte 2; o dono: "as 3"): quem entrou com a senha vê também as
+ * empresas que o login dele abre, mesmo as que nunca abriu neste aparelho. As do aparelho vêm primeiro (com logo, documento
+ * e quando foi usada); as da conta que faltam entram no fim, sem data e marcadas (não dá para tirar: o login traz de volta).
+ * A empresa aberta fica de fora.
+ */
+export function comAsDaConta(lista: readonly PerfilGuardado[], daConta: readonly { token: string; nome: string }[], aberta: string): (PerfilGuardado & { daConta?: true })[] {
+  const tem = new Set(lista.map(p => p.token));
+  const faltam = daConta.filter(e => e.token && e.token !== aberta && !tem.has(e.token)).map(e => ({ token: e.token, nome: e.nome, documento: '', usadoEm: '', daConta: true as const }));
+  return [...lista.filter(p => p.token !== aberta), ...faltam];
+}
+
+/**
  * A empresa para abrir quando o site abre sem link (13/11/2026: o app instalado na tela inicial abre pela raiz): a última
  * aberta neste aparelho; sem nenhuma, '' (fica o aviso para usar o link do escritório).
  */

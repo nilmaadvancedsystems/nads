@@ -1519,6 +1519,12 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-troca-atalhos{display:flex;gap:6px;padding:4px 10px 10px 66px;}
 .cli-troca-atalhos .btn{min-height:30px;padding:4px 10px;font-size:12.5px;}
 .cli-troca-titulo{margin:4px 10px 4px;padding-top:10px;border-top:1px solid var(--border);}
+/* quem entrou com a senha e o Sair (19/11/2026, senha parte 2) */
+.cli-troca-conta{display:flex;align-items:center;gap:10px;margin:6px 10px 2px;padding-top:10px;border-top:1px solid var(--border);}
+.cli-troca-conta-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3;}
+.cli-troca-conta-txt small{font-size:11.5px;color:var(--ink-muted);}
+.cli-troca-conta-txt b{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-troca-conta .btn{flex:none;min-height:30px;padding:4px 10px;font-size:12.5px;}
 .cli-troca-seta{flex:none;color:var(--ink-muted);opacity:0;transition:opacity .12s ease;}
 .cli-troca-item:hover .cli-troca-seta{opacity:1;}
 .cli-troca-dica{display:flex;align-items:flex-start;gap:8px;line-height:1.45;}

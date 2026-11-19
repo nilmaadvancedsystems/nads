@@ -455,6 +455,8 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
     async entrar() { await new Promise(r => setTimeout(r, 300)); throw new Error('Na versão de exemplo ninguém entra: é só para ver a tela.'); },
     async criarSenha() { await new Promise(r => setTimeout(r, 300)); },
     async sair() { /* nada a sair */ },
+    // na versão de exemplo ninguém entra com senha
+    acompanharConta(aoMudar) { aoMudar(null); return () => undefined; },
     // a página de criar a senha no exemplo (o código 'exemplo' vale) (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?")
     async conferirCodigoDaSenha(codigo) { await new Promise(r => setTimeout(r, 300)); if (codigo !== 'exemplo') throw new Error('Este link já foi usado ou venceu. Peça outro na tela de entrar.'); return 'maria@exemplo.com.br'; },
     async gravarSenha() { await new Promise(r => setTimeout(r, 300)); return [{ token: TOKEN_DE_EXEMPLO, nome: 'PERSONALY COMPANY LTDA' }]; },

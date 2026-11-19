@@ -194,14 +194,22 @@ function Area() {
                                 </span>
                                 {p.quando && <span className="cli-troca-quando">{p.quando}</span>}
                               </button>
-                              <button type="button" className="icon-btn icon-btn-sm cli-troca-tirar" title="Tirar desta lista" aria-label={'Tirar ' + p.nome + ' desta lista'} onClick={() => vm.esquecerEmpresa(p.token)}>
+                              {/* a empresa que vem do login não sai da lista: o login traz de volta */}
+                              {!p.daConta && <button type="button" className="icon-btn icon-btn-sm cli-troca-tirar" title="Tirar desta lista" aria-label={'Tirar ' + p.nome + ' desta lista'} onClick={() => vm.esquecerEmpresa(p.token)}>
                                 <Icone nome="x" width={14} height={14} />
-                              </button>
+                              </button>}
                             </div>
                           ))}
                         </>
                       )}
                       <AbrirPeloLink abrir={t => { const erro = vm.abrirPeloLink(t); if (!erro) fechar(); return erro; }} />
+                      {/* quem entrou com a senha (19/11/2026, senha parte 2): o e-mail e o Sair deste aparelho */}
+                      {vm.conta && (
+                        <div className="cli-troca-conta">
+                          <span className="cli-troca-conta-txt"><small>Entrou como</small><b title={vm.conta.email}>{vm.conta.email}</b></span>
+                          <button type="button" className="btn btn-sm" disabled={vm.saindo} onClick={() => { fechar(); void vm.sair(); }}><Icone nome="logOut" width={14} height={14} />{vm.saindo ? 'Saindo…' : 'Sair'}</button>
+                        </div>
+                      )}
                     </div>
                   )} />
               );
