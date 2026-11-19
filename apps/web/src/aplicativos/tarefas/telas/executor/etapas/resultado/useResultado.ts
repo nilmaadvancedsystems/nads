@@ -47,6 +47,8 @@ export function useResultado() {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   return {
+    /** o botão Vitor do balancete dinâmico (19/11/2026): o robô do PC puxa o do período */
+    robo: s.nome ? { empresa: s.nome, codigo: s.codigo ?? null, meses: s.meses } : null,
     temDinamico: !!din, arquivo: din?.nome || '', doClientes: !proprio && !!din,
     importar, tirar: () => setProprio(null), proprio: !!proprio,
     resumo: din ? [errados.length ? [despesas.length && despesas.length + ' despesa(s) credora(s)', receitas.length && receitas.length + ' receita(s) devedora(s)'].filter(Boolean).join(' · ') : 'Ok'] : [],

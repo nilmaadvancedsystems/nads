@@ -16,6 +16,7 @@ const PELO_NOME: Record<string, RegExp> = {
   prolabore: /pr[oó].?labore.*(a )?pagar/i,
   simples: /simples nacional.*(a )?recolher/i,
   honorarios: /honor[aá]rios.*(a )?pagar/i,
+  'adiantamento-salarial': /adiantamento.*sal[aá]ri/i,
 };
 const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 const campo = (tipo: string) => ('razao-' + tipo) as empresas.cadastro.CampoContaDoRazao;
@@ -43,5 +44,27 @@ export function useContaDoTipo(empresa: string, codigo: number | null, tipo: str
       const novo = empresas.cadastro.definirContaPadrao(cadastro, campo(tipo), cod.replace(/\D/g, ''), null, op?.nome || 'Tarefa', new Date());
       if (novo !== cadastro) vivo.salvar(novo);
     },
+  };
+}
+
+/**
+ * As contas de uma lista (os empréstimos: o robô não sabe quais são; Vitor, 19/11/2026): as informadas na etapa, gravadas no
+ * Cadastro da empresa ("razao-emprestimos", separadas por vírgula). Informar e tirar só para o dono do robô de PC.
+ */
+export function useContasInformadas(empresa: string, codigo: number | null, tipo: string) {
+  const vivo = useCadastro(empresa, codigo);
+  const op = useOperador().operador;
+  const cadastro = vivo.carregada ? vivo.cadastro : null;
+  const lista = (cadastro?.contasPadrao?.contas[campo(tipo)] || '').split(',').map(x => x.trim()).filter(Boolean);
+  const gravar = (novas: string[]) => {
+    if (!cadastro) return;
+    const novo = empresas.cadastro.definirContaPadrao(cadastro, campo(tipo), [...new Set(novas)].join(','), null, op?.nome || 'Tarefa', new Date());
+    if (novo !== cadastro) vivo.salvar(novo);
+  };
+  const dono = !!roboDePcDoUsuario();
+  return {
+    lista, dono,
+    adicionar: dono ? (cod: string) => gravar([...lista, cod.replace(/\D/g, '')]) : undefined,
+    tirar: dono ? (cod: string) => gravar(lista.filter(x => x !== cod)) : undefined,
   };
 }

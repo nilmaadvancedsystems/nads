@@ -1,6 +1,7 @@
 // A etapa Despesas e receitas (Vitor, 16/10/2026): a linha do balancete dinâmico (o do Clientes, ou um mais novo importado
 // aqui) e a tabela das contas do lado errado — a despesa credora e a receita devedora, com os meses. Tudo certo, o Ok.
 import { CampoArquivo, Icone } from '@nads/ui';
+import { ComRoboDoDinamico, MenuDeImportar } from '../../../../etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
 import { useId } from 'react';
 import { useResultado } from './useResultado';
 
@@ -26,8 +27,21 @@ export function Resultado() {
                 </button>
               ) : (
                 <>
-                  <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={vm.temDinamico ? 'Importar um balancete dinâmico mais novo (o corrigido)' : 'Importar o balancete dinâmico'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
-                  <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                  {vm.robo && vm.robo.codigo && vm.robo.meses.length ? (
+                    <ComRoboDoDinamico codigo={vm.robo.codigo} empresa={vm.robo.empresa} meses={vm.robo.meses} importar={f => vm.importar(f)}>
+                      {r => (r ? <MenuDeImportar titulo="o balancete dinâmico" aceitar=".xls,.xlsx,.ods" travado={false} robo={r} onArquivos={fs => { if (fs[0]) void vm.importar(fs[0]); }} /> : (
+                        <>
+                          <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={vm.temDinamico ? 'Importar um balancete dinâmico mais novo (o corrigido)' : 'Importar o balancete dinâmico'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
+                          <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                        </>
+                      ))}
+                    </ComRoboDoDinamico>
+                  ) : (
+                    <>
+                      <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={vm.temDinamico ? 'Importar um balancete dinâmico mais novo (o corrigido)' : 'Importar o balancete dinâmico'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
+                      <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
+                    </>
+                  )}
                 </>
               )}
             </div>

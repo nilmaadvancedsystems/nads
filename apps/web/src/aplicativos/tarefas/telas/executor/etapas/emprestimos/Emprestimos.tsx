@@ -5,6 +5,7 @@
 // conferir, no lugar dos avisos do topo: "deixe isso em pendências, em um dropdown igual a esses").
 // Lançamentos: os de cada empréstimo, filtrados por contrato.
 import { CampoArquivo, Icone, LogoBanco, MenuSuspenso, useRetorno } from '@nads/ui';
+import { ImportarRazaoComRobo } from '../../partes/ImportarRazaoComRobo';
 import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
 import { useRef, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
@@ -166,6 +167,20 @@ export function Emprestimos() {
         </button>
         <CampoArquivo semCaixa semFoco multiplo ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolherVarios={fs => vm.importar(fs)} />
       </div>
+      {/* o botão Vitor de cada conta de empréstimo (19/11/2026: o robô não sabe quais são; a pessoa informa e fica na empresa) */}
+      {vm.robo && (
+        <div className="emprestimos-robo">
+          <span className="hint">Razão pelo robô:</span>
+          {vm.robo.contas.map(c => (
+            <span key={c} className="emprestimos-robo-conta">
+              <b>{c}</b>
+              <ImportarRazaoComRobo robo={{ empresa: vm.robo!.empresa, codigo: vm.robo!.codigo, conta: c, meses: vm.robo!.meses }} titulo="o razão do empréstimo" importar={f => vm.importar([f])}><span /></ImportarRazaoComRobo>
+              {vm.robo!.tirar && <button type="button" className="icon-btn icon-btn-sm" onClick={() => vm.robo!.tirar!(c)} title={'Tirar a conta ' + c} aria-label={'Tirar a conta ' + c}><Icone nome="x" /></button>}
+            </span>
+          ))}
+          <ImportarRazaoComRobo robo={{ empresa: vm.robo.empresa, codigo: vm.robo.codigo, conta: '', meses: vm.robo.meses, informar: vm.robo.adicionar }} titulo="o empréstimo" importar={f => vm.importar([f])}><span /></ImportarRazaoComRobo>
+        </div>
+      )}
 
       {tela === 'lancamentos' ? <Lancamentos vm={vm} /> : (
         <div className="imp-lista">

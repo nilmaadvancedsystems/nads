@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { useContaDoTipo } from '../../useContaDoTipo';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 
@@ -29,6 +30,8 @@ export function useAdiantamentoSalarial() {
   const empresa = String(s.codigo ?? s.nome);
   const [contas, setContas] = useGuardado<{ adiantamento?: string; banco?: string }>('adiantamento-salarial-contas|' + empresa, {});
   const doDinamico = useMemo(() => (contabil.dinamico ? cl.contasDeAdiantamentoSalarial(contabil.dinamico.d)[0]?.codigo || '' : ''), [contabil.dinamico]);
+  // o botão Vitor do razão (19/11/2026): a conta informada, a escolhida, a do dinâmico ou a do nome; sem nenhuma, a etapa pede
+  const contaDoRobo = useContaDoTipo(s.nome, s.codigo, 'adiantamento-salarial', contas.adiantamento || doDinamico);
   const contaAdiantamento = contas.adiantamento ?? doDinamico;
   const contaBanco = contas.banco ?? '';
   // o ⚡ do modo desenvolvedor: o razão de teste (16/10/2026)
@@ -63,6 +66,7 @@ export function useAdiantamentoSalarial() {
 
   const reais = formatos.reais;
   return {
+    robo: s.nome ? { empresa: s.nome, codigo: s.codigo, conta: contaDoRobo.conta, informar: contaDoRobo.informar, meses: s.meses } : null,
     semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
     /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */
     mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
