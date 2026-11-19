@@ -61,3 +61,21 @@ describe('a impressão das prateleiras', () => {
     expect(html).toContain('P6-F6');
   });
 });
+
+describe('a grade da caixa', () => {
+  it('os 12 meses, o que falta e os outros envelopes', async () => {
+    const { gradeDaCaixa } = await import('./index');
+    const base = { codigo: 1, nome: 'A EXEMPLO', tipo: 'PJ-F', departamento: 'Fiscal' as const, ano: 2026, numero: 1, arquivadaEm: '2026-11-19', local: '', observacoes: '' };
+    let c = montarCaixa(base, 'x', 'agora');
+    c = adicionarEnvelopes(c, ['2026-01', '2026-03'], 'Fiscal', '', 'x', 'agora').caixa;
+    c = adicionarEnvelopes(c, ['2026-03', '2026', '2025-12'], 'Fiscal', 'Notas', 'x', 'agora').caixa;
+    const g = gradeDaCaixa(c);
+    expect(g.meses).toHaveLength(12);
+    expect(g.meses[0].envelope?.competencia).toBe('2026-01');
+    expect(g.meses[1].envelope).toBeNull();
+    // o de março sem observação fica na grade; o "Notas" de março vai para os outros
+    expect(g.meses[2].envelope?.observacao).toBe('');
+    expect(g.faltam).toBe(10);
+    expect(g.outros.map(e => e.competencia + ':' + e.observacao)).toEqual(['2025-12:Notas', '2026:Notas', '2026-03:Notas']);
+  });
+});

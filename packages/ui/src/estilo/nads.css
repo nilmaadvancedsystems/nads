@@ -1713,7 +1713,8 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
   height:40px;flex:none;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rodape > span{overflow:hidden;text-overflow:ellipsis;}
 /* a barra lateral ocupa a tela menos o cabeçalho e o rodapé: o rodapé fica à vista, sem rolar 40px a mais */
-#app:has(> .rodape) .subnav{min-height:calc(100vh - var(--hdr-h,113px) - 40px);min-height:calc(100dvh - var(--hdr-h,113px) - 40px);}
+/* só na tela larga: no celular a barra vira a faixa de abas no alto (19/11/2026: a faixa ocupava a tela inteira) */
+@media (min-width:769px){#app:has(> .rodape) .subnav{min-height:calc(100vh - var(--hdr-h,113px) - 40px);min-height:calc(100dvh - var(--hdr-h,113px) - 40px);}}
 /* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
 @media print{.rodape{display:none;}}
 

@@ -75,8 +75,11 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
   /** o QR abriu uma caixa que a lista não tem (apagada, ou de outro banco) */
   const abertaSumiu = !!idAberta && estado.carregada && !aberta;
   const mudarParams = (f: (p: URLSearchParams) => void) => setParams(p => { const n = new URLSearchParams(p); f(n); return n; }, { replace: false });
-  const [mesesMarcados, setMesesMarcados] = useState<string[]>([]);
-  const [obsDoEnvelope, setObsDoEnvelope] = useState('');
+  // o que está escolhido na grade da caixa: o id de um envelope, 'mes:AAAA-MM' (um mês que não está na caixa) ou 'novo'
+  // (outro envelope: o ano todo, uma observação); sem escolha, o envelope do QR
+  const [escolhido, setEscolhido] = useState<string | null>(null);
+  const [obsNova, setObsNova] = useState('');
+  const [compNova, setCompNova] = useState('');
   const [retirando, setRetirando] = useState<RetiradaEmAndamento | null>(null);
   const [ocupado, setOcupado] = useState(false);
   // a impressão das prateleiras e das fileiras
@@ -142,29 +145,45 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
 
     // a caixa aberta
     aberta, abertaSumiu, envelopeEmDestaque,
-    abrir(id: string, envelope?: string) { setMesesMarcados([]); setObsDoEnvelope(''); setRetirando(null); mudarParams(p => { p.set('caixa', id); if (envelope) p.set('envelope', envelope); else p.delete('envelope'); }); },
-    fechar() { setRetirando(null); mudarParams(p => { p.delete('caixa'); p.delete('envelope'); }); },
-    mesesMarcados, obsDoEnvelope, setObsDoEnvelope,
-    /** marca ou desmarca um mês ('AAAA-MM') ou o ano todo ('AAAA') */
-    marcarMes(comp: string) { setMesesMarcados(ms => (ms.includes(comp) ? ms.filter(m => m !== comp) : [...ms, comp])); },
-    /** os meses da caixa que ainda não têm envelope (o atalho "Os que faltam") */
-    marcarOsQueFaltam() {
-      if (!aberta) return;
-      const tem = new Set(aberta.envelopes.filter(e => !e.observacao).map(e => e.competencia));
-      setMesesMarcados(MESES_DO_ANO.map((_, i) => aberta.ano + '-' + String(i + 1).padStart(2, '0')).filter(m => !tem.has(m)));
+    abrir(id: string, envelope?: string) { setEscolhido(null); setObsNova(''); setRetirando(null); mudarParams(p => { p.set('caixa', id); if (envelope) p.set('envelope', envelope); else p.delete('envelope'); }); },
+    fechar() { setRetirando(null); setEscolhido(null); mudarParams(p => { p.delete('caixa'); p.delete('envelope'); }); },
+    /** a grade da caixa: os 12 meses e os outros envelopes */
+    grade: aberta ? af.gradeDaCaixa(aberta) : null,
+    /** o escolhido na grade (sem escolha, o envelope do QR) */
+    escolhido: escolhido ?? envelopeEmDestaque,
+    /** toca num mês ou envelope; tocar de novo fecha */
+    escolher(x: string) {
+      setRetirando(null); setObsNova('');
+      const atual = escolhido ?? envelopeEmDestaque;
+      if (x === 'novo') setCompNova(aberta ? String(aberta.ano) : '');
+      setEscolhido(atual === x ? '' : x);
     },
-    async adicionarEnvelopes() {
+    obsNova, setObsNova, compNova, setCompNova,
+    /** as competências que dá para escolher no "outro envelope": o ano todo e os 12 meses */
+    competenciasDaCaixa: aberta ? [String(aberta.ano), ...MESES_DO_ANO.map((_, i) => aberta.ano + '-' + String(i + 1).padStart(2, '0'))] : [],
+    /** guarda um envelope (o mês tocado, ou o "outro envelope") */
+    async guardar(competencia: string) {
       const c = aberta;
-      if (!c || !mesesMarcados.length) return;
-      let novos = 0, repetidos: string[] = [];
+      if (!c || !competencia) return;
+      const obs = obsNova;
+      let novo = '';
       const ok = await fazer(() => repo.mudar(c.id, atual => {
-        const r = af.adicionarEnvelopes(atual, mesesMarcados, atual.departamento, obsDoEnvelope, eu, agora());
-        novos = r.novos; repetidos = r.repetidos;
-        return { caixa: r.caixa, problema: r.novos ? '' : 'Esses envelopes já estão na caixa.' };
-      }), '');
-      if (!ok) return;
-      toast(novos === 1 ? '1 envelope guardado.' : novos + ' envelopes guardados.' + (repetidos.length ? ' (' + repetidos.length + ' já estavam na caixa)' : ''));
-      setMesesMarcados([]); setObsDoEnvelope('');
+        const r = af.adicionarEnvelopes(atual, [competencia], atual.departamento, obs, eu, agora());
+        novo = r.caixa.envelopes.find(e => e.competencia === competencia && e.observacao === obs.trim())?.id || '';
+        return { caixa: r.caixa, problema: r.novos ? '' : 'Esse envelope já está na caixa.' };
+      }), 'Envelope ' + af.rotuloDaCompetencia(competencia) + ' guardado.');
+      if (ok) { setObsNova(''); setEscolhido(novo || ''); }
+    },
+    /** os meses que faltam, de uma vez */
+    async completarOAno() {
+      const c = aberta;
+      if (!c) return;
+      const faltam = af.gradeDaCaixa(c).meses.filter(m => !m.envelope).map(m => m.competencia);
+      if (!faltam.length) return;
+      await fazer(() => repo.mudar(c.id, atual => {
+        const r = af.adicionarEnvelopes(atual, faltam, atual.departamento, '', eu, agora());
+        return { caixa: r.caixa, problema: r.novos ? '' : 'Os meses já estão na caixa.' };
+      }), faltam.length === 1 ? '1 envelope guardado.' : faltam.length + ' envelopes guardados.');
     },
     async mudarObservacao(envelope: string, observacao: string) {
       const c = aberta;
@@ -177,7 +196,7 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
       const sim = await modal<boolean>({ icone: 'alert', titulo: 'Tirar o envelope ' + af.rotuloDaCompetencia(envelope.competencia) + ' da caixa?', texto: 'Ele sai do controle desta caixa (o papel continua onde estiver).',
         botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Tirar', valor: true, variante: 'btn-danger' }] });
       if (!sim) return;
-      await fazer(() => repo.mudar(c.id, atual => af.removerEnvelope(atual, envelope.id, eu, agora())), 'Envelope tirado da caixa.');
+      if (await fazer(() => repo.mudar(c.id, atual => af.removerEnvelope(atual, envelope.id, eu, agora())), 'Envelope tirado da caixa.')) setEscolhido('');
     },
 
     // retirar e devolver
