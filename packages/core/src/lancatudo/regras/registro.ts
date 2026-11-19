@@ -160,12 +160,21 @@ export function montarRegistro(p: EntradaDoRegistro): LinhaDoRegistro[] {
       historico: e.historico, codHistorico: e.codHistorico, documento: d?.documento || '', contaDoBanco: p.contaDoBanco,
       conta: e.conta, nomeDaConta: (e.conta && porCodigo.get(e.conta)?.nome) || e.nome || '',
       origem: e.origem, ...(d && d.conta !== undefined ? { contaEscolhida: true } : {}), ...(e.regra ? { regra: e.regra } : {}), situacao, ...(problema ? { problema } : {}),
+      ...(noRazao.has(i) ? { doRazao: lancamentoDoRazao(noRazao.get(i)!) } : {}),
       ...(comp ? {
         comprovante: { id: comp.id, nome: comp.nome, ...(comp.driveId ? { driveId: comp.driveId } : {}), favorecido: comp.favorecido, documento: comp.documento, tipo: comp.tipo },
         ...(comp.documento ? { textoParaAprender: textoParaAprender(l.historico, comp) } : {}),
       } : {}),
     };
   });
+}
+
+/**
+ * O lançamento do razão como a pessoa lê: no razão da conciliação do Alterdata, o histórico é o nome da conta e o texto vem no
+ * complemento; no do robô do servidor, o histórico é o texto.
+ */
+function lancamentoDoRazao(l: Lancamento): NonNullable<LinhaDoRegistro['doRazao']> {
+  return { data: l.data, valor: Math.abs(l.valor), conta: l.conta || '', historico: (l.complemento || l.historico || '').trim() };
 }
 
 /** Os números do Registro. */
