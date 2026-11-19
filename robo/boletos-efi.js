@@ -15,6 +15,12 @@
 //
 // O que ficou 'emitindo' (o robô caiu no meio) não é emitido de novo sozinho: vira erro pedindo para conferir no Efí, porque
 // a cobrança pode ter sido criada lá.
+//
+// A baixa (fase 3, 19/11/2026, decisão do dono: consulta a cada hora, sem webhook — nada de porta aberta na máquina): a cada
+// hora o robô pergunta ao Efí (GET /v1/charge/:id) pelos boletos 'emitido' dos últimos 120 dias. O pago vira 'pago' (com o
+// dia) e, em produção, o recebimento do honorário em financeiroRecebimentos/{contrato}_{AAAA-MM} (forma boleto ou Pix, o
+// valor e o dia pagos; o que já estava marcado à mão não é trocado). O cancelado no Efí vira 'cancelado'. Na homologação
+// marca o boleto de teste como pago, mas não cria recebimento.
 'use strict';
 
 const f = require('./gerado/financeiro');
@@ -90,15 +96,21 @@ async function criarNaListaDeBoletos(db, { contrato, competencia, boleto, emitid
   return ref.id;
 }
 
+/** O token da API de Cobranças do Efí (Basic com o client id e o secret, e o certificado quando tiver). */
+async function tokenDasCobrancas(conta, pedir, cert) {
+  const basic = Buffer.from(conta.clientId + ':' + conta.clientSecret).toString('base64');
+  const tok = api.jsonDe(await pedir({ metodo: 'POST', url: conta.urlCobrancas + '/v1/authorize', cabecalhos: { Authorization: 'Basic ' + basic, 'Content-Type': 'application/json' }, corpo: JSON.stringify({ grant_type: 'client_credentials' }), ...cert }), 'token das cobranças do Efí');
+  if (!tok.access_token) throw new Error('token das cobranças do Efí: a resposta veio sem access_token');
+  return tok.access_token;
+}
+
 /** Emite um pedido já pego: grava 'emitido' (com o boleto em Financeiro › Boletos, em produção) ou 'erro'. */
 async function emitirUm({ db, conta, pedir, baixar, lerSegredo, cfg, pedido, log, agora }) {
   const { ref, competencia, contrato, boleto } = pedido;
   const campo = 'boletosEfi.' + competencia;
   try {
     const cert = await api.certificadoDa(conta, lerSegredo);
-    const basic = Buffer.from(conta.clientId + ':' + conta.clientSecret).toString('base64');
-    const tok = api.jsonDe(await pedir({ metodo: 'POST', url: conta.urlCobrancas + '/v1/authorize', cabecalhos: { Authorization: 'Basic ' + basic, 'Content-Type': 'application/json' }, corpo: JSON.stringify({ grant_type: 'client_credentials' }), ...cert }), 'token das cobranças do Efí');
-    if (!tok.access_token) throw new Error('token das cobranças do Efí: a resposta veio sem access_token');
+    const tok = { access_token: await tokenDasCobrancas(conta, pedir, cert) };
     const corpo = JSON.stringify(f.corpoDoBolix(contrato, competencia, boleto, cfg));
     const emitido = f.lerBolixEmitido(api.jsonDe(await pedir({ metodo: 'POST', url: conta.urlCobrancas + '/v1/charge/one-step', cabecalhos: { Authorization: 'Bearer ' + tok.access_token, 'Content-Type': 'application/json' }, corpo, ...cert }), 'boleto no Efí'));
     const resultado = Object.assign({}, boleto, {
@@ -139,6 +151,51 @@ async function atenderPedidos({ db, conta, docs, pedir = api.pedirHttps, baixar 
   return feitos;
 }
 
+/**
+ * A baixa (uma rodada): pergunta ao Efí por cada boleto emitido e grava o que mudou. Um que falha não para os outros.
+ * -> [{ contratoId, competencia, situacao, erro? }]
+ */
+async function consultarPagamentos({ db, conta, docs, pedir = api.pedirHttps, lerSegredo = api.lerMetadado, log = () => {}, hoje, agora = () => new Date().toISOString() }) {
+  const porId = new Map(docs.map(d => [d.id, d]));
+  const contratos = docs.map(d => ({ id: d.id, boletosEfi: f.boletosEfiDoBanco((d.data() || {}).boletosEfi) }));
+  // só os da conta deste ambiente (o de teste não é consultado na produção, nem o contrário)
+  const lista = f.boletosParaConsultar(contratos, hoje).filter(x => (x.boleto.ambiente || 'producao') === conta.ambiente);
+  if (!lista.length) return [];
+  const cert = await api.certificadoDa(conta, lerSegredo);
+  const token = await tokenDasCobrancas(conta, pedir, cert);
+  const feitos = [];
+  for (const x of lista) {
+    const r = { contratoId: x.contratoId, competencia: x.competencia };
+    try {
+      const c = f.lerCobrancaDoEfi(api.jsonDe(await pedir({ metodo: 'GET', url: conta.urlCobrancas + '/v1/charge/' + x.boleto.chargeId, cabecalhos: { Authorization: 'Bearer ' + token }, ...cert }), 'cobrança ' + x.boleto.chargeId + ' no Efí'));
+      r.situacao = c.situacao;
+      if (c.situacao === 'aberto') { feitos.push(r); continue; }
+      const ref = porId.get(x.contratoId).ref;
+      const campo = 'boletosEfi.' + x.competencia;
+      if (c.situacao === 'cancelado') {
+        await ref.update({ [campo]: Object.assign({}, x.boleto, { status: 'cancelado' }) });
+        log('boleto do Efí cancelado: ' + x.contratoId + ' ' + x.competencia);
+        feitos.push(r);
+        continue;
+      }
+      if (conta.ambiente === 'producao') {
+        const id = x.contratoId + '_' + x.competencia;
+        const recRef = db.collection('financeiroRecebimentos').doc(id);
+        // o recebimento já marcado à mão fica como está
+        if (!(await recRef.get()).exists) await recRef.set(f.recebimentoDaBaixa(x.contratoId, x.competencia, x.boleto, c, hoje, QUEM, agora()));
+        else r.jaEstava = true;
+      }
+      await ref.update({ [campo]: Object.assign({}, x.boleto, { status: 'pago', pagoEm: c.pagoEm || hoje }) });
+      log('boleto do Efí pago' + (conta.ambiente === 'producao' ? '' : ' (homologação)') + ': ' + x.contratoId + ' ' + x.competencia + (c.valor != null ? ' R$ ' + c.valor.toFixed(2) : ''));
+    } catch (err) {
+      r.erro = err.message;
+      log('baixa do boleto do Efí ' + x.contratoId + ' ' + x.competencia + ' falhou: ' + err.message);
+    }
+    feitos.push(r);
+  }
+  return feitos;
+}
+
 /** O que ficou 'emitindo' vira erro (sem emitir de novo: pode já existir no Efí). */
 async function soltarPresos(docs, log = () => {}) {
   for (const p of presosDosContratos(docs)) {
@@ -153,8 +210,9 @@ async function iniciarBoletosEfi(db, log, o = {}) {
   const texto = await lerSegredo('financeiro-bancos');
   const conta = texto ? contaDeCobranca(api.lerConfig(texto).contas) : null;
   if (!conta) { log('boletos do Efí: sem a conta de cobrança no metadado financeiro-bancos, desligado'); return null; }
-  let primeira = true, rodando = false, deNovo = null;
+  let primeira = true, rodando = false, deNovo = null, ultimos = null, consultando = false;
   async function rodar(docs) {
+    ultimos = docs;
     if (rodando) { deNovo = docs; return; }
     rodando = true;
     try {
@@ -166,9 +224,19 @@ async function iniciarBoletosEfi(db, log, o = {}) {
       if (deNovo) { const d = deNovo; deNovo = null; rodar(d); }
     }
   }
-  const parar = db.collection('financeiroHonorarios').onSnapshot(s => rodar(s.docs), err => log('boletos do Efí: a escuta caiu: ' + err.message));
-  log('boletos do Efí ligado (' + (conta.ambiente === 'producao' ? 'produção' : 'homologação: boletos de teste') + ')');
-  return parar;
+  const pararEscuta = db.collection('financeiroHonorarios').onSnapshot(s => rodar(s.docs), err => log('boletos do Efí: a escuta caiu: ' + err.message));
+  // a baixa: a cada hora, com os contratos que a escuta já trouxe (nenhuma leitura a mais do banco)
+  async function baixa() {
+    if (consultando || !ultimos) return;
+    consultando = true;
+    try { await consultarPagamentos({ db, conta, docs: ultimos, lerSegredo, log, hoje: api.agoraEmBrasilia(Date.now()).dia }); }
+    catch (err) { log('baixa dos boletos do Efí falhou: ' + err.message); }
+    finally { consultando = false; }
+  }
+  const primeiraBaixa = setTimeout(baixa, 5 * 60 * 1000);
+  const relogio = setInterval(baixa, 60 * 60 * 1000);
+  log('boletos do Efí ligado (' + (conta.ambiente === 'producao' ? 'produção' : 'homologação: boletos de teste') + '; baixa a cada hora)');
+  return () => { pararEscuta(); clearTimeout(primeiraBaixa); clearInterval(relogio); };
 }
 
-module.exports = { contaDeCobranca, pedidosDosContratos, atenderPedidos, soltarPresos, iniciarBoletosEfi, URLS_DE_COBRANCA };
+module.exports = { contaDeCobranca, pedidosDosContratos, atenderPedidos, consultarPagamentos, soltarPresos, iniciarBoletosEfi, URLS_DE_COBRANCA };

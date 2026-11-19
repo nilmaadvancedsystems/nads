@@ -1,7 +1,7 @@
 // Testes do boleto do Efí (boletos-efi.js) sem chamar o banco: respostas de exemplo do Efí (token e boleto em um passo),
 // um PDF de mentira e um Firestore de mentira em memória.   node teste-boletos-efi.js
 'use strict';
-const { contaDeCobranca, pedidosDosContratos, atenderPedidos, soltarPresos } = require('./boletos-efi');
+const { contaDeCobranca, pedidosDosContratos, atenderPedidos, consultarPagamentos, soltarPresos } = require('./boletos-efi');
 const { lerConfig } = require('./extrato-pela-api');
 
 let total = 0, falhas = 0;
@@ -132,6 +132,66 @@ const inicial = () => ({
   await soltarPresos(db5.lista('financeiroHonorarios'));
   const b5 = db5.docs.get('financeiroHonorarios/h1').boletosEfi['2026-10'];
   igual('preso: vira erro pedindo para conferir no Efí', [b5.status, /confira no Efí/.test(b5.erro)], ['erro', true]);
+
+  // ── a baixa (fase 3): a consulta de cada hora ──
+  const emitido = (mais = {}) => Object.assign(pedido({ status: 'emitido', ambiente: 'producao', chargeId: 4321, linha: '1', emitidoEm: '2026-11-19T10:01:00Z' }), mais);
+  const baseDaBaixa = () => {
+    const i = inicial();
+    i['financeiroHonorarios/h1'].boletosEfi = { '2026-10': emitido(), '2026-09': emitido({ chargeId: 4000, status: 'pago' }) };
+    i['financeiroHonorarios/h2'].boletosEfi = { '2026-10': emitido({ chargeId: 5555 }), '2026-08': emitido({ chargeId: 6666, emitidoEm: '2026-03-01T10:00:00Z' }) };
+    return i;
+  };
+  const respostas = {
+    4321: { code: 200, data: { charge_id: 4321, status: 'paid', total: 85000, paid_value: 86700, payment: { method: 'banking_billet', paid_at: '2026-11-12 14:03:00' } } },
+    5555: { code: 200, data: { charge_id: 5555, status: 'waiting', total: 42000 } },
+  };
+  const pedirCobranca = (chamadas, resp = respostas) => async p => {
+    chamadas.push({ metodo: p.metodo, url: p.url, auth: (p.cabecalhos || {}).Authorization });
+    if (/\/v1\/authorize$/.test(p.url)) return { status: 200, corpo: Buffer.from(JSON.stringify({ access_token: 'tk-cob' })) };
+    const id = (p.url.match(/\/v1\/charge\/(\d+)$/) || [])[1];
+    if (id && resp[id]) return { status: 200, corpo: Buffer.from(JSON.stringify(resp[id])) };
+    return { status: 404, corpo: Buffer.from('{"error":"charge_not_found"}') };
+  };
+  const db6 = bancoFalso(baseDaBaixa());
+  const ch6 = [];
+  const b6 = await consultarPagamentos({ db: db6, conta: contaDeCobranca(config('producao')), docs: db6.lista('financeiroHonorarios'), pedir: pedirCobranca(ch6), lerSegredo, hoje: '2026-11-20', agora: () => '2026-11-20T09:00:00Z' });
+  igual('baixa: consulta só os emitidos recentes (o pago e o de março ficam)', ch6.map(c => [c.metodo, c.url, c.auth]), [
+    ['POST', 'https://cobrancas.api.efipay.com.br/v1/authorize', 'Basic ' + Buffer.from('eid:esecret').toString('base64')],
+    ['GET', 'https://cobrancas.api.efipay.com.br/v1/charge/4321', 'Bearer tk-cob'], ['GET', 'https://cobrancas.api.efipay.com.br/v1/charge/5555', 'Bearer tk-cob']]);
+  igual('baixa: o pago e o em aberto', b6.map(x => [x.contratoId, x.competencia, x.situacao]), [['h1', '2026-10', 'pago'], ['h2', '2026-10', 'aberto']]);
+  const pago = db6.docs.get('financeiroHonorarios/h1').boletosEfi['2026-10'];
+  igual('baixa: o boleto pago com o dia', [pago.status, pago.pagoEm, pago.chargeId], ['pago', '2026-11-12', 4321]);
+  igual('baixa: o recebimento do honorário (valor e dia pagos, forma boleto)', db6.docs.get('financeiroRecebimentos/h1_2026-10'), {
+    contratoId: 'h1', competencia: '2026-10', valor: 867, recebidoEm: '2026-11-12', forma: 'boleto', observacoes: 'Baixa automática pelo Efí (cobrança 4321)', por: 'Robô (Efí)', em: '2026-11-20T09:00:00Z' });
+  igual('baixa: o em aberto continua emitido, sem recebimento', [db6.docs.get('financeiroHonorarios/h2').boletosEfi['2026-10'].status, db6.docs.has('financeiroRecebimentos/h2_2026-10')], ['emitido', false]);
+
+  // o recebimento já marcado à mão não é trocado; o boleto vira pago mesmo assim
+  const base7 = baseDaBaixa();
+  base7['financeiroRecebimentos/h1_2026-10'] = { contratoId: 'h1', competencia: '2026-10', valor: 850, recebidoEm: '2026-11-11', forma: 'pix', por: 'Vitor', em: 'x' };
+  const db7 = bancoFalso(base7);
+  const b7 = await consultarPagamentos({ db: db7, conta: contaDeCobranca(config('producao')), docs: db7.lista('financeiroHonorarios'), pedir: pedirCobranca([]), lerSegredo, hoje: '2026-11-20' });
+  igual('baixa: o marcado à mão fica', [db7.docs.get('financeiroRecebimentos/h1_2026-10').por, b7[0].jaEstava, db7.docs.get('financeiroHonorarios/h1').boletosEfi['2026-10'].status], ['Vitor', true, 'pago']);
+
+  // cancelado no Efí; e um que o Efí não acha não para os outros
+  const db8 = bancoFalso(baseDaBaixa());
+  const b8 = await consultarPagamentos({ db: db8, conta: contaDeCobranca(config('producao')), docs: db8.lista('financeiroHonorarios'),
+    pedir: pedirCobranca([], { 5555: { data: { status: 'canceled' } } }), lerSegredo, hoje: '2026-11-20' });
+  igual('baixa: o que falha tem o erro e o cancelado é marcado', b8.map(x => [x.contratoId, x.situacao || null, x.erro || null]), [
+    ['h1', null, 'cobrança 4321 no Efí: o banco respondeu 404 ({"error":"charge_not_found"})'], ['h2', 'cancelado', null]]);
+  igual('baixa: o cancelado no contrato', db8.docs.get('financeiroHonorarios/h2').boletosEfi['2026-10'].status, 'cancelado');
+
+  // homologação: só os boletos de teste; marca pago, mas não cria recebimento
+  const base9 = baseDaBaixa();
+  base9['financeiroHonorarios/h1'].boletosEfi['2026-10'].ambiente = 'homologacao';
+  const db9 = bancoFalso(base9);
+  const ch9 = [];
+  await consultarPagamentos({ db: db9, conta: contaDeCobranca(config('homologacao')), docs: db9.lista('financeiroHonorarios'), pedir: pedirCobranca(ch9), lerSegredo, hoje: '2026-11-20' });
+  igual('homologação: consulta só o de teste, no endereço de teste', ch9.filter(c => c.metodo === 'GET').map(c => c.url), ['https://cobrancas-h.api.efipay.com.br/v1/charge/4321']);
+  igual('homologação: pago sem recebimento', [db9.docs.get('financeiroHonorarios/h1').boletosEfi['2026-10'].status, db9.docs.has('financeiroRecebimentos/h1_2026-10')], ['pago', false]);
+
+  // nada para consultar: nem pede o token
+  const ch10 = [];
+  igual('nada a consultar: nenhuma chamada', [await consultarPagamentos({ db: bancoFalso(inicial()), conta: contaDeCobranca(config('producao')), docs: bancoFalso(inicial()).lista('financeiroHonorarios'), pedir: pedirCobranca(ch10), lerSegredo, hoje: '2026-11-20' }), ch10.length], [[], 0]);
 
   console.log(falhas ? falhas + ' de ' + total + ' FALHARAM' : 'boletos do Efí: ' + total + ' testes ok');
   process.exit(falhas ? 1 : 0);

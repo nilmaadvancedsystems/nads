@@ -5,10 +5,13 @@
 //
 // O pedido e o resultado ficam no próprio contrato (financeiroHonorarios/{id}.boletosEfi.{AAAA-MM}): a tela grava o pedido,
 // o robô troca o status (emitindo, emitido ou erro) e junta a linha digitável, o Pix e o link. Puro: sem banco e sem tela.
+// A baixa (fase 3, decisão do dono: "consulta a cada hora", sem webhook): o robô pergunta ao Efí pelos boletos emitidos;
+// o pago vira 'pago' e, em produção, o recebimento do honorário (financeiroRecebimentos) com a forma e o dia do pagamento;
+// o cancelado no Efí vira 'cancelado' (pode pedir outro).
 import type { ContratoDeHonorario, RecebimentoDeHonorario } from './honorarios';
 import { competenciaBr, competenciaValida } from './honorarios';
 
-export type StatusDoBoletoEfi = 'pedido' | 'emitindo' | 'emitido' | 'erro' | 'pago';
+export type StatusDoBoletoEfi = 'pedido' | 'emitindo' | 'emitido' | 'erro' | 'pago' | 'cancelado';
 
 /** o boleto de uma competência do contrato (financeiroHonorarios/{id}.boletosEfi.{AAAA-MM}) */
 export interface BoletoEfiDoMes {
@@ -79,10 +82,10 @@ export function vencimentoDoHonorario(competencia: string, dia: number, hoje: st
 /** o dia de vencimento do contrato (o dele ou o padrão) */
 export const diaDoContrato = (c: Pick<ContratoDeHonorario, 'diaVencimento'>, cfg: ConfigDoBoletoEfi) => (diaDeVencimentoValido(c.diaVencimento) ? c.diaVencimento : cfg.diaPadrao);
 
-/** o boleto da competência que ainda vale (pedido, sendo emitido, emitido ou pago); o com erro não conta */
+/** o boleto da competência que ainda vale (pedido, sendo emitido, emitido ou pago); o com erro ou cancelado não conta */
 export function boletoQueVale(c: Pick<ContratoDeHonorario, 'boletosEfi'>, competencia: string): BoletoEfiDoMes | null {
   const b = c.boletosEfi?.[competencia];
-  return b && b.status !== 'erro' ? b : null;
+  return b && b.status !== 'erro' && b.status !== 'cancelado' ? b : null;
 }
 
 /** por que o boleto do contrato nesta competência não pode ser pedido ('' = pode) */
@@ -152,7 +155,8 @@ export function seloDoBoletoEfi(b: BoletoEfiDoMes | null | undefined): { rotulo:
   if (b.status === 'pedido') return { rotulo: 'Boleto pedido', tom: 'info', dica: 'O robô emite no Efí em instantes.' };
   if (b.status === 'emitindo') return { rotulo: 'Emitindo boleto', tom: 'info' };
   if (b.status === 'erro') return { rotulo: 'Boleto com erro', tom: 'bad', dica: b.erro };
-  if (b.status === 'pago') return { rotulo: 'Boleto pago', tom: 'ok' };
+  if (b.status === 'pago') return { rotulo: 'Boleto pago' + (b.pagoEm ? ' em ' + b.pagoEm.slice(8, 10) + '/' + b.pagoEm.slice(5, 7) : ''), tom: 'ok' };
+  if (b.status === 'cancelado') return { rotulo: 'Boleto cancelado', tom: 'aviso', dica: 'Cancelado no Efí: dá para pedir outro.' };
   return b.ambiente === 'homologacao'
     ? { rotulo: 'Boleto de teste · ' + dia, tom: 'aviso', dica: 'Emitido na homologação do Efí: não vale como cobrança.' }
     : { rotulo: 'Boleto até ' + dia, tom: 'info' };
@@ -161,7 +165,7 @@ export function seloDoBoletoEfi(b: BoletoEfiDoMes | null | undefined): { rotulo:
 /** os boletos lidos do banco (o que não fecha fica de fora) */
 export function boletosEfiDoBanco(v: unknown): Record<string, BoletoEfiDoMes> | undefined {
   if (!v || typeof v !== 'object') return undefined;
-  const STATUS: StatusDoBoletoEfi[] = ['pedido', 'emitindo', 'emitido', 'erro', 'pago'];
+  const STATUS: StatusDoBoletoEfi[] = ['pedido', 'emitindo', 'emitido', 'erro', 'pago', 'cancelado'];
   const t = (x: unknown) => (x == null ? '' : String(x));
   const out: Record<string, BoletoEfiDoMes> = {};
   for (const [comp, x] of Object.entries(v as Record<string, unknown>)) {
@@ -178,4 +182,58 @@ export function boletosEfiDoBanco(v: unknown): Record<string, BoletoEfiDoMes> | 
     };
   }
   return Object.keys(out).length ? out : undefined;
+}
+
+// ─── a baixa (fase 3) ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** quantos dias depois de emitido o robô ainda pergunta ao Efí (o boleto esquecido não fica sendo consultado para sempre) */
+export const DIAS_DE_CONSULTA = 120;
+
+/** os boletos emitidos que o robô consulta (os que têm o número da cobrança, emitidos há até DIAS_DE_CONSULTA dias) */
+export function boletosParaConsultar(contratos: readonly Pick<ContratoDeHonorario, 'id' | 'boletosEfi'>[], hoje: string, dias = DIAS_DE_CONSULTA):
+  { contratoId: string; competencia: string; boleto: BoletoEfiDoMes }[] {
+  const limite = somarDias(hoje, -dias);
+  const out: { contratoId: string; competencia: string; boleto: BoletoEfiDoMes }[] = [];
+  for (const c of contratos) {
+    for (const [competencia, b] of Object.entries(c.boletosEfi ?? {})) {
+      if (b.status === 'emitido' && b.chargeId && (b.emitidoEm || '').slice(0, 10) >= limite) out.push({ contratoId: c.id, competencia, boleto: b });
+    }
+  }
+  return out;
+}
+
+/** o que o Efí diz da cobrança (GET /v1/charge/:id): pago (com o valor, o dia e a forma), em aberto ou cancelado */
+export type CobrancaNoEfi =
+  | { situacao: 'pago'; valor: number | null; pagoEm: string | null; forma: 'boleto' | 'pix' }
+  | { situacao: 'aberto' }
+  | { situacao: 'cancelado' };
+
+/**
+ * A resposta da cobrança do Efí. paid (pago) e settled (marcado como pago no Efí) são pagos; canceled, cancelado; o resto
+ * (waiting, unpaid, link…), em aberto — o boleto vencido ainda pode ser pago. O valor pago (centavos) e o dia vêm de onde o
+ * Efí puser (paid_value / total, paid_at / payment.paid_at / o histórico); o pagamento pelo QR do bolix conta como Pix.
+ */
+export function lerCobrancaDoEfi(resposta: unknown): CobrancaNoEfi {
+  const r = (resposta && typeof resposta === 'object' ? resposta : {}) as Record<string, unknown>;
+  const d = (r.data && typeof r.data === 'object' ? r.data : r) as Record<string, unknown>;
+  const status = String(d.status ?? '').toLowerCase();
+  if (status === 'canceled' || status === 'cancelled') return { situacao: 'cancelado' };
+  if (status !== 'paid' && status !== 'settled') return { situacao: 'aberto' };
+  const pagamento = (d.payment && typeof d.payment === 'object' ? d.payment : {}) as Record<string, unknown>;
+  const historico = Array.isArray(d.history) ? (d.history as Record<string, unknown>[]) : [];
+  const dia = (v: unknown) => { const m = String(v ?? '').match(/^(\d{4}-\d{2}-\d{2})/); return m ? m[1] : null; };
+  const doHistorico = [...historico].reverse().find(h => /pag|paid|pix/i.test(String(h?.message ?? '')));
+  const pagoEm = dia(d.paid_at) ?? dia(pagamento.paid_at) ?? dia(doHistorico?.created_at);
+  const centavos = [d.paid_value, pagamento.paid_value, d.total].map(Number).find(n => Number.isFinite(n) && n > 0);
+  const pix = String(pagamento.method ?? '').toLowerCase() === 'pix' || historico.some(h => /\bpix\b/i.test(String(h?.message ?? '')));
+  return { situacao: 'pago', valor: centavos == null ? null : Math.round(centavos) / 100, pagoEm, forma: pix ? 'pix' : 'boleto' };
+}
+
+/** o recebimento do honorário que a baixa grava (financeiroRecebimentos/{contratoId}_{AAAA-MM}), sem o id */
+export function recebimentoDaBaixa(contratoId: string, competencia: string, b: Pick<BoletoEfiDoMes, 'valor' | 'chargeId'>,
+  pago: { valor: number | null; pagoEm: string | null; forma: 'boleto' | 'pix' }, hoje: string, quem: string, agora: string): Omit<RecebimentoDeHonorario, 'id'> {
+  return {
+    contratoId, competencia, valor: pago.valor ?? b.valor, recebidoEm: pago.pagoEm ?? hoje, forma: pago.forma,
+    observacoes: 'Baixa automática pelo Efí (cobrança ' + b.chargeId + ')', por: quem, em: agora,
+  };
 }

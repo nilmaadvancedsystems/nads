@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  boletosEfiDoBanco, boletoQueVale, configDoBoletoDoBanco, conferirConfigDoBoleto, corpoDoBolix, CONFIG_PADRAO_DO_BOLETO, diaDoContrato, lerBolixEmitido,
-  pedidoDeBoleto, porQueNaoEmitir, seloDoBoletoEfi, vencimentoDoHonorario, type BoletoEfiDoMes,
+  boletosEfiDoBanco, boletosParaConsultar, boletoQueVale, configDoBoletoDoBanco, conferirConfigDoBoleto, corpoDoBolix, CONFIG_PADRAO_DO_BOLETO, diaDoContrato,
+  lerBolixEmitido, lerCobrancaDoEfi, pedidoDeBoleto, porQueNaoEmitir, recebimentoDaBaixa, seloDoBoletoEfi, vencimentoDoHonorario, type BoletoEfiDoMes,
 } from './boletoEfi';
 import type { ContratoDeHonorario } from './honorarios';
 
@@ -99,5 +99,42 @@ describe('o boleto na tela e no banco', () => {
     expect(boletosEfiDoBanco({ '2026-10': { status: 'emitido', valor: 850, vencimento: '2026-11-10', chargeId: 9, linha: '1', ambiente: 'producao', x: 1 }, 'lixo': { status: 'pedido' }, '2026-09': { status: 'outro' } }))
       .toEqual({ '2026-10': { status: 'emitido', valor: 850, vencimento: '2026-11-10', destinatarios: [], pedidoEm: '', pedidoPor: '', ambiente: 'producao', chargeId: 9, linha: '1' } });
     expect(boletosEfiDoBanco(null)).toBeUndefined();
+  });
+});
+
+describe('a baixa pelo Efí (fase 3: consulta a cada hora)', () => {
+  const emitido = (mais: Partial<BoletoEfiDoMes> = {}) => pedido({ status: 'emitido', chargeId: 4321, emitidoEm: '2026-11-19T10:00:00Z', ...mais });
+  it('consulta só os emitidos, com o número da cobrança, de até 120 dias', () => {
+    const contratos: Pick<ContratoDeHonorario, 'id' | 'boletosEfi'>[] = [
+      { id: 'h1', boletosEfi: { '2026-10': emitido(), '2026-09': emitido({ status: 'pago' }), '2026-08': emitido({ chargeId: undefined }) } },
+      { id: 'h2', boletosEfi: { '2026-06': emitido({ emitidoEm: '2026-07-01T10:00:00Z' }), '2026-10': pedido() } },
+      { id: 'h3' },
+    ];
+    expect(boletosParaConsultar(contratos, '2026-11-20').map(x => [x.contratoId, x.competencia])).toEqual([['h1', '2026-10']]);
+    expect(boletosParaConsultar(contratos, '2026-10-20').map(x => [x.contratoId, x.competencia])).toEqual([['h1', '2026-10'], ['h2', '2026-06']]);
+  });
+  it('lê a cobrança: paga (valor, dia, forma), em aberto e cancelada', () => {
+    expect(lerCobrancaDoEfi({ code: 200, data: { charge_id: 4321, status: 'paid', total: 85000, paid_value: 86700, payment: { method: 'banking_billet', paid_at: '2026-11-12 14:03:00' } } }))
+      .toEqual({ situacao: 'pago', valor: 867, pagoEm: '2026-11-12', forma: 'boleto' });
+    // o bolix pago pelo QR: o histórico diz Pix; sem o dia no pagamento, o do histórico
+    expect(lerCobrancaDoEfi({ data: { status: 'paid', total: 85000, history: [{ message: 'Cobrança criada', created_at: '2026-11-10 08:00:00' }, { message: 'Pagamento via Pix confirmado', created_at: '2026-11-11 09:30:00' }] } }))
+      .toEqual({ situacao: 'pago', valor: 850, pagoEm: '2026-11-11', forma: 'pix' });
+    expect(lerCobrancaDoEfi({ data: { status: 'settled' } })).toEqual({ situacao: 'pago', valor: null, pagoEm: null, forma: 'boleto' });
+    expect(lerCobrancaDoEfi({ data: { status: 'waiting' } })).toEqual({ situacao: 'aberto' });
+    expect(lerCobrancaDoEfi({ data: { status: 'unpaid' } })).toEqual({ situacao: 'aberto' });
+    expect(lerCobrancaDoEfi({ data: { status: 'canceled' } })).toEqual({ situacao: 'cancelado' });
+    expect(lerCobrancaDoEfi(null)).toEqual({ situacao: 'aberto' });
+  });
+  it('o recebimento da baixa: o valor e o dia pagos (sem eles, os do boleto e hoje)', () => {
+    expect(recebimentoDaBaixa('h1', '2026-10', emitido(), { valor: 867, pagoEm: '2026-11-12', forma: 'pix' }, '2026-11-20', 'Robô (Efí)', 'agora')).toEqual({
+      contratoId: 'h1', competencia: '2026-10', valor: 867, recebidoEm: '2026-11-12', forma: 'pix', observacoes: 'Baixa automática pelo Efí (cobrança 4321)', por: 'Robô (Efí)', em: 'agora',
+    });
+    expect(recebimentoDaBaixa('h1', '2026-10', emitido(), { valor: null, pagoEm: null, forma: 'boleto' }, '2026-11-20', 'R', 'a')).toMatchObject({ valor: 850, recebidoEm: '2026-11-20' });
+  });
+  it('o cancelado deixa pedir outro e tem o selo; o pago mostra o dia', () => {
+    expect(porQueNaoEmitir(contrato({ boletosEfi: { '2026-10': emitido({ status: 'cancelado' }) } }), '2026-10', null)).toBe('');
+    expect(seloDoBoletoEfi(emitido({ status: 'cancelado' }))?.rotulo).toBe('Boleto cancelado');
+    expect(seloDoBoletoEfi(emitido({ status: 'pago', pagoEm: '2026-11-12' }))?.rotulo).toBe('Boleto pago em 12/11');
+    expect(boletosEfiDoBanco({ '2026-10': { status: 'cancelado' } })?.['2026-10'].status).toBe('cancelado');
   });
 });

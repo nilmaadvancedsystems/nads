@@ -370,7 +370,7 @@ function vencimentoDoHonorario(competencia, dia, hoje) {
 const diaDoContrato = (c, cfg) => diaDeVencimentoValido(c.diaVencimento) ? c.diaVencimento : cfg.diaPadrao;
 function boletoQueVale(c, competencia) {
 	const b = c.boletosEfi?.[competencia];
-	return b && b.status !== "erro" ? b : null;
+	return b && b.status !== "erro" && b.status !== "cancelado" ? b : null;
 }
 function porQueNaoEmitir(c, competencia, recebimento) {
 	if (!competenciaValida(competencia)) return "Escolha uma competência.";
@@ -460,8 +460,13 @@ function seloDoBoletoEfi(b) {
 		dica: b.erro
 	};
 	if (b.status === "pago") return {
-		rotulo: "Boleto pago",
+		rotulo: "Boleto pago" + (b.pagoEm ? " em " + b.pagoEm.slice(8, 10) + "/" + b.pagoEm.slice(5, 7) : ""),
 		tom: "ok"
+	};
+	if (b.status === "cancelado") return {
+		rotulo: "Boleto cancelado",
+		tom: "aviso",
+		dica: "Cancelado no Efí: dá para pedir outro."
 	};
 	return b.ambiente === "homologacao" ? {
 		rotulo: "Boleto de teste · " + dia,
@@ -479,7 +484,8 @@ function boletosEfiDoBanco(v) {
 		"emitindo",
 		"emitido",
 		"erro",
-		"pago"
+		"pago",
+		"cancelado"
 	];
 	const t = (x) => x == null ? "" : String(x);
 	const out = {};
@@ -506,13 +512,65 @@ function boletosEfiDoBanco(v) {
 	}
 	return Object.keys(out).length ? out : void 0;
 }
+const DIAS_DE_CONSULTA = 120;
+function boletosParaConsultar(contratos, hoje, dias = 120) {
+	const limite = somarDias(hoje, -dias);
+	const out = [];
+	for (const c of contratos) for (const [competencia, b] of Object.entries(c.boletosEfi ?? {})) if (b.status === "emitido" && b.chargeId && (b.emitidoEm || "").slice(0, 10) >= limite) out.push({
+		contratoId: c.id,
+		competencia,
+		boleto: b
+	});
+	return out;
+}
+function lerCobrancaDoEfi(resposta) {
+	const r = resposta && typeof resposta === "object" ? resposta : {};
+	const d = r.data && typeof r.data === "object" ? r.data : r;
+	const status = String(d.status ?? "").toLowerCase();
+	if (status === "canceled" || status === "cancelled") return { situacao: "cancelado" };
+	if (status !== "paid" && status !== "settled") return { situacao: "aberto" };
+	const pagamento = d.payment && typeof d.payment === "object" ? d.payment : {};
+	const historico = Array.isArray(d.history) ? d.history : [];
+	const dia = (v) => {
+		const m = String(v ?? "").match(/^(\d{4}-\d{2}-\d{2})/);
+		return m ? m[1] : null;
+	};
+	const doHistorico = [...historico].reverse().find((h) => /pag|paid|pix/i.test(String(h?.message ?? "")));
+	const pagoEm = dia(d.paid_at) ?? dia(pagamento.paid_at) ?? dia(doHistorico?.created_at);
+	const centavos = [
+		d.paid_value,
+		pagamento.paid_value,
+		d.total
+	].map(Number).find((n) => Number.isFinite(n) && n > 0);
+	const pix = String(pagamento.method ?? "").toLowerCase() === "pix" || historico.some((h) => /\bpix\b/i.test(String(h?.message ?? "")));
+	return {
+		situacao: "pago",
+		valor: centavos == null ? null : Math.round(centavos) / 100,
+		pagoEm,
+		forma: pix ? "pix" : "boleto"
+	};
+}
+function recebimentoDaBaixa(contratoId, competencia, b, pago, hoje, quem, agora) {
+	return {
+		contratoId,
+		competencia,
+		valor: pago.valor ?? b.valor,
+		recebidoEm: pago.pagoEm ?? hoje,
+		forma: pago.forma,
+		observacoes: "Baixa automática pelo Efí (cobrança " + b.chargeId + ")",
+		por: quem,
+		em: agora
+	};
+}
 
 //#endregion
 exports.CONFIG_PADRAO_DO_BOLETO = CONFIG_PADRAO_DO_BOLETO;
+exports.DIAS_DE_CONSULTA = DIAS_DE_CONSULTA;
 exports.EMPRESA_DO_ESCRITORIO = EMPRESA_DO_ESCRITORIO;
 exports.NOME_DO_BANCO_PELA_API = NOME_DO_BANCO_PELA_API;
 exports.boletoQueVale = boletoQueVale;
 exports.boletosEfiDoBanco = boletosEfiDoBanco;
+exports.boletosParaConsultar = boletosParaConsultar;
 exports.conferirConfigDoBoleto = conferirConfigDoBoleto;
 exports.configDoBoletoDoBanco = configDoBoletoDoBanco;
 exports.contaDoPlanoParaOBanco = contaDoPlanoParaOBanco;
@@ -527,6 +585,7 @@ exports.idDaImportacaoPelaApi = idDaImportacaoPelaApi;
 exports.importacoesPelaApi = importacoesPelaApi;
 exports.juntarArquivosDoExtrato = juntarArquivosDoExtrato;
 exports.lerBolixEmitido = lerBolixEmitido;
+exports.lerCobrancaDoEfi = lerCobrancaDoEfi;
 exports.lidasDoSicoob = lidasDoSicoob;
 exports.linhasDoExtrato = linhasDoExtrato;
 exports.loteDaConta = loteDaConta;
@@ -534,6 +593,7 @@ exports.lotesDoCnab240 = lotesDoCnab240;
 exports.mesesParaBuscar = mesesParaBuscar;
 exports.pedidoDeBoleto = pedidoDeBoleto;
 exports.porQueNaoEmitir = porQueNaoEmitir;
+exports.recebimentoDaBaixa = recebimentoDaBaixa;
 exports.rotuloDaContaBancaria = rotuloDaContaBancaria;
 exports.seloDoBoletoEfi = seloDoBoletoEfi;
 exports.slug = slug;
