@@ -160,6 +160,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'holerites-equipe', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe' },
     // os Insumos de todos (Vitor, 13/11/2026: "é um só, simples, que aparece no financeiro"): a mesma lista da Carteira
     { id: 'insumos-equipe', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos da equipe' },
+    // a Equipe (Vitor, 19/11/2026: "Deixa so uma aba equipe... Enviar holerites, insumos, comissoes da equipe, em um menu lateral"):
+    // para o Diretor e o Dono, no lugar das três abas e do Plano de contas (que abre pelo Configurar das Configurações)
+    { id: 'equipe', rotulo: 'Equipe', icone: 'equipe', titulo: 'Equipe' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
   // a Carteira (12/11/2026): as comissões de cada pessoa e os holerites e pagamentos (o lado do Financeiro foi para o
@@ -311,6 +314,11 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
       : a.id === 'financeiro' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => !PAGINAS_DA_CARTEIRA_NO_FINANCEIRO.includes(p.id)) } : a))
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
+    // o Financeiro dos diretores (19/11/2026: "pode publicar tudo para versao final, apenas para diretores"): a aba Equipe no lugar das
+    // Comissões da equipe, do Enviar holerites e dos Insumos, e o Plano de contas nas Configurações; os outros, as abas de antes
+    .map(a => (a.id !== 'financeiro' ? a : usuarios.nivelDeDiretor(op.nivel)
+      ? { ...a, paginas: a.paginas.filter(p => !['plano', 'comissoes-equipe', 'holerites-equipe', 'insumos-equipe'].includes(p.id)) }
+      : { ...a, paginas: a.paginas.filter(p => p.id !== 'equipe') }))
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))
     // a lista dos usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026: "O sênior, pleno e júnior não pode em
     // hipótese alguma ter acesso onde ele vê os usuários cadastrados, em qualquer função"): os Usuários das Configurações e a

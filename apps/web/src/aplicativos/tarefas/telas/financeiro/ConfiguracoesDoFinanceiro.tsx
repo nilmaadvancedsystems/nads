@@ -3,6 +3,10 @@
 // serviço (com a descrição automática das notas), o e-mail ao cliente, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
 import { ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando, BotaoAcao } from '@nads/ui';
 import { dataBr, dataHoraBr } from './formatosDaNota';
+import { JanelaDoPlanoDeContas } from './JanelaDoPlanoDeContas';
+import { usuarios } from '@nads/core';
+import { useOperador } from '../../casca/operador';
+import { useState } from 'react';
 import { AMBIENTES, PROVEDORES, OPCOES_DA_APURACAO, OPCOES_DO_SIMPLES, useConfiguracoesDoFinanceiro } from './useConfiguracoesDoFinanceiro';
 
 const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
@@ -10,6 +14,10 @@ const URL_DA_PREFEITURA = 'https://mg-taiobeiras-pm-nfs.cloud.el.com.br';
 
 export function ConfiguracoesDoFinanceiro() {
   const vm = useConfiguracoesDoFinanceiro();
+  // o Plano de contas saiu das abas e abre daqui, numa janela (19/11/2026): para o Diretor e o Dono (Vitor: "pode publicar tudo para
+  // versao final, apenas para diretores"); os outros continuam com a aba
+  const dev = usuarios.nivelDeDiretor(useOperador().operador?.nivel);
+  const [plano, setPlano] = useState(false);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   const c = vm.config;
@@ -26,6 +34,14 @@ export function ConfiguracoesDoFinanceiro() {
   return (
     <>
       {vm.exemplos && <p className="registro-dica nf-exemplos"><Icone nome="alert" />Dados de exemplo: nada do que mudar aqui vai para o banco.</p>}
+      {plano && <JanelaDoPlanoDeContas fechar={() => setPlano(false)} />}
+      {dev && (
+        <ConfigSecao titulo="Contabilidade">
+          <ConfigLinha titulo="Plano de contas" descricao="As contas do caixa, das contas a pagar e do painel: incluir, mudar e exportar.">
+            <button type="button" className="btn btn-outline" onClick={() => setPlano(true)}><Icone nome="settings" />Configurar</button>
+          </ConfigLinha>
+        </ConfigSecao>
+      )}
 
       <ConfigSecao titulo="Emissão" acao={vm.semConfig ? <button type="button" className="btn btn-ghost" onClick={vm.gravarPadrao} title="Ainda não tem configuração salva: valem os dados do escritório da nota real">Salvar a configuração padrão</button> : undefined}>
         <ConfigLinha titulo="Emissor" descricao={nacional ? 'Direto na Sefin Nacional, sem a prefeitura: o certificado do escritório identifica o robô.' : 'Pelo sistema da prefeitura (E&L), com o token.'}>
