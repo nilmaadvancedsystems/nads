@@ -77,7 +77,14 @@ export function useJanelaDoInsumo(insumo: carteira.Insumo | null, fechar: () => 
   const [quantidade, setQuantidade] = useState(insumo ? String(insumo.quantidade) : '');
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
+  // o valor no destaque, para quem vê os preços (o Diretor e o Financeiro; 19/11/2026: a janela no desenho da comissão)
+  const { operador } = useOperador();
+  const vePreco = podeVerOFinanceiro(operador) || temNivelDiretor(operador);
+  const preco = tipos.find(t => t.id === tipo)?.preco ?? 0;
+  const qtd = carteira.quantidadeDigitada(quantidade);
   return {
+    vePreco, preco, valor: Math.round((qtd || 0) * preco * 100) / 100, qtd: qtd || 0,
+    nomeDoTipo: tipos.find(t => t.id === tipo)?.nome ?? '',
     tipos: tipos.map(t => ({ valor: t.id, rotulo: t.nome })),
     tipo, setTipo, data, setData, quantidade, setQuantidade, erros, salvando, busca, setBusca, avulso, setAvulso, nomeAvulso, setNomeAvulso,
     /** o cliente escolhido, como aparece no botão ('' = nenhum) */
