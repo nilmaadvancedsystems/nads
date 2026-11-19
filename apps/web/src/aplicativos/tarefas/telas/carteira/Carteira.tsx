@@ -33,8 +33,8 @@ export function Carteira({ pagina }: { pagina: string }) {
           <Icone nome="impressora" />Impressões e materiais
         </button>
       )} />
-      <h3 className="carteira-secao">Holerites e pagamentos</h3>
-      <HoleritesEPagamentos m={m} />
+      {/* embaixo, só os últimos 6 meses: o título e os números saíram, e os holerites e pagamentos foram para os lançamentos (19/11/2026) */}
+      <HoleritesEPagamentos m={m} soGrafico />
     </div>
   );
 }

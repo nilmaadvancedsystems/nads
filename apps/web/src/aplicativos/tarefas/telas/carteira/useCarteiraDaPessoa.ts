@@ -33,9 +33,18 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const salarioDoHolerite = carteira.salarioDoMes(docs.lista, m.mes);
   const salarioPago = salarioDoHolerite != null && carteira.recebidoNoMes(pagamentosDe(contas.lista), m.mes).recebido > 0;
   const salario = salarioPago ? salarioDoHolerite! : 0;
+  // os lançamentos do mês numa lista só (Vitor, 19/11/2026: "Essas boxes da pra unificar em uma unica box de lancamentos"): as comissões,
+  // os holerites e comprovantes do mês e os pagamentos do escritório que vencem ou foram pagos no mês
+  const { toast } = useRetorno();
+  const docsDoMes = docs.lista.filter(d => d.competencia === m.mes);
+  const pagsDoMes = pagamentosDe(contas.lista).filter(p => p.vencimento.startsWith(m.mes) || (p.pagoEm || '').startsWith(m.mes));
   return {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
     salario, salarioPago, temHolerite: salarioDoHolerite != null, totalDoMes: totais.total + salario,
+    docsDoMes, pagsDoMes,
+    abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
+    baixarDocumento: (d: carteira.DocumentoDaCarteira) => void baixarDaCarteira(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
+    abrirComprovante: (contaId: string, c: { id: string; nome: string }) => void abrirBytes(() => repo.bytesDoComprovante(contaId, c.id), c.nome, toast),
   };
 }
 
