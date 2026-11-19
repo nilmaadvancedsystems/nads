@@ -4,7 +4,7 @@
 // (a Tarefas e o Extratudo); nos exemplos, a porta em memória (repo.memoria.ts).
 import { criarEscutas } from '../../escutas';
 import { slug } from '../../formatos';
-import { cadastroDoDocumento, cadastroVazio, gravacaoDoCadastro, planoDoDocumento } from './regras';
+import { cadastroDoDocumento, cadastroVazio, camposNulosQueORegraRecusa, gravacaoDoCadastro, planoDoDocumento } from './regras';
 import type { CadastroDaEmpresa, PlanoDeContas } from './tipos';
 
 type Doc = Record<string, unknown> | null;
@@ -40,7 +40,11 @@ export interface RepoCadastro {
    * nunca grava. Quem usa o cadastro segue com o que tinha antes.
    */
   disponivel(nome: string): boolean;
-  salvar(nome: string, c: CadastroDaEmpresa): void;
+  /**
+   * Grava (a tela já vê na hora). A promessa diz se o banco aceitou (false = não gravou: o erro já foi avisado e a tela
+   * volta ao que está no banco); 19/11/2026: o Consultar na Receita dizia "Gravado" mesmo quando o banco recusava.
+   */
+  salvar(nome: string, c: CadastroDaEmpresa): Promise<boolean>;
   /**
    * Todos os cadastros (sem os planos), por id (slug do nome), para a lista de empresas. Pedir já começa a ouvir.
    * carregada = já chegou (ou falhou: aí vem vazio). falhou = a leitura deu erro e ainda não voltou: o vazio NÃO quer
@@ -48,7 +52,7 @@ export interface RepoCadastro {
    */
   todos(): { carregada: boolean; falhou: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> };
   /** troca o plano (e grava o cadastro junto, com o registro no histórico) */
-  salvarPlano(nome: string, p: PlanoDeContas, c: CadastroDaEmpresa): void;
+  salvarPlano(nome: string, p: PlanoDeContas, c: CadastroDaEmpresa): Promise<boolean>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
   /** quem mostra os erros do banco (o toast da tela) */
@@ -65,6 +69,8 @@ interface Carga {
   falhou: boolean;
   /** o documento já existe no banco (a primeira gravação leva o histórico junto) */
   existe: boolean;
+  /** os campos gravados como null que a regra do banco recusa (a próxima gravação apaga; camposNulosQueORegraRecusa) */
+  nulos: string[];
 }
 
 export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): RepoCadastro {
@@ -116,7 +122,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
       if (pronta.codigo == null && codigo != null) pronta.codigo = codigo;
       return pronta;
     }
-    const c: Carga = { codigo, cadastro: cadastroVazio(nome, codigo), cadastroChegou: false, plano: null, planoChegou: false, falhou: false, existe: false };
+    const c: Carga = { codigo, cadastro: cadastroVazio(nome, codigo), cadastroChegou: false, plano: null, planoChegou: false, falhou: false, existe: false, nulos: [] };
     cargas.set(nome, c);
     const id = slug(nome);
     const falhou = (err: Error) => {
@@ -131,6 +137,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
     const pararCadastro = porta.ouvirCadastro(id, doc => {
       c.cadastro = cadastroDoDocumento(nome, c.codigo, doc);
       c.existe = !!doc;
+      c.nulos = camposNulosQueORegraRecusa(doc);
       c.cadastroChegou = true;
       mudou();
     }, falhou);
@@ -145,18 +152,21 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
 
   const chegou = (c: Carga) => c.cadastroChegou && c.planoChegou;
 
-  function gravar(nome: string, c: CadastroDaEmpresa, p?: PlanoDeContas) {
+  function gravar(nome: string, c: CadastroDaEmpresa, p?: PlanoDeContas): Promise<boolean> {
     const carga = carregar(nome);
-    if (!chegou(carga)) return; // antes de a empresa chegar do banco, nunca grava
-    if (carga.falhou) { avisar('O cadastro de "' + nome + '" não está disponível (entre com a conta do Entregas).'); return; }
+    if (!chegou(carga)) return Promise.resolve(false); // antes de a empresa chegar do banco, nunca grava
+    if (carga.falhou) { avisar('O cadastro de "' + nome + '" não está disponível (entre com a conta do Entregas).'); return Promise.resolve(false); }
     const antes = carga.cadastro;
     carga.cadastro = { ...c, codigo: c.codigo ?? carga.codigo };
     if (p) carga.plano = p;
     mudou(); // a tela já vê a mudança; o banco confirma pelo ouvinte
     // só o que mudou (30/10/2026): o resto do documento fica como está no banco
-    const { campos, apagar } = gravacaoDoCadastro(antes, carga.cadastro, carga.existe);
-    porta.gravarCampos(slug(nome), campos, apagar, p ? { ...p } : undefined)
-      .catch((err: Error) => avisar('Não deu para salvar o cadastro de "' + nome + '" na nuvem: ' + err.message));
+    // e o que está null no banco e a regra recusa (19/11/2026: a 610 com bancos: null não gravava mais nada)
+    const { campos, apagar } = gravacaoDoCadastro(antes, carga.cadastro, carga.existe, carga.nulos);
+    return porta.gravarCampos(slug(nome), campos, apagar, p ? { ...p } : undefined).then(
+      () => true,
+      (err: Error) => { avisar('Não deu para salvar o cadastro de "' + nome + '" na nuvem: ' + err.message); return false; },
+    );
   }
 
   return {

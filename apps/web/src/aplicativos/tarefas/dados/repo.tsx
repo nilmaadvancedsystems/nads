@@ -81,8 +81,9 @@ export interface CadastroAoVivo {
   /** o cadastro e o plano já chegaram do banco (antes disso, nada é gravado) */
   carregada: boolean;
   exemplos: boolean;
-  salvar: (c: empresas.cadastro.CadastroDaEmpresa) => void;
-  salvarPlano: (p: empresas.cadastro.PlanoDeContas, c: empresas.cadastro.CadastroDaEmpresa) => void;
+  /** grava; a promessa diz se o banco aceitou (o erro já vira aviso na tela) */
+  salvar: (c: empresas.cadastro.CadastroDaEmpresa) => Promise<boolean>;
+  salvarPlano: (p: empresas.cadastro.PlanoDeContas, c: empresas.cadastro.CadastroDaEmpresa) => Promise<boolean>;
 }
 
 /** O cadastro da empresa, sempre o mais novo (o que o Extrator ou o Creditor mudarem chega na hora). */

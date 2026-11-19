@@ -76,9 +76,9 @@ export function JanelaDaReceita({ consulta: vm }: { consulta: Consulta }) {
           </span>
           <button type="button" className="btn btn-outline" onClick={vm.fechar}>Fechar</button>
           {vm.podeGravar && (
-            <button type="button" className="btn btn-primary" disabled={vm.paraEscolher > 0 && vm.marcadas === 0} onClick={vm.gravar}>
+            <button type="button" className="btn btn-primary" disabled={vm.gravando || (vm.paraEscolher > 0 && vm.marcadas === 0)} onClick={() => { void vm.gravar(); }}>
               <Icone nome="check" />
-              {vm.paraEscolher ? 'Gravar ' + (vm.marcadas === 1 ? '1 dado' : vm.marcadas + ' dados') : 'Marcar como conferido'}
+              {vm.gravando ? 'Gravando…' : vm.paraEscolher ? 'Gravar ' + (vm.marcadas === 1 ? '1 dado' : vm.marcadas + ' dados') : 'Marcar como conferido'}
             </button>
           )}
         </footer>

@@ -23,7 +23,8 @@ export interface EntradaDaConsulta {
   carregando: boolean;
   por: string;
   operador: Operador | null;
-  salvar(c: empresas.cadastro.CadastroDaEmpresa): void;
+  /** grava; true = o banco aceitou */
+  salvar(c: empresas.cadastro.CadastroDaEmpresa): Promise<boolean>;
 }
 
 /** Uma linha do antes × depois na tela: a da regra, marcada ou não, e por que não dá para marcar. */
@@ -42,6 +43,7 @@ export function useConsultaNaReceita(e: EntradaDaConsulta) {
   const [escolhidos, setEscolhidos] = useState<ReadonlySet<Campo>>(new Set());
   const [aviso, setAviso] = useState<string | null>(null);
   const [gravado, setGravado] = useState(false);
+  const [gravando, setGravando] = useState(false);
 
   const podeGravar = podeMexerNoCadastro(e.operador);
   const podeRazao = podeTrocarRazaoSocial(e.operador);
@@ -86,11 +88,16 @@ export function useConsultaNaReceita(e: EntradaDaConsulta) {
     }
   }
 
-  function gravar() {
-    if (!retrato || e.carregando || !podeGravar) return;
+  async function gravar() {
+    if (!retrato || e.carregando || !podeGravar || gravando) return;
     const outras = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()].map(x => ({ codigo: x.codigo, nome: x.nome, razaoSocial: empresas.nomeParaMostrar(x) }));
     const r = empresas.cadastro.gravarDaReceita(e.cadastro, retrato, diferencas, marcadas.map(l => l.campo), { por: e.por, agora: new Date(), outras });
-    if (r.cadastro !== e.cadastro) e.salvar(r.cadastro);
+    setAviso(null); setGravado(false); setGravando(true);
+    // "Gravado" só depois de o banco aceitar (19/11/2026: na 610 o banco recusava e a janela dizia "Gravado no cadastro");
+    // se recusar, o aviso do banco já aparece e as marcas ficam, para tentar de novo
+    const ok = r.cadastro === e.cadastro || await e.salvar(r.cadastro);
+    setGravando(false);
+    if (!ok) { setAviso('Não gravou: o banco recusou. Nada mudou no cadastro.'); return; }
     setAviso(r.erros.length ? r.erros.join(' ') : null);
     setEscolhidos(new Set());
     setGravado(true);
@@ -114,8 +121,10 @@ export function useConsultaNaReceita(e: EntradaDaConsulta) {
     podeGravar,
     /** a razão social que não trocou (o nome de outra empresa) */
     aviso,
-    /** já gravou nesta consulta */
+    /** já gravou nesta consulta (o banco aceitou) */
     gravado,
+    /** esperando o banco responder */
+    gravando,
     consultar,
     marcar(campo: Campo, sim: boolean) {
       setEscolhidos(atual => { const s = new Set(atual); if (sim) s.add(campo); else s.delete(campo); return s; });
