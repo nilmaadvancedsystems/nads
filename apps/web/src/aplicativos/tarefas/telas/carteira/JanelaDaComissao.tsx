@@ -86,7 +86,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="dinheiro" />{doFinanceiro ? 'Comissões da equipe' : 'Carteira'}<Icone nome="chevronRight" /><b>{titulo}</b></span>
+          <span className="registro-caminho"><Icone nome="dinheiro" />{doFinanceiro ? 'Comissões da equipe' : 'Ihul!'}<Icone nome="chevronRight" /><b>{titulo}</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className={'registro-corpo' + (destaque ? ' comissao-com-destaque' : '')}>

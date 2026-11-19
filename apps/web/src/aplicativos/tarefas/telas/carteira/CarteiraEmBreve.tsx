@@ -6,7 +6,7 @@ export function CarteiraEmBreve() {
     <div className="gh-blank cart-em-breve">
       <span className="cart-em-breve-icone" aria-hidden="true"><Icone nome="dinheiro" /></span>
       <span className="badge badge-neutral">Em desenvolvimento</span>
-      <h4>Carteira</h4>
+      <h4>Ihul!</h4>
       <p>Uma nova forma de acompanhar suas comissões, seu salário e suas finanças, tudo num só lugar.</p>
       <p className="fraco">Em breve você registra suas comissões, vê o que já foi aprovado e pago e recebe seus holerites e comprovantes por aqui.</p>
     </div>

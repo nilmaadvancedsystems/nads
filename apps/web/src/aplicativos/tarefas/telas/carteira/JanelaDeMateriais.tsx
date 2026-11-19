@@ -13,7 +13,7 @@ export function JanelaDeMateriais({ fechar, mes }: { fechar: () => void; mes: st
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="modal registro-novo janela-materiais" role="dialog" aria-modal="true" aria-label="Impressões e materiais">
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="dinheiro" />Carteira<Icone nome="chevronRight" /><b>Impressões e materiais</b></span>
+          <span className="registro-caminho"><Icone nome="dinheiro" />Ihul!<Icone nome="chevronRight" /><b>Impressões e materiais</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo"><Insumos emJanela mes={mes} /></div>
