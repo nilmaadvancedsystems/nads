@@ -8055,3 +8055,7 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 /* a etapa delegada (19/11/2026): o aviãozinho de papel no lugar da caixinha, sem a borda */
 .subnav-caixa.delegada{border-color:transparent;color:var(--ink-muted);}
 .subnav-caixa.delegada svg{width:15px;height:15px;}
+/* o botão na célula da grade dos meses acompanha a coluna (Vitor, 19/11/2026: "ajusta os botoes baixa do inss ou de paginas que usam
+   esse tipo de tabela e botao, diminuir com o grid"): não passa da célula, fica mais baixo e o texto encolhe */
+.imp-meses td > .btn:not(.icon-btn){max-width:calc(100% - 6px);min-width:0;height:28px;padding:0 6px;font-size:var(--fs-12);overflow:hidden;text-overflow:ellipsis;}
+.imp-meses td > .btn.inss-baixa{width:calc(100% - 6px);max-width:84px;padding:0 4px;}

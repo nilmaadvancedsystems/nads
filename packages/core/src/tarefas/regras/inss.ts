@@ -247,7 +247,12 @@ const rotuloMes = (mes: string) => mes.slice(5, 7) + '/' + mes.slice(0, 4);
  * O razão do INSS a recolher × as guias, nos meses do período. naoPagas: as competências que a pessoa marcou como não pagas
  * (Vitor, 10/11/2026): a guia não pede baixa e o valor continua a recolher no fechamento.
  */
-export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico, naoPagas: readonly string[] = []): ConferenciaDoInss {
+/**
+ * soExatas (Vitor, 19/11/2026: "Esses lancamentos sugeridos, so se forem verbas exatas que vc identificou, se nao for, nem sugira
+ * nada"): só o que é verba identificada — a guia paga sem a baixa, o código da guia que o razão não provisionou e o grupo que está
+ * na guia e não tem nada no razão. A diferença entre o razão e a guia num grupo provisionado e o arredondamento não viram sugestão.
+ */
+export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico, naoPagas: readonly string[] = [], opcoes: { soExatas?: boolean } = {}): ConferenciaDoInss {
   const razao = naOrdemDasDatas(razaoDoArquivo);
   const ls = razao.lancamentos;
   const pagamentos = ls.filter(ehPagamento);
@@ -278,7 +283,7 @@ export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaD
 
     if (guia && !foraDoRazao) {
       const ref = rotuloMes(mes);
-      for (const g of grupos.filter(x => Math.abs(x.diferenca) > TOLERANCIA)) {
+      for (const g of grupos.filter(x => Math.abs(x.diferenca) > TOLERANCIA && (!opcoes.soExatas || (!x.razao && x.guia > 0)))) {
         const despesa = contraDoGrupo(g.grupo) || despesaPatronal;
         const sobra = g.diferenca < 0;
         sugestoes.push({
@@ -296,7 +301,7 @@ export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaD
         });
       }
       // o arredondamento só vira lançamento quando sobra algum centavo no mês
-      if (Math.abs(arredondamento) >= 0.01) {
+      if (Math.abs(arredondamento) >= 0.01 && !opcoes.soExatas) {
         sugestoes.push({
           mes, data: fimDoMes(mes), tipo: 'provisao', debito: arredondamento > 0 ? despesaPatronal : 'INSS a recolher', credito: arredondamento > 0 ? 'INSS a recolher' : despesaPatronal,
           valor: Math.abs(arredondamento), historico: preencherHistorico('inss.ajuste_centavos', { ref }, modelos), motivo: 'Arredondamento entre os grupos (centavos)',
