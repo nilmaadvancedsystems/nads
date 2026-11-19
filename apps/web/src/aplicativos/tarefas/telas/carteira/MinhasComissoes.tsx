@@ -1,7 +1,7 @@
 // Carteira › Comissões (12/11/2026): a pessoa registra as comissões e acompanha cada uma (lançada → aprovada → paga, ou
 // recusada com o motivo). Em cima, o total do mês com a barra das partes; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
-import { baixarBytes, Icone, MenuSuspenso, useCarregando, type NomeIcone } from '@nads/ui';
+import { baixarBytes, Icone, LogoExcel, MenuSuspenso, useCarregando, type NomeIcone } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DadosDeTesteDaCarteira, SeletorDoMes, type useMes, SeloDaComissao } from './comum';
@@ -118,9 +118,9 @@ export function MinhasComissoes({ m: mesDeFora, onMateriais }: { m?: ReturnType<
       <div className="banco-lista-topo">
         <h3>Lançamentos</h3>
         {itens.length > 0 && (
-          <button type="button" className="icon-btn icon-btn-sm cmc-excel" title="Exportar em Excel" aria-label="Exportar os lançamentos do mês em Excel"
+          <button type="button" className="icon-btn cmc-excel" title="Exportar em Excel" aria-label="Exportar os lançamentos do mês em Excel"
             onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, xlsx); }}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
+            <LogoExcel />
           </button>
         )}
       </div>
