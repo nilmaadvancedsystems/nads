@@ -20,11 +20,12 @@ const caminho = rel => JSON.stringify(path.join(raiz, rel).split(path.sep).join(
 const codigo = [
   'export * from ' + caminho('packages/core/src/financeiro/extratoPelaApi.ts') + ';',
   'export { linhasDoExtrato, contaDoPlanoParaOBanco, descricaoDaContaBancaria, EMPRESA_DO_ESCRITORIO } from ' + caminho('packages/core/src/financeiro/banco.ts') + ';',
+  'export * from ' + caminho('packages/core/src/financeiro/boletoEfi.ts') + ';',
   'export { slug } from ' + caminho('packages/core/src/formatos/index.ts') + ';',
 ].join('\n');
 
 const AVISO = [
-  '// GERADO — NÃO EDITE. Feito por scripts/robo-financeiro.mjs a partir de packages/core/src/financeiro/{extratoPelaApi,banco}.ts',
+  '// GERADO — NÃO EDITE. Feito por scripts/robo-financeiro.mjs a partir de packages/core/src/financeiro/{extratoPelaApi,boletoEfi,banco}.ts',
   '// e do slug de packages/core/src/formatos. Mudou alguma dessas fontes? Rode `node scripts/robo-financeiro.mjs` e commite este',
   '// arquivo junto.',
   '',

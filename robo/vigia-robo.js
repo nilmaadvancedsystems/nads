@@ -1067,6 +1067,9 @@ async function iniciar() {
   // financeiro-bancos (as chaves e o certificado ficam lá, não no repositório)
   try { tarefa('extrato-pela-api', () => require('./extrato-pela-api').iniciarExtratoPelaApi(db, log)); }
   catch (err) { log('extrato pela API desligado:', err.message); }
+  // o boleto com Pix dos honorários pelo Efí (19/11/2026): a tela de Honorários pede, o robô emite e põe em Financeiro › Boletos
+  try { tarefa('boletos-efi', () => require('./boletos-efi').iniciarBoletosEfi(db, log)).catch(err => log('boletos do Efí desligados:', err.message)); }
+  catch (err) { log('boletos do Efí desligados:', err.message); }
   // o certificado digital do cofre do nads (19/10/2026): o admin no celular e por e-mail
   try { require('./certificados-do-cofre').iniciarCertificadosDoCofre({ db, log, avisos, enviar, destino: destinoDosAvisos }); }
   catch (err) { log('aviso de certificado do cofre desligado:', err.message); }

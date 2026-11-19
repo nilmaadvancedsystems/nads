@@ -3,6 +3,7 @@
 // recebimento é marcado à mão (depois virá do extrato do banco). Puro: sem banco e sem tela.
 // O banco é financeiroHonorarios/{id} e financeiroRecebimentos/{contratoId}_{AAAA-MM} (dados/honorarios.firestore.ts).
 import { brl } from '../formatos';
+import type { BoletoEfiDoMes } from './boletoEfi';
 import { dataValida } from './index';
 import { xlsxDeLinhas, type CelulaDoDemonstrativo } from './demonstrativo';
 
@@ -21,6 +22,10 @@ export interface ContratoDeHonorario {
   observacoes?: string;
   /** as cobranças já mandadas, por competência AAAA-MM (21/10/2026): quando e quem */
   cobrancas?: Record<string, { em: string; por: string }>;
+  /** o dia de vencimento do boleto (19/11/2026, boleto pelo Efí): 1 a 31; sem ele, o padrão de config/boletoEfi */
+  diaVencimento?: number;
+  /** o boleto do Efí de cada competência AAAA-MM: o pedido da tela e o que o robô emitiu (boletoEfi.ts) */
+  boletosEfi?: Record<string, BoletoEfiDoMes>;
   criadoEm: string;
   criadoPor: string;
   atualizadoEm?: string;

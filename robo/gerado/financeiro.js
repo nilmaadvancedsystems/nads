@@ -1,4 +1,4 @@
-// GERADO — NÃO EDITE. Feito por scripts/robo-financeiro.mjs a partir de packages/core/src/financeiro/{extratoPelaApi,banco}.ts
+// GERADO — NÃO EDITE. Feito por scripts/robo-financeiro.mjs a partir de packages/core/src/financeiro/{extratoPelaApi,boletoEfi,banco}.ts
 // e do slug de packages/core/src/formatos. Mudou alguma dessas fontes? Rode `node scripts/robo-financeiro.mjs` e commite este
 // arquivo junto.
 Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
@@ -321,22 +321,222 @@ const DIA_EM_BRASILIA = new Intl.DateTimeFormat("pt-BR", {
 });
 
 //#endregion
+//#region packages/core/src/financeiro/honorarios.ts
+const competenciaValida = (c) => /^\d{4}-(0[1-9]|1[0-2])$/.test(c);
+const competenciaBr = (c) => competenciaValida(c) ? `${c.slice(5)}/${c.slice(0, 4)}` : c;
+
+//#endregion
+//#region packages/core/src/financeiro/boletoEfi.ts
+const CONFIG_PADRAO_DO_BOLETO = {
+	multa: 0,
+	jurosAoMes: 0,
+	diaPadrao: 10
+};
+const diaDeVencimentoValido = (d) => typeof d === "number" && Number.isInteger(d) && d >= 1 && d <= 31;
+function conferirConfigDoBoleto(c) {
+	const erros = [];
+	if (!(Number.isFinite(c.multa) && c.multa >= 0 && c.multa <= 10)) erros.push("A multa vai de 0 a 10%.");
+	if (!(Number.isFinite(c.jurosAoMes) && c.jurosAoMes >= 0 && c.jurosAoMes <= 10)) erros.push("Os juros vão de 0 a 10% ao mês.");
+	if (!diaDeVencimentoValido(c.diaPadrao)) erros.push("O dia de vencimento padrão vai de 1 a 31.");
+	return erros;
+}
+function configDoBoletoDoBanco(d) {
+	const o = d && typeof d === "object" ? d : {};
+	const percentual = (v, padrao) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 10 ? v : padrao;
+	return {
+		multa: percentual(o.multa, CONFIG_PADRAO_DO_BOLETO.multa),
+		jurosAoMes: percentual(o.jurosAoMes, CONFIG_PADRAO_DO_BOLETO.jurosAoMes),
+		diaPadrao: diaDeVencimentoValido(o.diaPadrao) ? o.diaPadrao : CONFIG_PADRAO_DO_BOLETO.diaPadrao
+	};
+}
+const somarDias = (iso, dias) => {
+	const d = /* @__PURE__ */ new Date(iso + "T12:00:00Z");
+	d.setUTCDate(d.getUTCDate() + dias);
+	return d.toISOString().slice(0, 10);
+};
+function vencimentoDoHonorario(competencia, dia, hoje) {
+	const [a, m] = competencia.split("-").map(Number);
+	const ano = m === 12 ? a + 1 : a, mes = m === 12 ? 1 : m + 1;
+	const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+	const v = ano + "-" + String(mes).padStart(2, "0") + "-" + String(Math.min(dia, ultimo)).padStart(2, "0");
+	return v > hoje ? {
+		vencimento: v,
+		ajustado: false
+	} : {
+		vencimento: somarDias(hoje, 3),
+		ajustado: true
+	};
+}
+const diaDoContrato = (c, cfg) => diaDeVencimentoValido(c.diaVencimento) ? c.diaVencimento : cfg.diaPadrao;
+function boletoQueVale(c, competencia) {
+	const b = c.boletosEfi?.[competencia];
+	return b && b.status !== "erro" ? b : null;
+}
+function porQueNaoEmitir(c, competencia, recebimento) {
+	if (!competenciaValida(competencia)) return "Escolha uma competência.";
+	if (!c.ativo) return "O honorário deste cliente está parado.";
+	if (!(c.valor > 0)) return "Defina o valor do honorário primeiro.";
+	if (recebimento) return "Este honorário já está pago.";
+	if (!/^(\d{11}|\d{14})$/.test(c.cnpj)) return "O cliente está sem CNPJ/CPF no contrato.";
+	const b = boletoQueVale(c, competencia);
+	if (b) return b.status === "pago" ? "Este boleto já foi pago." : "O boleto deste mês já foi pedido.";
+	return "";
+}
+function pedidoDeBoleto(c, competencia, cfg, hoje, destinatarios, quem, agora) {
+	return {
+		status: "pedido",
+		valor: Math.round(c.valor * 100) / 100,
+		vencimento: vencimentoDoHonorario(competencia, diaDoContrato(c, cfg), hoje).vencimento,
+		destinatarios: [...new Set(destinatarios.map((e) => e.trim().toLowerCase()).filter(Boolean))].slice(0, 10),
+		pedidoEm: agora,
+		pedidoPor: quem
+	};
+}
+function corpoDoBolix(c, competencia, b, cfg) {
+	const nome = c.nome.replace(/\s+/g, " ").trim().slice(0, 255);
+	const email = b.destinatarios[0];
+	const cliente = c.cnpj.length === 14 ? {
+		juridical_person: {
+			corporate_name: nome,
+			cnpj: c.cnpj
+		},
+		...email ? { email } : {}
+	} : {
+		name: nome,
+		cpf: c.cnpj,
+		...email ? { email } : {}
+	};
+	const configuracoes = {
+		...cfg.multa > 0 ? { fine: Math.round(cfg.multa * 100) } : {},
+		...cfg.jurosAoMes > 0 ? { interest: Math.max(1, Math.round(cfg.jurosAoMes / 30 * 1e3)) } : {}
+	};
+	return {
+		items: [{
+			name: "Honorários contábeis " + competenciaBr(competencia),
+			value: Math.round(b.valor * 100),
+			amount: 1
+		}],
+		metadata: { custom_id: c.id + "_" + competencia },
+		payment: { banking_billet: {
+			expire_at: b.vencimento,
+			customer: cliente,
+			...Object.keys(configuracoes).length ? { configurations: configuracoes } : {},
+			message: "Honorários contábeis de " + competenciaBr(competencia) + " · Nilma Contabilidade"
+		} }
+	};
+}
+function lerBolixEmitido(resposta) {
+	const r = resposta && typeof resposta === "object" ? resposta : {};
+	const d = r.data && typeof r.data === "object" ? r.data : r;
+	const pix = d.pix && typeof d.pix === "object" ? d.pix : {};
+	const pdf = d.pdf && typeof d.pdf === "object" ? d.pdf : {};
+	const chargeId = Number(d.charge_id);
+	const linha = String(d.barcode ?? "").replace(/\D/g, "");
+	if (!Number.isInteger(chargeId) || chargeId <= 0) throw new Error("o Efí não devolveu o número da cobrança");
+	if (!/^\d{47}$/.test(linha)) throw new Error("o Efí não devolveu a linha digitável");
+	return {
+		chargeId,
+		linha,
+		pix: String(pix.qrcode ?? ""),
+		link: String(d.billet_link ?? d.link ?? ""),
+		pdf: String(pdf.charge ?? "")
+	};
+}
+function seloDoBoletoEfi(b) {
+	if (!b) return null;
+	const dia = b.vencimento.slice(8, 10) + "/" + b.vencimento.slice(5, 7);
+	if (b.status === "pedido") return {
+		rotulo: "Boleto pedido",
+		tom: "info",
+		dica: "O robô emite no Efí em instantes."
+	};
+	if (b.status === "emitindo") return {
+		rotulo: "Emitindo boleto",
+		tom: "info"
+	};
+	if (b.status === "erro") return {
+		rotulo: "Boleto com erro",
+		tom: "bad",
+		dica: b.erro
+	};
+	if (b.status === "pago") return {
+		rotulo: "Boleto pago",
+		tom: "ok"
+	};
+	return b.ambiente === "homologacao" ? {
+		rotulo: "Boleto de teste · " + dia,
+		tom: "aviso",
+		dica: "Emitido na homologação do Efí: não vale como cobrança."
+	} : {
+		rotulo: "Boleto até " + dia,
+		tom: "info"
+	};
+}
+function boletosEfiDoBanco(v) {
+	if (!v || typeof v !== "object") return void 0;
+	const STATUS = [
+		"pedido",
+		"emitindo",
+		"emitido",
+		"erro",
+		"pago"
+	];
+	const t = (x) => x == null ? "" : String(x);
+	const out = {};
+	for (const [comp, x] of Object.entries(v)) {
+		const o = x && typeof x === "object" ? x : {};
+		if (!competenciaValida(comp) || !STATUS.includes(o.status)) continue;
+		out[comp] = {
+			status: o.status,
+			valor: Number(o.valor) || 0,
+			vencimento: t(o.vencimento),
+			destinatarios: Array.isArray(o.destinatarios) ? o.destinatarios.map(t).filter(Boolean) : [],
+			pedidoEm: t(o.pedidoEm),
+			pedidoPor: t(o.pedidoPor),
+			...o.ambiente === "homologacao" || o.ambiente === "producao" ? { ambiente: o.ambiente } : {},
+			...Number.isInteger(o.chargeId) ? { chargeId: o.chargeId } : {},
+			...o.linha ? { linha: t(o.linha) } : {},
+			...o.pix ? { pix: t(o.pix) } : {},
+			...o.link ? { link: t(o.link) } : {},
+			...o.boletoId ? { boletoId: t(o.boletoId) } : {},
+			...o.emitidoEm ? { emitidoEm: t(o.emitidoEm) } : {},
+			...o.erro ? { erro: t(o.erro) } : {},
+			...o.pagoEm ? { pagoEm: t(o.pagoEm) } : {}
+		};
+	}
+	return Object.keys(out).length ? out : void 0;
+}
+
+//#endregion
+exports.CONFIG_PADRAO_DO_BOLETO = CONFIG_PADRAO_DO_BOLETO;
 exports.EMPRESA_DO_ESCRITORIO = EMPRESA_DO_ESCRITORIO;
 exports.NOME_DO_BANCO_PELA_API = NOME_DO_BANCO_PELA_API;
+exports.boletoQueVale = boletoQueVale;
+exports.boletosEfiDoBanco = boletosEfiDoBanco;
+exports.conferirConfigDoBoleto = conferirConfigDoBoleto;
+exports.configDoBoletoDoBanco = configDoBoletoDoBanco;
 exports.contaDoPlanoParaOBanco = contaDoPlanoParaOBanco;
+exports.corpoDoBolix = corpoDoBolix;
 exports.descricaoDaContaBancaria = descricaoDaContaBancaria;
+exports.diaDeVencimentoValido = diaDeVencimentoValido;
+exports.diaDoContrato = diaDoContrato;
 exports.ehImportacaoPelaApi = ehImportacaoPelaApi;
 exports.emendarComOManual = emendarComOManual;
 exports.fecharImportacao = fecharImportacao;
 exports.idDaImportacaoPelaApi = idDaImportacaoPelaApi;
 exports.importacoesPelaApi = importacoesPelaApi;
 exports.juntarArquivosDoExtrato = juntarArquivosDoExtrato;
+exports.lerBolixEmitido = lerBolixEmitido;
 exports.lidasDoSicoob = lidasDoSicoob;
 exports.linhasDoExtrato = linhasDoExtrato;
 exports.loteDaConta = loteDaConta;
 exports.lotesDoCnab240 = lotesDoCnab240;
 exports.mesesParaBuscar = mesesParaBuscar;
+exports.pedidoDeBoleto = pedidoDeBoleto;
+exports.porQueNaoEmitir = porQueNaoEmitir;
 exports.rotuloDaContaBancaria = rotuloDaContaBancaria;
+exports.seloDoBoletoEfi = seloDoBoletoEfi;
 exports.slug = slug;
 exports.ultimoDiaDoMes = ultimoDiaDoMes;
 exports.ultimoDiaManual = ultimoDiaManual;
+exports.vencimentoDoHonorario = vencimentoDoHonorario;
