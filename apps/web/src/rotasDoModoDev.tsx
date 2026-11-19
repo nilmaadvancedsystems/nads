@@ -17,6 +17,8 @@ import { useAvisoDeBloqueio, useModoDesenvolvedor } from './comum/modoDesenvolve
 import { NaEspera, pedaco } from './comum/pedaco';
 
 const AreaDoCliente = pedaco(() => import('./aplicativos/cliente/telas/AreaDoCliente'), 'AreaDoCliente');
+// a página própria de criar a senha da Área do Cliente (19/11/2026)
+const CriarSenha = pedaco(() => import('./aplicativos/cliente/telas/CriarSenha'), 'CriarSenha');
 const AppRobos = pedaco(() => import('./aplicativos/robos/AppRobos'), 'AppRobos');
 const Central = pedaco(() => import('./aplicativos/robos/casca/Central'), 'Central');
 
@@ -52,6 +54,7 @@ const central = <NaEspera inteira><Central /></NaEspera>;
 export function rotasDoModoDev(exigir: boolean): RouteObject[] {
   const noModo = (tela: ReactNode) => <NoModoDev exigir={exigir}>{tela}</NoModoDev>;
   return [
+    { path: '/cliente/senha', element: noModo(<NaEspera inteira><CriarSenha /></NaEspera>) },
     { path: '/cliente/:token/:aba?', element: noModo(cliente) },
     { path: '/cliente', element: noModo(cliente) },
     {
