@@ -2,6 +2,7 @@
 // recusada com o motivo). Em cima, o total do mês com a barra das partes; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
 import { Icone, useCarregando, Vazio } from '@nads/ui';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DadosDeTesteDaCarteira, SeletorDoMes, type useMes, SeloDaComissao } from './comum';
 import { JanelaDaComissao } from './JanelaDaComissao';
@@ -44,14 +45,16 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
 
-      <section className="card cmc-resumo" aria-label={'O total de ' + nomeDoMes}>
+      {/* a caixa do total redesenhada (Vitor, 19/11/2026: "Tem como fazer uma box melhor nao? Um valor maior, quando entra ele carrega
+          fazendo uma animacao de numero subindo"): o valor grande que sobe ao entrar, a barra que cresce e as partes em cartõezinhos */}
+      <section className="card cmc-resumo cmc-novo" aria-label={'O total de ' + nomeDoMes}>
         <div className="cmc-total">
           <span className="cmc-rotulo">Total de {nomeDoMes}</span>
-          <b className="cmc-valor num">{vm.carregada ? formatos.reais(vm.totalDoMes) : '—'}</b>
+          <b className="cmc-valor num">{vm.carregada ? <ValorQueSobe key={m.mes} valor={vm.totalDoMes} /> : '—'}</b>
           <span className="hint">{t.quantas === 1 ? '1 comissão' : t.quantas + ' comissões'}{vm.salarioPago ? ' + o salário' : ''}{t.recusadas > 0 ? ' · ' + formatos.reais(t.recusadas) + ' recusado' : ''}</span>
         </div>
         <div className="cmc-partes">
-          <div className="cmc-barra" aria-hidden="true">
+          <div className="cmc-barra" aria-hidden="true" key={m.mes}>
             {vm.totalDoMes > 0 && partes.filter(x => x.valor > 0).map(x => <i key={x.id} className={'cmc-' + x.id} style={{ flexGrow: x.valor }} />)}
           </div>
           <ul className="cmc-legenda">
@@ -59,7 +62,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
               <li key={x.id} title={x.id === 'salario' && !vm.salarioPago ? (vm.temHolerite ? 'Entra no total quando o pagamento (com o comprovante) chegar' : 'Entra no total quando o holerite e o pagamento chegarem') : undefined}>
                 <span className={'cmc-ponto cmc-' + x.id} aria-hidden="true" />
                 <span className="cmc-rotulo">{x.rotulo}</span>
-                <b className="num">{vm.carregada ? formatos.reais(x.valor) : '—'}</b>
+                <b className="num">{vm.carregada ? <ValorQueSobe key={m.mes} valor={x.valor} /> : '—'}</b>
               </li>
             ))}
           </ul>
@@ -97,4 +100,23 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
       </section>
     </section>
   );
+}
+
+/** O valor que sobe do zero até o número quando a caixa aparece (e a cada mês trocado), em ~0,9 s; quem pede menos movimento vê
+ *  direto o número (Vitor, 19/11/2026: "quando entra ele carrega fazendo uma animacao de numero subindo"). */
+function ValorQueSobe({ valor }: { valor: number }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!valor || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setV(valor); return; }
+    const inicio = performance.now();
+    let quadro = 0;
+    const passo = (agora: number) => {
+      const t = Math.min(1, (agora - inicio) / 900);
+      setV(valor * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) quadro = requestAnimationFrame(passo);
+    };
+    quadro = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(quadro);
+  }, [valor]);
+  return <>{formatos.reais(Math.round(v * 100) / 100)}</>;
 }
