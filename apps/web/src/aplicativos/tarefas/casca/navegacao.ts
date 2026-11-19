@@ -19,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -136,6 +136,14 @@ export const APLICACOES: readonly Aplicacao[] = [
     // "Liberação de acessos" (Vitor, 06/11/2026: era "Acesso"); o endereço segue /tarefas/senhas/acesso
     { id: 'acesso', rotulo: 'Liberação de acessos', icone: 'usuario', titulo: 'Liberação de acessos' },
   ] },
+  // o arquivo físico (19/11/2026: "os documentos ficam em caixas, e dentro de cada caixa há envelopes … quero saber o que tem em
+  // cada caixa e encontrar um documento de forma mais fácil"): todo o escritório; no modo desenvolvedor até ser aprovado
+  { id: 'arquivo-fisico', nome: 'Arquivo físico', icone: 'arquivo', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'caixas', rotulo: 'Caixas', icone: 'arquivo', titulo: 'Caixas do arquivo' },
+    { id: 'encontrar', rotulo: 'Encontrar', icone: 'search', titulo: 'Encontrar um documento' },
+    { id: 'retirados', rotulo: 'Retirados', icone: 'clock', titulo: 'Retirados' },
+    { id: 'descarte', rotulo: 'Descarte', icone: 'lixeira', titulo: 'Para descartar' },
+  ] },
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
   { id: 'financeiro', nome: 'Financeiro', icone: 'cartao', grupo: 'Escritório', pronta: true, paginas: [
@@ -172,7 +180,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'carteira', nome: 'Carteira', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
     // as Comissões e os Holerites numa tela só, o Financeiro (Vitor, 19/11/2026: "Consegue colocar tudo em uma tela so? comissoes e
     // holerites"; "Primeira pagina, Financeiro / Segunda Insumos"); os links antigos (comissoes, documentos) caem nela
-    { id: 'financeiro', rotulo: 'Financeiro', icone: 'dinheiro', titulo: 'Financeiro' },
+    { id: 'financeiro', rotulo: 'Financeiro', icone: 'dinheiro', titulo: 'Seu Financeiro' },
     // os Insumos (Vitor, 12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e caixas
     // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira
     { id: 'insumos', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos' },
@@ -298,6 +306,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
     // a Tela de Insights: só Diretor e admin (o dono, 18/11/2026: "esses paineis so vao ser vistos por diretor e admin")
     (a.id !== 'insights' || (ehDiretor(op) && novidadeLigada('insights'))) &&
+    // o Arquivo físico: todo o escritório, no modo desenvolvedor até ser aprovado (19/11/2026)
+    (a.id !== 'arquivo-fisico' || novidadeLigada('arquivo-fisico')) &&
     // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
     // link direto não abre. Na versão final, só para o Diretor e o Dono, pelo nível da conta (Vitor, 19/11/2026: "divulga a versao
     // final do carteira apenas para os diretores, quero testar, APENAS PARA DIRETORES NA VERSAO FINAL")

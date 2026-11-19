@@ -15,17 +15,18 @@ import { useInsumos } from './useInsumos';
 const ICONE: Record<string, NomeIcone> = { impressao: 'impressora', pasta: 'pasta', envelope: 'envelope', caixa: 'arquivo' };
 const icone = (tipo: string): NomeIcone => ICONE[tipo] ?? 'list';
 
-/** emJanela: dentro da janela Impressões e materiais da Carteira (19/11/2026); o botão vira só "Registrar" */
-export function Insumos({ emJanela = false }: { emJanela?: boolean } = {}) {
-  const vm = useInsumos();
+/** emJanela: dentro da janela Impressões e materiais da Carteira (19/11/2026), no mês da tela (mes): os da pessoa, sem os valores, sem o
+ *  seletor do mês e sem o Insumos e preços; o botão vira só "Registrar" */
+export function Insumos({ emJanela = false, mes }: { emJanela?: boolean; mes?: string } = {}) {
+  const vm = useInsumos(emJanela && mes ? { mes } : undefined);
   const { m, lista, totais, aberto, setAberto, veTodos } = vm;
   useCarregando(!vm.carregada);
   return (
     <section className={'dp-painel' + (emJanela ? ' insumos-na-janela' : '')}>
-      {aberto && <JanelaDoInsumo insumo={aberto === 'novo' ? null : aberto} fechar={() => setAberto(null)} />}
+      {aberto && <JanelaDoInsumo insumo={aberto === 'novo' ? null : aberto} fechar={() => setAberto(null)} semPreco={emJanela} />}
       {vm.configurando && <JanelaDosInsumos fechar={() => vm.setConfigurando(false)} />}
       <div className="tarefas-barra-topo dp-filtros-linha">
-        <SeletorDoMes {...m} />
+        {!emJanela && <SeletorDoMes {...m} />}
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         <DadosDeTesteDaCarteira />
@@ -77,7 +78,7 @@ export function Insumos({ emJanela = false }: { emJanela?: boolean } = {}) {
       <section className="card dp-lista">
         {vm.carregada && !lista.length ? (
           <Vazio icone="impressora" titulo={'Nada registrado em ' + carteira.mesPorExtenso(m.mes)} texto="Registre o insumo e a quantidade, com o cliente de cada um.">
-            <button type="button" className="btn btn-primary" onClick={() => setAberto('novo')}><Icone nome="plus" />Registrar insumo</button>
+            {!emJanela && <button type="button" className="btn btn-primary" onClick={() => setAberto('novo')}><Icone nome="plus" />Registrar insumo</button>}
           </Vazio>
         ) : (
           <div className="table-wrap">
@@ -91,7 +92,7 @@ export function Insumos({ emJanela = false }: { emJanela?: boolean } = {}) {
                       onClick={abre ? () => setAberto(x) : undefined} onKeyDown={abre ? e => { if (e.key === 'Enter') setAberto(x); } : undefined}>
                       <td className="num">{x.data.split('-').reverse().join('/')}</td>
                       {veTodos && <td>{x.nome}</td>}
-                      <td><Icone nome={icone(x.tipo)} width={14} height={14} /> {vm.nomeDe(x)}</td>
+                      <td>{emJanela ? vm.nomeDe(x) : <><Icone nome={icone(x.tipo)} width={14} height={14} /> {vm.nomeDe(x)}</>}</td>
                       <td>
                         {x.codigo != null && <span className="num fraco">{x.codigo} · </span>}
                         <span className="ini-empresa">{x.cliente}</span>

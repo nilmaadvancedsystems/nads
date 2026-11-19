@@ -109,7 +109,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           )}
           {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
           {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
-          {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
+          {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : comissao!.situacao === 'lancada' ? 'O mês virou: a comissão está travada. Só o Financeiro muda.' : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
           {doFinanceiro && <p className="registro-dica"><Icone nome="lampada" />Registrada pelo Financeiro, a comissão já entra aprovada e aparece na Carteira da pessoa.</p>}
           <div className="registro-props">
             {doFinanceiro && (
@@ -127,20 +127,22 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               </Propriedade>
             )}
             <Propriedade icone="calendar" rotulo="Data">{travada ? <span>{vm.data}</span> : (dev ? <CampoDataComCalendario valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" /> : <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" />)}</Propriedade>
+            {/* o porte antes do cliente (Vitor, 19/11/2026: "Antes de selecionar o cliente, colocar porte, antes de tudo, se for MEI, so carregue
+                os meis registrados"): com MEI, a lista de clientes traz só as empresas do regime MEI */}
+            <Propriedade icone="briefcase" rotulo="Porte">
+              {travada ? <span>{vm.porte || '—'}</span> : (
+                <MenuSuspenso rotulo={vm.porte || 'Escolher o porte'} className={ESCOLHA + (vm.porte ? '' : ' vazio')} titulo="O porte do cliente" flutuante largura={200}
+                  itens={carteira.PORTES.map(p => ({ rotulo: p, marcado: p === vm.porte, onClick: () => vm.setPorte(p) }))} />
+              )}
+            </Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
-              <EscolherCliente clientes={vm.clientes} semCodigo={vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
+              <EscolherCliente clientes={vm.porte === 'MEI' ? vm.clientes.filter(c => c.regime === 'MEI') : vm.clientes} semCodigo={vm.porte === 'MEI' ? vm.clientesSemCodigo.filter(c => c.porte === 'MEI') : vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
                 onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} onSemCodigo={c => vm.escolherSemCodigo(c.nome, c.porte)} />
             </Propriedade>
             {vm.avulso && (
               <>
                 <Propriedade icone="fileText" rotulo="Nome">
                   <input type="text" autoFocus={!comissao} value={vm.nomeAvulso} disabled={travada} maxLength={150} onChange={e => vm.setNomeAvulso(e.target.value)} placeholder="O nome do cliente" aria-label="Nome do cliente avulso" />
-                </Propriedade>
-                <Propriedade icone="briefcase" rotulo="Porte">
-                  {travada ? <span>{vm.porte || '—'}</span> : (
-                    <MenuSuspenso rotulo={vm.porte || 'Escolher o porte'} className={ESCOLHA + (vm.porte ? '' : ' vazio')} titulo="O porte do cliente" flutuante largura={200}
-                      itens={carteira.PORTES.map(p => ({ rotulo: p, marcado: p === vm.porte, onClick: () => vm.setPorte(p) }))} />
-                  )}
                 </Propriedade>
               </>
             )}
@@ -170,7 +172,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           {erros.length > 0 && <ul className="registro-erros">{erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
         <footer className="registro-pe">
-          {vm.podeApagar && <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.apagar()}><Icone nome="lixeira" />Apagar</button>}
+          {vm.podeApagar && <button type="button" className="btn btn-apagar-cheio" onClick={() => void vm.apagar()} title="Apagar" aria-label="Apagar"><Icone nome="lixeira" /></button>}
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={fechar}>{travada ? 'Fechar' : 'Cancelar'}</button>
           {!travada && <button type="button" className="btn btn-primary" disabled={salvando} onClick={() => void vm.salvar()} title="Gravar (Ctrl+Enter)"><Icone nome="check" />{comissao ? 'Gravar' : 'Registrar'}</button>}

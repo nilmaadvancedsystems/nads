@@ -1,6 +1,6 @@
 // Os ViewModels da Carteira (12/11/2026): o que cada tela mostra e faz, a partir do repositório (as telas não falam com
 // ele). A lógica de conta é do core (carteira); aqui fica o estado da tela e as ações com o aviso de erro.
-import { carteira, empresas, usuarios, type financeiro } from '@nads/core';
+import { carteira, empresas, formatos, tarefas as tf, usuarios, type financeiro } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
@@ -8,7 +8,7 @@ import { empresasNovas } from '../../dados/fonte';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
 import { useOperador } from '../../casca/operador';
-import { useAcesso, useCarteira, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
+import { useAcesso, useCarteira, useInsumos as useRepoDosInsumos, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 
@@ -27,21 +27,56 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const lista = todas.lista.filter(c => c.competencia === m.mes);
   // a escondida conta como comissão, mas o valor dela não entra no total (16/11/2026: "não deixe essa informação visualizável")
   const totais = { ...carteira.totaisDasComissoes(carteira.comValorParaAPessoa(lista)), quantas: lista.filter(c => c.situacao !== 'recusada').length };
-  // o salário no total do mês (Vitor, 19/11/2026: "Total de dezembro, vc vai somar as comissoes com o salario (salario vc soma depois do
-  // pagamento e o holerite upadas)"): o líquido do holerite do mês, só com o holerite e o pagamento (com comprovante) já no nads
+  // o total do mês é só das comissões (Vitor, 19/11/2026: o salário só aparece quando o DP gera a folha; "Só comissões"): o holerite e o
+  // pagamento ficam nos lançamentos e no gráfico
   const docs = repo.meusDocumentos(), contas = repo.minhasContas();
-  const salarioDoHolerite = carteira.salarioDoMes(docs.lista, m.mes);
-  const salarioPago = salarioDoHolerite != null && carteira.recebidoNoMes(pagamentosDe(contas.lista), m.mes).recebido > 0;
-  const salario = salarioPago ? salarioDoHolerite! : 0;
   // os lançamentos do mês numa lista só (Vitor, 19/11/2026: "Essas boxes da pra unificar em uma unica box de lancamentos"): as comissões,
   // os holerites e comprovantes do mês e os pagamentos do escritório que vencem ou foram pagos no mês
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const docsDoMes = docs.lista.filter(d => d.competencia === m.mes);
   const pagsDoMes = pagamentosDe(contas.lista).filter(p => p.vencimento.startsWith(m.mes) || (p.pagoEm || '').startsWith(m.mes));
+  // os materiais (os insumos) que a pessoa registrou no mês, na mesma tabela (19/11/2026: "tipo: Comissao, salario, materiais")
+  const repoInsumos = useRepoDosInsumos();
+  const insumos = repoInsumos.meusInsumos();
+  const tiposDeInsumo = repoInsumos.tipos();
+  const materiaisDoMes = insumos.lista.filter(x => x.competencia === m.mes).map(x => ({
+    id: x.id, data: x.data, cliente: x.cliente, codigo: x.codigo, nome: carteira.rotuloDoInsumo(x, tiposDeInsumo.lista), quantidade: x.quantidade, valor: carteira.valorDoInsumo(x),
+  }));
   return {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
-    salario, salarioPago, temHolerite: salarioDoHolerite != null, totalDoMes: totais.total + salario,
-    docsDoMes, pagsDoMes,
+    totalDoMes: totais.total,
+    docsDoMes, pagsDoMes, materiaisDoMes,
+    /** a tabela dos lançamentos em planilha (Vitor, 19/11/2026: "Coloca a opcao excel, para exportar em planilha"): as mesmas colunas da
+     *  tela; os materiais sem o valor (que fica no Financeiro) */
+    exportar() {
+      const br = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+      const semCnpj = (n: string) => n.replace(/^[\d./-]{6,}\s+/, '').trim() || n;
+      const linhas: { data: string; l: (string | number)[] }[] = [
+        ...lista.map(c => ({ data: c.data, l: [br(c.data), semCnpj(c.cliente), c.porte || '', 'Comissão · ' + c.descricao, c.oculta ? '' : c.valor,
+          c.situacao === 'paga' ? 'Paga' + (c.pagoEm ? ' em ' + br(c.pagoEm) : '') : c.situacao === 'recusada' ? 'Recusada' + (c.motivo ? ': ' + c.motivo : '') : 'A receber'] })),
+        ...docsDoMes.map(d => ({ data: d.enviadoEm.slice(0, 10), l: [br(d.enviadoEm), '', '', d.tipo === 'holerite' ? 'Salário · holerite' : carteira.rotuloDoDocumento(d.tipo), d.valor ?? '', 'Anexo: ' + d.arquivo] })),
+        ...pagsDoMes.map(p => ({ data: p.pago && p.pagoEm ? p.pagoEm : p.vencimento, l: [br(p.pago && p.pagoEm ? p.pagoEm : p.vencimento), '', '', p.rotulo, p.pago ? p.valorPago ?? p.valor : p.valor, p.pago ? 'Pago' : 'A receber'] })),
+        ...materiaisDoMes.map(x => ({ data: x.data, l: [br(x.data), x.cliente, '', 'Materiais · ' + x.nome + ' × ' + x.quantidade, '', 'Registrado'] })),
+      ].sort((a, b) => a.data.localeCompare(b.data));
+      const nome = 'Lançamentos ' + carteira.mesPorExtenso(m.mes) + '.xlsx';
+      return { bytes: tf.planilhaXlsx('Lançamentos', ['Data', 'Cliente', 'Porte', 'Tipo', 'Valor', 'Status'], linhas.map(x => x.l)), nome };
+    },
+    /** o Extrato de comissões do mês em planilha (a caixa dos anexos; 19/11/2026) */
+    extratoDeComissoes() {
+      const br = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+      const semCnpj = (n: string) => n.replace(/^[\d./-]{6,}\s+/, '').trim() || n;
+      const linhas = [...lista].sort((a, b) => a.data.localeCompare(b.data)).map(c => [br(c.data), semCnpj(c.cliente), c.porte || '', c.descricao, c.oculta ? '' : c.valor,
+        c.situacao === 'paga' ? 'Paga' + (c.pagoEm ? ' em ' + br(c.pagoEm) : '') : c.situacao === 'recusada' ? 'Recusada' : 'A receber']);
+      return { bytes: tf.planilhaXlsx('Comissões', ['Data', 'Cliente', 'Porte', 'Serviço', 'Comissão', 'Status'], linhas), nome: 'Extrato de comissões ' + carteira.mesPorExtenso(m.mes) + '.xlsx' };
+    },
+    /** os ⋯ da tabela (19/11/2026: "coloca a opcao de editar e excluir, um 3 pontinhos"): só a comissão ainda lançada muda ou sai */
+    podeMexer: (c: carteira.Comissao) => carteira.pessoaPodeMexer(c, new Date()),
+    async excluir(c: carteira.Comissao) {
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Excluir a comissão?', texto: c.cliente + ' · ' + (c.oculta ? c.descricao : formatos.reais(c.valor)),
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      try { await repo.apagarComissao(c.id); toast('Comissão excluída.'); } catch (e) { toast(mensagem(e, 'Não consegui excluir.')); }
+    },
     abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     baixarDocumento: (d: carteira.DocumentoDaCarteira) => void baixarDaCarteira(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     abrirComprovante: (contaId: string, c: { id: string; nome: string }) => void abrirBytes(() => repo.bytesDoComprovante(contaId, c.id), c.nome, toast),
@@ -49,7 +84,7 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
 }
 
 /** O cliente do cadastro no menu da comissão (pelo código do ERP). */
-export interface ClienteDaLista { codigo: number; nome: string }
+export interface ClienteDaLista { codigo: number; nome: string; regime: string }
 
 /** Os clientes do escritório para o menu da comissão: a lista do escritório e as empresas cadastradas pelo nads (com código). */
 /** As empresas do Cadastro ainda sem o código do ERP (o MEI registrado pelo cartão CNPJ; 19/11/2026: "ja ta no sistema, ok, porque
@@ -69,9 +104,9 @@ function useClientesSemCodigo(): ClienteSemCodigo[] {
 function useClientesDoEscritorio(): ClienteDaLista[] {
   const cadastros = useTodosOsCadastros();
   return useMemo(() => {
-    const porCodigo = new Map<number, string>();
-    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) if (e.codigo != null && !porCodigo.has(e.codigo)) porCodigo.set(e.codigo, e.nome);
-    return [...porCodigo].map(([codigo, nome]) => ({ codigo, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    const porCodigo = new Map<number, { nome: string; regime: string }>();
+    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) if (e.codigo != null && !porCodigo.has(e.codigo)) porCodigo.set(e.codigo, { nome: e.nome, regime: e.regime });
+    return [...porCodigo].map(([codigo, x]) => ({ codigo, ...x })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     // as empresas novas vêm do cadastro: refaz quando ele muda
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cadastros]);
@@ -107,7 +142,8 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // a escondida não muda depois de registrada (o valor do serviço sai do banco quando o robô calcula): só apaga, enquanto lançada
-  const travada = !!comissao && (!carteira.podeEditar(comissao) || oculta);
+  // virou o mês, a da pessoa trava (19/11/2026); o Financeiro continua mexendo
+  const travada = !!comissao && (!carteira.podeEditar(comissao) || oculta || (!doFinanceiro && !carteira.pessoaPodeMexer(comissao, agora)));
   // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço (a escondida vai sem)
   // o Diretor define a % no lançamento (Vitor, 19/11/2026: "O diretor, pode definir a comissao diretamente dessa tela, abaixo do
   // valor, APENAS DIRETORES podem definir a porcentagem de comissao no lancamento"): pelo nível da conta (Diretor e Dono); vazio, a do serviço
@@ -128,13 +164,13 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
     clientesSemCodigo,
     /** a empresa do Cadastro sem código (ou a do cartão CNPJ do MEI): avulsa, com o nome e o porte dela */
-    escolherSemCodigo: (nome: string, porteDela: carteira.Porte | null) => { setAvulso(true); setClienteCodigo(null); setNomeAvulso(nome); if (porteDela) setPorte(porteDela); },
+    escolherSemCodigo: (nome: string, porteDela: carteira.Porte | null) => { setAvulso(true); setClienteCodigo(null); setNomeAvulso(porteDela === 'MEI' ? nome.replace(/^[\d./-]+\s+/, '').trim() || nome : nome); if (porteDela) setPorte(porteDela); },
     servicos: servicos.lista, servico, setServico, percentual, oculta,
     /** só o Diretor e o Dono definem a % no lançamento; o texto digitado ('' = a do serviço) e a do serviço, para o lugar vazio */
     podeDefinirPercentual: diretor && !oculta, pctDoDiretor, setPctDoDiretor: (v: string) => setPctDoDiretor(v.replace(/[^\d,.]/g, '').slice(0, 6)),
     percentualDoServico: carteira.percentualDoServico(servicos.lista, servico),
     /** apagar: a própria pessoa, enquanto está lançada (a escondida também) */
-    podeApagar: !!comissao && carteira.podeEditar(comissao),
+    podeApagar: !!comissao && (doFinanceiro ? carteira.podeEditar(comissao) : carteira.pessoaPodeMexer(comissao, agora)),
     valorServico, setValorServico,
     /** a comissão que vai sair (valor do serviço × %) */
     valor: travada ? comissao!.valor : vs > 0 && percentual > 0 ? carteira.valorDaComissao(vs, percentual) : 0,
@@ -144,7 +180,8 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
         competencia, data: isoDaData(data), cliente: cliente.trim(), clienteCodigo: avulso ? null : clienteCodigo, porte: avulso ? porte : null,
         servico, valorServico: vs, percentual, ...(oculta ? { oculta: true } : {}),
       };
-      const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...carteira.conferirComissao(c)];
+      const retroativa = doFinanceiro ? '' : carteira.conferirDataDaPessoa(c.data, new Date());
+      const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...(retroativa ? [retroativa] : []), ...carteira.conferirComissao(c)];
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);

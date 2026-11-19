@@ -15,9 +15,13 @@ const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  * O mês escolhido na tela e os últimos 12 para escolher. proximo: 'incluir' põe também o mês seguinte (onde entram as
  * comissões que a equipe registra; 12/11/2026) e 'comecar' já abre nele.
  */
+/** o primeiro mês da Carteira */
+export const INICIO_DA_CARTEIRA = '2026-11';
+
 export function useMes(proximo: false | 'incluir' | 'comecar' = false) {
   const seguinte = carteira.mesDoPagamento(new Date());
-  const meses = [...(proximo ? [seguinte] : []), ...carteira.ultimosMeses(new Date(), 12)];
+  // só de novembro de 2026 para a frente, quando a Carteira começou (Vitor, 19/11/2026: "so novembro 2026 pra frente, remove os outros")
+  const meses = [...(proximo ? [seguinte] : []), ...carteira.ultimosMeses(new Date(), 12)].filter(x => x >= INICIO_DA_CARTEIRA);
   const [mes, setMes] = useState(proximo === 'comecar' ? seguinte : carteira.competenciaDe(new Date()));
   return { mes, setMes, meses };
 }

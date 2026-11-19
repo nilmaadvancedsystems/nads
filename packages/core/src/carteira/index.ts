@@ -162,6 +162,18 @@ export function conferirComissao(c: ComissaoParaSalvar): string[] {
 /** A pessoa só mexe na comissão enquanto ela está lançada (depois de aprovada, só o Financeiro). */
 export const podeEditar = (c: Comissao) => c.situacao === 'lancada';
 
+/**
+ * A pessoa muda ou apaga a dela só antes de virar o mês (Vitor, 19/11/2026: "Virou o mes, a comissao e bloqueada, e lancada somente no
+ * proximo, retroativo so vale se o financeiro lancar"): lançada e com o mês do pagamento ainda à frente do mês de hoje.
+ */
+export const pessoaPodeMexer = (c: Comissao, hoje: Date) => podeEditar(c) && c.competencia > competenciaDe(hoje);
+
+/** A data da comissão que a pessoa registra: do mês de hoje (a de mês que já virou, só o Financeiro lança); '' = vale */
+export function conferirDataDaPessoa(dataIso: string, hoje: Date): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dataIso) && dataIso.slice(0, 7) < competenciaDe(hoje)
+    ? 'A comissão de um mês que já virou só o Financeiro lança. Use uma data deste mês.' : '';
+}
+
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const soma = (xs: readonly number[]) => r2(xs.reduce((s, x) => s + x, 0));
 
