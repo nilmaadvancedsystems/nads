@@ -1,6 +1,6 @@
 // Os ViewModels da Carteira (12/11/2026): o que cada tela mostra e faz, a partir do repositório (as telas não falam com
 // ele). A lógica de conta é do core (carteira); aqui fica o estado da tela e as ações com o aviso de erro.
-import { carteira, empresas, usuarios, type financeiro } from '@nads/core';
+import { carteira, empresas, formatos, usuarios, type financeiro } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
@@ -32,7 +32,7 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const docs = repo.meusDocumentos(), contas = repo.minhasContas();
   // os lançamentos do mês numa lista só (Vitor, 19/11/2026: "Essas boxes da pra unificar em uma unica box de lancamentos"): as comissões,
   // os holerites e comprovantes do mês e os pagamentos do escritório que vencem ou foram pagos no mês
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const docsDoMes = docs.lista.filter(d => d.competencia === m.mes);
   const pagsDoMes = pagamentosDe(contas.lista).filter(p => p.vencimento.startsWith(m.mes) || (p.pagoEm || '').startsWith(m.mes));
   // os materiais (os insumos) que a pessoa registrou no mês, na mesma tabela (19/11/2026: "tipo: Comissao, salario, materiais")
@@ -46,6 +46,14 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
     totalDoMes: totais.total,
     docsDoMes, pagsDoMes, materiaisDoMes,
+    /** os ⋯ da tabela (19/11/2026: "coloca a opcao de editar e excluir, um 3 pontinhos"): só a comissão ainda lançada muda ou sai */
+    podeMexer: (c: carteira.Comissao) => carteira.podeEditar(c),
+    async excluir(c: carteira.Comissao) {
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Excluir a comissão?', texto: c.cliente + ' · ' + (c.oculta ? c.descricao : formatos.reais(c.valor)),
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      try { await repo.apagarComissao(c.id); toast('Comissão excluída.'); } catch (e) { toast(mensagem(e, 'Não consegui excluir.')); }
+    },
     abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     baixarDocumento: (d: carteira.DocumentoDaCarteira) => void baixarDaCarteira(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     abrirComprovante: (contaId: string, c: { id: string; nome: string }) => void abrirBytes(() => repo.bytesDoComprovante(contaId, c.id), c.nome, toast),

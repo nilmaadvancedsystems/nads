@@ -5,7 +5,6 @@
 import { carteiraLiberada } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { CarteiraEmBreve } from './CarteiraEmBreve';
-import { HoleritesEPagamentos } from './HoleritesEPagamentos';
 import { Insumos } from './Insumos';
 import { MinhasComissoes } from './MinhasComissoes';
 import { useMes } from './comum';
@@ -33,8 +32,7 @@ export function Carteira({ pagina }: { pagina: string }) {
           <Icone nome="impressora" />Impressões e materiais
         </button>
       )} />
-      {/* embaixo, só os últimos 6 meses: o título e os números saíram, e os holerites e pagamentos foram para os lançamentos (19/11/2026) */}
-      <HoleritesEPagamentos m={m} soGrafico />
+      {/* o gráfico dos 6 meses saiu (Vitor, 19/11/2026: "remove isso aqui tbm"); embaixo ficam os anexos, na tela das comissões */}
     </div>
   );
 }

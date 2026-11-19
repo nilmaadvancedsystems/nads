@@ -1,7 +1,7 @@
 // Carteira › Comissões (12/11/2026): a pessoa registra as comissões e acompanha cada uma (lançada → aprovada → paga, ou
 // recusada com o motivo). Em cima, o total do mês com a barra das partes; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
-import { Icone, useCarregando, Vazio } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DadosDeTesteDaCarteira, SeletorDoMes, type useMes, SeloDaComissao } from './comum';
@@ -70,13 +70,12 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
       {/* os lançamentos do mês numa tabela (Vitor, 19/11/2026: "Data, nome do cliente, porte, tipo: Comissao, salario, materiais, valor,
           status. Faz uma tabela disso"): as comissões, os holerites, os pagamentos do escritório e os materiais, pela data */}
       <section className="card cmc-lista" aria-label="Os lançamentos do mês">
-        <h3 className="cart-titulo">Lançamentos de {nomeDoMes}</h3>
         {vm.carregada && !lista.length && !vm.docsDoMes.length && !vm.pagsDoMes.length && !vm.materiaisDoMes.length ? (
           <Vazio compacto icone="dinheiro" titulo={'Nada em ' + carteira.mesPorExtenso(m.mes)} texto="As comissões que você registrar, os holerites, os pagamentos do escritório e os materiais do mês aparecem aqui." />
         ) : (
           <div className="table-wrap">
             <table className="dp-tabela cmc-tabela">
-              <thead><tr><th>Data</th><th>Cliente</th><th>Porte</th><th>Tipo</th><th className="num">Valor</th><th>Status</th></tr></thead>
+              <thead><tr><th>Data</th><th>Cliente</th><th>Porte</th><th>Tipo</th><th className="num">Valor</th><th>Status</th><th className="cmc-mais-th"><span className="sr-only">Ações</span></th></tr></thead>
               <tbody>
                 {[
                   ...lista.map(c => ({ data: c.data, chave: 'c' + c.id, linha: (
@@ -87,6 +86,13 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td>Comissão<span className="fraco"> · {c.descricao}</span></td>
                       <td className={'num' + (c.situacao === 'recusada' ? ' cmc-riscado' : '')}><b>{c.oculta ? '—' : formatos.reais(c.valor)}</b></td>
                       <td><SeloDaComissao s={c.situacao} semAprovacao />{c.pagoEm && <span className="fraco"> em {ddmm(c.pagoEm)}</span>}{c.situacao === 'recusada' && c.motivo && <span className="fraco" title={c.motivo}> · {c.motivo}</span>}</td>
+                      <td className="cmc-mais" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+                        <MenuSuspenso rotulo="" icone="mais" semSeta className="icon-btn icon-btn-sm" dica="Editar ou excluir" flutuante direita largura={180}
+                          itens={vm.podeMexer(c) ? [
+                            { rotulo: 'Editar', icone: 'lapis', onClick: () => setAberta(c) },
+                            { rotulo: 'Excluir', icone: 'lixeira', perigo: true, onClick: () => { void vm.excluir(c); } },
+                          ] : [{ rotulo: 'Abrir', icone: 'olho', onClick: () => setAberta(c) }]} />
+                      </td>
                     </tr>
                   ) })),
                   ...vm.docsDoMes.map(doc => ({ data: doc.enviadoEm.slice(0, 10), chave: 'd' + doc.id, linha: (
@@ -100,6 +106,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirDocumento(doc)}><Icone nome="olho" />Abrir</button>
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.baixarDocumento(doc)} aria-label="Baixar" title="Baixar"><Icone nome="download" /></button>
                       </td>
+                      <td />
                     </tr>
                   ) })),
                   ...vm.pagsDoMes.map(p => ({ data: p.pago && p.pagoEm ? p.pagoEm : p.vencimento, chave: 'p' + p.id, linha: (
@@ -115,6 +122,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                           <button key={c.id} type="button" className="btn btn-ghost btn-sm" title={'Comprovante: ' + c.nome} onClick={() => vm.abrirComprovante(p.id, c)} aria-label="Abrir o comprovante"><Icone nome="clipe" /></button>
                         ))}
                       </td>
+                      <td />
                     </tr>
                   ) })),
                   ...vm.materiaisDoMes.map(x => ({ data: x.data, chave: 'm' + x.id, linha: (
@@ -125,12 +133,40 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td>Materiais<span className="fraco"> · {x.nome} × {x.quantidade.toLocaleString('pt-BR')}</span></td>
                       <td className="num"><b>{x.valor ? formatos.reais(x.valor) : '—'}</b></td>
                       <td><span className="badge badge-neutral">Registrado</span></td>
+                      <td />
                     </tr>
                   ) })),
                 ].sort((a, b) => a.data.localeCompare(b.data)).map(x => x.linha)}
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* os anexos do mês embaixo (Vitor, 19/11/2026: "Deixa embaixo alguma coisa para os anexos (para a pessoa pegar o holerite do pdf, o
+          comprovante de pagamento e o comprovante de pagamento das comissoes)") */}
+      <section className="card cmc-anexos" aria-label="Os anexos do mês">
+        <h3 className="cmc-anexos-titulo"><Icone nome="clipe" />Anexos</h3>
+        {vm.docsDoMes.length || vm.pagsDoMes.some(p => p.comprovantes.length) ? (
+          <ul className="cmc-anexos-lista">
+            {vm.docsDoMes.map(doc => (
+              <li key={'d' + doc.id}>
+                <span className="cmc-anexo-icone" aria-hidden="true"><Icone nome={doc.tipo === 'holerite' ? 'recibo' : 'checkCircle'} /></span>
+                <span className="cmc-anexo-txt"><b>{doc.tipo === 'holerite' ? 'Holerite' : 'Comprovante de pagamento'}</b><span className="fraco" title={doc.arquivo}>{doc.arquivo}</span></span>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirDocumento(doc)}><Icone nome="olho" />Abrir</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.baixarDocumento(doc)} aria-label="Baixar" title="Baixar"><Icone nome="download" /></button>
+              </li>
+            ))}
+            {vm.pagsDoMes.flatMap(p => p.comprovantes.map(c => (
+              <li key={'p' + p.id + c.id}>
+                <span className="cmc-anexo-icone" aria-hidden="true"><Icone nome={p.tipo === 'comissao' ? 'dinheiro' : 'landmark'} /></span>
+                <span className="cmc-anexo-txt"><b>{p.tipo === 'comissao' ? 'Comprovante das comissões' : 'Comprovante · ' + p.rotulo}</b><span className="fraco" title={c.nome}>{c.nome}</span></span>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirComprovante(p.id, c)}><Icone nome="olho" />Abrir</button>
+              </li>
+            )))}
+          </ul>
+        ) : (
+          <p className="hint cmc-anexos-vazio">Nenhum anexo em {carteira.mesPorExtenso(m.mes)}. O holerite em PDF e os comprovantes de pagamento (do salário e das comissões) aparecem aqui quando o Financeiro sobe.</p>
         )}
       </section>
     </section>
