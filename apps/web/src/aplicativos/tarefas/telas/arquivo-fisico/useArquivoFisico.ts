@@ -27,6 +27,8 @@ export interface FormDaCaixa extends af.RascunhoDaCaixa {
   comOsMeses: boolean;
   /** o tipo foi digitado (aí não segue o departamento) */
   tipoManual: boolean;
+  /** a data do arquivamento como se digita no campo do nads ('19/11/2026'); vira arquivadaEm quando está completa */
+  arquivadaTexto: string;
 }
 
 /** A retirada sendo preenchida: de quem (a caixa ou um envelope), quem leva e para quê. */
@@ -228,12 +230,12 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
       setForm({
         codigo: base?.codigo ?? null, nome: base?.nome ?? '', empresaTexto: base ? base.codigo + ' — ' + base.nome : '', tipo: base?.tipo ?? '', tipoManual: false,
         departamento, ano, numero: base ? af.proximoNumero(caixas, base.codigo, ano, departamento) : 1,
-        arquivadaEm: formatos.diaEmBrasilia(), local: base?.local ?? '', observacoes: '', comOsMeses: true,
+        arquivadaEm: formatos.diaEmBrasilia(), arquivadaTexto: dataBr(formatos.diaEmBrasilia()), local: base?.local ?? '', observacoes: '', comOsMeses: true,
       });
     },
     editarCaixa(c: af.Caixa) {
       setEditando(c.id);
-      setForm({ codigo: c.codigo, nome: c.nome, empresaTexto: c.codigo + ' — ' + c.nome, tipo: c.tipo, tipoManual: true, departamento: c.departamento, ano: c.ano, numero: c.numero, arquivadaEm: c.arquivadaEm, local: c.local, observacoes: c.observacoes, comOsMeses: false });
+      setForm({ codigo: c.codigo, nome: c.nome, empresaTexto: c.codigo + ' — ' + c.nome, tipo: c.tipo, tipoManual: true, departamento: c.departamento, ano: c.ano, numero: c.numero, arquivadaEm: c.arquivadaEm, arquivadaTexto: dataBr(c.arquivadaEm), local: c.local, observacoes: c.observacoes, comOsMeses: false });
     },
     fecharForm() { setForm(null); setEditando(null); },
     mudarForm(campos: Partial<FormDaCaixa>) {
@@ -242,6 +244,8 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
         const n = { ...f, ...campos };
         if ('empresaTexto' in campos) { n.codigo = null; n.nome = ''; if (!n.tipoManual) n.tipo = ''; }
         if ('tipo' in campos) n.tipoManual = true;
+        // a data digitada: completa ('dd/mm/aaaa') vira 'aaaa-mm-dd'; pela metade, fica sem data (o formulário avisa)
+        if ('arquivadaTexto' in campos) { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.arquivadaTexto); n.arquivadaEm = m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
         // a empresa, o ano ou o departamento mudaram: o tipo segue o departamento e o código vai para o próximo livre
         if (!editando && n.codigo != null && n.ano != null && ('departamento' in campos || 'ano' in campos)) n.numero = af.proximoNumero(caixas, n.codigo, n.ano, n.departamento);
         if (!n.tipoManual && n.codigo != null) n.tipo = tipoDa(EMPRESAS.find(e => e.codigo === n.codigo)?.regime || '', n.departamento);

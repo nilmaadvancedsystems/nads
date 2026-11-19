@@ -2,7 +2,7 @@
 // Caixas, Encontrar, Retirados e Descarte — e a caixa numa janela por cima (também pelo QR da etiqueta: ?caixa=…).
 // Desenha o que o useArquivoFisico devolve; a impressão das etiquetas fica em imprimirEtiquetas.ts.
 import type { arquivoFisico as af } from '@nads/core';
-import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, Vazio, useJanela } from '@nads/ui';
+import { Alerta, BotaoFechar, BotaoIcone, CampoDataComCalendario, Esqueleto, Icone, Vazio, useJanela } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { MenuDeFiltro } from '../dp/MenuDeFiltro';
 import { imprimirEtiquetasDasCaixas, imprimirEtiquetasDasFileiras, imprimirEtiquetasDosEnvelopes, imprimirPlacasDasPrateleiras } from './imprimirEtiquetas';
@@ -467,7 +467,7 @@ function JanelaDoFormulario({ vm }: { vm: VmDoArquivo }) {
               <div className="af-form-linha">
                 <div className="field">
                   <label htmlFor="af-fdata">Data do arquivamento</label>
-                  <input id="af-fdata" type="date" value={f.arquivadaEm} onChange={e => vm.mudarForm({ arquivadaEm: e.target.value })} />
+                  <CampoDataComCalendario id="af-fdata" rotulo="Data do arquivamento" valor={f.arquivadaTexto} onMudar={v => vm.mudarForm({ arquivadaTexto: v })} />
                 </div>
                 <div className="field">
                   <label htmlFor="af-fpra">Prateleira</label>
