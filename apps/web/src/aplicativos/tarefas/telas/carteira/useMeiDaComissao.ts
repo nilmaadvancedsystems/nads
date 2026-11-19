@@ -1,8 +1,8 @@
 // O MEI na comissão (Vitor, 19/11/2026: "O servico sendo abertura de mei, disponibilize um botao para eu upar o cartao cnpj, para
 // registro no sistema, porte MEI e senha gov desse MEI atualmente, que voce tambem vai colocar la, usando o nome avulso que eu
 // coloquei (senha gov, um botao de adicionar senha gov, se ja tiver registrada, coloca atualizar senha gov, se quiser)";
-// "Alteracao mei tambem"). O cartão CNPJ é lido aqui no navegador (não é guardado): registra a empresa no Cadastro com o regime
-// MEI. A senha gov vai para o cofre (Senhas › Contas gov.br), com o nome do cliente; já tendo, o botão vira Atualizar.
+// "Alteracao mei tambem"). O cartão CNPJ é lido aqui no navegador (não é guardado) e já registra a empresa no Cadastro com o
+// regime MEI. A senha gov vai para o cofre (Senhas › Contas gov.br), com o nome do cliente; já tendo, o botão vira Atualizar.
 import { empresas, extrator, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -26,8 +26,8 @@ export function useMeiDaComissao(nome: string) {
   const [cartao, setCartao] = useState<empresas.cadastro.DadosDaReceita | null>(null);
   const [lendo, setLendo] = useState(false);
   const [erro, setErro] = useState('');
-  const [registrando, setRegistrando] = useState(false);
-  const [registrou, setRegistrou] = useState(false);
+  // o registro no Cadastro, logo ao upar o cartão (Vitor, 19/11/2026: "Upou? ja registra no sistema direto, so aparece o botao do x")
+  const [registro, setRegistro] = useState<'' | 'registrando' | 'registrada' | 'ja'>('');
   const [senha, setSenha] = useState<{ cpf: string; senha: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -36,17 +36,17 @@ export function useMeiDaComissao(nome: string) {
   const cpfDoCartao = cartao ? (cartao.razaoSocial.match(/(\d{11})\s*$/) || [])[1] || '' : '';
   const nomeDaEmpresa = cartao ? cartao.razaoSocial.trim().toUpperCase() : '';
   const cnpj = cartao ? empresas.cadastro.cnpjFormatado(cartao.cnpj) : '';
-  const lista = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()];
-  const jaNoSistema = !!nomeDaEmpresa && (registrou || lista.some(e => formatos.slug(e.nome) === formatos.slug(nomeDaEmpresa) || formatos.slug(empresas.nomeParaMostrar(e)) === formatos.slug(nomeDaEmpresa)));
+  const noSistema = (n: string) => [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]
+    .some(e => formatos.slug(e.nome) === formatos.slug(n) || formatos.slug(empresas.nomeParaMostrar(e)) === formatos.slug(n));
   // a senha gov já guardada com o nome do cliente (ou com o CPF do cartão)
   const existente = nomeDoCliente ? cofre.contasGov.find(x => formatos.slug(x.nome) === formatos.slug(nomeDoCliente)) || null : null;
 
   return {
-    cartao, cnpj, nomeDaEmpresa, lendo, erro, jaNoSistema, registrando,
+    cartao, cnpj, nomeDaEmpresa, lendo, erro, registro,
     /** lê o cartão CNPJ em PDF (nada sobe) */
     async lerCartao(f: File | null) {
       if (!f || lendo) return;
-      setLendo(true); setErro(''); setRegistrou(false);
+      setLendo(true); setErro(''); setRegistro('');
       try {
         const bytes = new Uint8Array(await f.arrayBuffer());
         if (!extrator.ehPdf(bytes)) throw new Error('Esse arquivo não é um PDF. Use o cartão CNPJ (comprovante de inscrição) em PDF.');
@@ -54,22 +54,21 @@ export function useMeiDaComissao(nome: string) {
         const d = empresas.cadastro.lerCartaoCnpj(paginas.map(l => l.join('\n')).join('\n'));
         if (!d) throw new Error('Não reconheci o cartão CNPJ nesse PDF. Use o "Comprovante de Inscrição e de Situação Cadastral" da Receita.');
         setCartao(d);
+        // já registra no Cadastro, com o regime MEI e o CNPJ do cartão (o que já está no sistema fica como está)
+        const n = d.razaoSocial.trim().toUpperCase();
+        if (noSistema(n)) { setRegistro('ja'); return; }
+        setRegistro('registrando');
+        try {
+          await gravar(n, null, () => empresas.cadastro.cadastrarEmpresa(n, null, 'MEI', por, new Date(), d.cnpj));
+          setRegistro('registrada');
+          toast(n + ' registrada no Cadastro como MEI.');
+        } catch (e) { setRegistro(''); setErro('Não consegui registrar no sistema: ' + (e instanceof Error ? e.message : String(e))); }
       } catch (e) {
         setCartao(null);
         setErro(e instanceof Error ? e.message : String(e));
       } finally { setLendo(false); }
     },
-    tirarCartao: () => { setCartao(null); setErro(''); setRegistrou(false); },
-    /** registra a empresa no Cadastro, com o regime MEI e o CNPJ do cartão */
-    async registrar() {
-      if (!cartao || !nomeDaEmpresa || jaNoSistema || registrando) return;
-      setRegistrando(true);
-      try {
-        await gravar(nomeDaEmpresa, null, () => empresas.cadastro.cadastrarEmpresa(nomeDaEmpresa, null, 'MEI', por, new Date(), cartao.cnpj));
-        setRegistrou(true);
-        toast(nomeDaEmpresa + ' registrada no Cadastro como MEI.');
-      } catch (e) { setErro('Não consegui registrar: ' + (e instanceof Error ? e.message : String(e))); } finally { setRegistrando(false); }
-    },
+    tirarCartao: () => { setCartao(null); setErro(''); setRegistro(''); },
     /** já tem a senha gov no cofre: o botão é Atualizar */
     temSenha: !!existente,
     senha, setSenha,

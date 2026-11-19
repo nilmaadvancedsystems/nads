@@ -1,5 +1,5 @@
-// O MEI na janela da comissão (Vitor, 19/11/2026): na Abertura e na Alteração de MEI, o cartão CNPJ (para registrar a empresa
-// no Cadastro, porte MEI) e a senha gov do MEI no cofre, com o nome do cliente (Adicionar; já tendo, Atualizar).
+// O MEI na janela da comissão (Vitor, 19/11/2026): na Abertura e na Alteração de MEI, o cartão CNPJ (upou, já registra a empresa
+// no Cadastro, porte MEI; fica só o ×) e a senha gov do MEI no cofre, com o nome do cliente (Adicionar; já tendo, Atualizar).
 import { CampoArquivo, Icone } from '@nads/ui';
 import { useId } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
@@ -13,12 +13,9 @@ export function MeiDaComissao({ nome }: { nome: string }) {
       <Propriedade icone="fileText" rotulo="Cartão CNPJ">
         {vm.cartao ? (
           <span className="mei-cartao">
-            <span className="mei-cartao-txt"><b>{vm.cnpj}</b><span className="hint">{vm.nomeDaEmpresa}</span></span>
-            {vm.jaNoSistema
-              ? <span className="badge badge-ok" title="A empresa já está no Cadastro"><Icone nome="check" />No sistema</span>
-              : <button type="button" className="btn btn-outline" disabled={vm.registrando} onClick={() => { void vm.registrar(); }} title="Registrar a empresa no Cadastro, com o regime MEI e o CNPJ do cartão">
-                  <Icone nome="plus" />{vm.registrando ? 'Registrando…' : 'Registrar no sistema'}
-                </button>}
+            <span className="mei-cartao-txt"><b>{vm.cnpj}</b><span className="hint" title={vm.nomeDaEmpresa}>{vm.nomeDaEmpresa}</span>
+              {/* já registrada ao upar: só o aviso, numa linha (19/11/2026) */}
+              {vm.registro && <span className="hint mei-cartao-registro">{vm.registro === 'registrando' ? 'Registrando no sistema…' : vm.registro === 'ja' ? 'Já estava no sistema' : 'Registrada no sistema como MEI'}</span>}</span>
             <button type="button" className="icon-btn icon-btn-sm" onClick={vm.tirarCartao} title="Tirar o cartão" aria-label="Tirar o cartão CNPJ"><Icone nome="x" /></button>
           </span>
         ) : (

@@ -8074,3 +8074,4 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .comissao-destaque b{font-size:28px;line-height:1.1;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
 .comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:190px;}
 @media (max-width:560px){.comissao-destaque{position:static;align-items:flex-start;}.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:0;}}
+.mei-cartao-registro{font-size:var(--fs-12);}
