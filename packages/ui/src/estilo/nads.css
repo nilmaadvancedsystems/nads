@@ -8229,3 +8229,14 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .cmc-anexo-icone-btn{color:var(--success);}
 .cmc-anexo-icone-btn:disabled{color:var(--ink-faint, var(--ink-muted));opacity:.45;cursor:default;}
 .cmc-anexo-icone-btn svg{width:16px;height:16px;}
+/* a caixa do total sem caixas dentro (19/11/2026: "to achando muitas boxes dentro da outra"): o total, A receber e Pagas lado a lado, separados
+   por uma linha fina; a barra embaixo; os anexos em ícones soltos embaixo do Pagas */
+.cmc-resumo.cmc-novo{grid-template-columns:minmax(220px,auto) 1fr;gap:28px;}
+.cmc-novo .cmc-partes{display:flex;flex-direction:column-reverse;gap:16px;}
+.cmc-novo .cmc-legenda{display:flex;gap:0;}
+.cmc-novo .cmc-legenda li{flex:1;padding:0 0 0 24px;border:0;border-left:1px solid var(--border);border-radius:0;background:none;min-height:0;align-content:start;}
+.cmc-novo .cmc-legenda b{font-size:24px;}
+.cmc-anexos-icones{position:static;grid-column:1 / -1;display:flex;gap:2px;margin:6px 0 0 -6px;}
+.cmc-anexo-icone-btn{border:0;background:none;width:28px;height:28px;}
+.cmc-anexo-icone-btn:not(:disabled):hover{background:var(--hover-bg);}
+@media (max-width:760px){.cmc-novo .cmc-legenda{flex-direction:column;gap:12px;}.cmc-novo .cmc-legenda li{border-left:0;padding-left:0;}}

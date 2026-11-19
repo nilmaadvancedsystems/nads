@@ -63,7 +63,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                 <b className="num">{vm.carregada ? <ValorQueSobe key={m.mes} valor={x.valor} /> : '—'}</b>
                 {/* os anexos do mês só como ícones no Pagas (Vitor, 19/11/2026: "Coloca so os icones na box de Pagas"): o holerite, o extrato
                     de comissões, o comprovante de pagamento e o das comissões; apagado o que ainda não chegou */}
-                {x.id === 'paga' && <AnexosDoMes vm={vm} mes={m.mes} />}
+                {x.id === 'paga' && <AnexosDoMes vm={vm} />}
               </li>
             ))}
           </ul>
@@ -177,7 +177,7 @@ function ValorQueSobe({ valor }: { valor: number }) {
 }
 
 /** Os 4 anexos do mês, em ícones (no cartão Pagas): o holerite, o extrato das comissões, o comprovante de pagamento e o das comissões. */
-function AnexosDoMes({ vm, mes }: { vm: ReturnType<typeof useMinhasComissoes>; mes: string }) {
+function AnexosDoMes({ vm }: { vm: ReturnType<typeof useMinhasComissoes> }) {
   const holerite = vm.docsDoMes.find(d => d.tipo === 'holerite') || null;
   const docComprovante = vm.docsDoMes.find(d => d.tipo !== 'holerite') || null;
   const compSalario = vm.pagsDoMes.filter(p => p.tipo !== 'comissao').flatMap(p => p.comprovantes.map(c => ({ p, c })))[0] || null;
@@ -193,7 +193,6 @@ function AnexosDoMes({ vm, mes }: { vm: ReturnType<typeof useMinhasComissoes>; m
       {icone('fileDown', 'Extrato de comissões', comissoes ? () => { const x = vm.extratoDeComissoes(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); } : null)}
       {icone('checkCircle', 'Comprovante de pagamento', docComprovante ? () => vm.abrirDocumento(docComprovante) : compSalario ? () => vm.abrirComprovante(compSalario.p.id, compSalario.c) : null)}
       {icone('dinheiro', 'Comprovante de comissões', compComissoes ? () => vm.abrirComprovante(compComissoes.p.id, compComissoes.c) : null)}
-      <span className="sr-only">{mes}</span>
     </span>
   );
 }
