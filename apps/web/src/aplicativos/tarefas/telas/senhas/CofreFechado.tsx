@@ -18,13 +18,9 @@ export function CofreFechado({ vm }: { vm: VmCofre }) {
           <h4>O cofre ainda não existe</h4>
           <BotaoAcao carregando={vm.ocupado} textoCarregando="Criando…" disabled={vm.dev} onClick={() => void vm.criar()}>Criar o cofre</BotaoAcao>
         </>
-      ) : vm.estado === 'aguardando' ? (
-        <h4>Aguardando a liberação</h4>
       ) : (
-        <>
-          <h4>Sem acesso ao cofre neste computador</h4>
-          <BotaoAcao carregando={vm.ocupado} textoCarregando="Pedindo…" disabled={vm.dev} onClick={() => void vm.pedirAcesso()}>Pedir acesso</BotaoAcao>
-        </>
+        // sem pedir permissão (19/11/2026): o pedido sai sozinho e quem tem acesso libera sozinho
+        <h4>Liberando o seu acesso: abre sozinho assim que alguém com acesso estiver no nads</h4>
       )}
       {vm.estado !== 'novo' && (
         <form className="cofre-codigo" onSubmit={e => { e.preventDefault(); if (codigo.trim()) void vm.recuperar(codigo); }}>
