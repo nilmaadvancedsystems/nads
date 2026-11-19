@@ -20,7 +20,7 @@ const painel = require('./painel');
 const pausaLocal = require('./pausa-local');
 const { criarFilaAlterdata, periodo } = require('./alterdata-fila');
 const numeros = require('./alterdata-numeros');
-const { garantirTelaAtiva } = require('./sessao-no-console');
+const { garantirTelaAtiva, minhaSessao, prepararSessao, explicarErro } = require('./sessao-no-console');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
 // ALTERDATA_ONDE: o nome de outro PC com o robô (alterdata-no-pc.js, 16/11/2026: "pc-<computador>")
@@ -33,6 +33,8 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
 const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py'), balancetePeriodo: path.join(__dirname, 'alterdata_balancete_periodo.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
+// a sessão do Windows do robô (19/11/2026, o acesso remoto no meio dos pedidos): a de agora, para explicar um erro
+const ROTEIRO_SESSAO = path.join(__dirname, 'alterdata_sessao.py');
 // a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
 // tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
 // "foto", "abas" e/ou "uia"), o robô tira o diagnóstico com a fila parada; a saída fica na pasta tela
@@ -110,14 +112,15 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
           : relatorio === 'dinamicoPeriodo' ? [String(a.codigo), a.inicio, a.fim, a.destino]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
-    const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
-    let resto = '', erros = '', resultado = null, prazoDoFim = null, terminou = false;
+    // ALTERDATA_SERVIDOR: no servidor, o roteiro não clica com alguém conectado por acesso remoto (alterdata_sessao.py)
+    const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA, ALTERDATA_SERVIDOR: ONDE === 'servidor' ? '1' : '' } });
+    let resto = '', erros = '', resultado = null, prazoDoFim = null, terminou = false, sessao = null;
     const diags = [];
     const terminar = () => {
       if (terminou) return;
       terminou = true;
       clearTimeout(prazoDoFim);
-      resolve(Object.assign(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }, diags.length ? { diag: diags.slice(-60) } : {}));
+      resolve(Object.assign(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }, diags.length ? { diag: diags.slice(-60) } : {}, sessao ? { sessao } : {}));
     };
     filho.stdout.on('data', b => {
       resto += b.toString('utf8');
@@ -130,6 +133,9 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
         if (c) void clique(c[1]);
         const t = l.match(/^TELA:\s*(.+)$/);
         if (t) registrarTela(t[1].trim());
+        // a sessão do começo (alterdata_tela.preparar_tela): o robô compara com a do fim se der erro
+        const se = l.match(/^SESSAO:\s*(\{.*\})\s*$/);
+        if (se) { try { sessao = JSON.parse(se[1]); } catch (_) { /* mal escrita */ } }
         // o que o roteiro do Fiscal viu na tela (16/11/2026: as telas do Fiscal ainda estão sendo aprendidas)
         const dg = l.match(/^DIAG:\s*(.+)$/);
         if (dg) { registrarDiag(dg[1].trim()); diags.push(dg[1].trim().slice(0, 300)); }
@@ -180,13 +186,18 @@ function iniciarAlterdata(db, log) {
   let estadoFiscal = '';
   async function verificar() {
     // no servidor: a sessão do robô desconectada (o RDP fechado) vai para o console, senão nenhum clique funciona
+    // com alguém conectado por acesso remoto (19/11/2026), o robô não clica nem digita nada: nem o "Ver depois", nem o login
+    let comAlguem = false;
     if (ONDE === 'servidor') {
-      const c = await garantirTelaAtiva().catch(e => 'não consegui ver a sessão: ' + e.message);
+      const s = await minhaSessao().catch(() => null);
+      comAlguem = !!(s && s.remota && /^(ativ|activ)/i.test(s.estado));
+      const c = comAlguem ? 'alguém está usando o servidor por acesso remoto (sessão ' + s.id + ', ' + s.nome + '): o robô espera para clicar'
+        : await garantirTelaAtiva(s).catch(e => 'não consegui ver a sessão: ' + e.message);
       if (c && c !== ultimoConsole) log('Alterdata: ' + c);
       ultimoConsole = c;
     }
     let r = await estadoDoContabil();
-    if (r.aviso && await verDepois(r.aviso)) r = await estadoDoContabil();
+    if (r.aviso && !comAlguem && await verDepois(r.aviso)) r = await estadoDoContabil();
     // com a tela de atualizações na frente, o Contábil não está pronto para relatório
     if (r.aviso && r.estado === 'ok') r.estado = 'abrindo';
     // um prazo estourado sozinho não muda o estado (o servidor às vezes demora a abrir o Python); dois seguidos, sim
@@ -210,7 +221,7 @@ function iniciarAlterdata(db, log) {
     if (r.fiscal && r.fiscal !== estadoFiscal) { log('Alterdata: o Fiscal deste ' + ONDE + ' está ' + (ESTADOS[r.fiscal] || r.fiscal)); estadoFiscal = r.fiscal; }
     const sinal = { ligado: true, maquinas: { [ONDE]: { contabil: estado, fiscal: estadoFiscal, login: loginParado, em: agora() } }, atualizadoEm: agora() };
     if (batidaDoEstado.vale(sinal)) await estadoDoc.set(sinal, { merge: true }).catch(() => batidaDoEstado.falhou());
-    if (estado === 'login' || estado === 'fechado') void entrarSozinho(estado);
+    if ((estado === 'login' || estado === 'fechado') && !comAlguem) void entrarSozinho(estado);
     return estado;
   }
 
@@ -401,7 +412,32 @@ function iniciarAlterdata(db, log) {
     },
   };
 
-  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata'),
+  // Cada roteiro, no servidor, com a sessão conferida antes e o erro explicado depois (19/11/2026: o acesso remoto no meio
+  // dos pedidos). Antes: desconectada vai para o console e espera; com alguém conectado, nem roda (o pedido volta para a
+  // fila, esperando). Depois de um erro: a sessão de agora (alterdata_sessao.py) contra a do começo; se alguém entrou ou
+  // saiu, ou a tela mudou, o erro diz isso.
+  let ultimaSessao = '';
+  async function rodarComSessao(relatorio, a, passo, sinal, clique) {
+    if (ONDE !== 'servidor') return rodarRoteiro(relatorio, a, passo, sinal, clique);
+    const antes = await prepararSessao().catch(e => ({ ok: true, feito: 'não consegui ver a sessão: ' + e.message }));
+    if (antes.feito) log('Alterdata: ' + antes.feito);
+    if (!antes.ok) {
+      if (antes.erro !== ultimaSessao) log('Alterdata: não rodei o ' + relatorio + ': ' + antes.erro);
+      ultimaSessao = antes.erro;
+      return { ok: false, erro: antes.erro };
+    }
+    ultimaSessao = '';
+    const r = await rodarRoteiro(relatorio, a, passo, sinal, clique);
+    if (r.ok || (sinal && sinal.aborted)) return r;
+    const p = await rodarPy(ROTEIRO_SESSAO, [], 60 * 1000);
+    let depois = null;
+    try { depois = JSON.parse((p.out.match(/SESSAO:\s*(\{.*\})/) || [])[1]); } catch (_) { /* sem resposta: o erro fica como veio */ }
+    const erro = explicarErro(r.erro, r.sessao || null, depois);
+    if (erro !== r.erro) log('Alterdata: o ' + relatorio + ' parou porque a sessão mudou (' + String(r.erro).slice(0, 160) + ')');
+    return { ...r, erro };
+  }
+
+  const fila = criarFilaAlterdata({ banco, rodar: rodarComSessao, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata'),
     // ALTERDATA_COPIA: a pasta onde fica uma cópia de cada planilha do Fiscal (alterdata-no-pc.js: Downloads\robo)
     copiarPara: process.env.ALTERDATA_COPIA || '',
     // o Cancelar do nads (17/11/2026): fecha o que o roteiro deixou aberto no Alterdata

@@ -78,23 +78,35 @@ def filhos(w, cls=None, texto=None):
     return r
 
 
+def apertar(b):
+    """Aperta um botão ao limpar: o clique de verdade e, sem área de trabalho (o acesso remoto caiu no meio, 19/11/2026),
+    a mensagem de clique (BM_CLICK), que não precisa do mouse. Um botão que falha não impede os outros de fechar."""
+    try:
+        b.click_input()
+    except Exception:
+        try:
+            b.click()
+        except Exception:
+            pass
+
+
 def limpar():
     """Fecha o que este roteiro abre (visualização, Salvar como, Imprimir, Balancete), sem gerar nada."""
     fechou = False   # só espera quando fechou alguma coisa (antes eram 2 × 0,5 s sempre, também no começo)
     for w in janelas('TMessageForm'):   # pergunta aberta: Não (ou Cancelar), nunca Sim
         for b in filhos(w):
             if (b.window_text() or '').replace('&', '') in ('Não', 'Nao', 'Cancelar'):
-                b.click_input()
+                apertar(b)
                 fechou = True
                 break
     for w in janelas('#32770', 'Salvar como'):
         for b in filhos(w, 'Button'):
             if b.control_id() == 2:
-                b.click_input()
+                apertar(b)
                 fechou = True
     for w in janelas('TAlterdataPpPrintDialogPatch'):
         for b in filhos(w, 'TButton', 'Cancelar'):
-            b.click_input()
+            apertar(b)
             fechou = True
     for w in janelas('TAlterdataTppPrintPreview'):
         w.close()
@@ -103,7 +115,7 @@ def limpar():
         time.sleep(.5)
     for w in janelas('TfrmBalanceteRelatorioConfiguracoes'):
         for b in filhos(w, 'TcxButton', '&Cancelar'):
-            b.click_input()
+            apertar(b)
             time.sleep(.5)
 
 
