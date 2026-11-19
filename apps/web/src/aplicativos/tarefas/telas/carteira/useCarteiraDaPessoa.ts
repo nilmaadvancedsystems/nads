@@ -1,12 +1,13 @@
 // Os ViewModels da Carteira (12/11/2026): o que cada tela mostra e faz, a partir do repositório (as telas não falam com
 // ele). A lógica de conta é do core (carteira); aqui fica o estado da tela e as ações com o aviso de erro.
-import { carteira, empresas, type financeiro } from '@nads/core';
+import { carteira, empresas, usuarios, type financeiro } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
 import { empresasNovas } from '../../dados/fonte';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
+import { useOperador } from '../../casca/operador';
 import { useAcesso, useCarteira, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
@@ -73,7 +74,12 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   // a escondida não muda depois de registrada (o valor do serviço sai do banco quando o robô calcula): só apaga, enquanto lançada
   const travada = !!comissao && (!carteira.podeEditar(comissao) || oculta);
   // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço (a escondida vai sem)
-  const percentual = travada ? comissao!.percentual ?? 0 : oculta ? 0 : carteira.percentualDoServico(servicos.lista, servico);
+  // o Diretor define a % no lançamento (Vitor, 19/11/2026: "O diretor, pode definir a comissao diretamente dessa tela, abaixo do
+  // valor, APENAS DIRETORES podem definir a porcentagem de comissao no lancamento"): pelo nível da conta (Diretor e Dono); vazio, a do serviço
+  const diretor = usuarios.nivelDeDiretor(useOperador().operador?.nivel);
+  const [pctDoDiretor, setPctDoDiretor] = useState(comissao?.percentual != null && comissao.percentual !== carteira.percentualDoServico(servicos.lista, comissao.servico ?? '') ? String(comissao.percentual).replace('.', ',') : '');
+  const pctDigitado = diretor && pctDoDiretor.trim() ? Number(pctDoDiretor.replace(',', '.')) : NaN;
+  const percentual = travada ? comissao!.percentual ?? 0 : oculta ? 0 : Number.isFinite(pctDigitado) ? Math.min(100, Math.max(0, pctDigitado)) : carteira.percentualDoServico(servicos.lista, servico);
   const vs = valorDigitado(valorServico);
   const cliente = avulso ? nomeAvulso : clientes.find(c => c.codigo === clienteCodigo)?.nome ?? comissao?.cliente ?? '';
   const pessoas = equipe.lista.filter(u => u.ativo).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -86,6 +92,9 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     escolherCliente: (codigo: number) => { setAvulso(false); setClienteCodigo(codigo); },
     marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
     servicos: servicos.lista, servico, setServico, percentual, oculta,
+    /** só o Diretor e o Dono definem a % no lançamento; o texto digitado ('' = a do serviço) e a do serviço, para o lugar vazio */
+    podeDefinirPercentual: diretor && !oculta, pctDoDiretor, setPctDoDiretor: (v: string) => setPctDoDiretor(v.replace(/[^\d,.]/g, '').slice(0, 6)),
+    percentualDoServico: carteira.percentualDoServico(servicos.lista, servico),
     /** apagar: a própria pessoa, enquanto está lançada (a escondida também) */
     podeApagar: !!comissao && carteira.podeEditar(comissao),
     valorServico, setValorServico,

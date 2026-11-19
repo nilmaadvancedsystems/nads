@@ -8075,3 +8075,11 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:190px;}
 @media (max-width:560px){.comissao-destaque{position:static;align-items:flex-start;}.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:0;}}
 .mei-cartao-registro{font-size:var(--fs-12);}
+/* a % da comissão do Diretor (19/11/2026): o campo curto com o % ao lado */
+.comissao-pct{display:inline-flex;align-items:center;gap:6px;}
+.registro-prop-valor .comissao-pct input{width:72px;flex:none;text-align:right;border:1px solid var(--border);border-radius:6px;background:transparent;padding:7px 8px;font-size:var(--fs-14);color:var(--ink);}
+/* a Carteira › Financeiro (19/11/2026): as comissões e os holerites numa tela só, cada parte com o título */
+.carteira-financeiro{display:flex;flex-direction:column;gap:8px;}
+.carteira-secao{margin:8px 0 0;font-size:var(--fs-16, 16px);font-weight:600;color:var(--ink);}
+.carteira-financeiro .carteira-secao + section{margin-top:0;}
+.carteira-financeiro .carteira-secao:not(:first-child){margin-top:24px;padding-top:20px;border-top:1px solid var(--border-muted);}

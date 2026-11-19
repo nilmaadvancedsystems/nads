@@ -30,7 +30,9 @@ export function SeletorDoMes({ mes, setMes, meses }: ReturnType<typeof useMes>) 
 }
 
 const TOM: Record<carteira.SituacaoDaComissao, string> = { lancada: 'badge-warn', aprovada: 'badge-suave badge-info', paga: 'badge-ok', recusada: 'badge-bad' };
-export function SeloDaComissao({ s }: { s: carteira.SituacaoDaComissao }) {
+/** semAprovacao: na Carteira da pessoa a lançada e a aprovada são só "A receber" (Vitor, 19/11/2026: "nao existe aprovacao") */
+export function SeloDaComissao({ s, semAprovacao }: { s: carteira.SituacaoDaComissao; semAprovacao?: boolean }) {
+  if (semAprovacao && (s === 'lancada' || s === 'aprovada')) return <span className={'badge ' + TOM.aprovada}>A receber</span>;
   return <span className={'badge ' + TOM[s]}>{carteira.rotuloDaSituacao(s)}</span>;
 }
 

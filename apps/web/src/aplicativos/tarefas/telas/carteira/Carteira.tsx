@@ -14,5 +14,13 @@ export function Carteira({ pagina }: { pagina: string }) {
   // os Insumos são de toda a equipe (12/11/2026)
   if (pagina === 'insumos') return <Insumos />;
   if (!carteiraLiberada(operador)) return <CarteiraEmBreve />;
-  return pagina === 'documentos' ? <HoleritesEPagamentos /> : <MinhasComissoes />;
+  // o Financeiro (19/11/2026): as comissões em cima e, embaixo, os holerites e pagamentos, numa tela só
+  return (
+    <div className="carteira-financeiro">
+      <h3 className="carteira-secao">Comissões</h3>
+      <MinhasComissoes />
+      <h3 className="carteira-secao">Holerites e pagamentos</h3>
+      <HoleritesEPagamentos />
+    </div>
+  );
 }

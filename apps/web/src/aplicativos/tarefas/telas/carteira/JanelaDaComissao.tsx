@@ -137,6 +137,17 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                 <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
               </Propriedade>
             )}
+            {/* a % da comissão, só para o Diretor e o Dono (Vitor, 19/11/2026: "APENAS DIRETORES podem definir a porcentagem de comissao no
+                lancamento"); vazio, vale a do serviço */}
+            {vm.podeDefinirPercentual && !travada && (
+              <Propriedade icone="hash" rotulo="% da comissão">
+                <span className="comissao-pct">
+                  <input type="text" inputMode="decimal" value={vm.pctDoDiretor} onChange={e => vm.setPctDoDiretor(e.target.value)} aria-label="Porcentagem da comissão"
+                    placeholder={vm.percentualDoServico ? String(vm.percentualDoServico).replace('.', ',') : '0'} title="Só o Diretor define. Vazio: a % do serviço" />
+                  <span className="hint">%{!vm.pctDoDiretor && (vm.percentualDoServico ? ' (a do serviço)' : ' (o serviço ainda não tem %)')}</span>
+                </span>
+              </Propriedade>
+            )}
             {/* só o valor, sem a porcentagem (Vitor, 13/11/2026: "oculte a porcentagem para o usuario"; "o valor da comissao aparece, menos a
                 porcentagem..., tira isso de financeiro ainda nao decidiu"); a escondida nem o valor (16/11/2026) */}
             {vm.oculta ? (
