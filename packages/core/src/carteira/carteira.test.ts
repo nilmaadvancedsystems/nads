@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContaAPagar } from '../financeiro/contasPagar';
 import {
-  comValorParaAPessoa, conferirComissao, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
+  comValorParaAPessoa, conferirComissao, conferirDataDaPessoa, pessoaPodeMexer, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
   resumoParaPagar, salarioDoMes, totaisDasComissoes, ultimosMeses, type Comissao, type DocumentoDaCarteira, type Lancamento,
 } from '.';
 
@@ -100,5 +100,11 @@ describe('a comissão escondida (16/11/2026)', () => {
   it('sem o cálculo do robô, fica fora do Aprovar tudo', () => {
     expect([esperandoCalculo(visivel), esperandoCalculo(naFila), esperandoCalculo(feita)]).toEqual([false, true, false]);
     expect(resumoParaPagar([visivel, naFila, feita])[0].ids.lancadas).toEqual(['a', 'c']);
+  });
+  it('virou o mês, a da pessoa trava e a data de mês passado só o Financeiro lança (19/11/2026)', () => {
+    const c = { id: 'x', uid: 'v', nome: 'P', competencia: '2026-12', data: '2026-11-19', cliente: 'C', descricao: 'S', valor: 10, situacao: 'lancada' as const, criadoEm: '' };
+    expect([pessoaPodeMexer(c, new Date(2026, 10, 30)), pessoaPodeMexer(c, new Date(2026, 11, 1))]).toEqual([true, false]);
+    expect(conferirDataDaPessoa('2026-11-19', new Date(2026, 10, 19))).toBe('');
+    expect(conferirDataDaPessoa('2026-10-31', new Date(2026, 10, 19))).not.toBe('');
   });
 });

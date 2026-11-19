@@ -70,7 +70,7 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
       return { bytes: tf.planilhaXlsx('Comissões', ['Data', 'Cliente', 'Porte', 'Serviço', 'Comissão', 'Status'], linhas), nome: 'Extrato de comissões ' + carteira.mesPorExtenso(m.mes) + '.xlsx' };
     },
     /** os ⋯ da tabela (19/11/2026: "coloca a opcao de editar e excluir, um 3 pontinhos"): só a comissão ainda lançada muda ou sai */
-    podeMexer: (c: carteira.Comissao) => carteira.podeEditar(c),
+    podeMexer: (c: carteira.Comissao) => carteira.pessoaPodeMexer(c, new Date()),
     async excluir(c: carteira.Comissao) {
       const ok = await modal<boolean>({ icone: 'alert', titulo: 'Excluir a comissão?', texto: c.cliente + ' · ' + (c.oculta ? c.descricao : formatos.reais(c.valor)),
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
@@ -142,7 +142,8 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // a escondida não muda depois de registrada (o valor do serviço sai do banco quando o robô calcula): só apaga, enquanto lançada
-  const travada = !!comissao && (!carteira.podeEditar(comissao) || oculta);
+  // virou o mês, a da pessoa trava (19/11/2026); o Financeiro continua mexendo
+  const travada = !!comissao && (!carteira.podeEditar(comissao) || oculta || (!doFinanceiro && !carteira.pessoaPodeMexer(comissao, agora)));
   // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço (a escondida vai sem)
   // o Diretor define a % no lançamento (Vitor, 19/11/2026: "O diretor, pode definir a comissao diretamente dessa tela, abaixo do
   // valor, APENAS DIRETORES podem definir a porcentagem de comissao no lancamento"): pelo nível da conta (Diretor e Dono); vazio, a do serviço
@@ -169,7 +170,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     podeDefinirPercentual: diretor && !oculta, pctDoDiretor, setPctDoDiretor: (v: string) => setPctDoDiretor(v.replace(/[^\d,.]/g, '').slice(0, 6)),
     percentualDoServico: carteira.percentualDoServico(servicos.lista, servico),
     /** apagar: a própria pessoa, enquanto está lançada (a escondida também) */
-    podeApagar: !!comissao && carteira.podeEditar(comissao),
+    podeApagar: !!comissao && (doFinanceiro ? carteira.podeEditar(comissao) : carteira.pessoaPodeMexer(comissao, agora)),
     valorServico, setValorServico,
     /** a comissão que vai sair (valor do serviço × %) */
     valor: travada ? comissao!.valor : vs > 0 && percentual > 0 ? carteira.valorDaComissao(vs, percentual) : 0,
@@ -179,7 +180,8 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
         competencia, data: isoDaData(data), cliente: cliente.trim(), clienteCodigo: avulso ? null : clienteCodigo, porte: avulso ? porte : null,
         servico, valorServico: vs, percentual, ...(oculta ? { oculta: true } : {}),
       };
-      const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...carteira.conferirComissao(c)];
+      const retroativa = doFinanceiro ? '' : carteira.conferirDataDaPessoa(c.data, new Date());
+      const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...(retroativa ? [retroativa] : []), ...carteira.conferirComissao(c)];
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);
