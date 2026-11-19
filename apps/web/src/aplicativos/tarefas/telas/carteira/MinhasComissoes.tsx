@@ -61,6 +61,9 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                 <span className={'cmc-ponto cmc-' + x.id} aria-hidden="true" />
                 <span className="cmc-rotulo">{x.rotulo}</span>
                 <b className="num">{vm.carregada ? <ValorQueSobe key={m.mes} valor={x.valor} /> : '—'}</b>
+                {/* os anexos do mês só como ícones no Pagas (Vitor, 19/11/2026: "Coloca so os icones na box de Pagas"): o holerite, o extrato
+                    de comissões, o comprovante de pagamento e o das comissões; apagado o que ainda não chegou */}
+                {x.id === 'paga' && <AnexosDoMes vm={vm} mes={m.mes} />}
               </li>
             ))}
           </ul>
@@ -149,40 +152,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         )}
       </section>
 
-      {/* os anexos do mês em 4 caixas (Vitor, 19/11/2026: "Deixa 4 boxes: Holerite, Extrato de Comissoes, Comprovante de pagamento, Comprovante
-          de Comissoes. Deixa essas 4 boxes bem charmosas"): cada uma com o ícone, o que tem e o Abrir/Baixar; sem nada, apagada */}
-      {(() => {
-        const holerite = vm.docsDoMes.find(d => d.tipo === 'holerite') || null;
-        const docComprovante = vm.docsDoMes.find(d => d.tipo !== 'holerite') || null;
-        const compSalario = vm.pagsDoMes.filter(p => p.tipo !== 'comissao').flatMap(p => p.comprovantes.map(c => ({ p, c })));
-        const compComissoes = vm.pagsDoMes.filter(p => p.tipo === 'comissao').flatMap(p => p.comprovantes.map(c => ({ p, c })));
-        const comissoes = lista.filter(c => c.situacao !== 'recusada').length;
-        const caixa = (chave: string, icone: 'recibo' | 'fileDown' | 'checkCircle' | 'dinheiro', titulo: string, tem: boolean, sub: string, acoes: ReactNode) => (
-          <li key={chave} className={'cmc-anexo-caixa cmc-anexo-' + chave + (tem ? '' : ' vazio')}>
-            <span className="cmc-anexo-selo" aria-hidden="true"><Icone nome={icone} /></span>
-            <b className="cmc-anexo-nome">{titulo}</b>
-            <span className="cmc-anexo-sub" title={sub}>{sub}</span>
-            <span className="cmc-anexo-acoes">{acoes}</span>
-          </li>
-        );
-        return (
-          <ul className="cmc-anexos-caixas" aria-label="Os anexos do mês">
-            {caixa('holerite', 'recibo', 'Holerite', !!holerite, holerite ? holerite.arquivo : 'Ainda não chegou',
-              holerite ? <>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.abrirDocumento(holerite)}><Icone nome="olho" />Abrir</button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.baixarDocumento(holerite)} aria-label="Baixar o holerite" title="Baixar"><Icone nome="download" /></button>
-              </> : null)}
-            {caixa('extrato', 'fileDown', 'Extrato de comissões', comissoes > 0, comissoes ? (comissoes === 1 ? '1 comissão' : comissoes + ' comissões') + ' em ' + carteira.mesPorExtenso(m.mes).split(' ')[0] : 'Nenhuma comissão no mês',
-              comissoes > 0 ? <button type="button" className="btn btn-outline btn-sm" onClick={() => { const x = vm.extratoDeComissoes(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}><Icone nome="download" />Baixar</button> : null)}
-            {caixa('pagamento', 'checkCircle', 'Comprovante de pagamento', !!docComprovante || compSalario.length > 0,
-              docComprovante ? docComprovante.arquivo : compSalario.length ? compSalario[0].c.nome : 'Ainda não chegou',
-              docComprovante ? <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.abrirDocumento(docComprovante)}><Icone nome="olho" />Abrir</button>
-                : compSalario.length ? compSalario.map(({ p, c }) => <button key={p.id + c.id} type="button" className="btn btn-outline btn-sm" title={c.nome} onClick={() => vm.abrirComprovante(p.id, c)}><Icone nome="olho" />Abrir</button>) : null)}
-            {caixa('comissoes', 'dinheiro', 'Comprovante de comissões', compComissoes.length > 0, compComissoes.length ? compComissoes[0].c.nome : 'Ainda não chegou',
-              compComissoes.length ? compComissoes.map(({ p, c }) => <button key={p.id + c.id} type="button" className="btn btn-outline btn-sm" title={c.nome} onClick={() => vm.abrirComprovante(p.id, c)}><Icone nome="olho" />Abrir</button>) : null)}
-          </ul>
-        );
-      })()}
+
     </section>
   );
 }
@@ -204,4 +174,26 @@ function ValorQueSobe({ valor }: { valor: number }) {
     return () => cancelAnimationFrame(quadro);
   }, [valor]);
   return <>{formatos.reais(Math.round(v * 100) / 100)}</>;
+}
+
+/** Os 4 anexos do mês, em ícones (no cartão Pagas): o holerite, o extrato das comissões, o comprovante de pagamento e o das comissões. */
+function AnexosDoMes({ vm, mes }: { vm: ReturnType<typeof useMinhasComissoes>; mes: string }) {
+  const holerite = vm.docsDoMes.find(d => d.tipo === 'holerite') || null;
+  const docComprovante = vm.docsDoMes.find(d => d.tipo !== 'holerite') || null;
+  const compSalario = vm.pagsDoMes.filter(p => p.tipo !== 'comissao').flatMap(p => p.comprovantes.map(c => ({ p, c })))[0] || null;
+  const compComissoes = vm.pagsDoMes.filter(p => p.tipo === 'comissao').flatMap(p => p.comprovantes.map(c => ({ p, c })))[0] || null;
+  const comissoes = vm.lista.filter(c => c.situacao !== 'recusada').length;
+  const icone = (nome: 'recibo' | 'fileDown' | 'checkCircle' | 'dinheiro', titulo: string, onClick: (() => void) | null) => (
+    <button type="button" className="icon-btn icon-btn-sm cmc-anexo-icone-btn" disabled={!onClick} onClick={onClick || undefined}
+      title={onClick ? titulo : titulo + ': ainda não chegou'} aria-label={titulo}><Icone nome={nome} /></button>
+  );
+  return (
+    <span className="cmc-anexos-icones">
+      {icone('recibo', 'Holerite', holerite ? () => vm.abrirDocumento(holerite) : null)}
+      {icone('fileDown', 'Extrato de comissões', comissoes ? () => { const x = vm.extratoDeComissoes(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); } : null)}
+      {icone('checkCircle', 'Comprovante de pagamento', docComprovante ? () => vm.abrirDocumento(docComprovante) : compSalario ? () => vm.abrirComprovante(compSalario.p.id, compSalario.c) : null)}
+      {icone('dinheiro', 'Comprovante de comissões', compComissoes ? () => vm.abrirComprovante(compComissoes.p.id, compComissoes.c) : null)}
+      <span className="sr-only">{mes}</span>
+    </span>
+  );
 }
