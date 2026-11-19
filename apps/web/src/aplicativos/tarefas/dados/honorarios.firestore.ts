@@ -3,8 +3,10 @@
 //     atualizadoPor?, cobrancas?: {AAAA-MM: {em, por}}}; ao vivo;
 //   - financeiroRecebimentos/{contratoId}_{AAAA-MM}: {contratoId, competencia, valor, recebidoEm, forma, lancamentoId?,
 //     observacoes?, por, em}; ao vivo.
+// O boleto pelo Efí (19/11/2026): no contrato, diaVencimento? e boletosEfi.{AAAA-MM} (o pedido da tela; o robô
+// robo/boletos-efi.js emite e grava o resultado); a multa, os juros e o dia padrão em config/boletoEfi (só o admin grava).
 import { financeiro } from '@nads/core';
-import { addDoc, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc as deleteDocBruto, deleteField, doc, onSnapshot, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import type { ListaAoVivo } from './agentes';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -29,9 +31,12 @@ function cobrancasDoBanco(v: unknown): Record<string, { em: string; por: string 
 }
 
 function contratoDoBanco(id: string, d: Record<string, unknown>): financeiro.ContratoDeHonorario {
+  const boletosEfi = financeiro.boletosEfiDoBanco(d.boletosEfi);
   return {
     id, clienteId: texto(d.clienteId), codigo: texto(d.codigo), nome: texto(d.nome), cnpj: texto(d.cnpj).replace(/\D/g, ''),
     valor: Number(d.valor) || 0, ativo: d.ativo !== false, observacoes: texto(d.observacoes) || undefined, cobrancas: cobrancasDoBanco(d.cobrancas),
+    ...(financeiro.diaDeVencimentoValido(d.diaVencimento) ? { diaVencimento: d.diaVencimento } : {}),
+    ...(boletosEfi ? { boletosEfi } : {}),
     criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), atualizadoEm: texto(d.atualizadoEm) || undefined, atualizadoPor: texto(d.atualizadoPor) || undefined,
   };
 }
@@ -53,6 +58,7 @@ export function criarHonorariosFirestore(): RepoHonorarios {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let contratos: ListaAoVivo<financeiro.ContratoDeHonorario> | null = null;
   let recebimentos: ListaAoVivo<financeiro.RecebimentoDeHonorario> | null = null;
+  let configDoBoleto: { carregada: boolean; config: financeiro.ConfigDoBoletoEfi; erro: string } | null = null;
 
   return {
     exemplos: false,
@@ -84,7 +90,11 @@ export function criarHonorariosFirestore(): RepoHonorarios {
       };
       const antes = d.id ? contratos?.lista.find(x => x.id === d.id) : undefined;
       if (d.id && antes) {
-        await setDoc(doc(db, 'financeiroHonorarios', d.id), { ...base, ...(antes.cobrancas ? { cobrancas: antes.cobrancas } : {}), criadoEm: antes.criadoEm, criadoPor: antes.criadoPor, atualizadoEm: agora, atualizadoPor: quem });
+        // o que a tela não edita aqui (as cobranças, o dia de vencimento e os boletos do Efí) segue como estava
+        await setDoc(doc(db, 'financeiroHonorarios', d.id), {
+          ...base, ...(antes.cobrancas ? { cobrancas: antes.cobrancas } : {}), ...(antes.diaVencimento ? { diaVencimento: antes.diaVencimento } : {}),
+          ...(antes.boletosEfi ? { boletosEfi: antes.boletosEfi } : {}), criadoEm: antes.criadoEm, criadoPor: antes.criadoPor, atualizadoEm: agora, atualizadoPor: quem,
+        });
         return d.id;
       }
       return (await addDocGuardado(collection(db, 'financeiroHonorarios'), { ...base, criadoEm: agora, criadoPor: quem })).id;
@@ -104,6 +114,31 @@ export function criarHonorariosFirestore(): RepoHonorarios {
       });
     },
     async desfazer(contratoId, competencia) { await deleteDoc(doc(db, 'financeiroRecebimentos', financeiro.idDoRecebimento(contratoId, competencia))); },
+    async definirDiaVencimento(id, dia, quem) {
+      await updateDoc(doc(db, 'financeiroHonorarios', id), { diaVencimento: dia ?? deleteField(), atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
+    },
+    async pedirBoletos(pedidos) {
+      // o campo com caminho (boletosEfi.2026-10) muda só essa competência
+      for (const p of pedidos) await updateDoc(doc(db, 'financeiroHonorarios', p.contratoId), { ['boletosEfi.' + p.competencia]: p.boleto });
+    },
+    configDoBoleto() {
+      if (!configDoBoleto) {
+        configDoBoleto = { carregada: false, config: financeiro.CONFIG_PADRAO_DO_BOLETO, erro: '' };
+        onSnapshot(doc(db, 'config', 'boletoEfi'), s => {
+          configDoBoleto = { carregada: true, config: financeiro.configDoBoletoDoBanco(s.data()), erro: '' };
+          mudou();
+        }, err => { configDoBoleto = { carregada: true, config: financeiro.CONFIG_PADRAO_DO_BOLETO, erro: err.message }; mudou(); });
+      }
+      return configDoBoleto;
+    },
+    async salvarConfigDoBoleto(c, quem) {
+      try {
+        await setDoc(doc(db, 'config', 'boletoEfi'), { multa: c.multa, jurosAoMes: c.jurosAoMes, diaPadrao: c.diaPadrao, atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(/permission|insufficient/i.test(msg) ? 'Só o admin muda a configuração do boleto.' : msg, { cause: err });
+      }
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

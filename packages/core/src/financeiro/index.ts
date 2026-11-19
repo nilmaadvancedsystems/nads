@@ -176,6 +176,7 @@ export * from './gestao';
 export * from './resultado';
 export * from './banco';
 export * from './extratoPelaApi';
+export * from './boletoEfi';
 export * from './contasPagar';
 export * from './boleto';
 export * from './loteDeBoletos';

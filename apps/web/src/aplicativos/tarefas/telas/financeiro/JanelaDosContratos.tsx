@@ -1,6 +1,6 @@
 // A janela Clientes dos honorários (19/10/2026): quem controla honorário. Em cima o Adicionar cliente (busca na lista do
 // escritório por código ou nome); embaixo cada contrato com o valor, as observações e o interruptor de ativo (quem sai de
-// ativo some da lista do mês, mas o histórico fica).
+// ativo some da lista do mês, mas o histórico fica). Em 19/11/2026: o dia de vencimento do boleto (vazio = o padrão).
 import { BotaoFechar, Icone, Interruptor, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { ValorEditavel } from './partes/ValorEditavel';
@@ -44,6 +44,9 @@ export function JanelaDosContratos({ fechar }: { fechar: () => void }) {
                   <span className="emp-cod">{c.codigo || '—'}</span>
                   <span className="fin-contrato-nome" title={c.nome}>{c.nome}</span>
                   <ValorEditavel valor={c.valor} rotulo={'Valor do honorário de ' + c.nome} aoSalvar={t => void vm.definirValor(c.id, t)} />
+                  <input type="text" inputMode="numeric" className="fin-contrato-dia" defaultValue={c.diaVencimento ?? ''} key={c.id + '|' + (c.diaVencimento ?? '')}
+                    placeholder={'Dia ' + vm.diaPadrao} title="Dia de vencimento do boleto (vazio = o padrão)" aria-label={'Dia de vencimento do boleto de ' + c.nome} maxLength={2}
+                    onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} onBlur={e => void vm.definirDia(c, e.target.value)} />
                   <input type="text" className="fin-contrato-obs" defaultValue={c.observacoes ?? ''} placeholder="Observações" aria-label={'Observações de ' + c.nome}
                     onBlur={e => void vm.salvarObservacoes(c, e.target.value)} />
                   <Interruptor ligado={c.ativo} onMudar={() => void vm.alternarAtivo(c)} rotulo={'Honorário de ' + c.nome + ' ativo'} />

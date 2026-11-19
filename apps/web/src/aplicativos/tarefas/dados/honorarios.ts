@@ -43,6 +43,14 @@ export interface RepoHonorarios {
   registrarCobranca(contratoId: string, competencia: string, quem: string): Promise<void>;
   /** apaga o recebimento do mês */
   desfazer(contratoId: string, competencia: string): Promise<void>;
+  /** o dia de vencimento do boleto do contrato (null = o padrão; 19/11/2026, boleto pelo Efí) */
+  definirDiaVencimento(id: string, dia: number | null, quem: string): Promise<void>;
+  /** pede os boletos ao robô (boletosEfi.AAAA-MM = o pedido, no contrato); o robô emite no Efí */
+  pedirBoletos(pedidos: readonly { contratoId: string; competencia: string; boleto: financeiro.BoletoEfiDoMes }[]): Promise<void>;
+  /** a multa, os juros e o dia padrão do boleto (config/boletoEfi), ao vivo */
+  configDoBoleto(): { carregada: boolean; config: financeiro.ConfigDoBoletoEfi; erro: string };
+  /** grava a configuração do boleto (só o admin, pelas regras de config/) */
+  salvarConfigDoBoleto(c: financeiro.ConfigDoBoletoEfi, quem: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -63,6 +71,7 @@ export function criarHonorariosMemoria(): RepoHonorarios {
   const r = (contratoId: string, valor: number, forma: financeiro.FormaDeRecebimento): financeiro.RecebimentoDeHonorario =>
     ({ id: financeiro.idDoRecebimento(contratoId, '2026-09'), contratoId, competencia: '2026-09', valor, recebidoEm: '2026-10-05', forma, por: 'Exemplo', em: agora() });
   let recebimentos: financeiro.RecebimentoDeHonorario[] = [r('h1', 850, 'pix'), r('h3', 1200, 'boleto')];
+  let configDoBoleto: financeiro.ConfigDoBoletoEfi = { multa: 2, jurosAoMes: 1, diaPadrao: 10 };
   return {
     exemplos: true,
     contratos: () => ({ carregada: true, lista: [...contratos], erro: '' }),
@@ -89,6 +98,31 @@ export function criarHonorariosMemoria(): RepoHonorarios {
       mudou();
     },
     async desfazer(contratoId, competencia) { const id = financeiro.idDoRecebimento(contratoId, competencia); recebimentos = recebimentos.filter(x => x.id !== id); mudou(); },
+    async definirDiaVencimento(id, dia, quem) {
+      contratos = contratos.map(x => {
+        if (x.id !== id) return x;
+        const novo: financeiro.ContratoDeHonorario = { ...x, atualizadoEm: agora(), atualizadoPor: quem };
+        if (dia) novo.diaVencimento = dia; else delete novo.diaVencimento;
+        return novo;
+      });
+      mudou();
+    },
+    // nos exemplos o "robô" emite um boleto de teste logo depois do pedido
+    async pedirBoletos(pedidos) {
+      const gravar = (contratoId: string, competencia: string, b: financeiro.BoletoEfiDoMes) => {
+        contratos = contratos.map(x => (x.id === contratoId ? { ...x, boletosEfi: { ...x.boletosEfi, [competencia]: b } } : x));
+        mudou();
+      };
+      for (const p of pedidos) {
+        gravar(p.contratoId, p.competencia, p.boleto);
+        setTimeout(() => gravar(p.contratoId, p.competencia, {
+          ...p.boleto, status: 'emitido', ambiente: 'homologacao', chargeId: 1000 + Math.floor(Math.random() * 9000),
+          linha: '36490000190000000000000000000000199990000085000', emitidoEm: agora(),
+        }), 1200);
+      }
+    },
+    configDoBoleto: () => ({ carregada: true, config: configDoBoleto, erro: '' }),
+    async salvarConfigDoBoleto(c) { configDoBoleto = { ...c }; mudou(); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

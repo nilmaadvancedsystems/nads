@@ -294,7 +294,7 @@ function iniciarExtratoPelaApi(db, log, o = {}) {
   log('extrato pela API ligado (uma vez por dia, a partir das ' + HORA_MINIMA + 'h; sem o metadado financeiro-bancos não faz nada)');
 }
 
-module.exports = { lerConfig, rodarExtratoPelaApi, iniciarExtratoPelaApi, agoraEmBrasilia, URLS };
+module.exports = { lerConfig, rodarExtratoPelaApi, iniciarExtratoPelaApi, agoraEmBrasilia, lerMetadado, pedirHttps, jsonDe, certificadoDa, URLS };
 
 if (require.main === module && process.argv.includes('--agora')) {
   (async () => {

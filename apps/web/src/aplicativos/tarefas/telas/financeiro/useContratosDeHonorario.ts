@@ -1,5 +1,6 @@
 // ViewModel da janela Clientes dos honorários (19/10/2026): os contratos (com o interruptor de ativo, o valor e as
 // observações) e o Adicionar cliente, que escolhe da lista do escritório (a mesma da Nova nota: código ou nome).
+// Em 19/11/2026: o dia de vencimento do boleto de cada cliente (vazio = o padrão de config/boletoEfi).
 import { empresas, financeiro, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -51,6 +52,16 @@ export function useContratosDeHonorario() {
     },
     alternarAtivo: (c: Contrato) => tentar(() => repo.salvarContrato({ ...rascunho(c), ativo: !c.ativo }, operador), 'Não consegui gravar.'),
     definirValor: (id: string, texto: string) => tentar(() => repo.definirValor(id, valorDigitado(texto), operador), 'Não consegui gravar o valor.'),
+    /** o dia de vencimento padrão (o que vale para quem não tem o seu) */
+    diaPadrao: repo.configDoBoleto().config.diaPadrao,
+    /** o dia digitado: 1 a 31 grava, vazio volta ao padrão, o resto avisa */
+    definirDia(c: Contrato, texto: string) {
+      const t = texto.trim();
+      const dia = t ? Number(t) : null;
+      if (dia === (c.diaVencimento ?? null)) return Promise.resolve();
+      if (dia !== null && !financeiro.diaDeVencimentoValido(dia)) { toast('O dia de vencimento vai de 1 a 31.'); return Promise.resolve(); }
+      return tentar(() => repo.definirDiaVencimento(c.id, dia, operador), 'Não consegui gravar o dia de vencimento.');
+    },
     salvarObservacoes: (c: Contrato, texto: string) => (texto.trim() === (c.observacoes ?? '') ? Promise.resolve() : tentar(() => repo.salvarContrato({ ...rascunho(c), observacoes: texto }, operador), 'Não consegui gravar.')),
   };
 }

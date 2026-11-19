@@ -1,8 +1,9 @@
 // Financeiro › Configurações (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"), no estilo das
 // configurações do Notion (como o Cadastro › Empresa): a emissão (ambiente, série, numeração), o prestador (a Nilma), o
-// serviço (com a descrição automática das notas), o e-mail ao cliente, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
+// serviço (com a descrição automática das notas), o e-mail ao cliente, o token da prefeitura, o boleto do Efí (19/11/2026) e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
 import { ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando, BotaoAcao } from '@nads/ui';
 import { dataBr, dataHoraBr } from './formatosDaNota';
+import { ConfigDoBoleto } from './ConfigDoBoleto';
 import { JanelaDoPlanoDeContas } from './JanelaDoPlanoDeContas';
 import { usuarios } from '@nads/core';
 import { useOperador } from '../../casca/operador';
@@ -135,6 +136,8 @@ export function ConfiguracoesDoFinanceiro() {
             : <span className="badge badge-bad">Nenhum token salvo</span>}
         </ConfigLinha>
       </ConfigSecao>}
+
+      <ConfigDoBoleto />
 
       <ConfigSecao titulo="O robô">
         <ConfigLinha titulo="Robô da nuvem" descricao={r.ligado ? undefined : r.motivo || undefined}>

@@ -116,6 +116,8 @@ export function useLoteDeBoletos() {
     exemplos: repo.exemplos,
     competencia, filtro, setFiltro, busca, setBusca, linhas, resumo, lendo, disparando, podeDisparar,
     temLinhas: todas.length > 0,
+    /** os clientes que já têm boleto no lote do mês (o Emitir pelo Efí não emite outro para eles) */
+    contratosNoLote: new Set(todas.map(l => l.boleto.contratoId).filter(Boolean)),
     /** trocar de mês limpa as marcas: "Disparar marcadas" nunca pega o mês errado */
     setCompetencia(c: string) { setCompetenciaBruta(c); setMarcadas(new Set()); },
     limparFiltros() { setBusca(''); setFiltro('todos'); },
