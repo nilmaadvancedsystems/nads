@@ -8059,3 +8059,18 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
    esse tipo de tabela e botao, diminuir com o grid"): não passa da célula, fica mais baixo e o texto encolhe */
 .imp-meses td > .btn:not(.icon-btn){max-width:calc(100% - 6px);min-width:0;height:28px;padding:0 6px;font-size:var(--fs-12);overflow:hidden;text-overflow:ellipsis;}
 .imp-meses td > .btn.inss-baixa{width:calc(100% - 6px);max-width:84px;padding:0 4px;}
+/* a data com o calendário ao lado (19/11/2026): o campo e o 📅 numa linha; aberto, o calendário do mês */
+.campo-data-cal{display:inline-flex;align-items:center;gap:6px;}
+.campo-data-cal-pop{padding:8px;}
+/* o MEI na comissão (19/11/2026): o cartão CNPJ lido e a senha gov numa linha */
+.mei-cartao,.mei-senha{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;}
+.mei-cartao-txt{display:flex;flex-direction:column;min-width:0;line-height:1.3;}
+.mei-cartao-txt .hint{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;}
+.registro-prop-valor .mei-senha input{width:140px;flex:none;border:1px solid var(--border);}
+/* a comissão grande no alto, à direita da janela (19/11/2026): as duas primeiras linhas deixam o lugar dela */
+.registro-corpo.comissao-com-destaque{position:relative;}
+.comissao-destaque{position:absolute;top:14px;right:18px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right;pointer-events:none;}
+.comissao-destaque span{font-size:var(--fs-12);color:var(--ink-muted);}
+.comissao-destaque b{font-size:28px;line-height:1.1;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:190px;}
+@media (max-width:560px){.comissao-destaque{position:static;align-items:flex-start;}.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+2){padding-right:0;}}

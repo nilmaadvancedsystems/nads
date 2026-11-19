@@ -3,10 +3,13 @@
 // o serviço é um dos comissionados e a comissão sai sozinha, do valor do serviço × a % que o Financeiro definiu. Pelo
 // Financeiro (doFinanceiro): a pessoa e qualquer mês (a retroativa), já aprovada. Depois de decidida, só ver.
 import { carteira, formatos } from '@nads/core';
-import { BotaoFechar, CampoData, CampoReais, Icone, MenuSuspenso, useJanela } from '@nads/ui';
+import { BotaoFechar, CampoData, CampoDataComCalendario, CampoReais, Icone, MenuSuspenso, useJanela } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useJanelaDaComissao, type ClienteDaLista } from './useCarteiraDaPessoa';
+import { MeiDaComissao } from './MeiDaComissao';
+import { ehServicoDeMei } from './useMeiDaComissao';
 
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -56,7 +59,10 @@ function EscolherCliente({ clientes, codigo, avulso, rotulo, travada, onCliente,
 
 export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { comissao: carteira.Comissao | null; fechar: () => void; doFinanceiro?: boolean }) {
   const vm = useJanelaDaComissao(comissao, fechar, doFinanceiro);
+  // o calendário ao lado da data e o MEI (19/11/2026), por enquanto no modo desenvolvedor
+  const [dev] = useModoDesenvolvedor();
   const { travada, erros, salvando } = vm;
+  const destaque = dev && !vm.oculta && !travada && !doFinanceiro;
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
   const titulo = !comissao ? 'Registrar comissão' : travada ? 'Comissão' : 'Mudar comissão';
@@ -73,7 +79,10 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           <span className="registro-caminho"><Icone nome="dinheiro" />{doFinanceiro ? 'Comissões da equipe' : 'Carteira'}<Icone nome="chevronRight" /><b>{titulo}</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
-        <div className="registro-corpo">
+        <div className={'registro-corpo' + (destaque ? ' comissao-com-destaque' : '')}>
+          {/* a comissão grande no alto, à direita (Vitor, 19/11/2026: "deixa esse valor grande, na parte superior direita, que ta meio
+              vazia"); por enquanto no modo desenvolvedor */}
+          {destaque && <div className="comissao-destaque" aria-live="polite"><span>Comissão</span><b className="num">{formatos.reais(vm.valor)}</b></div>}
           {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
           {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
           {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
@@ -93,7 +102,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                   itens={vm.mesesDoFinanceiro.map(x => ({ rotulo: comMaiuscula(carteira.mesPorExtenso(x)), marcado: x === vm.competencia, onClick: () => vm.setCompetencia(x) }))} />
               </Propriedade>
             )}
-            <Propriedade icone="calendar" rotulo="Data">{travada ? <span>{vm.data}</span> : <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" />}</Propriedade>
+            <Propriedade icone="calendar" rotulo="Data">{travada ? <span>{vm.data}</span> : (dev ? <CampoDataComCalendario valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" /> : <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" />)}</Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
               <EscolherCliente clientes={vm.clientes} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? '' : vm.cliente} travada={travada}
                 onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} />
@@ -117,6 +126,8 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                   itens={vm.servicos.map(s => ({ rotulo: s.nome, marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
               )}
             </Propriedade>
+            {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026); modo desenvolvedor */}
+            {dev && !travada && ehServicoDeMei(vm.servico) && <MeiDaComissao nome={vm.avulso ? vm.nomeAvulso : vm.cliente} />}
             {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
             {!(vm.oculta && comissao) && (
               <Propriedade icone="dinheiro" rotulo="Valor do serviço">
@@ -128,7 +139,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                 porcentagem..., tira isso de financeiro ainda nao decidiu"); a escondida nem o valor (16/11/2026) */}
             {vm.oculta ? (
               <Propriedade icone="check" rotulo="Comissão"><span className="fraco">{comissao ? carteira.rotuloDaSituacao(comissao.situacao) : 'O sistema calcula'}</span></Propriedade>
-            ) : (
+            ) : !destaque && (
               <Propriedade icone="check" rotulo="Comissão"><span className="num"><b>{formatos.reais(vm.valor)}</b></span></Propriedade>
             )}
           </div>

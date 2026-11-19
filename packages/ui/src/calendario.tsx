@@ -6,7 +6,8 @@
 // reunião ou aviso) com o fundo da marca clarinho e até 3 pontinhos (um por evento); os dias que já passaram mais
 // apagados; os do mês de antes e do de depois quase sumidos, sem clique. Os feriados com o número em vermelho (o ponto
 // facultativo e o meio expediente em laranja) e o nome na dica (15/11/2026). Fora do mês de hoje, o botão volta para ele.
-import { BotaoIcone } from './componentes';
+import { useEffect, useState } from 'react';
+import { BotaoIcone, CampoData, MenuSuspenso } from './componentes';
 
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -81,5 +82,32 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, feriados = {}, escol
         })}
       </div>
     </div>
+  );
+}
+
+const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+/**
+ * A data digitada (dd/mm/aaaa) com o calendário ao lado (Vitor, 19/11/2026, a comissão: "Essa parte da data, ja deixa preenchida com
+ * a atual e deixa o select do calendario tambem, se a pessoa querer"): o 📅 abre o calendário do mês da data (ou de hoje) e o
+ * clique no dia preenche o campo.
+ */
+export function CampoDataComCalendario({ valor, onMudar, rotulo, id, onEnter }: { valor: string; onMudar: (v: string) => void; rotulo: string; id?: string; onEnter?: () => void }) {
+  const hoje = hojeIso();
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
+  const escolhido = m ? m[3] + '-' + m[2] + '-' + m[1] : null;
+  const [mes, setMes] = useState((escolhido || hoje).slice(0, 7));
+  useEffect(() => { if (escolhido) setMes(escolhido.slice(0, 7)); }, [escolhido]);
+  return (
+    <span className="campo-data-cal">
+      <CampoData valor={valor} onMudar={onMudar} rotulo={rotulo} id={id} onEnter={onEnter} />
+      <MenuSuspenso rotulo="" icone="calendar" semSeta className="icon-btn icon-btn-sm" dica="Escolher no calendário" flutuante direita largura={280}
+        conteudo={fechar => (
+          <div className="campo-data-cal-pop">
+            <CalendarioDoMes mes={mes} hoje={hoje} escolhido={escolhido} onMes={setMes}
+              onDia={d => { if (!d) return; onMudar(d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4)); fechar(); }} />
+          </div>
+        )} />
+    </span>
   );
 }
