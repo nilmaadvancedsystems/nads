@@ -1,0 +1,67 @@
+/* Arquivo físico (19/11/2026): só o que as peças do nads ainda não têm. */
+.af .af-cod{font-variant-numeric:tabular-nums;font-weight:700;}
+.af-janela .af-cod{color:var(--accent-ink);}
+
+/* Encontrar */
+.af-procura-campos{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(120px,1fr));gap:12px;align-items:end;}
+.af-achados{display:grid;gap:10px;margin-top:12px;}
+.af-achado{display:block;width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:14px 16px;}
+.af-achado:hover{border-color:var(--accent);}
+.af-achado-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.af-achado-caixa{font-size:var(--fs-18,18px);font-weight:700;}
+.af-achado-onde{display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:600;}
+.af-envelopes-mini{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.af-env-mini{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:var(--fs-12,12px);}
+.af-env-mini.fora{border-color:var(--warn,#c78a00);background:var(--warn-soft,transparent);}
+
+/* Retirados e Descarte */
+.af-atrasado{color:var(--bad,#c0392b);font-weight:600;}
+.af-prazos{margin-bottom:12px;}
+.af-prazos-lista{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+
+/* a janela da caixa */
+.af-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+.af-dados > div{display:flex;flex-direction:column;gap:2px;}
+.af-dados-obs{grid-column:1/-1;white-space:pre-wrap;}
+.af-rot{font-size:var(--fs-12,12px);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.af-fora{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.af-env-topo{display:flex;align-items:center;gap:8px;}
+.af-envelopes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.af-envelope{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 4px;border-bottom:1px solid var(--border);}
+.af-envelope:last-child{border-bottom:0;}
+.af-envelope.destaque{background:var(--accent-soft);border-radius:6px;outline:2px solid var(--accent);}
+.af-envelope.fora .af-env-mes{color:var(--warn-ink,var(--ink));}
+.af-env-mes{min-width:110px;font-variant-numeric:tabular-nums;}
+.af-env-obs{font:inherit;text-align:left;}
+.af-env-obs-campo{min-width:220px;}
+.af-env-fora{font-size:var(--fs-12,12px);}
+.af-env-retirada{flex-basis:100%;}
+.af-retirada{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.af-retirada input{flex:1 1 160px;min-width:0;}
+.af-novos{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
+.af-novos .chip-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.af-novos-linha{display:flex;gap:8px;flex-wrap:wrap;}
+.af-novos-linha input{flex:1 1 240px;min-width:0;}
+.af-historico{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
+.af-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;margin-top:4px;}
+
+/* o formulário */
+.af-form{display:flex;flex-direction:column;gap:12px;}
+.af-form-linha{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;}
+.af-form-empresa{position:relative;}
+.af-sugestoes{list-style:none;margin:4px 0 0;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface,var(--bg));max-height:260px;overflow:auto;}
+.af-sugestoes button{display:block;width:100%;text-align:left;padding:6px 8px;border:0;background:none;font:inherit;color:inherit;border-radius:6px;cursor:pointer;}
+.af-sugestoes button:hover{background:var(--btn-hover);}
+.af-check{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.af-problema{color:var(--bad,#c0392b);margin:0;}
+.af-form-botoes{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+
+@media (max-width:720px){
+  .af-procura-campos{grid-template-columns:1fr 1fr;}
+  .af-procura-empresa{grid-column:1/-1;}
+  .af-env-mes{min-width:0;}
+}
+
+/* as prateleiras */
+.af-lugar{display:inline-flex;align-items:center;gap:6px;margin-left:8px;}
+.af-imprimir-opcao{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--border);}

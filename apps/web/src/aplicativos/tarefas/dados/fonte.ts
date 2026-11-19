@@ -52,6 +52,8 @@ import { criarControleTributosMemoria, type RepoControleTributos } from './contr
 import { criarControleTributosFirestore } from './controleTributos.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
+import { criarArquivoFisicoMemoria, type RepoArquivoFisico } from './arquivoFisico';
+import { criarArquivoFisicoFirestore } from './arquivoFisico.firestore';
 import { criarInsightsMemoria, type RepoInsights } from './insights';
 import { criarInsightsFirestore } from './insights.firestore';
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
@@ -692,6 +694,14 @@ let legislacaoDp: RepoLegislacaoDp | null = null;
 export function repoDeLegislacaoDp(): RepoLegislacaoDp {
   if (!legislacaoDp) legislacaoDp = noBanco ? criarLegislacaoDpFirestore(() => quemPede()?.nome || '') : criarLegislacaoDpMemoria();
   return legislacaoDp;
+}
+
+let arquivoFisico: RepoArquivoFisico | null = null;
+
+/** O arquivo físico do escritório (19/11/2026): no banco, arquivoFisico/{caixa}; nos exemplos, na memória. */
+export function repoDoArquivoFisico(): RepoArquivoFisico {
+  if (!arquivoFisico) arquivoFisico = noBanco ? criarArquivoFisicoFirestore(() => quemPede()?.nome || '') : criarArquivoFisicoMemoria(() => 'exemplo');
+  return arquivoFisico;
 }
 
 let areaCliente: RepoAreaCliente | null = null;
