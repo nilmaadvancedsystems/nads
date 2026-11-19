@@ -52,3 +52,4 @@ export * from './notasDoMes';
 export * from './logo';
 export * from './pedidoDeDanfe';
 export * from './acessoPorPessoa';
+export * from './emailDeSenha';

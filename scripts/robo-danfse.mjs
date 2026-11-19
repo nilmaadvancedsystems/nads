@@ -53,7 +53,9 @@ const codigo = [
   // a ficha cadastral da empresa (18/11/2026, ficha dados-cadastrais)
   // as certidões da empresa (18/11/2026, ficha certidoes)
   // a senha por pessoa na Área do Cliente (18/11/2026)
-  'export { permissoesPorEmail, mesmasPermissoes, normalizarEmail } from ' + caminho('packages/core/src/areaCliente/acessoPorPessoa.ts') + ';',
+  'export { permissoesPorEmail, mesmasPermissoes, normalizarEmail, clienteAbreOLink } from ' + caminho('packages/core/src/areaCliente/acessoPorPessoa.ts') + ';',
+  // o e-mail de senha pelo robô (19/11/2026)
+  'export { pedidoDeSenha, linkDaPaginaDeSenha, emailDeSenha } from ' + caminho('packages/core/src/areaCliente/emailDeSenha.ts') + ';',
   // a Tela de Insights (18/11/2026, ficha tela-de-insights)
   'export { rotinasPorPessoa, situacaoDoClienteDp, contarDp, contarChamados, contarEntregas, delegadasAtrasadas } from ' + caminho('packages/core/src/tarefas/regras/insights.ts') + ';',
   'export { competenciaDeTrabalhoDoDp } from ' + caminho('packages/core/src/tarefas/regras/prazosDoDp.ts') + ';',

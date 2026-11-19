@@ -286,6 +286,13 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     async criarSenha(token, email) {
       const e = email.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(e)) throw new Error('Este e-mail não parece certo.');
+      // primeiro pelo robô (19/11/2026; o dono: "Sim, pelo robô"): o e-mail da Nilma, em português, com o link da página
+      // própria. O robô só manda se este e-mail tem acesso a este link. Se a caixa ainda não aceitar (a regra), o e-mail do Firebase
+      const pedido = ac.pedidoDeSenha(token, e);
+      if (pedido) {
+        try { await addDoc(collection(abrir(), 'areaClienteSenhas'), { ...pedido, criadoEm: serverTimestamp() }); return; }
+        catch (err) { if (err instanceof Error && err.message === MENSAGEM_BLOQUEADO) throw err; /* segue para o e-mail do Firebase */ }
+      }
       // volta para este link depois de criar a senha; o Firebase não diz se o e-mail existe (não deixa adivinhar quem tem acesso).
       // Se o domínio da Área ainda não estiver na lista do login do Firebase (19/11/2026: UNAUTHORIZED_DOMAIN), manda sem a
       // volta: a pessoa cria a senha na página do Firebase e abre o link de novo
