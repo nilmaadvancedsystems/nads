@@ -80,6 +80,8 @@ const ICONS = {
   impressora: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   // a cédula: o Caixa da tarefa (Vitor, 14/10/2026: "troca o ícone do caixa", era a maleta das empresas)
   dinheiro: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01"/><path d="M18 12h.01"/>',
+  // a pilha de moedas com o cifrão (Vitor, 19/11/2026: o ícone do app Ihul!), no traço dos outros ícones
+  moedas: '<ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v4.5c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3V5.5"/><path d="M4.5 10v4.5c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3V10"/><path d="M4.5 14.5V19c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-4.5"/><path d="M13.6 4.5c-.4-.3-1-.45-1.6-.45-.9 0-1.6.4-1.6.95 0 1.15 3.2.65 3.2 1.8 0 .55-.7.95-1.6.95-.65 0-1.25-.2-1.65-.5"/><path d="M12 3.3v.75"/><path d="M12 7.55v.7"/>',
   // da Área do Cliente (Vitor, 16/10/2026): a empresa, o escudo, a seta de "ver todas" e o aviãozinho de enviar (o telefone é o das Entregas)
   predio: '<rect x="4.5" y="3" width="15" height="18" rx="1.5"/><path d="M9 7.5h.01"/><path d="M15 7.5h.01"/><path d="M9 11.5h.01"/><path d="M15 11.5h.01"/><path d="M10 21v-4h4v4"/>',
   escudo: '<path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/>',

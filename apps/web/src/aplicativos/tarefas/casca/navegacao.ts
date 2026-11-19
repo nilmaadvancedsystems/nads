@@ -178,7 +178,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   // holerites de pagamento"; os valores foram para os Holerites). Por enquanto só o Vitor usa (carteiraLiberada): os outros
   // veem o botão e a tela "em desenvolvimento"
   // o nome do app (Vitor, 19/11/2026: "Troca o nome do app para Ihul!"); o id e os endereços continuam carteira
-  { id: 'carteira', nome: 'Ihul!', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
+  { id: 'carteira', nome: 'Ihul!', icone: 'moedas', grupo: 'Escritório', pronta: true, paginas: [
     // as Comissões e os Holerites numa tela só, o Financeiro (Vitor, 19/11/2026: "Consegue colocar tudo em uma tela so? comissoes e
     // holerites"; "Primeira pagina, Financeiro / Segunda Insumos"); os links antigos (comissoes, documentos) caem nela
     { id: 'financeiro', rotulo: 'Financeiro', icone: 'dinheiro', titulo: 'Seu Financeiro' },
