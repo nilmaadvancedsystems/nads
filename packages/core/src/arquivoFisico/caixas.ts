@@ -31,6 +31,10 @@ export interface Envelope {
   departamento: Departamento;
   observacao: string;
   retiradas: Retirada[];
+  /** quem guardou o envelope na caixa e quando (a confirmação do arquivamento; 19/11/2026: "o responsável imprime, coloca o
+   *  envelope, e outra pessoa arquiva"); vazio nos de antes */
+  arquivadoEm: string;
+  arquivadoPor: string;
 }
 
 export interface Caixa {
@@ -55,6 +59,11 @@ export interface Caixa {
   /** 'AAAA-MM-DD' quando foi descartada (ela fica na lista, marcada) */
   descartadaEm: string;
   descartadaPor: string;
+  /** quando a caixa voltou para o cliente ('AAAA-MM-DD'), quem entregou e quem recebeu (19/11/2026: "as caixas ficam no
+   *  escritório 2 anos"; depois "volta para o cliente") */
+  devolvidaEm: string;
+  devolvidaPor: string;
+  devolvidaPara: string;
   atualizadaEm: string;
   atualizadaPor: string;
 }
@@ -140,6 +149,7 @@ export function montarCaixa(r: RascunhoDaCaixa, quem: string, agora: string, ant
     id: idDaCaixa(base), ...base, nome: r.nome.trim(), tipo: r.tipo.trim(), arquivadaEm: r.arquivadaEm, local: r.local.trim(), observacoes: r.observacoes.trim(),
     envelopes: antes ? antes.envelopes : [], retiradas: antes ? antes.retiradas : [],
     descartadaEm: antes?.descartadaEm || '', descartadaPor: antes?.descartadaPor || '',
+    devolvidaEm: antes?.devolvidaEm || '', devolvidaPor: antes?.devolvidaPor || '', devolvidaPara: antes?.devolvidaPara || '',
     atualizadaEm: agora, atualizadaPor: quem,
   };
 }
@@ -162,7 +172,7 @@ export function adicionarEnvelopes(c: Caixa, competencias: readonly string[], de
   for (const comp of [...new Set(competencias)]) {
     if (!COMPETENCIA.test(comp)) continue;
     if (envelopes.some(e => e.competencia === comp && e.departamento === departamento && semAcento(e.observacao) === semAcento(obs))) { repetidos.push(comp); continue; }
-    envelopes.push({ id: proximoId('e', envelopes.map(e => e.id)), competencia: comp, departamento, observacao: obs, retiradas: [] });
+    envelopes.push({ id: proximoId('e', envelopes.map(e => e.id)), competencia: comp, departamento, observacao: obs, retiradas: [], arquivadoEm: agora, arquivadoPor: quem });
     novos++;
   }
   return { caixa: novos ? { ...c, envelopes: ordenarEnvelopes(envelopes), atualizadaEm: agora, atualizadaPor: quem } : c, novos, repetidos };
@@ -194,6 +204,7 @@ export interface Alvo { envelope: string | null }
 /** Registra que alguém levou a caixa (ou um envelope). Não deixa retirar o que já está fora, nem a caixa descartada. */
 export function retirar(c: Caixa, alvo: Alvo, quem: string, motivo: string, agora: string): { caixa: Caixa; problema: string } {
   if (c.descartadaEm) return { caixa: c, problema: 'A caixa foi descartada.' };
+  if (c.devolvidaEm) return { caixa: c, problema: 'A caixa já voltou para o cliente.' };
   if (!quem.trim()) return { caixa: c, problema: 'Diga quem está levando.' };
   if (retiradaAberta(c.retiradas)) return { caixa: c, problema: 'A caixa inteira já está retirada.' };
   const nova = (rs: readonly Retirada[]): Retirada[] => [...rs, { id: proximoId('r', rs.map(r => r.id)), quem: quem.trim(), motivo: motivo.trim(), em: agora, devolvidaEm: '', devolvidaPor: '' }];
@@ -216,10 +227,14 @@ export function devolver(c: Caixa, alvo: Alvo, quem: string, agora: string): { c
   return { caixa: { ...c, envelopes: c.envelopes.map(x => (x.id === e.id ? { ...x, retiradas: fecha(x.retiradas) } : x)), atualizadaEm: agora, atualizadaPor: quem }, problema: '' };
 }
 
-export type SituacaoDaCaixa = 'no-lugar' | 'envelope-fora' | 'retirada' | 'descartada';
-export const ROTULO_DA_SITUACAO: Record<SituacaoDaCaixa, string> = { 'no-lugar': 'No lugar', 'envelope-fora': 'Envelope fora', retirada: 'Retirada', descartada: 'Descartada' };
+export type SituacaoDaCaixa = 'no-lugar' | 'envelope-fora' | 'retirada' | 'devolvida' | 'descartada';
+export const ROTULO_DA_SITUACAO: Record<SituacaoDaCaixa, string> = { 'no-lugar': 'No lugar', 'envelope-fora': 'Envelope fora', retirada: 'Retirada', devolvida: 'Com o cliente', descartada: 'Descartada' };
+
+/** A caixa já saiu do escritório (voltou para o cliente, ou foi descartada antes disso existir). */
+export const saiuDoEscritorio = (c: Pick<Caixa, 'devolvidaEm' | 'descartadaEm'>) => !!(c.devolvidaEm || c.descartadaEm);
 
 export function situacaoDaCaixa(c: Caixa): SituacaoDaCaixa {
+  if (c.devolvidaEm) return 'devolvida';
   if (c.descartadaEm) return 'descartada';
   if (retiradaAberta(c.retiradas)) return 'retirada';
   if (c.envelopes.some(e => retiradaAberta(e.retiradas))) return 'envelope-fora';
@@ -270,7 +285,7 @@ export function buscar(caixas: readonly Caixa[], f: FiltroDoArquivo): Achado[] {
   const achados: Achado[] = [];
   for (const c of caixas) {
     const sit = situacaoDaCaixa(c);
-    if (f.situacao === 'ativas' ? sit === 'descartada' : f.situacao && sit !== f.situacao) continue;
+    if (f.situacao === 'ativas' ? sit === 'descartada' || sit === 'devolvida' : f.situacao && sit !== f.situacao) continue;
     if (f.departamento && c.departamento !== f.departamento) continue;
     if (f.ano != null && c.ano !== f.ano) continue;
     if (f.local && semAcento(c.local.trim()) !== semAcento(f.local.trim())) continue;
@@ -298,33 +313,30 @@ export function buscar(caixas: readonly Caixa[], f: FiltroDoArquivo): Achado[] {
 export const anosDasCaixas = (caixas: readonly Caixa[]) => [...new Set(caixas.map(c => c.ano))].sort((a, b) => b - a);
 
 // ---------------------------------------------------------------------------------------------------------------------
-// descarte
+// a volta para o cliente (19/11/2026: "as caixas ficam no escritório 2 anos"; depois "volta para o cliente", contando "do
+// fim do ano da caixa": a de 2026 fica até 31/12/2028 e pode voltar a partir de 01/01/2029). No lugar do descarte por prazo
+// de guarda, que o escritório não faz.
 // ---------------------------------------------------------------------------------------------------------------------
 
-/**
- * Os prazos de guarda, em anos, contados do 1º de janeiro do ano seguinte ao da caixa (como a decadência dos tributos). Os
- * comuns nos escritórios: os papéis fiscais 5 anos; os contábeis (livros, balancetes) 10; os do pessoal (folha, FGTS,
- * INSS) 10. O escritório confere e ajusta (decisão de 19/11/2026: "com prazos comuns").
- */
-export type PrazosDeGuarda = Record<Departamento, number>;
-export const PRAZOS_PADRAO: PrazosDeGuarda = { Fiscal: 5, 'Contábil': 10, Pessoal: 10 };
+/** Quantos anos a caixa fica no escritório, depois do ano dela. */
+export const ANOS_NO_ESCRITORIO = 2;
 
-/** Desde quando a caixa pode ser descartada ('AAAA-MM-DD'): 1º de janeiro de (ano + 1 + prazo). */
-export const descarteLiberadoEm = (c: Pick<Caixa, 'ano' | 'departamento'>, prazos: PrazosDeGuarda = PRAZOS_PADRAO) => (c.ano + 1 + prazos[c.departamento]) + '-01-01';
+/** Desde quando a caixa pode voltar para o cliente ('AAAA-MM-DD'): 1º de janeiro de (ano + 1 + 2). */
+export const devolucaoLiberadaEm = (c: Pick<Caixa, 'ano'>) => (c.ano + 1 + ANOS_NO_ESCRITORIO) + '-01-01';
 
-/** As caixas que já passaram do prazo e ainda não foram descartadas (as mais velhas primeiro). `hoje`: 'AAAA-MM-DD'. */
-export function paraDescartar(caixas: readonly Caixa[], hoje: string, prazos: PrazosDeGuarda = PRAZOS_PADRAO): Caixa[] {
-  return caixas.filter(c => !c.descartadaEm && descarteLiberadoEm(c, prazos) <= hoje)
+/** As caixas que já completaram os 2 anos e ainda estão no escritório (as mais velhas primeiro). `hoje`: 'AAAA-MM-DD'. */
+export function paraDevolver(caixas: readonly Caixa[], hoje: string): Caixa[] {
+  return caixas.filter(c => !saiuDoEscritorio(c) && devolucaoLiberadaEm(c) <= hoje)
     .sort((a, b) => a.ano - b.ano || a.codigo - b.codigo || a.numero - b.numero);
 }
 
-/** Marca a caixa como descartada (só o admin chega aqui). Não descarta o que está fora nem o que ainda está no prazo. */
-export function descartar(c: Caixa, quem: string, hoje: string, prazos: PrazosDeGuarda = PRAZOS_PADRAO): { caixa: Caixa; problema: string } {
-  if (c.descartadaEm) return { caixa: c, problema: 'A caixa já foi descartada.' };
-  if (situacaoDaCaixa(c) !== 'no-lugar') return { caixa: c, problema: 'Há coisa retirada desta caixa: registre a devolução antes.' };
-  const desde = descarteLiberadoEm(c, prazos);
-  if (desde > hoje) return { caixa: c, problema: 'Ainda no prazo de guarda: pode descartar a partir de ' + desde.split('-').reverse().join('/') + '.' };
-  return { caixa: { ...c, descartadaEm: hoje, descartadaPor: quem, atualizadaEm: hoje, atualizadaPor: quem }, problema: '' };
+/** Registra que a caixa voltou para o cliente: quem entregou, quem recebeu e quando. Não entrega a caixa com coisa fora. */
+export function devolverAoCliente(c: Caixa, quem: string, para: string, hoje: string): { caixa: Caixa; problema: string } {
+  if (c.devolvidaEm) return { caixa: c, problema: 'A caixa já voltou para o cliente.' };
+  if (c.descartadaEm) return { caixa: c, problema: 'A caixa foi descartada.' };
+  if (situacaoDaCaixa(c) !== 'no-lugar') return { caixa: c, problema: 'Há coisa retirada desta caixa: registre a devolução dela antes.' };
+  if (!para.trim()) return { caixa: c, problema: 'Diga quem recebeu a caixa.' };
+  return { caixa: { ...c, devolvidaEm: hoje, devolvidaPor: quem, devolvidaPara: para.trim(), atualizadaEm: hoje, atualizadaPor: quem }, problema: '' };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -346,9 +358,10 @@ export function lerCaixa(id: string, d: unknown): Caixa | null {
   return {
     id, codigo, nome: txt(x.nome), tipo: txt(x.tipo), departamento: departamento(x.departamento), ano, numero,
     arquivadaEm: txt(x.arquivadaEm), local: txt(x.local), observacoes: txt(x.observacoes),
-    envelopes: ordenarEnvelopes(lista(x.envelopes).map(e => ({ id: txt(e.id), competencia: txt(e.competencia), departamento: departamento(e.departamento), observacao: txt(e.observacao), retiradas: lerRetiradas(e.retiradas) })).filter(e => e.id && COMPETENCIA.test(e.competencia))),
+    envelopes: ordenarEnvelopes(lista(x.envelopes).map(e => ({ id: txt(e.id), competencia: txt(e.competencia), departamento: departamento(e.departamento), observacao: txt(e.observacao), retiradas: lerRetiradas(e.retiradas), arquivadoEm: txt(e.arquivadoEm), arquivadoPor: txt(e.arquivadoPor) })).filter(e => e.id && COMPETENCIA.test(e.competencia))),
     retiradas: lerRetiradas(x.retiradas),
-    descartadaEm: txt(x.descartadaEm), descartadaPor: txt(x.descartadaPor), atualizadaEm: txt(x.atualizadaEm), atualizadaPor: txt(x.atualizadaPor),
+    descartadaEm: txt(x.descartadaEm), descartadaPor: txt(x.descartadaPor),
+    devolvidaEm: txt(x.devolvidaEm), devolvidaPor: txt(x.devolvidaPor), devolvidaPara: txt(x.devolvidaPara), atualizadaEm: txt(x.atualizadaEm), atualizadaPor: txt(x.atualizadaPor),
   };
 }
 

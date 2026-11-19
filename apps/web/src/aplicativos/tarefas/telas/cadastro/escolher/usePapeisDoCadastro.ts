@@ -9,13 +9,15 @@
 //     as que têm a REINF no Fiscal ou no DP.
 // As empresas são as da lista (com a busca e a situação da tela; no protocolo, só as do grupo), todas marcadas; dá para
 // desmarcar. Imprimir abre a impressão em A4 (o mesmo quadro escondido das etiquetas da folha).
-import { tarefas as t } from '@nads/core';
+import { arquivoFisico as af, tarefas as t } from '@nads/core';
 import { logoNilmaParaImprimir, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import type { DocumentoMensal } from '../../../dados/entregasDeDocumentos';
-import { useEntregasDeDocumentos, useExecucoesDoPeriodo, useGmailDoEntregas } from '../../../dados/repo';
+import { useArquivoFisico, useEntregasDeDocumentos, useExecucoesDoPeriodo, useGmailDoEntregas } from '../../../dados/repo';
+import { useOperador } from '../../../casca/operador';
 import { imprimirHtml } from '../../dp/imprimirHtml';
+import { qrDoEnvelope } from '../../arquivo-fisico/imprimirEtiquetas';
 import { useClientesDoDp } from '../../dp/useClientesDoDp';
 import { estadosDaReinf } from '../../fiscal/reinf/useReinf';
 import type { LinhaEmpresa } from './useListaDoCadastro';
@@ -30,6 +32,9 @@ export const TEXTOS_DA_CAIXA: { valor: TextoDaCaixa; rotulo: string }[] = [
 
 export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
   const { toast } = useRetorno();
+  // as etiquetas do mês impressas viram envelopes esperando quem arquive (Arquivo físico › A arquivar; 19/11/2026)
+  const arquivo = useArquivoFisico();
+  const quem = useOperador().operador?.nome || '';
   const entregas = useEntregasDeDocumentos();
   const gmail = useGmailDoEntregas();
   const [aberto, setAberto] = useState<PapelDoCadastro | null>(null);
@@ -140,11 +145,20 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
     alternar: (chave: string) => setDesmarcadas(s => { const n = new Set(s); if (n.has(chave)) n.delete(chave); else n.add(chave); return n; }),
     marcarTodas: () => setDesmarcadas(new Set()),
     desmarcarTodas: () => setDesmarcadas(new Set(candidatas.map(l => l.chave))),
-    imprimir() {
+    async imprimir() {
       if (!escolhidas.length) return;
       if (aberto === 'etiquetas') {
-        imprimirHtml(t.htmlDosEnvelopes({ competencia, departamento, logo: logoNilmaParaImprimir('branca'),
-          etiquetas: escolhidas.map(l => ({ codigo: l.codigo, nome: l.nome, caixa: textoDaCaixa(l.regime) })) }));
+        // cada etiqueta com o QR do envelope (19/11/2026): no Arquivo físico, ler o QR guarda o envelope na caixa da empresa
+        const etiquetas: t.EtiquetaDoEnvelope[] = [];
+        for (const l of escolhidas) {
+          const qr = l.codigo != null ? await qrDoEnvelope({ codigo: l.codigo, departamento, competencia }).catch(() => '') : '';
+          etiquetas.push({ codigo: l.codigo, nome: l.nome, caixa: textoDaCaixa(l.regime), ...(qr ? { qr } : {}) });
+        }
+        imprimirHtml(t.htmlDosEnvelopes({ competencia, departamento, logo: logoNilmaParaImprimir('branca'), etiquetas }));
+        // o responsável imprimiu: cada envelope fica esperando quem arquive (o que já está numa caixa não volta para a fila)
+        const novos = af.novosImpressos(escolhidas.filter(l => l.codigo != null).map(l => ({ ref: { codigo: l.codigo as number, departamento, competencia }, nome: l.nome })),
+          arquivo.caixas().lista, quem, new Date().toISOString());
+        if (novos.length) void arquivo.registrarImpressos(novos).then(p => { if (p) toast('As etiquetas saíram, mas a fila do arquivo não foi gravada: ' + p); });
         toast(escolhidas.length + (escolhidas.length === 1 ? ' etiqueta pronta' : ' etiquetas prontas') + ': escolha a impressora');
       } else if (aberto === 'extratos') {
         const linhasDoAno = t.linhasDoProtocoloDeExtratos({ ano, ate, preencher, documentos: docsDoAno, semExtrato,

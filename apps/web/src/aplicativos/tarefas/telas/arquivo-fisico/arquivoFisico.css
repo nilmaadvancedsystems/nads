@@ -128,3 +128,28 @@
 .af-onde > .btn,.af-grade-topo > .link-btn,.af-painel-acoes > .af-perigo{margin-left:auto;}
 .af-onde .tarefas-barra-espaco,.af-grade-topo .tarefas-barra-espaco,.af-painel-acoes .tarefas-barra-espaco{display:none;}
 .af-janela .pessoal-topo > .usuario-quem{text-align:left;align-items:flex-start;}
+
+/* o envelope lido pelo QR (19/11/2026) */
+.af-janela-lido{max-width:560px;}
+.af-lido{display:flex;flex-direction:column;gap:12px;}
+.af-lido-onde{display:flex;align-items:center;gap:12px;}
+.af-lido-onde > svg{flex:none;color:var(--accent);}
+.af-lido-caixa{font-size:var(--fs-20,20px);display:block;}
+.af-lido-novo{display:flex;align-items:center;gap:10px;}
+.af-lido-novo > svg{flex:none;color:var(--warn,#c78a00);}
+.af-lido-caixas{display:flex;flex-direction:column;gap:8px;}
+.af-lido-caixas .btn{justify-content:center;white-space:normal;height:auto;min-height:40px;text-align:center;}
+.af-lido-criar{display:flex;flex-direction:column;gap:8px;}
+.af-lido .af-painel-acoes .btn{flex:1 1 140px;justify-content:center;}
+
+/* impresso e esperando quem arquive (19/11/2026) */
+.af-mes.impresso{border-style:dashed;border-color:var(--accent);background:var(--accent-soft);}
+.af-mes.impresso .af-mes-info{color:var(--accent-ink,var(--accent));font-weight:600;}
+.af-fila{display:flex;}
+.af-campo-fixo{display:block;padding:6px 0;}
+.af-painel-campos .campo-escolha,.af-procura-campos .campo-escolha,.af-form .campo-escolha{width:100%;}
+.af-painel-campos .campo-escolha{flex:1 1 160px;width:auto;}
+
+/* a entrega ao cliente (19/11/2026) */
+.af-cartao-entrega{flex-wrap:wrap;}
+.af-entrega{flex:1 1 100%;margin:6px 0 4px;}

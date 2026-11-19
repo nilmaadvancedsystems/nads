@@ -20,11 +20,19 @@ export async function imprimirEtiquetasDasCaixas(caixas: readonly af.Caixa[]): P
   imprimirHtml(af.htmlDasEtiquetasDaCaixa({ caixas, qr, logo: logoNilmaParaImprimir('colorida') }));
 }
 
-/** As etiquetas dos envelopes de uma caixa (uma por folha, como as do mês), com o QR que abre a caixa no envelope. */
+/**
+ * O QR do envelope (19/11/2026): leva qual envelope é (a empresa, o departamento e o mês), não a caixa — ler abre o envelope
+ * no nads e, se ele ainda não está no arquivo, oferece guardar. Serve também às Etiquetas do mês do Cadastro, impressas antes
+ * de o envelope ir para o arquivo.
+ */
+export function qrDoEnvelope(ref: af.RefDoEnvelope): Promise<string> {
+  return qrSvg(af.linkDoEnvelope(window.location.origin, ref));
+}
+
+/** As etiquetas dos envelopes de uma caixa (uma por folha, como as do mês), cada uma com o QR do envelope. */
 export async function imprimirEtiquetasDosEnvelopes(c: af.Caixa, envelopes: readonly af.Envelope[]): Promise<void> {
-  const origem = window.location.origin;
   const etiquetas: t.EtiquetaDoEnvelope[] = [];
-  for (const e of envelopes) etiquetas.push({ codigo: c.codigo, nome: c.nome, caixa: c.tipo, competencia: e.competencia, qr: await qrSvg(af.linkDaCaixa(origem, c.id, e.id)) });
+  for (const e of envelopes) etiquetas.push({ codigo: c.codigo, nome: c.nome, caixa: c.tipo, competencia: e.competencia, qr: await qrDoEnvelope({ codigo: c.codigo, departamento: e.departamento, competencia: e.competencia }) });
   if (!etiquetas.length) return;
   imprimirHtml(t.htmlDosEnvelopes({ competencia: envelopes[0].competencia, departamento: c.departamento, etiquetas, logo: logoNilmaParaImprimir('branca') }));
 }

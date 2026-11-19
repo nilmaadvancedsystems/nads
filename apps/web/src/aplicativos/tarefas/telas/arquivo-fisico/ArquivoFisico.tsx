@@ -2,27 +2,28 @@
 // Caixas, Encontrar, Retirados e Descarte — e a caixa numa janela por cima (também pelo QR da etiqueta: ?caixa=…).
 // Desenha o que o useArquivoFisico devolve; a impressão das etiquetas fica em imprimirEtiquetas.ts.
 import type { arquivoFisico as af } from '@nads/core';
-import { Alerta, BotaoFechar, BotaoIcone, CampoDataComCalendario, Esqueleto, Icone, MenuSuspenso, Vazio, useJanela, type ItemMenu } from '@nads/ui';
+import { Alerta, BotaoFechar, BotaoIcone, CampoDataComCalendario, CampoEscolha, Esqueleto, Icone, MenuSuspenso, Vazio, useJanela, type ItemMenu } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { MenuDeFiltro } from '../dp/MenuDeFiltro';
 import { imprimirEtiquetasDasCaixas, imprimirEtiquetasDasFileiras, imprimirEtiquetasDosEnvelopes, imprimirPlacasDasPrateleiras } from './imprimirEtiquetas';
 import { MESES_DO_ANO, useArquivoFisico, type PaginaDoArquivo, type VmDoArquivo } from './useArquivoFisico';
 import './arquivoFisico.css';
 
-const TOM: Record<af.SituacaoDaCaixa, string> = { 'no-lugar': 'badge-ok', 'envelope-fora': 'badge-warn', retirada: 'badge-bad', descartada: 'badge-neutral' };
+const TOM: Record<af.SituacaoDaCaixa, string> = { 'no-lugar': 'badge-ok', 'envelope-fora': 'badge-warn', retirada: 'badge-bad', devolvida: 'badge-info', descartada: 'badge-neutral' };
 
 export function ArquivoFisico({ pagina }: { pagina: string }) {
-  const p: PaginaDoArquivo = pagina === 'encontrar' || pagina === 'retirados' || pagina === 'descarte' ? pagina : 'caixas';
+  const p: PaginaDoArquivo = pagina === 'arquivar' || pagina === 'encontrar' || pagina === 'retirados' || pagina === 'devolucao' ? pagina : 'caixas';
   const vm = useArquivoFisico(p);
   return (
     <section className="dp-painel af">
       {vm.exemplos && <Alerta naLinha titulo="Dados de exemplo" texto="Nada aqui é do arquivo de verdade." />}
       {vm.erro && <Alerta naLinha titulo="Não deu para ler as caixas" texto={vm.erro} />}
-      {!vm.carregada ? <Esqueleto linhas={6} /> : p === 'encontrar' ? <Encontrar vm={vm} /> : p === 'retirados' ? <Retirados vm={vm} /> : p === 'descarte' ? <Descarte vm={vm} /> : <Caixas vm={vm} />}
+      {!vm.carregada ? <Esqueleto linhas={6} /> : p === 'arquivar' ? <AArquivar vm={vm} /> : p === 'encontrar' ? <Encontrar vm={vm} /> : p === 'retirados' ? <Retirados vm={vm} /> : p === 'devolucao' ? <Devolucao vm={vm} /> : <Caixas vm={vm} />}
       {vm.aberta && <JanelaDaCaixa vm={vm} c={vm.aberta} />}
       {vm.abertaSumiu && <Alerta naLinha titulo="A caixa da etiqueta não está na lista" texto="Ela pode ter sido apagada." onFechar={vm.fechar} />}
       {vm.form && <JanelaDoFormulario vm={vm} />}
       {vm.prateleiras && <JanelaDasPrateleiras vm={vm} />}
+      {(vm.lido || vm.lidoInvalido) && <JanelaDoEnvelopeLido vm={vm} />}
     </section>
   );
 }
@@ -53,7 +54,7 @@ function Caixas({ vm }: { vm: VmDoArquivo }) {
         <MenuDeFiltro rotulo="Ano" valor={f.ano == null ? '' : String(f.ano)} mudar={v => vm.mudarFiltro({ ano: v ? Number(v) : null })} opcoes={vm.anos.map(String)} />
         <MenuDeFiltro rotulo="Situação" valor={f.situacao === 'ativas' ? '' : f.situacao || 'todas'} todos="Sem as descartadas"
           mudar={v => vm.mudarFiltro({ situacao: (v === 'todas' ? '' : v || 'ativas') as af.FiltroDoArquivo['situacao'] })}
-          opcoes={[{ valor: 'no-lugar', rotulo: 'No lugar' }, { valor: 'envelope-fora', rotulo: 'Envelope fora' }, { valor: 'retirada', rotulo: 'Retirada' }, { valor: 'descartada', rotulo: 'Descartada' }, { valor: 'todas', rotulo: 'Todas' }]} />
+          opcoes={[{ valor: 'no-lugar', rotulo: 'No lugar' }, { valor: 'envelope-fora', rotulo: 'Envelope fora' }, { valor: 'retirada', rotulo: 'Retirada' }, { valor: 'devolvida', rotulo: 'Com o cliente' }, { valor: 'todas', rotulo: 'Todas' }]} />
         <span className="tarefas-barra-espaco" />
         <div className="af-acoes">
           {!vm.exemplos && <BotaoIcone icone="repeat" titulo="Ler as caixas de novo" onClick={vm.recarregar} />}
@@ -114,6 +115,39 @@ function Caixas({ vm }: { vm: VmDoArquivo }) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// A arquivar (19/11/2026: "o responsável imprime, coloca o envelope, e outra pessoa arquiva"): os envelopes impressos que
+// ainda não foram guardados; tocar abre o envelope como se o QR tivesse sido lido (e lá se confirma o arquivamento)
+// ---------------------------------------------------------------------------------------------------------------------
+function AArquivar({ vm }: { vm: VmDoArquivo }) {
+  const dias = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
+  return (
+    <section className="card dp-lista">
+      <div className="dp-lista-topo">
+        <h3 className="dp-titulo">Aguardando arquivamento</h3>
+        <span className="badge badge-neutral">{vm.aguardando.length}</span>
+      </div>
+      {vm.erroDosImpressos && <Alerta naLinha titulo="Não deu para ler os envelopes impressos" texto={vm.erroDosImpressos} />}
+      {!vm.impressosCarregados ? <Esqueleto linhas={3} /> : vm.aguardando.length ? (
+        <ul className="af-cartoes af-fila">
+          {vm.aguardando.map(x => {
+            const d = dias(x.impressoEm);
+            return (
+              <li key={x.id} className="af-cartao af-cartao-fixo">
+                <button type="button" className="af-cartao-abre" onClick={() => vm.arquivar(x)}>
+                  <span className="af-cartao-l1"><strong>Envelope {vm.competencia(x.competencia)}</strong> · <strong className="af-cod">{x.codigo}</strong> {x.nome}</span>
+                  <span className="af-cartao-l4">Impresso por <strong>{x.impressoPor || '—'}</strong> {d === 0 ? 'hoje' : d === 1 ? 'ontem' : 'há ' + d + ' dias'} · {x.departamento}</span>
+                </button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => vm.arquivar(x)}>Arquivar</button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : <Vazio compacto icone="check" texto="Nenhum envelope esperando: tudo o que foi impresso já está no arquivo." />}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Encontrar
 // ---------------------------------------------------------------------------------------------------------------------
 function Encontrar({ vm }: { vm: VmDoArquivo }) {
@@ -127,25 +161,19 @@ function Encontrar({ vm }: { vm: VmDoArquivo }) {
             <input id="af-q" type="text" value={p.texto} onChange={e => vm.mudarProcura({ texto: e.target.value })} placeholder="Código ou nome" autoFocus />
           </div>
           <div className="field">
-            <label htmlFor="af-dep">Departamento</label>
-            <select id="af-dep" value={p.departamento} onChange={e => vm.mudarProcura({ departamento: e.target.value as af.Departamento | '' })}>
-              <option value="">Todos</option>
-              {vm.departamentos.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <label>Departamento</label>
+            <CampoEscolha rotulo="Departamento" valor={p.departamento || 'todos'} onMudar={v => vm.mudarProcura({ departamento: v === 'todos' ? '' : v as af.Departamento })}
+              opcoes={[{ valor: 'todos', rotulo: 'Todos' }, ...vm.departamentos]} />
           </div>
           <div className="field">
-            <label htmlFor="af-ano">Ano</label>
-            <select id="af-ano" value={p.ano ?? ''} onChange={e => vm.mudarProcura({ ano: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">Todos</option>
-              {vm.anos.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <label>Ano</label>
+            <CampoEscolha rotulo="Ano" valor={p.ano == null ? 'todos' : String(p.ano)} onMudar={v => vm.mudarProcura({ ano: v === 'todos' ? null : Number(v) })}
+              opcoes={[{ valor: 'todos', rotulo: 'Todos' }, ...vm.anos.map(String)]} />
           </div>
           <div className="field">
-            <label htmlFor="af-mes">Mês</label>
-            <select id="af-mes" value={p.mes ?? ''} onChange={e => vm.mudarProcura({ mes: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">Qualquer</option>
-              {MESES_DO_ANO.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </select>
+            <label>Mês</label>
+            <CampoEscolha rotulo="Mês" valor={p.mes == null ? 'qualquer' : String(p.mes)} onMudar={v => vm.mudarProcura({ mes: v === 'qualquer' ? null : Number(v) })}
+              opcoes={[{ valor: 'qualquer', rotulo: 'Qualquer' }, ...MESES_POR_EXTENSO.map((m, i) => ({ valor: String(i + 1), rotulo: m }))]} />
           </div>
         </div>
       </section>
@@ -228,57 +256,44 @@ function Retirados({ vm }: { vm: VmDoArquivo }) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Descarte
+// Devolução (19/11/2026: "as caixas ficam no escritório 2 anos"; depois "volta para o cliente", contando do fim do ano da
+// caixa): as que já podem voltar, e o registro da entrega com quem recebeu
 // ---------------------------------------------------------------------------------------------------------------------
-function Descarte({ vm }: { vm: VmDoArquivo }) {
+function Devolucao({ vm }: { vm: VmDoArquivo }) {
+  const d = vm.devolvendo;
+  const FormDaEntrega = ({ c }: { c: af.Caixa }) => (d && d.caixa === c.id ? (
+    <form className="af-retirada af-entrega" onSubmit={e => { e.preventDefault(); void vm.confirmarDevolucao(); }}>
+      <input type="text" value={d.para} onChange={e => vm.mudarDevolucao(e.target.value)} placeholder="Quem recebeu no cliente" aria-label="Quem recebeu no cliente" maxLength={80} autoFocus />
+      <button type="submit" className="btn btn-primary btn-sm" disabled={!d.para.trim() || vm.ocupado}>Entregue</button>
+      <button type="button" className="btn btn-outline btn-sm" onClick={vm.cancelarDevolucao}>Cancelar</button>
+    </form>
+  ) : null);
   return (
     <>
       <section className="card af-prazos">
-        <h3 className="dp-titulo">Prazos de guarda</h3>
-        <p className="fraco">Contados do 1º de janeiro do ano seguinte ao da caixa. São os prazos comuns; confira com o escritório antes de descartar.</p>
-        <div className="af-prazos-lista">
-          {vm.departamentos.map(d => <span key={d} className="badge badge-suave">{d}: {vm.prazos[d]} anos</span>)}
-        </div>
-        {!vm.podeDescartar && <p className="fraco">Só o admin marca a caixa como descartada.</p>}
+        <h3 className="dp-titulo">Volta para o cliente</h3>
+        <p className="fraco">A caixa fica {vm.anosNoEscritorio} anos no escritório, contados do fim do ano dela: a de 2026 fica até 31/12/2028 e volta para o cliente a partir de 01/01/2029.</p>
       </section>
       <section className="card dp-lista">
         <div className="dp-lista-topo">
-          <h3 className="dp-titulo">Já podem ser descartadas</h3>
+          <h3 className="dp-titulo">Já podem voltar</h3>
           <span className="badge badge-neutral">{vm.vencidas.length}</span>
         </div>
-        {vm.vencidas.length ? (<>
-          <ul className="af-cartoes">
+        {vm.vencidas.length ? (
+          <ul className="af-cartoes af-fila">
             {vm.vencidas.map(c => (
-              <li key={c.id} className="af-cartao af-cartao-fixo">
+              <li key={c.id} className="af-cartao af-cartao-fixo af-cartao-entrega">
                 <button type="button" className="af-cartao-abre" onClick={() => vm.abrir(c.id)}>
                   <span className="af-cartao-l1"><Empresa c={c} /></span>
                   <span className="af-cartao-l2"><strong>Caixa {vm.codigo(c.numero)}</strong> · {c.ano} · {c.tipo}<span className="tarefas-barra-espaco" /><Situacao vm={vm} c={c} /></span>
-                  <span className="af-cartao-l3">Pode desde {vm.liberadaEm(c)} · {c.local || 'Sem local'}</span>
+                  <span className="af-cartao-l3">Pode voltar desde {vm.liberadaEm(c)} · {c.local || 'Sem local'}</span>
                 </button>
-                {vm.podeDescartar && <button type="button" className="btn btn-outline btn-sm" disabled={vm.ocupado || vm.situacao(c) !== 'no-lugar'} onClick={() => void vm.descartar(c)}>Descartada</button>}
+                {!(d && d.caixa === c.id) && <button type="button" className="btn btn-outline btn-sm" disabled={vm.ocupado || vm.situacao(c) !== 'no-lugar'} title={vm.situacao(c) !== 'no-lugar' ? 'Há coisa retirada desta caixa' : undefined} onClick={() => vm.comecarDevolucao(c)}>Entregar ao cliente</button>}
+                <FormDaEntrega c={c} />
               </li>
             ))}
           </ul>
-          <div className="table-wrap af-tabela">
-            <table className="dp-tabela">
-              <thead><tr><th>Empresa</th><th>Ano</th><th>Tipo</th><th>Caixa</th><th>Local</th><th>Pode desde</th><th>Situação</th><th /></tr></thead>
-              <tbody>
-                {vm.vencidas.map(c => (
-                  <tr key={c.id}>
-                    <td><button type="button" className="link-btn" onClick={() => vm.abrir(c.id)}><Empresa c={c} /></button></td>
-                    <td className="num">{c.ano}</td>
-                    <td>{c.tipo}</td>
-                    <td className="num"><strong>{vm.codigo(c.numero)}</strong></td>
-                    <td>{c.local || <span className="fraco">—</span>}</td>
-                    <td className="num">{vm.liberadaEm(c)}</td>
-                    <td><Situacao vm={vm} c={c} /></td>
-                    <td>{vm.podeDescartar && <button type="button" className="btn btn-outline btn-sm" disabled={vm.ocupado || vm.situacao(c) !== 'no-lugar'} onClick={() => void vm.descartar(c)}>Descartada</button>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>) : <Vazio compacto icone="check" texto="Nenhuma caixa passou do prazo de guarda." />}
+        ) : <Vazio compacto icone="check" texto="Nenhuma caixa completou os 2 anos no escritório." />}
       </section>
     </>
   );
@@ -295,7 +310,8 @@ const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] || nome;
 function JanelaDaCaixa({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, vm.fechar);
-  const descartada = vm.situacao(c) === 'descartada';
+  // a caixa que voltou para o cliente (ou foi descartada) não mexe mais: só se vê
+  const descartada = vm.situacao(c) === 'descartada' || vm.situacao(c) === 'devolvida';
   const foraACaixa = vm.retiradaAberta(c.retiradas);
   const grade = vm.grade;
   const r = vm.retirando;
@@ -329,7 +345,7 @@ function JanelaDaCaixa({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
                 <Icone nome="mapaPin" width={20} height={20} />
                 <div>
                   <strong className="af-onde-local">{c.local || 'Sem local'}</strong>
-                  <div className="fraco">Arquivada em {vm.dataBr(c.arquivadaEm) || '—'}{c.descartadaEm && ' · descartada em ' + vm.dataBr(c.descartadaEm) + ' por ' + c.descartadaPor}</div>
+                  <div className="fraco">Arquivada em {vm.dataBr(c.arquivadaEm) || '—'}{c.devolvidaEm && ' · voltou para o cliente em ' + vm.dataBr(c.devolvidaEm) + ' (recebeu: ' + c.devolvidaPara + '; entregou: ' + c.devolvidaPor + ')'}{c.descartadaEm && ' · descartada em ' + vm.dataBr(c.descartadaEm) + ' por ' + c.descartadaPor}</div>
                 </div>
                 <span className="tarefas-barra-espaco" />
                 {!descartada && !foraACaixa && !(r && r.alvo.envelope == null) && (
@@ -362,13 +378,15 @@ function JanelaDaCaixa({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
                     const fora = e ? vm.retiradaAberta(e.retiradas) : null;
                     const id = e ? e.id : 'mes:' + m.competencia;
                     const escolhido = vm.escolhido === id;
+                    // impresso e esperando quem arquive (o responsável já pôs o papel no envelope)
+                    const impresso = !e ? vm.impressoDoMes(c, m.competencia) : null;
                     return (
                       <button key={m.competencia} type="button" disabled={!e && descartada} aria-pressed={escolhido}
-                        className={'af-mes' + (e ? ' tem' : ' falta') + (fora || (e && foraACaixa) ? ' fora' : '') + (escolhido ? ' escolhido' : '')}
-                        title={e ? (fora ? 'Com ' + fora.quem : 'Na caixa') + (e.observacao ? ' · ' + e.observacao : '') : 'Não está na caixa'}
+                        className={'af-mes' + (e ? ' tem' : impresso ? ' impresso' : ' falta') + (fora || (e && foraACaixa) ? ' fora' : '') + (escolhido ? ' escolhido' : '')}
+                        title={e ? (fora ? 'Com ' + fora.quem : 'Na caixa') + (e.observacao ? ' · ' + e.observacao : '') : impresso ? 'Impresso por ' + impresso.impressoPor + ': falta arquivar' : 'Não está na caixa'}
                         onClick={() => vm.escolher(id)}>
                         <span className="af-mes-nome">{MESES_DO_ANO[m.mes - 1]}</span>
-                        <span className="af-mes-info">{e ? (fora ? primeiroNome(fora.quem) : e.observacao || 'Na caixa') : 'Falta'}</span>
+                        <span className="af-mes-info">{e ? (fora ? primeiroNome(fora.quem) : e.observacao || 'Na caixa') : impresso ? 'Impresso' : 'Falta'}</span>
                       </button>
                     );
                   })}
@@ -395,7 +413,7 @@ function JanelaDaCaixa({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
               </section>
             )}
 
-            <p className="af-rodape fraco">Pode descartar a partir de {vm.liberadaEm(c)} · atualizada por {c.atualizadaPor || '—'} em {vm.quando(c.atualizadaEm)}</p>
+            <p className="af-rodape fraco">{c.devolvidaEm ? 'Com o cliente desde ' + vm.dataBr(c.devolvidaEm) : 'Volta para o cliente a partir de ' + vm.liberadaEm(c)} · atualizada por {c.atualizadaPor || '—'} em {vm.quando(c.atualizadaEm)}</p>
           </div>
         </section>
       </div>
@@ -407,24 +425,31 @@ function JanelaDaCaixa({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
 function PainelDoEnvelope({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
   const x = vm.escolhido;
   if (!x) return null;
-  const descartada = vm.situacao(c) === 'descartada';
+  const descartada = vm.situacao(c) === 'descartada' || vm.situacao(c) === 'devolvida';
   const foraACaixa = vm.retiradaAberta(c.retiradas);
   const r = vm.retirando;
   if (x.startsWith('mes:') || x === 'novo') {
     const novo = x === 'novo';
     const comp = novo ? vm.compNova : x.slice(4);
     const mes = Number(comp.slice(5, 7));
+    const impresso = !novo ? vm.impressoDoMes(c, comp) : null;
     return (
       <form className="af-painel" onSubmit={e => { e.preventDefault(); void vm.guardar(comp); }}>
-        <strong className="af-painel-titulo">{novo ? 'Outro envelope' : MESES_POR_EXTENSO[mes - 1] + ' de ' + c.ano + ' não está na caixa'}</strong>
+        <strong className="af-painel-titulo">{novo ? 'Outro envelope' : MESES_POR_EXTENSO[mes - 1] + ' de ' + c.ano + (impresso ? ': impresso, falta arquivar' : ' não está na caixa')}</strong>
+        {impresso && <div className="af-painel-situacao">Impresso por <strong>{impresso.impressoPor || '—'}</strong> em {vm.quando(impresso.impressoEm)}. Guardar confirma o arquivamento.</div>}
         <div className="af-painel-campos">
           {novo && (
-            <select value={vm.compNova} onChange={e => vm.setCompNova(e.target.value)} aria-label="De quando é o envelope">
-              {vm.competenciasDaCaixa.map(cp => <option key={cp} value={cp}>{cp.length === 4 ? 'O ano todo (' + cp + ')' : MESES_POR_EXTENSO[Number(cp.slice(5, 7)) - 1]}</option>)}
-            </select>
+            <CampoEscolha rotulo="De quando é o envelope" valor={vm.compNova} onMudar={vm.setCompNova}
+              opcoes={vm.competenciasDaCaixa.map(cp => ({ valor: cp, rotulo: cp.length === 4 ? 'O ano todo (' + cp + ')' : MESES_POR_EXTENSO[Number(cp.slice(5, 7)) - 1] }))} />
           )}
           <input type="text" value={vm.obsNova} onChange={e => vm.setObsNova(e.target.value)} placeholder={novo ? 'O que tem nele (DEFIS, notas de entrada…)' : 'Observação (opcional)'} aria-label="Observação do envelope" maxLength={120} />
-          <button type="submit" className="btn btn-primary btn-sm" disabled={vm.ocupado}>Guardar o envelope</button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={vm.ocupado}>{impresso ? 'Confirmar o arquivamento' : 'Guardar o envelope'}</button>
+          {!novo && !impresso && (
+            <button type="button" className="btn btn-outline btn-sm" disabled={vm.ocupado} title="Imprime a etiqueta e deixa o envelope esperando quem arquive"
+              onClick={() => { void vm.registrarImpressao(c, comp); void imprimirEtiquetasDosEnvelopes(c, [{ id: '', competencia: comp, departamento: c.departamento, observacao: '', retiradas: [], arquivadoEm: '', arquivadoPor: '' }]); }}>
+              <Icone nome="qrCode" width={14} height={14} />Imprimir a etiqueta
+            </button>
+          )}
         </div>
       </form>
     );
@@ -457,11 +482,11 @@ function PainelDoEnvelope({ vm, c }: { vm: VmDoArquivo; c: af.Caixa }) {
 }
 
 /** Quem leva e para quê (o nome vem preenchido com quem está no nads). */
-function FormDaRetirada({ vm, titulo }: { vm: VmDoArquivo; titulo: string }) {
+function FormDaRetirada({ vm, titulo, aoConfirmar }: { vm: VmDoArquivo; titulo: string; /** o envelope lido pelo QR registra pelo dele */ aoConfirmar?: () => Promise<void> }) {
   const r = vm.retirando;
   if (!r) return null;
   return (
-    <form className="af-retirada" onSubmit={e => { e.preventDefault(); void vm.confirmarRetirada(); }}>
+    <form className="af-retirada" onSubmit={e => { e.preventDefault(); void (aoConfirmar || vm.confirmarRetirada)(); }}>
       <strong>{titulo}</strong>
       <input type="text" value={r.quem} onChange={e => vm.mudarRetirada({ quem: e.target.value })} placeholder="Quem está levando" aria-label="Quem está levando" maxLength={80} autoFocus />
       <input type="text" value={r.motivo} onChange={e => vm.mudarRetirada({ motivo: e.target.value })} placeholder="Para quê (opcional)" aria-label="Para quê" maxLength={120} />
@@ -518,10 +543,9 @@ function JanelaDoFormulario({ vm }: { vm: VmDoArquivo }) {
               </div>
               <div className="af-form-linha">
                 <div className="field">
-                  <label htmlFor="af-fdep">Departamento</label>
-                  <select id="af-fdep" value={f.departamento} disabled={editando} onChange={e => vm.mudarForm({ departamento: e.target.value as af.Departamento })}>
-                    {vm.departamentos.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  <label>Departamento</label>
+                  {editando ? <strong className="af-campo-fixo">{f.departamento}</strong>
+                    : <CampoEscolha rotulo="Departamento" valor={f.departamento} onMudar={v => vm.mudarForm({ departamento: v as af.Departamento })} opcoes={vm.departamentos} />}
                 </div>
                 <div className="field">
                   <label htmlFor="af-ftipo">Tipo</label>
@@ -529,11 +553,11 @@ function JanelaDoFormulario({ vm }: { vm: VmDoArquivo }) {
                 </div>
                 <div className="field">
                   <label htmlFor="af-fano">Ano</label>
-                  <input id="af-fano" type="number" value={f.ano ?? ''} disabled={editando} onChange={e => vm.mudarForm({ ano: e.target.value ? Number(e.target.value) : null })} min={1950} max={2100} />
+                  <input id="af-fano" type="text" inputMode="numeric" value={f.ano ?? ''} disabled={editando} onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 4); vm.mudarForm({ ano: d ? Number(d) : null }); }} placeholder="2026" />
                 </div>
                 <div className="field">
                   <label htmlFor="af-fnum">Código da caixa</label>
-                  <input id="af-fnum" type="number" value={f.numero ?? ''} disabled={editando} onChange={e => vm.mudarForm({ numero: e.target.value ? Number(e.target.value) : null })} min={1} max={999} />
+                  <input id="af-fnum" type="text" inputMode="numeric" value={f.numero ?? ''} disabled={editando} onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 3); vm.mudarForm({ numero: d ? Number(d) : null }); }} placeholder="001" />
                 </div>
               </div>
               <div className="af-form-linha">
@@ -542,18 +566,14 @@ function JanelaDoFormulario({ vm }: { vm: VmDoArquivo }) {
                   <CampoDataComCalendario id="af-fdata" rotulo="Data do arquivamento" valor={f.arquivadaTexto} onMudar={v => vm.mudarForm({ arquivadaTexto: v })} />
                 </div>
                 <div className="field">
-                  <label htmlFor="af-fpra">Prateleira</label>
-                  <select id="af-fpra" value={vm.lugarDoForm?.prateleira ?? ''} onChange={e => vm.escolherLugar({ prateleira: Number(e.target.value) })}>
-                    {!vm.lugarDoForm && <option value="">—</option>}
-                    {vm.lugaresPossiveis.prateleiras.map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                  <label>Prateleira</label>
+                  <CampoEscolha rotulo="Prateleira" vazio="Escolha" valor={vm.lugarDoForm ? String(vm.lugarDoForm.prateleira) : ''} onMudar={v => vm.escolherLugar({ prateleira: Number(v) })}
+                    opcoes={vm.lugaresPossiveis.prateleiras.map(n => ({ valor: String(n), rotulo: 'Prateleira ' + n }))} />
                 </div>
                 <div className="field">
-                  <label htmlFor="af-ffil">Fileira</label>
-                  <select id="af-ffil" value={vm.lugarDoForm?.fileira ?? ''} onChange={e => vm.escolherLugar({ fileira: Number(e.target.value) })}>
-                    {!vm.lugarDoForm && <option value="">—</option>}
-                    {vm.lugaresPossiveis.fileiras.map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                  <label>Fileira</label>
+                  <CampoEscolha rotulo="Fileira" vazio="Escolha" valor={vm.lugarDoForm ? String(vm.lugarDoForm.fileira) : ''} onMudar={v => vm.escolherLugar({ fileira: Number(v) })}
+                    opcoes={vm.lugaresPossiveis.fileiras.map(n => ({ valor: String(n), rotulo: 'Fileira ' + n }))} />
                 </div>
               </div>
               <div className="af-form-linha">
@@ -609,11 +629,11 @@ function JanelaDasPrateleiras({ vm }: { vm: VmDoArquivo }) {
               <div className="af-form-linha">
                 <div className="field">
                   <label htmlFor="af-npra">Prateleiras</label>
-                  <input id="af-npra" type="number" min={1} max={30} value={p.prateleiras} onChange={e => vm.mudarPrateleiras({ prateleiras: e.target.value })} />
+                  <input id="af-npra" type="text" inputMode="numeric" value={p.prateleiras} onChange={e => vm.mudarPrateleiras({ prateleiras: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
                 </div>
                 <div className="field">
                   <label htmlFor="af-nfil">Fileiras em cada uma</label>
-                  <input id="af-nfil" type="number" min={1} max={20} value={p.fileiras} onChange={e => vm.mudarPrateleiras({ fileiras: e.target.value })} />
+                  <input id="af-nfil" type="text" inputMode="numeric" value={p.fileiras} onChange={e => vm.mudarPrateleiras({ fileiras: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
                 </div>
               </div>
               <div className="af-imprimir-opcao">
@@ -625,6 +645,97 @@ function JanelaDasPrateleiras({ vm }: { vm: VmDoArquivo }) {
                 <button type="button" className="btn btn-primary" onClick={() => void imprimirEtiquetasDasFileiras(contas.prateleiras, contas.fileiras)}><Icone nome="qrCode" width={16} height={16} />Imprimir</button>
               </div>
             </section>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o envelope lido pelo QR (19/11/2026: "ao eu escanear o qr code do envelope cai literalmente na mesma coisa de escanear a
+// caixa"; "ao ler o qr code de um envelope não cadastrado ele deve ser cadastrado no arquivo"): onde ele está, com retirar
+// e devolver; ou, se ainda não está no arquivo, guardar com um toque (na caixa da empresa, do ano e do departamento dele,
+// ou numa caixa nova)
+// ---------------------------------------------------------------------------------------------------------------------
+function JanelaDoEnvelopeLido({ vm }: { vm: VmDoArquivo }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fecharLido);
+  const l = vm.lido;
+  const r = vm.retirando;
+  return (
+    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fecharLido(); }}>
+      <div ref={janela} className="pessoal-janela usuario-janela af-janela af-janela-lido" role="dialog" aria-modal="true" aria-label="Envelope lido">
+        <section className="pessoal-conteudo">
+          <header className="pessoal-topo">
+            <div className="usuario-quem">
+              {l ? <>
+                <h2>Envelope {vm.competencia(l.ref.competencia)}</h2>
+                <span className="fraco"><strong className="af-cod">{l.ref.codigo}</strong> {l.empresa} · {l.ref.departamento}</span>
+              </> : <h2>QR não reconhecido</h2>}
+            </div>
+            <span className="tarefas-barra-espaco" />
+            <BotaoFechar onClick={vm.fecharLido} />
+          </header>
+          <div className="pessoal-rola">
+            {!l ? <Vazio compacto icone="alert" texto="Esse QR não é de um envelope do arquivo." /> : l.achado.situacao === 'guardado' ? (() => {
+              const { caixa: c, envelope: e } = l.achado;
+              const fora = vm.retiradaAberta(e.retiradas);
+              const foraACaixa = vm.retiradaAberta(c.retiradas);
+              return (
+                <section className="card pessoal-cartao af-lido">
+                  <div className="af-lido-onde">
+                    <Icone nome="mapaPin" width={22} height={22} />
+                    <div>
+                      <div className="af-rot">Está na</div>
+                      <strong className="af-lido-caixa">Caixa {vm.codigo(c.numero)} · {c.ano}</strong>
+                      <div className="af-onde-local">{c.local || 'Sem local'}</div>
+                    </div>
+                  </div>
+                  {e.arquivadoPor && <div className="af-painel-situacao">Arquivado por <strong>{e.arquivadoPor}</strong> em {vm.quando(e.arquivadoEm)}.</div>}
+                  <div className={'af-painel-situacao' + (fora || foraACaixa ? ' fora' : '')}>
+                    {fora ? <>Fora: com <strong>{fora.quem}</strong> desde {vm.quando(fora.em)}{fora.motivo && ' · ' + fora.motivo}</>
+                      : foraACaixa ? <>Saiu junto com a caixa inteira, com <strong>{foraACaixa.quem}</strong>.</> : <>No lugar, dentro da caixa.</>}
+                  </div>
+                  {r && r.alvo.envelope === e.id ? <FormDaRetirada vm={vm} titulo="Quem está levando o envelope?" aoConfirmar={vm.confirmarRetiradaDoLido} /> : (
+                    <div className="af-painel-acoes">
+                      {fora && <button type="button" className="btn btn-primary" disabled={vm.ocupado} onClick={() => void vm.devolver(c.id, e.id)}>Devolvido</button>}
+                      {!fora && !foraACaixa && !c.descartadaEm && !c.devolvidaEm && <button type="button" className="btn btn-primary" onClick={() => vm.comecarRetirada(e.id)}>Retirar</button>}
+                      <button type="button" className="btn btn-outline" onClick={() => vm.abrirCaixaDoLido(c.id, e.id)}>Abrir a caixa</button>
+                    </div>
+                  )}
+                </section>
+              );
+            })() : (
+              <section className="card pessoal-cartao af-lido">
+                <div className="af-lido-novo"><Icone nome="arquivo" width={22} height={22} /><strong>Este envelope ainda não está no arquivo.</strong></div>
+                {vm.impressoLido && <div className="af-painel-situacao">Impresso por <strong>{vm.impressoLido.impressoPor || '—'}</strong> em {vm.quando(vm.impressoLido.impressoEm)}. Guardar confirma o arquivamento.</div>}
+                {l.achado.caixas.length ? (
+                  <>
+                    <p className="fraco">Guarde na caixa de {l.ref.competencia.slice(0, 4)} desta empresa:</p>
+                    <div className="af-lido-caixas">
+                      {l.achado.caixas.map((c, i) => (
+                        <button key={c.id} type="button" className={'btn ' + (i === 0 ? 'btn-primary' : 'btn-outline')} disabled={vm.ocupado} onClick={() => void vm.guardarLido(c.id)}>
+                          Guardar na Caixa {vm.codigo(c.numero)}{c.local && ' · ' + c.local}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <form className="af-lido-criar" onSubmit={ev => { ev.preventDefault(); void vm.criarCaixaDoLido(); }}>
+                    <p className="fraco">Ainda não há caixa de {l.ref.competencia.slice(0, 4)} do {l.ref.departamento} desta empresa. Crie a Caixa {vm.codigo(l.numeroNovo)} já com este envelope:</p>
+                    <div className="af-painel-campos">
+                      <CampoEscolha rotulo="Prateleira" vazio="Prateleira…" valor={vm.lugarNovo.prateleira} onMudar={v => vm.mudarLugarNovo({ prateleira: v })}
+                        opcoes={vm.lugaresPossiveis.prateleiras.map(n => ({ valor: String(n), rotulo: 'Prateleira ' + n }))} />
+                      <CampoEscolha rotulo="Fileira" vazio="Fileira…" valor={vm.lugarNovo.fileira} onMudar={v => vm.mudarLugarNovo({ fileira: v })}
+                        opcoes={vm.lugaresPossiveis.fileiras.map(n => ({ valor: String(n), rotulo: 'Fileira ' + n }))} />
+                      <button type="submit" className="btn btn-primary" disabled={vm.ocupado}>Criar a caixa e guardar</button>
+                    </div>
+                  </form>
+                )}
+              </section>
+            )}
+            {l && <p className="af-rodape fraco">Código do envelope: {l.codigo}</p>}
           </div>
         </section>
       </div>

@@ -91,7 +91,9 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
     const P = core();
     const hoje = agora();
     const compAnterior = mesAnterior(hoje);
-    const compDp = P.competenciaDeTrabalhoDoDp(hoje);
+    // o DP no mesmo mês do Fiscal e do Contábil, o anterior (19/11/2026; o dono: "o dp ta errado"): no mês em trabalho do
+    // DP (o atual depois do 5º dia útil) a folha ainda nem começou, e o cartão ficava em 0% o mês inteiro
+    const compDp = compAnterior;
     const execs = [...fontes.execucoes.values()];
     const doSetor = (dep, comp) => execs.filter(e => e.departamento === dep && e.competencia === comp);
 
@@ -111,7 +113,7 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
     ) };
     const rotinas = [fiscal, contabil];
 
-    // 2. a tabela do DP (a competência de trabalho), a mesma conta do Painel do DP
+    // 2. a tabela do DP (a competência anterior), a mesma conta do Painel do DP
     const doDp = new Map(doSetor('dp', compDp).map(e => [Number(e.codigo), e]));
     const situacoes = P.CLIENTES_DO_DP.map(base => {
       const c = P.clienteDoDpNoCadastro(base, fontes.cadastroPorCodigo.get(base.codigo) || null, compDp);

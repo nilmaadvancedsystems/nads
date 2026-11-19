@@ -97,6 +97,7 @@ const fontes = {
     assert.strictEqual(leiturasDaEquipe, 1);
     assert.deepStrictEqual(d.rotinas.find(x => x.setor === 'contabil').pessoas.filter(p => p.nome !== 'Sem responsável').map(p => [p.nome, p.feitas, p.faltando]), [['Fernando', 0, 1]]);
     assert.ok(d.dp.atrasadas + d.dp.pendentes + d.dp.feitas + d.dp.sem === core().CLIENTES_DO_DP.length, 'o DP conta todos os clientes da tabela');
+    assert.strictEqual(d.dp.competencia, '2026-10', 'o DP no mês anterior, como o Fiscal e o Contábil');
     assert.ok(!JSON.stringify(d).match(/cli1|cli2/), 'nenhum id de cliente no resumo');
     assert.strictEqual(contagens.length, 7, 'sete contagens por volta');
 
