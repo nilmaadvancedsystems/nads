@@ -8,8 +8,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useJanelaDaComissao, type ClienteDaLista, type ClienteSemCodigo } from './useCarteiraDaPessoa';
-import { MeiDaComissao } from './MeiDaComissao';
-import { ehServicoDeMei } from './useMeiDaComissao';
 
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -153,7 +151,6 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               )}
             </Propriedade>
             {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026) */}
-            {dev && !travada && ehServicoDeMei(vm.servico) && <MeiDaComissao nome={vm.avulso ? vm.nomeAvulso : vm.cliente} aoLerCartao={nome => { if (vm.clienteCodigo == null && !vm.nomeAvulso.trim()) vm.escolherSemCodigo(nome, 'MEI'); else if (vm.avulso && !vm.porte) vm.setPorte('MEI'); }} />}
             {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
             {!(vm.oculta && comissao) && (
               <Propriedade icone="dinheiro" rotulo="Valor do serviço">
