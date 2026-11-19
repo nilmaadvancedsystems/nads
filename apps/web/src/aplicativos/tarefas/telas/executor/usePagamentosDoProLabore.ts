@@ -37,25 +37,7 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
     const novo = empresas.cadastro.definirPagamentoDoProLabore(cadastro, mudar, op?.nome || 'Tarefa', new Date());
     if (novo !== cadastro) vivo.salvar(novo);
   };
-  const contas = useContasDoBalancete(empresa);
-  const plano = useMemo(() => (contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [contas]);
-  // a conta do pagamento: só o caixa e os bancos conta movimento do plano (Vitor, 18/11/2026: "voce pega apenas o caixa e contas
-  // do banco movimento, do plano de contas para selecionar"): a analítica embaixo da sintética Caixa ou Bancos (na ordem do
-  // balancete), ou com caixa/banco no nome; aplicação, empréstimo e financiamento ficam de fora
-  const deDinheiro = useMemo(() => {
-    const fora = /aplica|investimento|poupan|empr[eé]stimo|financiamento|consórcio|consorcio|cap\.? de giro|capital de giro/i;
-    const ordem = [...(contas || [])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-    let pai = '';
-    const achadas: { codigo: string; nome: string }[] = [];
-    for (const c of ordem) {
-      if (c.sintetica) { pai = c.nome; continue; }
-      const doPai = /^caixa\b|caixa geral|^bancos?\b|conta movimento/i.test(pai) && !fora.test(pai);
-      const doNome = /^caixa\b|banco|conta movimento/i.test(c.nome);
-      // embaixo de aplicação (ou empréstimo) não entra nem com "banco" no nome (18/11/2026: "aplicacao nao entra")
-      if ((doPai || doNome) && !fora.test(pai) && !fora.test(c.nome) && (!c.grupo || /ativo/i.test(c.grupo))) achadas.push({ codigo: c.codigo, nome: c.nome });
-    }
-    return achadas;
-  }, [contas]);
+  const { plano, deDinheiro } = useContasDePagamento(empresa);
   const debito = contaDoItem.split(' — ')[0].trim();
   const modelos = useModelosDeHistorico();
   // só até o fim do período (o razão do robô vem até o mês seguinte; 18/11/2026)
@@ -131,3 +113,29 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
 }
 
 export type PagamentosDoProLabore = ReturnType<typeof usePagamentosDoProLabore>;
+
+/**
+ * As contas para pagar (Pró-labore, Adiantamento salarial): o plano (analíticas) e só o caixa e os bancos conta movimento.
+ */
+export function useContasDePagamento(empresa: string) {
+  const contas = useContasDoBalancete(empresa);
+  const plano = useMemo(() => (contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [contas]);
+  // a conta do pagamento: só o caixa e os bancos conta movimento do plano (Vitor, 18/11/2026: "voce pega apenas o caixa e contas
+  // do banco movimento, do plano de contas para selecionar"): a analítica embaixo da sintética Caixa ou Bancos (na ordem do
+  // balancete), ou com caixa/banco no nome; aplicação, empréstimo e financiamento ficam de fora
+  const deDinheiro = useMemo(() => {
+    const fora = /aplica|investimento|poupan|empr[eé]stimo|financiamento|consórcio|consorcio|cap\.? de giro|capital de giro/i;
+    const ordem = [...(contas || [])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    let pai = '';
+    const achadas: { codigo: string; nome: string }[] = [];
+    for (const c of ordem) {
+      if (c.sintetica) { pai = c.nome; continue; }
+      const doPai = /^caixa\b|caixa geral|^bancos?\b|conta movimento/i.test(pai) && !fora.test(pai);
+      const doNome = /^caixa\b|banco|conta movimento/i.test(c.nome);
+      // embaixo de aplicação (ou empréstimo) não entra nem com "banco" no nome (18/11/2026: "aplicacao nao entra")
+      if ((doPai || doNome) && !fora.test(pai) && !fora.test(c.nome) && (!c.grupo || /ativo/i.test(c.grupo))) achadas.push({ codigo: c.codigo, nome: c.nome });
+    }
+    return achadas;
+  }, [contas]);
+  return { plano, deDinheiro };
+}

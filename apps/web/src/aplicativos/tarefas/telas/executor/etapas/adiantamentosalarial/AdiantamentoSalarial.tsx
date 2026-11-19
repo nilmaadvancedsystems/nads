@@ -5,7 +5,8 @@ import { CampoArquivo, Icone } from '@nads/ui';
 import { ImportarRazaoComRobo } from '../../partes/ImportarRazaoComRobo';
 import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
-import { useId } from 'react';
+import { useId, useState } from 'react';
+import { MenuDaContaDoPagamento } from '../../partes/PagamentosDoProLabore';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import type { VmAdiantamentoSalarial } from './useAdiantamentoSalarial';
 import { useAdiantamentoSalarial } from './useAdiantamentoSalarial';
@@ -14,6 +15,10 @@ import { BotaoSemMovimento } from '../../partes/BotaoSemMovimento';
 export function AdiantamentoSalarial() {
   const vm = useAdiantamentoSalarial();
   const id = useId();
+  // o desenho do Pró-labore no modo desenvolvedor (19/11/2026: "remove isso, muito confuso"; "deixa a mesma coisa que o pro-labore"):
+  // sem o arquivo e o resumo no alto; as contas e o Baixar só atrás do "Gerar lançamentos"; embaixo, a grade pago / não pago
+  const [gerar, setGerar] = useState(false);
+  const comoProLabore = vm.dev;
   return (
     <section>
       <header className="topbar">
@@ -26,12 +31,12 @@ export function AdiantamentoSalarial() {
           <div className="imp-linha">
             <span className="imp-ico"><Icone nome="dinheiro" /></span>
             <div className="imp-txt imp-txt-larga">
-              <span><b>Adiantamento salarial</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
-              <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
+              <span><b>Adiantamento salarial</b>{!comoProLabore && vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
+              {!comoProLabore && <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>}
             </div>
             <div className="imp-grupos">
               {/* faltando pagamento: as duas contas digitadas e o .xls do Alterdata (o desenho dos pagamentos do Pró-labore) */}
-              {vm.qtd > 0 && (
+              {!comoProLabore && vm.qtd > 0 && (
                 <div className="imp-grupo" aria-label="Os pagamentos que faltam">
                   <input type="text" inputMode="numeric" placeholder="Adiantamento" aria-label="Conta do adiantamento (débito)" title="O código da conta do Adiantamento salarial (débito)"
                     value={vm.contaAdiantamento} onChange={e => vm.digitarContaAdiantamento(e.target.value)} style={{ width: 104 }} />
@@ -63,6 +68,26 @@ export function AdiantamentoSalarial() {
               </div>
             </div>
           </div>
+          {/* os lançamentos que faltam, só se a pessoa quiser (como no Pró-labore) */}
+          {comoProLabore && vm.temRazao && vm.qtd > 0 && (
+            <div className="btn-row adiantamento-gerar">
+              {!gerar ? (
+                <button type="button" className="btn btn-outline" onClick={() => setGerar(true)}
+                  title={'Montar ' + (vm.qtd === 1 ? 'o pagamento que falta' : 'os ' + vm.qtd + ' pagamentos que faltam') + ' para importar no Alterdata'}>
+                  <Icone nome="plus" />Gerar lançamentos
+                </button>
+              ) : (
+                <>
+                  {!vm.contaAdiantamento && (
+                    <input type="text" inputMode="numeric" placeholder="Conta do adiantamento" aria-label="Conta do adiantamento (débito)" title="O código da conta do Adiantamento salarial (débito)"
+                      value={vm.contaAdiantamento} onChange={e => vm.digitarContaAdiantamento(e.target.value)} style={{ width: 180 }} />
+                  )}
+                  <MenuDaContaDoPagamento valor={vm.contaBanco} nome={vm.nomeDoBanco} contas={vm.contasDePagamento} travado={false} onEscolher={vm.escolherBanco} />
+                  <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeExportar} motivo="Escolha a conta do crédito" baixar={vm.baixarXls} />
+                </>
+              )}
+            </div>
+          )}
           {/* a grade pago / não pago do período (modo desenvolvedor, 19/11/2026) */}
           {vm.grade && vm.grade.length > 0 && <GradeDoAdiantamento grade={vm.grade} />}
           {!vm.grade && vm.temRazao && vm.meses.length > 0 && (

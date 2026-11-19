@@ -10,6 +10,7 @@ import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useContaDoTipo } from '../../useContaDoTipo';
+import { useContasDePagamento } from '../../usePagamentosDoProLabore';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 
@@ -32,8 +33,11 @@ export function useAdiantamentoSalarial() {
   const doDinamico = useMemo(() => (contabil.dinamico ? cl.contasDeAdiantamentoSalarial(contabil.dinamico.d)[0]?.codigo || '' : ''), [contabil.dinamico]);
   // o botão Vitor do razão (19/11/2026): a conta informada, a escolhida, a do dinâmico ou a do nome; sem nenhuma, a etapa pede
   const contaDoRobo = useContaDoTipo(s.nome, s.codigo, 'adiantamento-salarial', contas.adiantamento || doDinamico);
-  const contaAdiantamento = contas.adiantamento ?? doDinamico;
+  const contaAdiantamento = contas.adiantamento || doDinamico || contaDoRobo.conta || razao?.razao.conta || '';
   const contaBanco = contas.banco ?? '';
+  // o banco do pagamento no menu do Pró-labore (19/11/2026: "deixa a mesma coisa que o pro-labore"): o caixa e os bancos do plano
+  const deConta = useContasDePagamento(s.nome);
+  const contasDePagamento = deConta.deDinheiro.length ? deConta.deDinheiro : deConta.plano;
   // o ⚡ do modo desenvolvedor: o razão de teste (16/10/2026)
   useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Razão de teste (zerando)' }, { id: 'falta', rotulo: 'Razão de teste (sem o pagamento do último mês)' }] : [],
     id => setRazao({ arquivo: 'TESTE razão do adiantamento salarial.xls', razao: t.adiantamentoSalarialDeTeste(s.meses, id === 'falta') }));
@@ -72,6 +76,7 @@ export function useAdiantamentoSalarial() {
   const reais = formatos.reais;
   return {
     robo: s.nome ? { empresa: s.nome, codigo: s.codigo, conta: contaDoRobo.conta, informar: contaDoRobo.informar, meses: s.meses } : null,
+    dev: s.dev,
     semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
     /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */
     mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
@@ -108,7 +113,9 @@ export function useAdiantamentoSalarial() {
         pagoEm: m.pagamentos.map(p => dataBR(p.data).slice(0, 5)).join(', '), diaCerto: dataBR(m.dataEsperada).slice(0, 5),
       };
     }) : null,
-    contaAdiantamento, contaBanco,
+    contaAdiantamento, contaBanco, contasDePagamento,
+    nomeDoBanco: (contasDePagamento.find(c => c.codigo === contaBanco) || deConta.plano.find(c => c.codigo === contaBanco))?.nome || '',
+    escolherBanco: (codigo: string) => setContas(c => ({ ...c, banco: codigo })),
     /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
     importacao: {
       codigo: s.codigo ?? null, empresa: s.nome, origem: 'adiantamento', lote: nomeDoLote('Adiantamento salarial', linhas().map(l => l.data)),
