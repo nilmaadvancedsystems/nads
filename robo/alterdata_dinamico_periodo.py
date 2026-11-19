@@ -407,9 +407,11 @@ def abrir_a_consulta(principal):
     except Exception as e:
         falhar('não achei Consultas → Balancete Dinâmico: ' + str(e)[:300])
 
+    # com mais de um Contábil aberto (19/11/2026), só a do Contábil escolhido
+    pid = proc.pid_da_janela(principal)
     def nova():
         fechar_novidades()
-        return next((h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmBalanceteDinamicoConsulta'), None)
+        return next((h for h in topo_do_fiscal() if win32gui.GetClassName(h) == 'TfrmBalanceteDinamicoConsulta' and proc.pid_da_janela(h) == pid), None)
     h = esperar(nova, 40)
     if not h:
         mensagem_na_frente('ao abrir o Balancete Dinâmico')

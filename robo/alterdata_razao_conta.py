@@ -397,12 +397,18 @@ def abrir_a_consulta(principal):
     except Exception as e:
         falhar('não achei Consultas → Lançamentos: ' + str(e)[:300])
 
+    # com mais de um Contábil aberto (19/11/2026), só as janelas do Contábil escolhido; a consulta que já estava aberta nele é
+    # reaproveitada (o Contábil traz a mesma para a frente em vez de abrir outra; antes o robô esperava uma nova e desistia)
+    pid = proc.pid_da_janela(principal)
     def nova():
         for h in topo_do_fiscal():
-            if h not in antes and h != principal and win32gui.GetClassName(h).startswith('Tfrm') and 'aviso' not in win32gui.GetClassName(h).lower():
+            if h not in antes and h != principal and proc.pid_da_janela(h) == pid and win32gui.GetClassName(h).startswith('Tfrm') and 'aviso' not in win32gui.GetClassName(h).lower():
                 return h
         for h in janelas_dentro(principal):
             if win32gui.GetClassName(h) == 'TfrmConsultaMovimento':
+                return h
+        for h in topo_do_fiscal():
+            if win32gui.GetClassName(h) == 'TfrmConsultaMovimento' and proc.pid_da_janela(h) == pid:
                 return h
         return None
     h = esperar(nova, 40)
