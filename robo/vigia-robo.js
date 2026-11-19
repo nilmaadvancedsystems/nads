@@ -1063,6 +1063,10 @@ async function iniciar() {
   catch (err) { log('resumo da semana desligado:', err.message); }
   try { require('./papeis-vencendo').iniciarPapeisVencendo({ db, log, avisos }); }
   catch (err) { log('aviso de documento vencendo desligado:', err.message); }
+  // o extrato das contas do escritório pela API do Sicoob e do Efí (19/11/2026): uma vez por dia, só com o metadado
+  // financeiro-bancos (as chaves e o certificado ficam lá, não no repositório)
+  try { tarefa('extrato-pela-api', () => require('./extrato-pela-api').iniciarExtratoPelaApi(db, log)); }
+  catch (err) { log('extrato pela API desligado:', err.message); }
   // o certificado digital do cofre do nads (19/10/2026): o admin no celular e por e-mail
   try { require('./certificados-do-cofre').iniciarCertificadosDoCofre({ db, log, avisos, enviar, destino: destinoDosAvisos }); }
   catch (err) { log('aviso de certificado do cofre desligado:', err.message); }
