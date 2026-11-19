@@ -59,8 +59,10 @@ function EscolherCliente({ clientes, codigo, avulso, rotulo, travada, onCliente,
 
 export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { comissao: carteira.Comissao | null; fechar: () => void; doFinanceiro?: boolean }) {
   const vm = useJanelaDaComissao(comissao, fechar, doFinanceiro);
-  // o calendário ao lado da data e o MEI (19/11/2026), por enquanto no modo desenvolvedor
-  const [dev] = useModoDesenvolvedor();
+  // o calendário ao lado da data, a comissão em destaque e o MEI (19/11/2026): na Carteira (que só abre no modo desenvolvedor e,
+  // na final, para os diretores); na janela do Financeiro, só no modo desenvolvedor
+  const [modoDev] = useModoDesenvolvedor();
+  const dev = modoDev || !doFinanceiro;
   const { travada, erros, salvando } = vm;
   const destaque = dev && !vm.oculta && !travada && !doFinanceiro;
   const janela = useRef<HTMLDivElement>(null);
@@ -81,7 +83,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
         </header>
         <div className={'registro-corpo' + (destaque ? ' comissao-com-destaque' : '')}>
           {/* a comissão grande no alto, à direita (Vitor, 19/11/2026: "deixa esse valor grande, na parte superior direita, que ta meio
-              vazia"); por enquanto no modo desenvolvedor */}
+              vazia") */}
           {destaque && <div className="comissao-destaque" aria-live="polite"><span>Comissão</span><b className="num">{formatos.reais(vm.valor)}</b></div>}
           {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
           {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
@@ -126,7 +128,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                   itens={vm.servicos.map(s => ({ rotulo: s.nome, marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
               )}
             </Propriedade>
-            {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026); modo desenvolvedor */}
+            {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026) */}
             {dev && !travada && ehServicoDeMei(vm.servico) && <MeiDaComissao nome={vm.avulso ? vm.nomeAvulso : vm.cliente} />}
             {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
             {!(vm.oculta && comissao) && (

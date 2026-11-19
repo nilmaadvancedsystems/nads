@@ -249,7 +249,8 @@ export const podeTrocarRazaoSocial = (op: Operador | null) => temNivelDiretor(op
 export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
 /** A Carteira por enquanto só para o Vitor (12/11/2026); os outros veem o botão e a tela "em desenvolvimento". */
-export const carteiraLiberada = (op: Operador | null) => !!op && carteira.liberadaPara(op.nome);
+/** quem tem a Carteira inteira: a liberada (o Vitor) e, desde 19/11/2026, o Diretor e o Dono (o nível da conta) */
+export const carteiraLiberada = (op: Operador | null) => !!op && (carteira.liberadaPara(op.nome) || usuarios.nivelDeDiretor(op.nivel));
 /** as páginas do Financeiro que eram da Carteira (12/11/2026); os endereços antigos da Carteira levam para elas */
 export const PAGINAS_DA_CARTEIRA_NO_FINANCEIRO = ['comissoes-equipe', 'holerites-equipe'];
 export const CARTEIRA_PARA_O_FINANCEIRO: Record<string, string> = { pagamentos: 'comissoes-equipe', enviar: 'holerites-equipe' };
@@ -294,8 +295,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // a Tela de Insights: só Diretor e admin (o dono, 18/11/2026: "esses paineis so vao ser vistos por diretor e admin")
     (a.id !== 'insights' || (ehDiretor(op) && novidadeLigada('insights'))) &&
     // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
-    // link direto não abre
-    (a.id !== 'carteira' || modoDesenvolvedor()) &&
+    // link direto não abre. Na versão final, só para o Diretor e o Dono, pelo nível da conta (Vitor, 19/11/2026: "divulga a versao
+    // final do carteira apenas para os diretores, quero testar, APENAS PARA DIRETORES NA VERSAO FINAL")
+    (a.id !== 'carteira' || modoDesenvolvedor() || usuarios.nivelDeDiretor(op.nivel)) &&
     // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
     (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
