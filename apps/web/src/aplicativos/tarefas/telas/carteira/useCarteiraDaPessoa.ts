@@ -46,6 +46,13 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   }));
   return {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
+    /** a linha dos últimos 6 meses (o total das comissões de cada mês, pela data; no topo, como num app de banco; 19/11/2026) */
+    serie: (() => {
+      const [a, mm] = m.mes.split('-').map(Number);
+      const meses = Array.from({ length: 6 }, (_, i) => { const d = new Date(a, mm - 6 + i, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); });
+      const validas = carteira.comValorParaAPessoa(todas.lista).filter(c => c.situacao !== 'recusada');
+      return meses.map(x => ({ mes: x, valor: validas.filter(c => c.data.startsWith(x)).reduce((t, c) => t + c.valor, 0) }));
+    })(),
     totalDoMes: totais.total,
     docsDoMes, pagsDoMes, materiaisDoMes,
     /** a tabela dos lançamentos em planilha (Vitor, 19/11/2026: "Coloca a opcao excel, para exportar em planilha"): as mesmas colunas da

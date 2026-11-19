@@ -8240,3 +8240,49 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .cmc-anexo-icone-btn{border:0;background:none;width:28px;height:28px;}
 .cmc-anexo-icone-btn:not(:disabled):hover{background:var(--hover-bg);}
 @media (max-width:760px){.cmc-novo .cmc-legenda{flex-direction:column;gap:12px;}.cmc-novo .cmc-legenda li{border-left:0;padding-left:0;}}
+/* o Seu Financeiro no jeito de app de banco (19/11/2026) */
+.cmc.banco{display:flex;flex-direction:column;gap:0;}
+.banco-saldo{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:18px 2px 22px;}
+.banco-saldo-txt{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.banco-rotulo{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-14);color:var(--ink-muted);}
+.banco-olho{border:0;background:none;color:var(--ink-muted);padding:2px;border-radius:6px;cursor:pointer;display:inline-flex;}
+.banco-olho:hover{color:var(--ink);background:var(--hover-bg);}
+.banco-olho svg{width:16px;height:16px;}
+.banco-valor{font-size:52px;font-weight:800;letter-spacing:-.025em;line-height:1;font-variant-numeric:tabular-nums;}
+.banco-partes{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;font-size:var(--fs-13);color:var(--ink-muted);margin-top:4px;}
+.banco-partes > span{display:inline-flex;align-items:center;gap:6px;}
+.banco-partes b{color:var(--ink);font-weight:600;}
+.banco-partes .cmc-ponto{display:inline-block;width:8px;height:8px;border-radius:50%;}
+.banco-linha{width:240px;height:72px;flex:none;overflow:visible;}
+.banco-linha-traco{fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.banco-linha-area{fill:color-mix(in srgb,var(--accent) 12%,transparent);}
+.banco-linha-ponto{fill:var(--accent);stroke:var(--bg, var(--surface));stroke-width:2;}
+.banco-acoes{display:flex;gap:22px;padding:4px 2px 26px;border-bottom:1px solid var(--border);overflow-x:auto;}
+.banco-acao{display:flex;flex-direction:column;align-items:center;gap:8px;border:0;background:none;color:var(--ink);font:inherit;font-size:var(--fs-13);cursor:pointer;min-width:64px;padding:0;}
+.banco-acao-bola{width:52px;height:52px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink);transition:transform .12s ease,background .12s ease;}
+.banco-acao-bola svg{width:22px;height:22px;}
+.banco-acao:hover:not(:disabled) .banco-acao-bola{transform:translateY(-2px);background:var(--hover-bg);}
+.banco-acao.destaque .banco-acao-bola{background:var(--accent);color:var(--on-accent,#fff);}
+.banco-acao:disabled{cursor:default;color:var(--ink-muted);}
+.banco-acao:disabled .banco-acao-bola{opacity:.35;}
+.banco-lista-topo{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 8px;}
+.banco-lista-topo h3{margin:0;font-size:18px;font-weight:700;}
+.banco-vazio{color:var(--ink-muted);font-size:var(--fs-13);padding:8px 2px;margin:0;}
+.banco-lista{list-style:none;margin:0;padding:0;}
+.banco-lista li{display:grid;grid-template-columns:44px minmax(0,1fr) auto 32px;align-items:center;gap:14px;padding:12px 2px;border-bottom:1px solid var(--border-muted);}
+.banco-lista li.abre{cursor:pointer;}
+.banco-lista li.abre:hover{background:var(--hover-bg);}
+.banco-bola{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink-muted);}
+.banco-bola svg{width:19px;height:19px;}
+.banco-comissao{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);}
+.banco-salario{background:color-mix(in srgb,var(--info, #3B82F6) 16%,transparent);color:var(--info, #3B82F6);}
+.banco-material{background:var(--surface-3);color:var(--ink-muted);}
+.banco-item-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.banco-item-txt b{font-size:var(--fs-15, 15px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.banco-item-txt span{font-size:var(--fs-12);color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.banco-item-valor{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:var(--fs-12);}
+.banco-item-valor b{font-size:var(--fs-15, 15px);font-weight:700;}
+.banco-item-valor b.riscado{text-decoration:line-through;color:var(--ink-muted);}
+.banco-item-mais{display:flex;justify-content:flex-end;}
+@media (max-width:640px){.banco-saldo{flex-direction:column;align-items:flex-start;}.banco-valor{font-size:40px;}.banco-linha{width:100%;}.banco-acoes{gap:14px;}}
+.banco-lista-topo .cmc-excel{color:#1D6F42;}.banco-lista-topo .cmc-excel svg{width:18px;height:18px;}.banco-lista-topo .cmc-excel:hover{color:#21A366;}

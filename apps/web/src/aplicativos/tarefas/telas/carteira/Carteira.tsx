@@ -9,7 +9,6 @@ import { Insumos } from './Insumos';
 import { MinhasComissoes } from './MinhasComissoes';
 import { useMes } from './comum';
 import { JanelaDeMateriais } from './JanelaDeMateriais';
-import { Icone } from '@nads/ui';
 import { useState } from 'react';
 
 export function Carteira({ pagina }: { pagina: string }) {
@@ -27,11 +26,7 @@ export function Carteira({ pagina }: { pagina: string }) {
       {materiais && <JanelaDeMateriais mes={m.mes} fechar={() => setMateriais(false)} />}
       {/* sem o título Comissões (Vitor, 19/11/2026: "remove esse titulo"): a página já se chama Financeiro */}
       {/* o mês, o Impressões e materiais e o Registrar comissão na mesma linha (19/11/2026) */}
-      <MinhasComissoes m={m} extra={(
-        <button type="button" className="btn btn-outline" onClick={() => setMateriais(true)} title="Registrar as impressões, pastas, envelopes e caixas de cada cliente, e ver os do mês">
-          <Icone nome="impressora" />Impressões e materiais
-        </button>
-      )} />
+      <MinhasComissoes m={m} onMateriais={() => setMateriais(true)} />
       {/* o gráfico dos 6 meses saiu (Vitor, 19/11/2026: "remove isso aqui tbm"); embaixo ficam os anexos, na tela das comissões */}
     </div>
   );
