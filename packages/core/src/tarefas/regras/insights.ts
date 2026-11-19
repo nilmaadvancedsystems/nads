@@ -10,6 +10,7 @@ import type { Execucao, Rotina } from '../tipos';
 import { situacaoGeral, estadoDa, progresso, proximaEtapa } from './execucao';
 import { prazoMaisUrgenteDoDp } from './prazosDoDp';
 import { atrasada } from './delegadas';
+import { EMPRESAS } from '../../empresas/lista';
 
 /** uma empresa da pessoa no mês (a visão da pessoa; 18/11/2026: "quer que quando eu clique abra uma visao do que a pessoa ta fazendo") */
 export interface EmpresaDaPessoa { nome: string; situacao: 'concluida' | 'em-andamento' | 'parada' | 'nao-iniciada'; etapa: string; feitas: number; total: number }
@@ -25,7 +26,15 @@ export interface ResumoDosInsights {
   clientes: { abertas: number; respondidas: number; nota: number; avaliacoes: number; documentosFaltando: number; mandeiAbertos: number };
   entregas: { aEntregar: number; noLink: number; confirmadas: number; falhas: number };
   equipe: { atrasadas: number; pessoas: { nome: string; atrasadas: number; tarefas?: TarefaAtrasada[] }[] };
+  /** a equipe pelos usuários do nads, cada um com o setor (19/11/2026; o dono: "ta faltando felipe e gustavo aqui"); sem ele, a
+   *  equipe sai das rotinas (como antes) */
+  time?: { nome: string; setor: SetorDaPessoa }[];
 }
+
+/** O setor da pessoa no Insights (19/11/2026; o dono: "dp e fiscal sao tabelao nao rotina"): o Contábil conta pelas rotinas, o
+ *  Fiscal pelo Relatório do Fiscal (o tabelão), o DP pela tabela do DP inteira e o office boy pelas entregas físicas. */
+export type SetorDaPessoa = 'contabil' | 'fiscal' | 'dp' | 'office-boy';
+export const ROTULO_DO_SETOR: Record<SetorDaPessoa, string> = { contabil: 'Contábil', fiscal: 'Fiscal', dp: 'DP', 'office-boy': 'Office boy' };
 
 const SEM_RESPONSAVEL = 'Sem responsável';
 
@@ -55,6 +64,67 @@ export function rotinasPorPessoa(
   for (const p of pessoas.values()) p.empresas = p.empresas!.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.nome.localeCompare(b.nome, 'pt-BR')).slice(0, 80);
   // quem tem mais faltando primeiro; "Sem responsável" no fim
   return [...pessoas.values()].sort((a, b) => Number(a.nome === SEM_RESPONSAVEL) - Number(b.nome === SEM_RESPONSAVEL) || b.faltando - a.faltando || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+/** O nome para comparar a pessoa do cadastro com o usuário: o primeiro nome, minúsculo e sem acento ("gustavo.s" e "GUSTAVO" batem). */
+export function chaveDoNome(nome: string): string {
+  return nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().split(/[.\s]+/)[0] || '';
+}
+
+/** O nome que aparece no cartão: o primeiro nome com a primeira letra maiúscula. */
+export function nomeDoCartao(nome: string): string {
+  const n = nome.trim().split(/[.\s]+/)[0] || nome.trim();
+  return n ? n[0].toUpperCase() + n.slice(1).toLowerCase() : '';
+}
+
+/**
+ * O setor de um usuário do nads (usuarios/{uid}, o documento cru): o departamento (fiscal, dp ou contabil) ou, sem ele, o
+ * papel de office boy; null para quem está desativado ou não é de nenhum (o admin e o Diretor sem departamento).
+ */
+export function setorDoUsuario(u: { departamento?: unknown; roles?: unknown; role?: unknown; ativo?: unknown; nome?: unknown }): SetorDaPessoa | null {
+  if (u.ativo === false || typeof u.nome !== 'string' || !u.nome.trim()) return null;
+  if (u.departamento === 'fiscal' || u.departamento === 'dp' || u.departamento === 'contabil') return u.departamento;
+  const papeis: unknown[] = Array.isArray(u.roles) ? u.roles : [u.role];
+  return papeis.includes('office_boy') ? 'office-boy' : null;
+}
+
+/**
+ * O Fiscal pelo tabelão (o Relatório do Fiscal, controleTributos do mês), por responsável do Fiscal no Cadastro: a empresa
+ * com a entrega marcada conta como feita; com algo preenchido, em andamento; em branco, não iniciada. Só as empresas do
+ * Simples e do Presumido (as duas páginas do relatório).
+ */
+export function fiscalPorPessoa(
+  empresas: readonly { codigo: number; responsavel: string; nome?: string }[],
+  situacaoDe: (codigo: number) => 'entregue' | 'comecada' | 'branco',
+): PessoaNoInsight[] {
+  const pessoas = new Map<string, PessoaNoInsight>();
+  for (const e of empresas) {
+    const nome = e.responsavel.trim() || SEM_RESPONSAVEL;
+    const p = pessoas.get(nome) ?? { nome, feitas: 0, faltando: 0, empresas: [] };
+    const s = situacaoDe(e.codigo);
+    if (s === 'entregue') p.feitas++; else p.faltando++;
+    p.empresas!.push({ nome: (e.nome || 'Empresa ' + e.codigo).slice(0, 80), situacao: s === 'entregue' ? 'concluida' : s === 'comecada' ? 'em-andamento' : 'nao-iniciada', etapa: s === 'entregue' ? '' : s === 'comecada' ? 'Falta entregar' : 'Não começou', feitas: 0, total: 0 });
+    pessoas.set(nome, p);
+  }
+  const ordem = { parada: 0, 'em-andamento': 1, 'nao-iniciada': 2, concluida: 3 } as const;
+  for (const p of pessoas.values()) p.empresas = p.empresas!.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.nome.localeCompare(b.nome, 'pt-BR')).slice(0, 80);
+  return [...pessoas.values()].sort((a, b) => Number(a.nome === SEM_RESPONSAVEL) - Number(b.nome === SEM_RESPONSAVEL) || b.faltando - a.faltando || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+/**
+ * As empresas do tabelão do Fiscal (as do Relatório do Fiscal: a lista do escritório e as cadastradas pelo nads, do Simples
+ * ou do Presumido pelo regime do Cadastro, senão o da lista), com o responsável do Fiscal no Cadastro.
+ */
+export function empresasDoTabelaoFiscal(cadastro: ReadonlyMap<number, { nome?: unknown; regime?: unknown; nova?: { regime?: unknown } | null; responsaveis?: { fiscal?: unknown } | null } | null>): { codigo: number; responsavel: string; nome: string }[] {
+  const daLista = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo as number, e]));
+  const codigos = new Set<number>([...daLista.keys(), ...cadastro.keys()]);
+  const txt = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  return [...codigos].map(codigo => {
+    const cad = cadastro.get(codigo) || null;
+    const lista = daLista.get(codigo);
+    const regime = txt(cad?.regime) || txt(cad?.nova?.regime) || (lista?.regime ?? '');
+    return { codigo, regime, responsavel: txt(cad?.responsaveis?.fiscal), nome: txt(cad?.nome) || lista?.nome || '' };
+  }).filter(e => e.regime === 'Simples' || e.regime === 'Presumido').map(({ codigo, responsavel, nome }) => ({ codigo, responsavel, nome }));
 }
 
 export type SituacaoDoDpNoInsight = 'feita' | 'pendente' | 'atrasada' | 'sem';
@@ -213,6 +283,7 @@ export function lerResumoDosInsights(x: unknown): ResumoDosInsights | null {
     clientes: { abertas: num(c.abertas), respondidas: num(c.respondidas), nota: Math.min(5, num(c.nota)), avaliacoes: num(c.avaliacoes), documentosFaltando: num(c.documentosFaltando), mandeiAbertos: num(c.mandeiAbertos) },
     entregas: { aEntregar: num(e.aEntregar), noLink: num(e.noLink), confirmadas: num(e.confirmadas), falhas: num(e.falhas) },
     equipe: { atrasadas: num(q.atrasadas), pessoas: (Array.isArray(q.pessoas) ? q.pessoas : []).map(obj).filter(p => txt(p.nome)).slice(0, 40).map(p => ({ nome: txt(p.nome), atrasadas: num(p.atrasadas), tarefas: tarefas(p.tarefas) })) },
+    ...(Array.isArray(o.time) ? { time: o.time.map(obj).filter(p => txt(p.nome) && typeof p.setor === 'string' && p.setor in ROTULO_DO_SETOR).slice(0, 40).map(p => ({ nome: txt(p.nome, 60), setor: p.setor as SetorDaPessoa })) } : {}),
   };
 }
 
@@ -247,19 +318,37 @@ export function resumoDeExemploDosInsights(agora: Date): ResumoDosInsights {
 // ------------------------------- a equipe em cartões (o visual de 18/11/2026: "faz algo bonito") -------------------------------
 
 export type TomDoInsight = 'bom' | 'alerta' | 'ruim';
-export interface PessoaDaEquipe { nome: string; setor: 'Fiscal' | 'Contábil'; feitas: number; total: number; pct: number; tom: TomDoInsight; atrasadas: number; empresas: EmpresaDaPessoa[]; tarefas: TarefaAtrasada[] }
+export interface PessoaDaEquipe { nome: string; setor: string; feitas: number; total: number; pct: number; tom: TomDoInsight; atrasadas: number; empresas: EmpresaDaPessoa[]; tarefas: TarefaAtrasada[]; /** o que o número conta (o cartão e a visão da pessoa) */ conta: string }
 
 /** O tom do percentual concluído: 90% ou mais é bom; de 60% a 89%, alerta; abaixo, ruim. */
 export const tomDoPercentual = (pct: number): TomDoInsight => (pct >= 90 ? 'bom' : pct >= 60 ? 'alerta' : 'ruim');
 
-/** Cada pessoa das rotinas (Fiscal e Contábil) com o percentual concluído e as tarefas atrasadas dela; a mais atrasada antes. */
+/**
+ * Cada pessoa da equipe com o percentual concluído e as tarefas atrasadas dela; a mais atrasada antes. Com o time (os
+ * usuários do nads; 19/11/2026), todo mundo aparece, contado pelo tabelão do setor: o Contábil pelas rotinas dele, o Fiscal
+ * pelo Relatório do Fiscal (as empresas dele), o DP pela tabela do DP inteira (o DP não tem responsável por empresa) e o
+ * office boy pelas entregas físicas. Sem o time (o resumo antigo), as pessoas das rotinas, como antes.
+ */
 export function equipeDosInsights(r: ResumoDosInsights): PessoaDaEquipe[] {
-  const atrasadas = new Map(r.equipe.pessoas.map(p => [p.nome.trim().toLowerCase(), p]));
-  const lista = r.rotinas.flatMap(s => s.pessoas.filter(p => p.nome !== SEM_RESPONSAVEL).map(p => {
-    const total = p.feitas + p.faltando;
-    const pct = total ? Math.round((p.feitas / total) * 100) : 100;
-    const q = atrasadas.get(p.nome.trim().toLowerCase());
-    return { nome: p.nome, setor: s.setor === 'fiscal' ? 'Fiscal' as const : 'Contábil' as const, feitas: p.feitas, total, pct, tom: tomDoPercentual(pct), atrasadas: q?.atrasadas ?? 0, empresas: p.empresas ?? [], tarefas: q?.tarefas ?? [] };
+  const atrasadas = new Map(r.equipe.pessoas.map(p => [chaveDoNome(p.nome), p]));
+  const cartao = (nome: string, setor: string, feitas: number, total: number, empresas: EmpresaDaPessoa[], conta: string): PessoaDaEquipe => {
+    const pct = total ? Math.round((feitas / total) * 100) : 100;
+    const q = atrasadas.get(chaveDoNome(nome));
+    return { nome, setor, feitas, total, pct, tom: tomDoPercentual(pct), atrasadas: q?.atrasadas ?? 0, empresas, tarefas: q?.tarefas ?? [], conta };
+  };
+  const ordenar = (l: PessoaDaEquipe[]) => l.sort((a, b) => a.pct - b.pct || b.atrasadas - a.atrasadas || a.nome.localeCompare(b.nome, 'pt-BR'));
+  if (!r.time) {
+    return ordenar(r.rotinas.flatMap(s => s.pessoas.filter(p => p.nome !== SEM_RESPONSAVEL)
+      .map(p => cartao(p.nome, s.setor === 'fiscal' ? 'Fiscal' : 'Contábil', p.feitas, p.feitas + p.faltando, p.empresas ?? [], 'empresas concluídas'))));
+  }
+  const doSetor = (setor: 'fiscal' | 'contabil', nome: string) => r.rotinas.find(s => s.setor === setor)?.pessoas.find(p => p.nome !== SEM_RESPONSAVEL && chaveDoNome(p.nome) === chaveDoNome(nome));
+  const dpTotal = r.dp.feitas + r.dp.pendentes + r.dp.atrasadas;
+  const entregasTotal = r.entregas.confirmadas + r.entregas.aEntregar + r.entregas.noLink;
+  return ordenar(r.time.map(u => {
+    const nome = nomeDoCartao(u.nome);
+    if (u.setor === 'dp') return cartao(nome, ROTULO_DO_SETOR.dp, r.dp.feitas, dpTotal, [], 'clientes do DP fechados');
+    if (u.setor === 'office-boy') return cartao(nome, ROTULO_DO_SETOR['office-boy'], r.entregas.confirmadas, entregasTotal, [], 'entregas feitas');
+    const p = doSetor(u.setor, u.nome);
+    return cartao(nome, ROTULO_DO_SETOR[u.setor], p?.feitas ?? 0, (p?.feitas ?? 0) + (p?.faltando ?? 0), p?.empresas ?? [], 'empresas concluídas');
   }));
-  return lista.sort((a, b) => a.pct - b.pct || b.atrasadas - a.atrasadas || a.nome.localeCompare(b.nome, 'pt-BR'));
 }

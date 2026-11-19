@@ -29,6 +29,10 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
   let parar = [];
   const delegadas = new Map();
   const documentosDoMes = new Map();
+  // o tabelão do Fiscal do mês (controleTributos) e a equipe (usuarios, relida a cada hora) (19/11/2026; o dono: "dp e fiscal
+  // sao tabelao nao rotina", "ta faltando felipe e gustavo aqui")
+  const tabelaoFiscal = new Map();
+  const equipe = { em: 0, time: [] };
   let compDocs = '';
   let ultimo = '';
   let rodando = false;
@@ -54,10 +58,31 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
     }, log);
     p.documentos = true;
     parar.push(p);
+    // o Relatório do Fiscal do mesmo mês (a leitura inicial e depois só o que muda)
+    const i2 = parar.findIndex(x => x.fiscal);
+    if (i2 >= 0) { parar[i2](); parar.splice(i2, 1); }
+    tabelaoFiscal.clear();
+    const f = ouvir('Insights: tabelão do Fiscal', () => db.collection('controleTributos').where('competencia', '==', comp), snap => {
+      tabelaoFiscal.clear();
+      for (const d of snap.docs) { const x = d.data() || {}; if (typeof x.codigo === 'number') tabelaoFiscal.set(x.codigo, x); }
+    }, log);
+    f.fiscal = true;
+    parar.push(f);
+  }
+  // a equipe pelos usuários do nads (uma leitura por pessoa a cada hora: o documento muda a cada 3 min com o "visto no nads")
+  async function timeDaEquipe(P) {
+    if (Date.now() - equipe.em < 60 * 60 * 1000) return equipe.time;
+    try {
+      const snap = await db.collection('usuarios').get();
+      equipe.time = snap.docs.map(d => d.data() || {}).map(u => ({ nome: String(u.nome || '').trim(), setor: P.setorDoUsuario(u) }))
+        .filter(u => u.setor).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).slice(0, 40);
+      equipe.em = Date.now();
+    } catch (e) { log('Insights: a equipe não abriu -', e.message); }
+    return equipe.time;
   }
   function desligarOuvintes() {
     for (const p of parar) { try { p(); } catch (e) { /* já parado */ } }
-    parar = []; compDocs = ''; delegadas.clear(); documentosDoMes.clear();
+    parar = []; compDocs = ''; delegadas.clear(); documentosDoMes.clear(); tabelaoFiscal.clear();
   }
 
   const contar = async q => { try { return (await q.count().get()).data().count || 0; } catch (e) { log('Insights: uma contagem falhou -', e.message); return 0; } };
@@ -70,15 +95,20 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
     const execs = [...fontes.execucoes.values()];
     const doSetor = (dep, comp) => execs.filter(e => e.departamento === dep && e.competencia === comp);
 
-    // 1. as rotinas do Fiscal e do Contábil (a competência anterior), por responsável do Cadastro
-    const rotinas = ['fiscal', 'contabil'].map(setor => {
+    // 1. o Contábil pelas rotinas (a competência anterior), por responsável do Cadastro; o Fiscal pelo tabelão (o Relatório
+    // do Fiscal: as empresas do Simples e do Presumido, concluída quando a entrega foi marcada), por responsável do Fiscal
+    const fiscal = { setor: 'fiscal', competencia: compAnterior, pessoas: P.fiscalPorPessoa(
+      P.empresasDoTabelaoFiscal(new Map([...fontes.cadastroPorCodigo].map(([c, cad]) => [Number(c), cad]))),
+      codigo => { const l = tabelaoFiscal.get(codigo); return l ? P.situacaoDaLinha({ valores: l.valores || {}, marcas: l.marcas || {}, data: l.data || '', entregue: l.entregue || '' }) : 'branco'; },
+    ) };
+    const rotinas = [fiscal].concat(['contabil'].map(setor => {
       const lista = doSetor(setor, compAnterior);
       const codigos = new Set(lista.map(e => Number(e.codigo)).filter(Boolean));
       for (const [codigo, cad] of fontes.cadastroPorCodigo) if (cad && cad.responsaveis && cad.responsaveis[setor]) codigos.add(codigo);
       // o nome vai junto: a visão da pessoa mostra as empresas dela (18/11/2026: "abra uma visao do que a pessoa ta fazendo")
       const empresas = [...codigos].map(codigo => { const cad = fontes.cadastroPorCodigo.get(codigo) || {}; return { codigo, responsavel: String((cad.responsaveis || {})[setor] || ''), nome: String(cad.nome || '') }; });
       return { setor, competencia: compAnterior, pessoas: P.rotinasPorPessoa(empresas, lista, codigo => P.rotinaDaEmpresa(setor, codigo)) };
-    });
+    }));
 
     // 2. a tabela do DP (a competência de trabalho), a mesma conta do Painel do DP
     const doDp = new Map(doSetor('dp', compDp).map(e => [Number(e.codigo), e]));
@@ -118,9 +148,12 @@ function iniciarInsights({ db, log, ouvir, core, fontes, agora = () => new Date(
 
     // 6. as tarefas delegadas atrasadas, por responsável
     const hh = String(hoje.getHours()).padStart(2, '0') + ':' + String(hoje.getMinutes()).padStart(2, '0');
-    const equipe = P.delegadasAtrasadas([...delegadas.values()], diaIso(hoje), hh);
+    const equipeAtrasada = P.delegadasAtrasadas([...delegadas.values()], diaIso(hoje), hh);
 
-    return { rotinas, dp, guias, clientes, entregas, equipe };
+    // 7. a equipe toda (os usuários do nads com o setor): a tela conta cada um pelo tabelão do setor dele
+    const time = await timeDaEquipe(P);
+
+    return { rotinas, dp, guias, clientes, entregas, equipe: equipeAtrasada, time };
   }
 
   async function talvez() {
