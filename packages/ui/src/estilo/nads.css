@@ -8216,3 +8216,10 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .cmc-tabela .cmc-excel{color:#1D6F42;}
 .cmc-tabela .cmc-excel svg{width:18px;height:18px;}
 .cmc-tabela .cmc-excel:hover{color:#21A366;}
+/* as 4 caixas dos anexos mais limpas (19/11/2026: "muito colorido, deixa mais clean"; "pode deixar os icones das boxes em pagas"): o fundo e
+   a borda neutros, o ícone na cor do Pagas */
+.cmc-anexo-caixa,.cmc-anexo-holerite,.cmc-anexo-extrato,.cmc-anexo-pagamento,.cmc-anexo-comissoes{--cor:var(--success);}
+.cmc-anexo-caixa{background:var(--surface);border-color:var(--border);}
+.cmc-anexo-caixa:not(.vazio):hover{border-color:var(--border-strong);box-shadow:none;transform:none;}
+.cmc-anexo-caixa.vazio{opacity:.6;border-style:solid;}
+.cmc-anexo-caixa.vazio .cmc-anexo-selo{filter:none;}

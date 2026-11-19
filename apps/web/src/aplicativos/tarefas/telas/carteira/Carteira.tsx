@@ -16,7 +16,7 @@ export function Carteira({ pagina }: { pagina: string }) {
   const { operador } = useOperador();
   const [materiais, setMateriais] = useState(false);
   // um mês só para a tela (19/11/2026: "repetindo referencia"): o das comissões vale também para os holerites
-  const m = useMes('comecar');
+  const m = useMes();
   // os Insumos são de toda a equipe (12/11/2026)
   if (pagina === 'insumos') return <Insumos />;
   if (!carteiraLiberada(operador)) return <CarteiraEmBreve />;

@@ -16,7 +16,7 @@ import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 /** as contas ligadas à pessoa (a consulta já é só dela) como os pagamentos da Carteira */
 const pagamentosDe = (contas: readonly financeiro.ContaAPagar[]) => carteira.pagamentosDaCarteira(contas, contas[0]?.funcionario?.uid ?? '');
 
-/** As comissões da pessoa, pelo mês do pagamento: abre no mês seguinte, onde entram as que ela registra (12/11/2026). */
+/** As comissões da pessoa, pelo mês do serviço (a data; 19/11/2026), que abre no mês de hoje; o pagamento é no mês seguinte. */
 /** mesDeFora: o mês que a tela da Carteira escolhe uma vez só, para as comissões e os holerites (19/11/2026: "repetindo referencia") */
 export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const repo = useCarteira();
@@ -24,7 +24,9 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
   const m = mesDeFora ?? proprio;
   const [aberta, setAberta] = useState<carteira.Comissao | null | 'nova'>(null);
   const todas = repo.minhasComissoes();
-  const lista = todas.lista.filter(c => c.competencia === m.mes);
+  // pelo mês do serviço (Vitor, 19/11/2026: "nao ta upando as comissoes na tabela"): a registrada em novembro aparece em novembro, a
+  // receber, e é paga no mês seguinte (a competência do pagamento continua a do mês seguinte)
+  const lista = todas.lista.filter(c => c.data.startsWith(m.mes));
   // a escondida conta como comissão, mas o valor dela não entra no total (16/11/2026: "não deixe essa informação visualizável")
   const totais = { ...carteira.totaisDasComissoes(carteira.comValorParaAPessoa(lista)), quantas: lista.filter(c => c.situacao !== 'recusada').length };
   // o total do mês é só das comissões (Vitor, 19/11/2026: o salário só aparece quando o DP gera a folha; "Só comissões"): o holerite e o
