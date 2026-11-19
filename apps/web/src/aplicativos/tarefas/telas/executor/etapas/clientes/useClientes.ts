@@ -246,7 +246,8 @@ export function useClientes() {
     dinamico: dinamico ? { nome: dinamico.nome, resumo: contas.length + ' clientes · ' + rotuloMes } : null,
     importar: (f: File | undefined) => { void importar(f); },
     /** para o botão Vitor (18/11/2026): a empresa e os meses da Tarefa */
-    robo: { codigo: s.codigo, empresa: s.nome, meses: s.meses },
+    // o botão Vitor puxa o período da Tarefa lá em cima (19/11/2026: "respeite o periodo! 01 ao 09")
+    robo: { codigo: s.codigo, empresa: s.nome, meses: s.periodo?.length ? s.periodo : s.meses },
     tirar: () => { setDinamico(null); if (!dinamicoProprio) contabil.tirarDinamico(); },
     /** o ⚡ do modo desenvolvedor na linha */
     teste,

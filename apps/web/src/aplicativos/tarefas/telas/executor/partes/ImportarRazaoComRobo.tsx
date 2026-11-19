@@ -4,6 +4,7 @@
 import { Icone } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { ComRoboDoRazao, MenuDeImportar } from '../../../etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
+import { usePeriodoDaTarefa } from '../etapas/contexto';
 
 export interface RoboDoRazaoDaTela { empresa: string; codigo: number | null; conta: string; meses: readonly string[]; /** só para o dono do robô de PC (o hook decide) */ informar?: (codigo: string) => void }
 
@@ -23,9 +24,13 @@ function InformarConta({ informar, titulo }: { informar: (codigo: string) => voi
   );
 }
 
-export function ImportarRazaoComRobo({ robo, titulo, aceitar = '.xls,.xlsx,.ods', importar, travado = false, children }: {
+export function ImportarRazaoComRobo({ robo: roboDaTela, titulo, aceitar = '.xls,.xlsx,.ods', importar, travado = false, children }: {
   robo: RoboDoRazaoDaTela | null; titulo: string; aceitar?: string; importar: (f: File) => unknown; travado?: boolean; children: ReactNode;
 }) {
+  // sempre o período da Tarefa lá em cima (Vitor, 19/11/2026: "respeite o periodo! 01 ao 09 la em cima"); a etapa só sabe os meses que
+  // faltam nela (o Adiantamento salarial mandava 07 a 09)
+  const daTarefa = usePeriodoDaTarefa();
+  const robo = roboDaTela && daTarefa ? { ...roboDaTela, meses: daTarefa } : roboDaTela;
   if (!robo || !robo.codigo || !robo.meses.length) return <>{children}</>;
   if (!robo.conta) return <>{robo.informar && <InformarConta informar={robo.informar} titulo={titulo.replace(/^o razão (de |do |da )?/, '')} />}{children}</>;
   return (

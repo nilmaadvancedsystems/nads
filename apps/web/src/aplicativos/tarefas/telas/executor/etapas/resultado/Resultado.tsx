@@ -2,10 +2,13 @@
 // aqui) e a tabela das contas do lado errado — a despesa credora e a receita devedora, com os meses. Tudo certo, o Ok.
 import { CampoArquivo, Icone } from '@nads/ui';
 import { ComRoboDoDinamico, MenuDeImportar } from '../../../../etapas/extrator/telas/tarefa/BotaoVitorDoRazao';
+import { usePeriodoDaTarefa } from '../contexto';
 import { useId } from 'react';
 import { useResultado } from './useResultado';
 
 export function Resultado() {
+  // o dinâmico do período da Tarefa lá em cima (19/11/2026)
+  const periodo = usePeriodoDaTarefa();
   const vm = useResultado();
   const id = useId();
   return (
@@ -28,7 +31,7 @@ export function Resultado() {
               ) : (
                 <>
                   {vm.robo && vm.robo.codigo && vm.robo.meses.length ? (
-                    <ComRoboDoDinamico codigo={vm.robo.codigo} empresa={vm.robo.empresa} meses={vm.robo.meses} importar={f => vm.importar(f)}>
+                    <ComRoboDoDinamico codigo={vm.robo.codigo} empresa={vm.robo.empresa} meses={periodo || vm.robo.meses} importar={f => vm.importar(f)}>
                       {r => (r ? <MenuDeImportar titulo="o balancete dinâmico" aceitar=".xls,.xlsx,.ods" travado={false} robo={r} onArquivos={fs => { if (fs[0]) void vm.importar(fs[0]); }} /> : (
                         <>
                           <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={vm.temDinamico ? 'Importar um balancete dinâmico mais novo (o corrigido)' : 'Importar o balancete dinâmico'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
