@@ -84,7 +84,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td className="cmc-dia">{ddmmaa(c.data)}</td>
                       <td><b>{nomeDoCliente(c.cliente)}</b></td>
                       <td>{c.porte || <span className="fraco">—</span>}</td>
-                      <td><Icone nome="dinheiro" width={14} height={14} /> Comissão<span className="fraco"> · {c.descricao}</span></td>
+                      <td>Comissão<span className="fraco"> · {c.descricao}</span></td>
                       <td className={'num' + (c.situacao === 'recusada' ? ' cmc-riscado' : '')}><b>{c.oculta ? '—' : formatos.reais(c.valor)}</b></td>
                       <td><SeloDaComissao s={c.situacao} semAprovacao />{c.pagoEm && <span className="fraco"> em {ddmm(c.pagoEm)}</span>}{c.situacao === 'recusada' && c.motivo && <span className="fraco" title={c.motivo}> · {c.motivo}</span>}</td>
                     </tr>
@@ -94,7 +94,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td className="cmc-dia">{ddmmaa(doc.enviadoEm.slice(0, 10))}</td>
                       <td><span className="fraco">—</span></td>
                       <td><span className="fraco">—</span></td>
-                      <td><Icone nome={doc.tipo === 'holerite' ? 'recibo' : 'checkCircle'} width={14} height={14} /> {doc.tipo === 'holerite' ? 'Salário · holerite' : carteira.rotuloDoDocumento(doc.tipo)}</td>
+                      <td>{doc.tipo === 'holerite' ? 'Salário · holerite' : carteira.rotuloDoDocumento(doc.tipo)}</td>
                       <td className="num"><b>{doc.valor != null ? formatos.reais(doc.valor) : '—'}</b></td>
                       <td className="cmc-acoes">
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirDocumento(doc)}><Icone nome="olho" />Abrir</button>
@@ -107,7 +107,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td className="cmc-dia">{ddmmaa(p.pago && p.pagoEm ? p.pagoEm : p.vencimento)}</td>
                       <td><span className="fraco">—</span></td>
                       <td><span className="fraco">—</span></td>
-                      <td><Icone nome="landmark" width={14} height={14} /> {p.rotulo}</td>
+                      <td>{p.rotulo}</td>
                       <td className="num"><b>{formatos.reais(p.pago ? p.valorPago ?? p.valor : p.valor)}</b></td>
                       <td className="cmc-acoes">
                         {p.pago ? <span className="badge badge-ok">Pago</span> : <span className="badge badge-suave badge-info">A receber</span>}
@@ -122,7 +122,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td className="cmc-dia">{ddmmaa(x.data)}</td>
                       <td><b>{x.cliente}</b>{x.codigo != null && <span className="fraco num"> · {x.codigo}</span>}</td>
                       <td><span className="fraco">—</span></td>
-                      <td><Icone nome="impressora" width={14} height={14} /> Materiais<span className="fraco"> · {x.nome} × {x.quantidade.toLocaleString('pt-BR')}</span></td>
+                      <td>Materiais<span className="fraco"> · {x.nome} × {x.quantidade.toLocaleString('pt-BR')}</span></td>
                       <td className="num"><b>{x.valor ? formatos.reais(x.valor) : '—'}</b></td>
                       <td><span className="badge badge-neutral">Registrado</span></td>
                     </tr>
