@@ -30,3 +30,4 @@ export * as releitura from './releitura';
 export * as carteira from './carteira';
 export * as cartasFiscal from './cartasFiscal';
 export * as administrativo from './administrativo';
+export * as arquivoFisico from './arquivoFisico';

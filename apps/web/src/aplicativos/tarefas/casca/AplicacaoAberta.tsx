@@ -63,6 +63,7 @@ const Devedores = pedaco(() => import('../telas/financeiro/Devedores'), 'Devedor
 const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato'), 'ImportarExtrato');
 const ContasAPagar = pedaco(() => import('../telas/financeiro/ContasAPagar'), 'ContasAPagar');
 const Boletos = pedaco(() => import('../telas/financeiro/Boletos'), 'Boletos');
+const ArquivoFisico = pedaco(() => import('../telas/arquivo-fisico/ArquivoFisico'), 'ArquivoFisico');
 const Ferramentas = pedaco(() => import('../telas/ferramentas/Ferramentas'), 'Ferramentas');
 const Carteira = pedaco(() => import('../telas/carteira/Carteira'), 'Carteira');
 // o lado do Financeiro da Carteira, no Financeiro (12/11/2026)
@@ -89,6 +90,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'drive': return <ExploradorDoDrive />;
     // as Ferramentas de documentos (30/10/2026): PDF e planilha, no navegador
     case 'ferramentas': return <Ferramentas />;
+    // o Arquivo físico (19/11/2026): as caixas e os envelopes do arquivo do escritório
+    case 'arquivo-fisico': return <ArquivoFisico pagina={pagina} />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     // a Carteira (12/11/2026): por enquanto só o Vitor; os outros, a tela "em desenvolvimento"
     case 'carteira': return <Carteira pagina={pagina} />;
