@@ -44,6 +44,8 @@ const principal = (() => {
  * vai nele, quando não é o próprio id
  */
 const PROJETO_PADRAO = 'conferencia-nilma';
+/** Por quanto tempo as peças das versões anteriores continuam no site (para as abas abertas antes da publicação). */
+const PECAS_ANTIGAS_HORAS = 24;
 const SITES = {
   // o catálogo de componentes de todo o nads (Vitor, 02/10/2026): as mesmas peças do sistema, com dados de exemplo
   componentes: { site: 'componentes-nilma', nome: 'Componentes', tipo: 'app' },
@@ -107,9 +109,12 @@ for (const id of ids) {
   const s = SITES[id];
   // a pasta que o site publica (firebase.json); a prévia de outro aplicativo no mesmo site usa a pasta dele
   const saida = path.join(web, 'dist-sites', s.pasta || id);
-  // as peças (assets/) das versões anteriores ficam no site por 3 dias (eram 30, depois 15; Vitor, 28/10/2026: "pode reduzir as
-  // versões antigas, de 15 dias para trás" — cada publicação do Tarefas tinha ~950 MB de peças antigas e o espaço do
-  // Firebase encheu; 19/11/2026, encheu de novo com 733 MB por publicação: 3 dias): uma aba aberta antes da publicação pede os
+  // as peças (assets/) das versões anteriores ficam no site por 24 horas (eram 30 dias, depois 15; Vitor, 28/10/2026: "pode
+  // reduzir as versões antigas, de 15 dias para trás" — cada publicação do Tarefas tinha ~950 MB de peças antigas e o espaço
+  // do Firebase encheu; 19/11/2026, encheu de novo com 733 MB por publicação: 3 dias; no mesmo dia, de novo com ~200 MB por
+  // publicação e 50 publicações por dia: 24 horas, PECAS_ANTIGAS_HORAS). Basta: a aba parada se atualiza sozinha em 10 min
+  // quando sai versão nova (versaoNova.tsx) e a que pede uma peça que sumiu recarrega uma vez (comum/pedacoQueSumiu.ts); as
+  // antigas só poupam esse recarregar a quem está mexendo na tela na hora da publicação. Uma aba aberta antes da publicação pede os
   // pedaços da versão dela (o leitor de PDF, por exemplo) e, sem eles, dava "Failed to fetch dynamically imported
   // module" (Vitor, 01/10/2026). Guardadas em dist-sites/.assets-<site>, com a data de quando saíram pela 1ª vez.
   // na pasta principal, mesmo publicando de uma cópia; antes de gerar, as peças do que está no ar entram também (de onde
@@ -192,10 +197,10 @@ function guardarPecas(de, para) {
     if (!fs.existsSync(destino)) { try { fs.copyFileSync(de + path.sep + f, destino); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
   }
 }
-/** Põe de volta as peças antigas que a versão nova não tem; as de mais de 3 dias saem de vez. */
+/** Põe de volta as peças antigas que a versão nova não tem; as de mais de PECAS_ANTIGAS_HORAS saem de vez. */
 function devolverPecas(de, para) {
   if (!fs.existsSync(de)) return;
-  const limite = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const limite = Date.now() - PECAS_ANTIGAS_HORAS * 60 * 60 * 1000;
   let devolvidas = 0;
   for (const f of fs.readdirSync(de)) {
     const origem = path.join(de, f);
