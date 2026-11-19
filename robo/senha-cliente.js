@@ -42,7 +42,9 @@ function iniciarSenhaDoCliente({ db, auth, log, ouvir, core, correio, agora = ()
       const linkDoc = await db.collection('areasCliente').doc(p.token).get();
       const email = P.emailDeSenha(String((linkDoc.exists && linkDoc.get('nome')) || ''), link);
       if (!correio.podeEnviar(1)) { log('Senha do cliente: o freio de envios segurou um e-mail'); return 'freio'; }
-      await correio.enviar({ para: p.email, assunto: email.assunto, corpo: email.texto });
+      // o e-mail bonito (o desenho dos e-mails do escritório) e o texto puro junto
+      const visual = require('./email-html').htmlDaSenha({ assunto: email.assunto, empresa: String((linkDoc.exists && linkDoc.get('nome')) || ''), link });
+      await correio.enviar({ para: p.email, assunto: email.assunto, corpo: email.texto, html: visual.html, imagens: visual.imagens });
       correio.contar();
       log('Senha do cliente: e-mail de senha enviado (' + p.email.replace(/^(.).*(@.*)$/, '$1***$2') + ')');
       return 'enviado';
