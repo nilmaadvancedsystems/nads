@@ -8052,3 +8052,6 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .imp-robo-barra.conectando > span{position:absolute;inset:0 auto 0 0;width:35%;animation:roboConectando 1s ease-in-out infinite;}
 @keyframes roboConectando{from{transform:translateX(-100%);}to{transform:translateX(290%);}}
 @media (prefers-reduced-motion:reduce){.imp-robo-barra.conectando > span{animation:none;width:100%;opacity:.5;}}
+/* a etapa delegada (19/11/2026): o aviãozinho de papel no lugar da caixinha, sem a borda */
+.subnav-caixa.delegada{border-color:transparent;color:var(--ink-muted);}
+.subnav-caixa.delegada svg{width:15px;height:15px;}
