@@ -91,11 +91,16 @@ const diasDeAtraso = (prazo: string, agora: Date) => {
 export function visaoDaPessoa(p: ReturnType<typeof telaDosInsights>['equipe'][number], agora: Date) {
   const empresas = p.empresas.map(e => ({
     nome: e.nome, situacao: ROTULO_DA_SITUACAO[e.situacao], tom: TOM_DA_SITUACAO[e.situacao],
-    etapa: e.etapa, progresso: e.total ? Math.round((e.feitas / e.total) * 100) : 0, texto: e.feitas + ' de ' + e.total + ' etapas',
+    // o Fiscal conta pelo tabelão (19/11/2026): a empresa não tem etapas, só a situação
+    etapa: e.etapa, progresso: e.total ? Math.round((e.feitas / e.total) * 100) : 0, texto: e.total ? e.feitas + ' de ' + e.total + ' etapas' : '',
   }));
   return {
     ...p,
     faltando: empresas.filter(e => e.situacao !== 'Concluída'),
+    /** quantas faltam pelo número do cartão (o DP e o office boy não têm a lista de empresas) */
+    faltam: Math.max(0, p.total - p.feitas),
+    /** o Contábil e o Fiscal mostram as empresas; o DP e o office boy, só o número */
+    comEmpresas: p.conta === 'empresas concluídas',
     concluidas: empresas.filter(e => e.situacao === 'Concluída'),
     /** as que não couberam no resumo (o robô manda até 80 por pessoa) */
     foraDaLista: Math.max(0, p.total - empresas.length),

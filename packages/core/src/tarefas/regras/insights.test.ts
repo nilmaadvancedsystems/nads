@@ -1,5 +1,6 @@
 // A Tela de Insights (plano do Acessórias, 18/11/2026, ficha tela-de-insights).
 import { describe, expect, it } from 'vitest';
+import * as ins from './insights';
 import type { Execucao, Rotina } from '../tipos';
 import {
   contarChamados, contarDp, contarEntregas, delegadasAtrasadas, equipeDosInsights, lerResumoDosInsights, paineisDosInsights, resumoDeExemploDosInsights,
@@ -77,5 +78,57 @@ describe('a equipe em cartões', () => {
     expect(e[0].empresas[0]).toMatchObject({ situacao: 'parada', etapa: 'Importar o extrato' });
     expect(e.find(p => p.nome === 'Gustavo')).toMatchObject({ pct: 100, tom: 'bom' });
     expect(e.find(p => p.nome === 'Heverton')).toMatchObject({ pct: 86, tom: 'alerta' });
+  });
+});
+
+// ------------------- a equipe pelo tabelão do setor (19/11/2026: "dp e fiscal sao tabelao nao rotina") -------------------
+describe('a equipe pelos usuários e pelo tabelão do setor', () => {
+  it('o setor do usuário: o departamento, senão o office boy; desativado e admin sem departamento ficam de fora', () => {
+    expect(ins.setorDoUsuario({ nome: 'Savio', departamento: 'dp' })).toBe('dp');
+    expect(ins.setorDoUsuario({ nome: 'Gustavo', roles: ['staff', 'office_boy'] })).toBe('office-boy');
+    expect(ins.setorDoUsuario({ nome: 'Ana', departamento: 'fiscal', ativo: false })).toBeNull();
+    expect(ins.setorDoUsuario({ nome: 'Gustavo.S', roles: ['admin'] })).toBeNull();
+  });
+  it('o nome do cartão e a chave do nome batem o cadastro com o usuário', () => {
+    expect(ins.nomeDoCartao('savio')).toBe('Savio');
+    expect(ins.chaveDoNome('HEVERTON')).toBe(ins.chaveDoNome('heverton.silva'));
+    expect(ins.chaveDoNome('Adivânia')).toBe('adivania');
+  });
+  it('o Fiscal pelo tabelão: entregue conta como feita, preenchida em andamento, em branco não iniciada', () => {
+    const p = ins.fiscalPorPessoa([{ codigo: 1, responsavel: 'HEVERTON', nome: 'A' }, { codigo: 2, responsavel: 'HEVERTON', nome: 'B' }, { codigo: 3, responsavel: 'HEVERTON', nome: 'C' }],
+      c => (c === 1 ? 'entregue' : c === 2 ? 'comecada' : 'branco'));
+    expect(p.map(x => [x.nome, x.feitas, x.faltando])).toEqual([['HEVERTON', 1, 2]]);
+    expect(p[0].empresas!.map(e => [e.nome, e.situacao, e.total])).toEqual([['B', 'em-andamento', 0], ['C', 'nao-iniciada', 0], ['A', 'concluida', 0]]);
+  });
+  it('as empresas pelo responsável, como em Empresas por responsável: ficha pelo código ou pelo nome, planilha no Fiscal, só quem é do setor', () => {
+    const equipe = [{ nome: 'Heverton', setor: 'fiscal' as const }, { nome: 'Vitor', setor: 'contabil' as const }, { nome: 'Savio', setor: 'dp' as const }];
+    const porCodigo = new Map([[999001, { nome: 'NOVA LTDA', regime: 'Simples', responsaveis: { fiscal: 'Heverton', contabil: 'vitor' } }], [999002, { nome: 'MEI X', regime: 'MEI' }]]);
+    // a 10 (DORNAS HAVANA) tem a ficha sem o código (achada pelo nome) e o Savio (do DP) escolhido no Fiscal: vale a planilha
+    const porSlug = new Map([['dornas-havana-ltda', { responsaveis: { fiscal: 'Savio', contabil: 'Vitor' } }]]);
+    const l = ins.empresasDoInsight(porCodigo, porSlug, equipe);
+    const de = (c: number) => l.find(e => e.codigo === c);
+    expect(de(999001)).toEqual({ codigo: 999001, nome: 'NOVA LTDA', regime: 'Simples', fiscal: 'Heverton', contabil: 'Vitor' });
+    expect(de(10)?.fiscal).toBe('Heverton');
+    expect(de(10)?.contabil).toBe('Vitor');
+    const t = ins.empresasDoTabelaoFiscal(l);
+    expect(t.some(e => e.codigo === 999002)).toBe(false);
+    expect(t.filter(e => e.responsavel === 'Heverton').length).toBeGreaterThan(5);
+  });
+  it('com o time, todo mundo aparece, contado pelo setor', () => {
+    const r = ins.resumoDeExemploDosInsights(new Date(2026, 10, 19));
+    r.time = [{ nome: 'savio', setor: 'dp' }, { nome: 'Felipe', setor: 'contabil' }, { nome: 'gustavo', setor: 'office-boy' }, { nome: 'heverton', setor: 'fiscal' }, { nome: 'Novato', setor: 'contabil' }];
+    const e = ins.equipeDosInsights(r);
+    const por = Object.fromEntries(e.map(p => [p.nome, p]));
+    expect(Object.keys(por).sort()).toEqual(['Felipe', 'Gustavo', 'Heverton', 'Novato', 'Savio']);
+    expect([por.Savio.setor, por.Savio.feitas, por.Savio.total, por.Savio.conta]).toEqual(['DP', 96, 96 + 18 + 3, 'clientes do DP fechados']);
+    expect([por.Gustavo.setor, por.Gustavo.feitas, por.Gustavo.total]).toEqual(['Office boy', 132, 132 + 14 + 6]);
+    expect([por.Heverton.setor, por.Heverton.feitas, por.Heverton.total]).toEqual(['Fiscal', 38, 44]);
+    expect([por.Felipe.feitas, por.Felipe.total]).toEqual([15, 19]);
+    expect([por.Novato.total, por.Novato.pct]).toEqual([0, 100]);
+  });
+  it('a leitura guarda o time e joga fora o setor torto', () => {
+    const r = ins.lerResumoDosInsights({ atualizadoEm: '2026-11-19T10:00:00Z', time: [{ nome: 'Savio', setor: 'dp' }, { nome: 'X', setor: 'chefe' }] });
+    expect(r?.time).toEqual([{ nome: 'Savio', setor: 'dp' }]);
+    expect(ins.lerResumoDosInsights({ atualizadoEm: '2026-11-19T10:00:00Z' })?.time).toBeUndefined();
   });
 });

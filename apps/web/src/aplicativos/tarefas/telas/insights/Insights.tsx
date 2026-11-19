@@ -67,7 +67,7 @@ function Cartao({ titulo, subtitulo, icone, children, classe = '' }: { titulo: s
 
 function Equipe({ tela, vm }: { tela: Tela; vm: Vm }) {
   return (
-    <Cartao titulo="A equipe no mês" subtitulo="As rotinas do Fiscal e do Contábil, por responsável · clique na pessoa para ver o que ela está fazendo" icone="equipe">
+    <Cartao titulo="A equipe no mês" subtitulo="Cada um pelo tabelão do setor: Contábil pelas rotinas, Fiscal pelo Relatório, DP pela tabela, office boy pelas entregas · clique na pessoa para ver o que ela está fazendo" icone="equipe">
       {tela.equipe.length ? (
         <div className="ins-equipe">
           {tela.equipe.map(p => (
@@ -80,7 +80,7 @@ function Equipe({ tela, vm }: { tela: Tela; vm: Vm }) {
             </button>
           ))}
         </div>
-      ) : <p className="hint">Ninguém com rotina no mês.</p>}
+      ) : <p className="hint">Ninguém da equipe no mês.</p>}
     </Cartao>
   );
 }
@@ -98,9 +98,9 @@ function JanelaDaPessoa({ vm }: { vm: Vm }) {
           <Anel pct={p.pct} tom={p.tom} tamanho={96} espessura={8}><Rosto foto={p.foto} iniciais={p.iniciais} classe="ins-iniciais ins-janela-rosto" /></Anel>
           <div className="ins-janela-quem">
             <h3>{p.nome} <span className={'ins-janela-pct t-' + p.tom}>{p.pct}%</span></h3>
-            <span className="hint">{p.setor} · {p.texto} empresas concluídas</span>
+            <span className="hint">{p.setor} · {p.texto} {p.conta}</span>
             <div className="ins-janela-pilulas">
-              <span className="ins-pilula t-alerta">{p.faltando.length} {p.faltando.length === 1 ? 'faltando' : 'faltando'}</span>
+              <span className="ins-pilula t-alerta">{p.faltam} faltando</span>
               <span className="ins-pilula t-bom">{p.feitas} {p.feitas === 1 ? 'concluída' : 'concluídas'}</span>
               {p.atrasadas > 0 && <span className="ins-pilula t-ruim">{p.atrasadas} {p.atrasadas === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}</span>}
             </div>
@@ -116,7 +116,7 @@ function JanelaDaPessoa({ vm }: { vm: Vm }) {
               </ul>
             </section>
           )}
-          <section>
+          {p.comEmpresas && <section>
             <h4><Icone nome="briefcase" width={16} height={16} />Empresas faltando</h4>
             {p.faltando.length ? (
               <ul className="ins-lista">
@@ -125,14 +125,14 @@ function JanelaDaPessoa({ vm }: { vm: Vm }) {
                     <div className="ins-empresa-nome"><b>{e.nome}</b><span className="hint">{e.etapa ? 'Agora: ' + e.etapa : 'Ainda não começou'}</span></div>
                     <div className="ins-empresa-direita">
                       <span className={'ins-pilula t-' + e.tom}>{e.situacao}</span>
-                      <span className={'ins-trilho t-' + e.tom} title={e.texto}><span style={{ width: e.progresso + '%' }} /></span>
-                      <span className="hint">{e.texto}</span>
+                      {e.texto && <span className={'ins-trilho t-' + e.tom} title={e.texto}><span style={{ width: e.progresso + '%' }} /></span>}
+                      {e.texto && <span className="hint">{e.texto}</span>}
                     </div>
                   </li>
                 ))}
               </ul>
             ) : <p className="ins-tudo-certo"><Icone nome="checkCircle" width={18} height={18} />Todas as empresas do mês concluídas.</p>}
-          </section>
+          </section>}
           {p.concluidas.length > 0 && (
             <section>
               <h4><Icone nome="checkCircle" width={16} height={16} />Concluídas</h4>
