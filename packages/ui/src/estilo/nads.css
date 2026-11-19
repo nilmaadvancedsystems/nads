@@ -8154,3 +8154,10 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 @keyframes cmcCresce{from{transform:scaleX(0);}to{transform:scaleX(1);}}
 @media (prefers-reduced-motion:reduce){.cmc-novo .cmc-barra i{animation:none;}}
 @media (max-width:760px){.cmc-resumo.cmc-novo{grid-template-columns:1fr;gap:20px;padding:20px;}.cmc-novo .cmc-valor{font-size:38px;}.cmc-novo .cmc-legenda{grid-template-columns:1fr;}}
+/* os lançamentos do mês numa caixa só (19/11/2026): o título no alto e as linhas dos holerites e pagamentos no desenho das comissões */
+.cmc-lista > .cart-titulo{padding:14px 16px 6px;margin:0;}
+.cmc-linha-doc{cursor:default;}
+.cmc-linha .cmc-quem .fraco svg{vertical-align:-2px;}
+.cmc-linha-doc .cmc-situacao{display:flex;align-items:center;gap:4px;}
+.card.cmc-lista > h3.cart-titulo{padding:12px 16px;}
+.cmc-linha.cmc-linha-doc .cmc-situacao{flex-direction:row;justify-content:flex-end;flex-wrap:nowrap;white-space:nowrap;}

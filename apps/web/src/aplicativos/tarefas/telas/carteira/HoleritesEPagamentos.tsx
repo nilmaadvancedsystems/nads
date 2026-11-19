@@ -20,7 +20,8 @@ function Numero({ rotulo, valor, dica, icone, tom }: { rotulo: string; valor: st
 import { useHoleritesEPagamentos } from './useCarteiraDaPessoa';
 
 /** m: o mês da tela da Carteira (um seletor só, o das comissões; 19/11/2026): sem o seletor aqui */
-export function HoleritesEPagamentos({ m: mesDeFora }: { m?: ReturnType<typeof useMes> } = {}) {
+/** soGrafico: na tela da Carteira, só os últimos 6 meses (os números saíram e os documentos e pagamentos foram para os lançamentos; 19/11/2026) */
+export function HoleritesEPagamentos({ m: mesDeFora, soGrafico = false }: { m?: ReturnType<typeof useMes>; soGrafico?: boolean } = {}) {
   const vm = useHoleritesEPagamentos(mesDeFora);
   const { m, pags, erro, salario, totais: t, hist, maior, carregando } = vm;
   const docs = { carregada: vm.docsCarregados, lista: vm.docs };
@@ -28,6 +29,7 @@ export function HoleritesEPagamentos({ m: mesDeFora }: { m?: ReturnType<typeof u
   useCarregando(vm.carregando);
   return (
     <section className="dp-painel cart-painel">
+      {!soGrafico && (<>
       <div className="tarefas-barra-topo dp-filtros-linha">
         {!mesDeFora && <SeletorDoMes {...m} />}
         <span className="tarefas-barra-espaco" />
@@ -44,6 +46,7 @@ export function HoleritesEPagamentos({ m: mesDeFora }: { m?: ReturnType<typeof u
           dica={t.aprovadas + t.lancadas ? formatos.reais(t.aprovadas + t.lancadas) + ' a receber' : t.quantas ? 'Todas pagas' : 'Nenhuma no mês'} />
       </div>
 
+      </>)}
       <section className="card cart-cartao">
         <h3 className="cart-titulo">Últimos 6 meses</h3>
         <div className="cart-grafico" role="img" aria-label="Salário e comissões nos últimos 6 meses">
@@ -60,6 +63,7 @@ export function HoleritesEPagamentos({ m: mesDeFora }: { m?: ReturnType<typeof u
         <p className="cart-legenda"><span className="cart-ponto salario" />Salário <span className="cart-ponto comissao" />Comissões</p>
       </section>
 
+      {!soGrafico && (<>
       <section className="card cart-cartao">
         <h3 className="cart-titulo">Holerites e comprovantes</h3>
         {docs.carregada && !docs.lista.length ? <Vazio compacto icone="recibo" titulo="Nenhum documento ainda" texto="Quando o Financeiro subir o seu holerite, ele aparece aqui." /> : (
@@ -105,6 +109,7 @@ export function HoleritesEPagamentos({ m: mesDeFora }: { m?: ReturnType<typeof u
           </div>
         )}
       </section>
+      </>)}
     </section>
   );
 }

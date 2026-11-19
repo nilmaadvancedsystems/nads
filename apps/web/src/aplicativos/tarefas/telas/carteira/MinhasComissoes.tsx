@@ -69,20 +69,23 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         </div>
       </section>
 
-      <section className="card cmc-lista" aria-label="As comissões do mês">
-        {vm.carregada && !lista.length ? (
-          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão no botão lá em cima: ela entra para pagamento no mês seguinte, e o Financeiro vê e paga." />
+      {/* os lançamentos do mês numa caixa só (Vitor, 19/11/2026: "Essas boxes da pra unificar em uma unica box de lancamentos"): as
+          comissões, os holerites e comprovantes e os pagamentos do escritório, pela data */}
+      <section className="card cmc-lista" aria-label="Os lançamentos do mês">
+        <h3 className="cart-titulo">Lançamentos de {nomeDoMes}</h3>
+        {vm.carregada && !lista.length && !vm.docsDoMes.length && !vm.pagsDoMes.length ? (
+          <Vazio compacto icone="dinheiro" titulo={'Nada em ' + carteira.mesPorExtenso(m.mes)} texto="As comissões que você registrar, os holerites e os pagamentos do escritório do mês aparecem aqui." />
         ) : (
           <ul>
             {lista.map(c => {
               const d = diaEMes(c.data);
               return (
-                <li key={c.id}>
+                <li key={'c' + c.id}>
                   <button type="button" className={'cmc-linha ' + c.situacao} title="Abrir a comissão" onClick={() => setAberta(c)}>
                     <span className="cmc-data" aria-label={c.data.split('-').reverse().join('/')}><b>{d.dia}</b><span>{d.mes}</span></span>
                     <span className="cmc-quem">
                       <b>{c.cliente}{c.porte && <span className="fraco"> · {c.porte}</span>}</b>
-                      <span className="fraco">{c.descricao}</span>
+                      <span className="fraco"><Icone nome="dinheiro" width={12} height={12} /> Comissão · {c.descricao}</span>
                       {c.situacao === 'recusada' && c.motivo && <span className="cmc-motivo">Recusada: {c.motivo}</span>}
                     </span>
                     {/* a escondida (16/11/2026): sem o valor */}
@@ -92,6 +95,46 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       {c.pagoEm && <span className="fraco">em {ddmm(c.pagoEm)}</span>}
                     </span>
                   </button>
+                </li>
+              );
+            })}
+            {vm.docsDoMes.map(doc => {
+              const d = diaEMes(doc.enviadoEm.slice(0, 10));
+              return (
+                <li key={'d' + doc.id}>
+                  <div className="cmc-linha cmc-linha-doc">
+                    <span className="cmc-data"><b>{d.dia}</b><span>{d.mes}</span></span>
+                    <span className="cmc-quem">
+                      <b>{carteira.rotuloDoDocumento(doc.tipo)}</b>
+                      <span className="fraco"><Icone nome={doc.tipo === 'holerite' ? 'recibo' : 'checkCircle'} width={12} height={12} /> {doc.arquivo}</span>
+                    </span>
+                    <b className="cmc-quanto num">{doc.valor != null ? formatos.reais(doc.valor) : ''}</b>
+                    <span className="cmc-situacao">
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirDocumento(doc)}><Icone nome="olho" />Abrir</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.baixarDocumento(doc)} aria-label="Baixar"><Icone nome="download" /></button>
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+            {vm.pagsDoMes.map(p => {
+              const d = diaEMes(p.pago && p.pagoEm ? p.pagoEm : p.vencimento);
+              return (
+                <li key={'p' + p.id}>
+                  <div className="cmc-linha cmc-linha-doc">
+                    <span className="cmc-data"><b>{d.dia}</b><span>{d.mes}</span></span>
+                    <span className="cmc-quem">
+                      <b>{p.rotulo}</b>
+                      <span className="fraco"><Icone nome="landmark" width={12} height={12} /> Pagamento do escritório{p.pago ? '' : ' · vence ' + ddmm(p.vencimento)}</span>
+                    </span>
+                    <b className="cmc-quanto num">{formatos.reais(p.pago ? p.valorPago ?? p.valor : p.valor)}</b>
+                    <span className="cmc-situacao">
+                      {p.pago ? <span className="badge badge-ok">Pago</span> : <span className="badge badge-suave badge-info">A receber</span>}
+                      {p.comprovantes.map(c => (
+                        <button key={c.id} type="button" className="btn btn-ghost btn-sm" title={c.nome} onClick={() => vm.abrirComprovante(p.id, c)} aria-label="Abrir o comprovante"><Icone nome="clipe" /></button>
+                      ))}
+                    </span>
+                  </div>
                 </li>
               );
             })}
