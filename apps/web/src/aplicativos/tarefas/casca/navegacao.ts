@@ -310,8 +310,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
     // a Tela de Insights: só Diretor e admin (o dono, 18/11/2026: "esses paineis so vao ser vistos por diretor e admin")
     (a.id !== 'insights' || (ehDiretor(op) && novidadeLigada('insights'))) &&
-    // o Arquivo físico: todo o escritório, no modo desenvolvedor até ser aprovado (19/11/2026)
-    (a.id !== 'arquivo-fisico' || novidadeLigada('arquivo-fisico')) &&
+    // o Arquivo físico: só Diretor e admin (o dono, 19/11/2026: "publica para admin e diretor")
+    (a.id !== 'arquivo-fisico' || (ehDiretor(op) && novidadeLigada('arquivo-fisico'))) &&
     // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
     // link direto não abre. Na versão final, só para o Diretor e o Dono, pelo nível da conta (Vitor, 19/11/2026: "divulga a versao
     // final do carteira apenas para os diretores, quero testar, APENAS PARA DIRETORES NA VERSAO FINAL")

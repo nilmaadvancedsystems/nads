@@ -109,3 +109,15 @@ describe('o módulo Desenvolvedor', () => {
     expect(vê(op('pleno'))).toBe(false);
   });
 });
+
+describe('o Arquivo físico (19/11/2026: "publica para admin e diretor")', () => {
+  const ve = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'arquivo-fisico');
+  it('o Diretor, o Dono e o admin veem; o sênior, o pleno e o júnior não', () => {
+    expect(ve(op('diretor'))).toBe(true);
+    expect(ve(op('dono'))).toBe(true);
+    expect(ve(op('pleno', true))).toBe(true);
+    expect(ve(op('senior'))).toBe(false);
+    expect(ve(op('pleno'))).toBe(false);
+    expect(ve(op('junior'))).toBe(false);
+  });
+});
