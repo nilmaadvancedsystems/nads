@@ -20,7 +20,7 @@ export function pedidoDeSenha(token: unknown, email: unknown): { token: string; 
 
 /** O link da página própria a partir do link que o Firebase gera (só o código vai junto); null sem o código. */
 export function linkDaPaginaDeSenha(linkDoFirebase: string, pagina = PAGINA_DE_SENHA): string | null {
-  let codigo = '';
+  let codigo: string;
   try { codigo = new URL(linkDoFirebase).searchParams.get('oobCode') ?? ''; } catch { return null; }
   return /^[A-Za-z0-9_-]{10,400}$/.test(codigo) ? pagina + '?mode=resetPassword&oobCode=' + codigo : null;
 }
