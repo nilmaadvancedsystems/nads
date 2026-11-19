@@ -140,9 +140,12 @@ export const APLICACOES: readonly Aplicacao[] = [
   // cada caixa e encontrar um documento de forma mais fácil"): todo o escritório; no modo desenvolvedor até ser aprovado
   { id: 'arquivo-fisico', nome: 'Arquivo físico', icone: 'arquivo', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'caixas', rotulo: 'Caixas', icone: 'arquivo', titulo: 'Caixas do arquivo' },
+    // os envelopes impressos esperando quem arquive (19/11/2026: "o responsável imprime, coloca o envelope, e outra pessoa arquiva")
+    { id: 'arquivar', rotulo: 'A arquivar', icone: 'caixaEntrada', titulo: 'Aguardando arquivamento' },
     { id: 'encontrar', rotulo: 'Encontrar', icone: 'search', titulo: 'Encontrar um documento' },
     { id: 'retirados', rotulo: 'Retirados', icone: 'clock', titulo: 'Retirados' },
-    { id: 'descarte', rotulo: 'Descarte', icone: 'lixeira', titulo: 'Para descartar' },
+    // a volta para o cliente depois de 2 anos no escritório (19/11/2026; era o Descarte por prazo de guarda)
+    { id: 'devolucao', rotulo: 'Devolução', icone: 'caminhao', titulo: 'Volta para o cliente' },
   ] },
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor

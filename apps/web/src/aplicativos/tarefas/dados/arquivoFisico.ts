@@ -9,6 +9,8 @@ export interface CaixasCarregadas {
   lista: readonly af.Caixa[];
 }
 
+export interface ImpressosCarregados { carregada: boolean; erro: string; lista: readonly af.EnvelopeImpresso[] }
+
 /** A mudança numa caixa: recebe a caixa como está no banco e devolve a nova (ou o problema, e nada é gravado). */
 export type MudancaNaCaixa = (atual: af.Caixa) => { caixa: af.Caixa; problema: string };
 
@@ -24,6 +26,15 @@ export interface RepoArquivoFisico {
   mudar(id: string, mudanca: MudancaNaCaixa): Promise<string>;
   /** apaga a caixa vazia (a criada por engano); devolve o problema ou '' */
   excluir(id: string): Promise<string>;
+  /**
+   * os envelopes impressos que aguardam arquivamento (19/11/2026: "o responsável imprime, coloca o envelope, e outra pessoa
+   * arquiva"): pedir a primeira vez lê do banco só os que ainda não foram arquivados
+   */
+  impressos(): ImpressosCarregados;
+  /** registra as etiquetas impressas (o mesmo envelope impresso de novo só atualiza quem e quando); devolve o problema ou '' */
+  registrarImpressos(lista: readonly af.EnvelopeImpresso[]): Promise<string>;
+  /** a confirmação: o envelope impresso foi guardado nesta caixa, por quem e quando */
+  confirmarArquivamento(id: string, caixa: string, quem: string, agora: string): Promise<string>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -33,9 +44,19 @@ export function listaDeCaixas() {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   let estado: CaixasCarregadas = { carregada: false, erro: '', lista: [] };
+  let impressos: ImpressosCarregados = { carregada: false, erro: '', lista: [] };
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   return {
     estado: () => estado,
+    impressos: () => impressos,
+    definirImpressos(i: ImpressosCarregados) { impressos = i; mudou(); },
+    /** põe (ou troca) os impressos na lista; os já arquivados saem dela */
+    porImpressos(xs: readonly af.EnvelopeImpresso[]) {
+      const ids = new Set(xs.map(x => x.id));
+      impressos = { ...impressos, lista: [...impressos.lista.filter(x => !ids.has(x.id)), ...xs.filter(x => !x.arquivadoEm)] };
+      mudou();
+    },
+    achaImpresso: (id: string) => impressos.lista.find(x => x.id === id) || null,
     definir(e: CaixasCarregadas) { estado = e; mudou(); },
     /** põe (ou troca) a caixa na lista */
     por(c: af.Caixa) { estado = { ...estado, lista: [...estado.lista.filter(x => x.id !== c.id), c] }; mudou(); },
@@ -103,6 +124,24 @@ export function criarArquivoFisicoMemoria(quem: () => string): RepoArquivoFisico
       const p = problemaParaExcluir(l.achar(id));
       if (p) return p;
       l.tirar(id);
+      return '';
+    },
+    impressos() {
+      garantir();
+      if (!l.impressos().carregada) {
+        // dois envelopes de exemplo impressos e esperando quem arquive
+        const ontem = new Date(Date.now() - 86_400_000).toISOString();
+        l.definirImpressos({ carregada: true, erro: '', lista: af.novosImpressos([
+          { ref: { codigo: 565, departamento: 'Fiscal', competencia: '2026-11' }, nome: 'COMÉRCIO EXEMPLO LTDA' },
+          { ref: { codigo: 141, departamento: 'Fiscal', competencia: '2026-11' }, nome: 'TRANSPORTES EXEMPLO LTDA' },
+        ], l.estado().lista, 'Clara (exemplo)', ontem) });
+      }
+      return l.impressos();
+    },
+    async registrarImpressos(lista) { l.porImpressos(lista); return ''; },
+    async confirmarArquivamento(id, caixa, quem, agora) {
+      const x = l.achaImpresso(id);
+      if (x) l.porImpressos([af.arquivarImpresso(x, caixa, quem, agora)]);
       return '';
     },
     assinar: l.assinar,

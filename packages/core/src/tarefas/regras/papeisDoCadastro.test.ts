@@ -15,10 +15,12 @@ describe('as etiquetas do envelope (Heverton, 20/10/2026)', () => {
     expect(tipoNaEtiqueta('Domésticas', 'Fiscal')).toBe('PF-F');
     expect(tipoNaEtiqueta(null, 'Fiscal')).toBe('PJ-F');
   });
-  it('sempre uma por folha, a folha deitada, a etiqueta na folha inteira (26/10/2026)', () => {
+  it('sempre uma por folha, de lado, cobrindo a folha inteira (26/10/2026; girada na folha em pé desde 19/11/2026)', () => {
     const h = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }, { codigo: 356, nome: 'Y', caixa: 'LP' }] });
-    expect(h).toContain('size:A4 landscape');
-    expect(h).toContain('height:194mm');
+    // a folha em pé (toda impressora respeita) e a etiqueta girada nela, a 6 mm da beira: 285 × 198 mm
+    expect(h).toContain('size:A4 portrait;margin:0');
+    expect(h).toContain('width:285mm;height:198mm');
+    expect(h).toContain('transform:rotate(90deg)');
     expect(h.match(/<section class="pagina">/g)?.length).toBe(2);
   });
   it('o HTML: a logo uma vez só, o movimento, o código, o nome, a caixa e o departamento', () => {

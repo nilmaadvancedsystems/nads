@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router';
 import { useOperador } from '../../casca/operador';
 import { useArquivoFisico as useRepoDoArquivo } from '../../dados/repo';
 
-export type PaginaDoArquivo = 'caixas' | 'encontrar' | 'retirados' | 'descarte';
+export type PaginaDoArquivo = 'caixas' | 'arquivar' | 'encontrar' | 'retirados' | 'devolucao';
 
 export interface EmpresaDoArquivo { codigo: number; nome: string; regime: string }
 
@@ -43,7 +43,6 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
   const { toast, modal } = useRetorno();
   const op = useOperador().operador;
   const eu = op?.nome || '';
-  const podeDescartar = !!op?.admin;
   const [params, setParams] = useSearchParams();
   const estado = repo.caixas();
   const caixas = estado.lista;
@@ -65,8 +64,16 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
 
   // ---------------------------------------------------------------------------------------- Retirados e Descarte
   const fora = useMemo(() => af.emprestados(caixas, new Date()), [caixas]);
+  // os envelopes impressos que aguardam quem arquive (19/11/2026: "o responsável imprime, coloca o envelope, e outra pessoa
+  // arquiva"): a fila da página A arquivar, o mês "Impresso" na grade e a confirmação ao guardar pelo QR
+  const imp = repo.impressos();
+  const aguardando = useMemo(() => af.aguardandoArquivamento(imp.lista, caixas), [imp.lista, caixas]);
+  const aguardandoPorCodigo = useMemo(() => new Map(aguardando.map(x => [x.id, x])), [aguardando]);
   const hoje = formatos.diaEmBrasilia();
-  const vencidas = useMemo(() => af.paraDescartar(caixas, hoje), [caixas, hoje]);
+  // as caixas que já completaram os 2 anos no escritório e podem voltar para o cliente (19/11/2026)
+  const vencidas = useMemo(() => af.paraDevolver(caixas, hoje), [caixas, hoje]);
+  /** a volta para o cliente sendo registrada: a caixa e quem recebe */
+  const [devolvendo, setDevolvendo] = useState<{ caixa: string; para: string } | null>(null);
 
   // ------------------------------------------------------------------------------------------- a caixa aberta
   const idAberta = params.get('caixa');
@@ -84,6 +91,15 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
   const [ocupado, setOcupado] = useState(false);
   // a impressão das prateleiras e das fileiras
   const [prateleiras, setPrateleiras] = useState<{ prateleiras: string; fileiras: string } | null>(null);
+
+  // ------------------------------------------------------------------------------------------- o envelope lido pelo QR
+  // (19/11/2026: o QR do envelope abre o ENVELOPE — onde está, retirar, devolver — e, se ainda não está em caixa nenhuma,
+  // guarda ele com um toque: "facilitando a pessoa que vai fazer isso")
+  const refLida = useMemo(() => af.lerCodigoDoEnvelope(params.get('envelope-lido') || ''), [params]);
+  const achadoLido = useMemo(() => (refLida && estado.carregada ? af.procurarEnvelope(caixas, refLida) : null), [refLida, caixas, estado.carregada]);
+  const empresaLida = refLida ? EMPRESAS.find(e => e.codigo === refLida.codigo) || null : null;
+  /** o lugar da caixa nova, quando o envelope não tem caixa onde entrar */
+  const [lugarNovo, setLugarNovo] = useState<{ prateleira: string; fileira: string }>({ prateleira: '', fileira: '' });
 
   // ------------------------------------------------------------------------------------------- o formulário
   const [form, setForm] = useState<FormDaCaixa | null>(null);
@@ -113,7 +129,7 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
   const agora = () => new Date().toISOString();
 
   return {
-    exemplos: repo.exemplos, carregada: estado.carregada, erro: estado.erro, total: caixas.length, eu, podeDescartar, ocupado,
+    exemplos: repo.exemplos, carregada: estado.carregada, erro: estado.erro, total: caixas.length, eu, ocupado,
     recarregar: () => repo.recarregar(),
     anos, departamentos: af.DEPARTAMENTOS,
 
@@ -139,9 +155,26 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
     procura, procurou,
     mudarProcura(f: Partial<af.FiltroDoArquivo>) { setProcura(x => ({ ...x, ...f })); },
 
+    // A arquivar
+    aguardando, impressosCarregados: imp.carregada, erroDosImpressos: imp.erro,
+    /** o envelope impresso que aguarda, pelo mês da caixa (o mês "Impresso" na grade) */
+    impressoDoMes: (c: af.Caixa, competencia: string) => aguardandoPorCodigo.get(af.codigoDoEnvelope({ codigo: c.codigo, departamento: c.departamento, competencia })) || null,
+    /** abre o envelope da fila como se o QR tivesse sido lido */
+    arquivar(x: af.EnvelopeImpresso) { setRetirando(null); mudarParams(p => { p.delete('caixa'); p.delete('envelope'); p.set('envelope-lido', x.id); }); },
+    /** a etiqueta de um mês que ainda não está na caixa: imprime e põe o envelope na fila de quem arquiva */
+    async registrarImpressao(c: af.Caixa, competencia: string) {
+      const novos = af.novosImpressos([{ ref: { codigo: c.codigo, departamento: c.departamento, competencia }, nome: c.nome }], caixas, eu, agora());
+      if (novos.length) await fazer(() => repo.registrarImpressos(novos), '');
+    },
+
     // Retirados e Descarte
-    fora, vencidas, prazos: af.PRAZOS_PADRAO,
-    liberadaEm: (c: af.Caixa) => dataBr(af.descarteLiberadoEm(c)),
+    fora, vencidas, anosNoEscritorio: af.ANOS_NO_ESCRITORIO,
+    /** desde quando a caixa pode voltar para o cliente ('01/01/2029') */
+    liberadaEm: (c: af.Caixa) => dataBr(af.devolucaoLiberadaEm(c)),
+    devolvendo,
+    comecarDevolucao(c: af.Caixa) { setDevolvendo({ caixa: c.id, para: '' }); },
+    mudarDevolucao(para: string) { setDevolvendo(d => (d ? { ...d, para } : d)); },
+    cancelarDevolucao() { setDevolvendo(null); },
 
     // a caixa aberta
     aberta, abertaSumiu, envelopeEmDestaque,
@@ -172,7 +205,12 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
         novo = r.caixa.envelopes.find(e => e.competencia === competencia && e.observacao === obs.trim())?.id || '';
         return { caixa: r.caixa, problema: r.novos ? '' : 'Esse envelope já está na caixa.' };
       }), 'Envelope ' + af.rotuloDaCompetencia(competencia) + ' guardado.');
-      if (ok) { setObsNova(''); setEscolhido(novo || ''); }
+      if (ok) {
+        setObsNova(''); setEscolhido(novo || '');
+        // o envelope estava impresso, esperando quem arquive: guardar é a confirmação
+        const cod = af.codigoDoEnvelope({ codigo: c.codigo, departamento: c.departamento, competencia });
+        if (aguardandoPorCodigo.has(cod)) await repo.confirmarArquivamento(cod, c.id, eu, agora());
+      }
     },
     /** os meses que faltam, de uma vez */
     async completarOAno() {
@@ -213,13 +251,12 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
       await fazer(() => repo.mudar(caixa, atual => af.devolver(atual, { envelope }, eu, agora())), envelope ? 'Envelope de volta na caixa.' : 'Caixa de volta no lugar.');
     },
 
-    // descartar e apagar
-    async descartar(c: af.Caixa) {
-      if (!podeDescartar) return;
-      const sim = await modal<boolean>({ icone: 'alert', titulo: 'Marcar a caixa ' + af.rotuloDaCaixa(c) + ' como descartada?', texto: 'Ela continua na lista, marcada como descartada, com a data e quem descartou.',
-        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Descartada', valor: true, variante: 'btn-danger' }] });
-      if (!sim) return;
-      await fazer(() => repo.mudar(c.id, atual => af.descartar(atual, eu, formatos.diaEmBrasilia())), 'Caixa marcada como descartada.');
+    // a volta para o cliente e apagar
+    /** registra que a caixa voltou para o cliente, com quem recebeu */
+    async confirmarDevolucao() {
+      const d = devolvendo;
+      if (!d) return;
+      if (await fazer(() => repo.mudar(d.caixa, atual => af.devolverAoCliente(atual, eu, d.para, formatos.diaEmBrasilia())), 'Caixa registrada como entregue ao cliente.')) setDevolvendo(null);
     },
     async apagar(c: af.Caixa) {
       const sim = await modal<boolean>({ icone: 'alert', titulo: 'Apagar a caixa ' + af.rotuloDaCaixa(c) + '?', texto: 'Só a caixa vazia (criada por engano) pode ser apagada.',
@@ -293,6 +330,61 @@ export function useArquivoFisico(pagina: PaginaDoArquivo) {
         mudarParams(p => { p.set('caixa', c.id); p.delete('envelope'); });
       }
     },
+
+    // o envelope lido pelo QR
+    lido: refLida && achadoLido ? {
+      ref: refLida, achado: achadoLido, codigo: af.codigoDoEnvelope(refLida),
+      // o nome da caixa (o mesmo da etiqueta); sem caixa, o do Cadastro
+      empresa: achadoLido.situacao === 'guardado' ? achadoLido.caixa.nome : achadoLido.caixas[0]?.nome || (empresaLida ? empresaLida.nome : 'Empresa ' + refLida.codigo),
+      /** a caixa nova que seria criada (quando não há caixa da empresa, do ano e do departamento) */
+      numeroNovo: af.proximoNumero(caixas, refLida.codigo, af.anoDoEnvelope(refLida), refLida.departamento),
+    } : null,
+    /** o QR de um envelope que não é do nads (o código não vale) */
+    lidoInvalido: !!params.get('envelope-lido') && !refLida,
+    /** quem imprimiu o envelope lido e quando (se ele está na fila de arquivamento) */
+    impressoLido: refLida ? aguardandoPorCodigo.get(af.codigoDoEnvelope(refLida)) || null : null,
+    fecharLido() { setRetirando(null); mudarParams(p => p.delete('envelope-lido')); },
+    lugarNovo, mudarLugarNovo(campos: Partial<{ prateleira: string; fileira: string }>) { setLugarNovo(l => ({ ...l, ...campos })); },
+    /** guarda o envelope lido numa caixa que já existe */
+    async guardarLido(caixaId: string) {
+      const ref = refLida;
+      if (!ref) return;
+      const quando = agora();
+      const ok = await fazer(() => repo.mudar(caixaId, atual => {
+        const res = af.adicionarEnvelopes(atual, [ref.competencia], ref.departamento, '', eu, quando);
+        return { caixa: res.caixa, problema: res.novos ? '' : 'Esse envelope já está nessa caixa.' };
+      }), 'Arquivamento confirmado: envelope ' + af.rotuloDaCompetencia(ref.competencia) + ' guardado na caixa.');
+      // a confirmação do arquivamento: o envelope sai da fila, com quem arquivou e quando
+      if (ok) await repo.confirmarArquivamento(af.codigoDoEnvelope(ref), caixaId, eu, quando);
+    },
+    /** cria a caixa da empresa, do ano e do departamento do envelope lido, já com ele dentro */
+    async criarCaixaDoLido() {
+      const ref = refLida;
+      if (!ref) return;
+      const ano = af.anoDoEnvelope(ref);
+      const numero = af.proximoNumero(caixas, ref.codigo, ano, ref.departamento);
+      const p = Number(lugarNovo.prateleira), fi = Number(lugarNovo.fileira);
+      const local = p > 0 && fi > 0 ? af.rotuloDoLugar({ prateleira: p, fileira: fi }) : '';
+      const quando = agora();
+      const rascunho: af.RascunhoDaCaixa = {
+        codigo: ref.codigo, nome: empresaLida ? empresaLida.nome : 'Empresa ' + ref.codigo, tipo: tipoDa(empresaLida?.regime || '', ref.departamento),
+        departamento: ref.departamento, ano, numero, arquivadaEm: formatos.diaEmBrasilia(), local, observacoes: '',
+      };
+      const problema = af.problemaDaCaixa(rascunho, caixas, null, anoDeHoje());
+      if (problema) { toast(problema); return; }
+      const c = af.adicionarEnvelopes(af.montarCaixa(rascunho, eu, quando), [ref.competencia], ref.departamento, '', eu, quando).caixa;
+      if (await fazer(() => repo.criar(c), 'Arquivamento confirmado: caixa ' + af.codigoDaCaixa(numero) + ' criada, com o envelope ' + af.rotuloDaCompetencia(ref.competencia) + ' dentro.')) {
+        await repo.confirmarArquivamento(af.codigoDoEnvelope(ref), c.id, eu, quando);
+      }
+    },
+    /** retira o envelope lido (quem leva e para quê, no mesmo formulário da caixa) */
+    async confirmarRetiradaDoLido() {
+      const r = retirando, a = achadoLido;
+      if (!r || !a || a.situacao !== 'guardado') return;
+      if (await fazer(() => repo.mudar(a.caixa.id, atual => af.retirar(atual, { envelope: a.envelope.id }, r.quem, r.motivo, agora())), 'Retirada do envelope registrada.')) setRetirando(null);
+    },
+    /** da janela do envelope para a caixa dele */
+    abrirCaixaDoLido(caixaId: string, envelopeId: string) { setRetirando(null); mudarParams(p => { p.delete('envelope-lido'); p.set('caixa', caixaId); p.set('envelope', envelopeId); }); },
 
     // textos prontos
     rotulo: af.rotuloDaCaixa,
