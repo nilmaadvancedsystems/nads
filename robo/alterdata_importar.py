@@ -122,13 +122,20 @@ def apertar(w, nomes):
     return None
 
 
+PID_DO_CONTABIL = 0   # com mais de um Contábil aberto, o do Contábil escolhido (19/11/2026)
+
+
 def mensagens_abertas():
-    """As perguntas e os avisos do Contábil (só os dele: a janela de outro programa no PC não conta; 18/11/2026)."""
+    """As perguntas e os avisos do Contábil (só os dele: a janela de outro programa no PC não conta; 18/11/2026). Com mais de um
+    Contábil aberto, só os do que o robô está usando (19/11/2026)."""
     ms = janelas('TMessageForm') + [w for w in janelas('#32770') if w.window_text() != 'Salvar como']
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import alterdata_processo
-        return [w for w in ms if alterdata_processo.do_contabil_certo(w.handle)]
+        ms = [w for w in ms if alterdata_processo.do_contabil_certo(w.handle)]
+        if PID_DO_CONTABIL:
+            ms = [w for w in ms if alterdata_processo.pid_da_janela(w.handle) == PID_DO_CONTABIL]
+        return ms
     except Exception:
         return ms
 
@@ -251,8 +258,19 @@ try:
     if not principais:
         fim(ok=False, erro='o Alterdata Contábil não está aberto')
     if len(principais) > 1:
-        fim(ok=False, erro='há dois Contábil abertos')
+        # mais de um Contábil aberto (Vitor, 19/11/2026: "se tiver mais de um contabil aberto, ele escolher qualquer um e usar,
+        # fechar as janelas abertas e executar a acao"): usa o que não está travado por uma janela; as janelas abertas fecham
+        # no limpar/liberar de sempre
+        import win32gui
+        principais.sort(key=lambda w: 0 if win32gui.IsWindowEnabled(w.handle) else 1)
+        print('TELA: ' + str(len(principais)) + ' Contábil abertos: usei um deles', flush=True)
     principal = principais[0]
+    if len(principais) > 1:
+        try:
+            import alterdata_processo
+            PID_DO_CONTABIL = alterdata_processo.pid_da_janela(principal.handle)
+        except Exception:
+            pass
     limpar()
     preparar_tela()
     try:
