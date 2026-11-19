@@ -1,7 +1,7 @@
 // Carteira › Comissões (12/11/2026): a pessoa registra as comissões e acompanha cada uma (lançada → aprovada → paga, ou
 // recusada com o motivo). Em cima, o total do mês com a barra das partes; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
-import { Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
+import { baixarBytes, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DadosDeTesteDaCarteira, SeletorDoMes, type useMes, SeloDaComissao } from './comum';
@@ -38,6 +38,11 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         <DadosDeTesteDaCarteira />
+        {/* a planilha dos lançamentos do mês (19/11/2026) */}
+        <button type="button" className="btn btn-outline" title="Exportar os lançamentos do mês em planilha (Excel)"
+          onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+          <Icone nome="download" />Excel
+        </button>
         {extra}
         <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
       </div>
@@ -131,7 +136,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
                       <td><b>{x.cliente}</b>{x.codigo != null && <span className="fraco num"> · {x.codigo}</span>}</td>
                       <td><span className="fraco">—</span></td>
                       <td>Materiais<span className="fraco"> · {x.nome} × {x.quantidade.toLocaleString('pt-BR')}</span></td>
-                      <td className="num"><b>{x.valor ? formatos.reais(x.valor) : '—'}</b></td>
+                      <td className="num"><span className="fraco" title="O valor dos materiais fica no Financeiro">—</span></td>
                       <td><span className="badge badge-neutral">Registrado</span></td>
                       <td />
                     </tr>

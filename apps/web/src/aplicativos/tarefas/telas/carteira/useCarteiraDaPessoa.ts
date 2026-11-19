@@ -1,6 +1,6 @@
 // Os ViewModels da Carteira (12/11/2026): o que cada tela mostra e faz, a partir do repositório (as telas não falam com
 // ele). A lógica de conta é do core (carteira); aqui fica o estado da tela e as ações com o aviso de erro.
-import { carteira, empresas, formatos, usuarios, type financeiro } from '@nads/core';
+import { carteira, empresas, formatos, tarefas as tf, usuarios, type financeiro } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
@@ -46,6 +46,21 @@ export function useMinhasComissoes(mesDeFora?: ReturnType<typeof useMes>) {
     m, exemplos: repo.exemplos, carregada: todas.carregada && docs.carregada && contas.carregada, erro: todas.erro || docs.erro || contas.erro, lista, totais, aberta, setAberta,
     totalDoMes: totais.total,
     docsDoMes, pagsDoMes, materiaisDoMes,
+    /** a tabela dos lançamentos em planilha (Vitor, 19/11/2026: "Coloca a opcao excel, para exportar em planilha"): as mesmas colunas da
+     *  tela; os materiais sem o valor (que fica no Financeiro) */
+    exportar() {
+      const br = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+      const semCnpj = (n: string) => n.replace(/^[\d./-]{6,}\s+/, '').trim() || n;
+      const linhas: { data: string; l: (string | number)[] }[] = [
+        ...lista.map(c => ({ data: c.data, l: [br(c.data), semCnpj(c.cliente), c.porte || '', 'Comissão · ' + c.descricao, c.oculta ? '' : c.valor,
+          c.situacao === 'paga' ? 'Paga' + (c.pagoEm ? ' em ' + br(c.pagoEm) : '') : c.situacao === 'recusada' ? 'Recusada' + (c.motivo ? ': ' + c.motivo : '') : 'A receber'] })),
+        ...docsDoMes.map(d => ({ data: d.enviadoEm.slice(0, 10), l: [br(d.enviadoEm), '', '', d.tipo === 'holerite' ? 'Salário · holerite' : carteira.rotuloDoDocumento(d.tipo), d.valor ?? '', 'Anexo: ' + d.arquivo] })),
+        ...pagsDoMes.map(p => ({ data: p.pago && p.pagoEm ? p.pagoEm : p.vencimento, l: [br(p.pago && p.pagoEm ? p.pagoEm : p.vencimento), '', '', p.rotulo, p.pago ? p.valorPago ?? p.valor : p.valor, p.pago ? 'Pago' : 'A receber'] })),
+        ...materiaisDoMes.map(x => ({ data: x.data, l: [br(x.data), x.cliente, '', 'Materiais · ' + x.nome + ' × ' + x.quantidade, '', 'Registrado'] })),
+      ].sort((a, b) => a.data.localeCompare(b.data));
+      const nome = 'Lançamentos ' + carteira.mesPorExtenso(m.mes) + '.xlsx';
+      return { bytes: tf.planilhaXlsx('Lançamentos', ['Data', 'Cliente', 'Porte', 'Tipo', 'Valor', 'Status'], linhas.map(x => x.l)), nome };
+    },
     /** os ⋯ da tabela (19/11/2026: "coloca a opcao de editar e excluir, um 3 pontinhos"): só a comissão ainda lançada muda ou sai */
     podeMexer: (c: carteira.Comissao) => carteira.podeEditar(c),
     async excluir(c: carteira.Comissao) {
