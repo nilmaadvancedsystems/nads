@@ -38,10 +38,10 @@ export function MinhasComissoes({ m: mesDeFora, onMateriais }: { m?: ReturnType<
   const acoes: { rotulo: string; icone: NomeIcone; onClick: (() => void) | null; destaque?: boolean; dica?: string }[] = [
     { rotulo: 'Registrar', icone: 'plus', onClick: () => setAberta('nova'), destaque: true, dica: 'Registrar comissão' },
     { rotulo: 'Materiais', icone: 'impressora', onClick: onMateriais ?? null, dica: 'Impressões e materiais' },
-    { rotulo: 'Extrato', icone: 'fileDown', onClick: comComissao ? () => { const x = vm.extratoDeComissoes(); baixarBytes(x.bytes, x.nome, xlsx); } : null, dica: 'Extrato de comissões' },
+    { rotulo: 'Extrato', icone: 'download', onClick: comComissao ? () => { const x = vm.extratoDeComissoes(); baixarBytes(x.bytes, x.nome, xlsx); } : null, dica: 'Extrato de comissões' },
     { rotulo: 'Holerite', icone: 'recibo', onClick: holerite ? () => vm.abrirDocumento(holerite) : null },
-    { rotulo: 'Pagamento', icone: 'checkCircle', onClick: docComprovante ? () => vm.abrirDocumento(docComprovante) : compSalario ? () => vm.abrirComprovante(compSalario.p.id, compSalario.c) : null, dica: 'Comprovante de pagamento' },
-    { rotulo: 'Comissões', icone: 'dinheiro', onClick: compComissoes ? () => vm.abrirComprovante(compComissoes.p.id, compComissoes.c) : null, dica: 'Comprovante de comissões' },
+    { rotulo: 'Pagamento', icone: 'comprovante', onClick: docComprovante ? () => vm.abrirDocumento(docComprovante) : compSalario ? () => vm.abrirComprovante(compSalario.p.id, compSalario.c) : null, dica: 'Comprovante de pagamento' },
+    { rotulo: 'Comissões', icone: 'comprovante', onClick: compComissoes ? () => vm.abrirComprovante(compComissoes.p.id, compComissoes.c) : null, dica: 'Comprovante de comissões' },
   ];
 
   // os lançamentos do mês numa lista só, pela data
