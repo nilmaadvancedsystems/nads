@@ -59,7 +59,8 @@ export interface PlanoDeContas {
 
 /** As contas padrão dos lançamentos (as mesmas chaves do layout do Creditor). */
 /** A conta do razão de cada tipo, informada na etapa quando o nads não acha (o botão Vitor pede o razão dela; 19/11/2026). */
-export type CampoContaDoRazao = 'razao-caixa' | 'razao-inss' | 'razao-salarios' | 'razao-fgts' | 'razao-prolabore' | 'razao-simples' | 'razao-honorarios';
+export type CampoContaDoRazao = 'razao-caixa' | 'razao-inss' | 'razao-salarios' | 'razao-fgts' | 'razao-prolabore' | 'razao-simples' | 'razao-honorarios'
+  | 'razao-adiantamento-fornecedores' | 'razao-adiantamento-clientes';
 export type CampoContaPadrao = 'banco' | 'juros' | 'desconto' | 'histPrincipal' | 'histJuros' | 'histDesconto' | 'cartao';
 /** As que são contas do plano (os históricos não são). */
 export type ContaPadraoDoPlano = 'banco' | 'juros' | 'desconto' | 'cartao';

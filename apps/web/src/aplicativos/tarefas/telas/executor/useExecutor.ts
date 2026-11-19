@@ -47,7 +47,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const achada = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
   const empresa = achada && permitidas.carregada && permitidas.pode(achada) ? achada : null;
   // a da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) tem só a etapa LCDPR
-  const rotina = t.rotinaDaEmpresa(dep, empresa?.codigo) || t.ROTINA_CONTABIL;
+  const daEmpresa = t.rotinaDaEmpresa(dep, empresa?.codigo) || t.ROTINA_CONTABIL;
+  // sem o Caixa e o Bancos (Vitor, 19/11/2026: "remove esse bancos"; "remove o caixa tbm dessa tela"); por enquanto no modo desenvolvedor
+  const rotina = dev ? { ...daEmpresa, etapas: daEmpresa.etapas.filter(e => e.id !== 'caixa' && e.id !== 'bancos') } : daEmpresa;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   // só mexe nas etapas que a rotina tem (a do LCDPR não tem Cartões, Creditor nem os adiantamentos)

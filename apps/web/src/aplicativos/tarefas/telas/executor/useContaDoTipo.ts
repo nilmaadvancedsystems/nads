@@ -23,14 +23,15 @@ const campo = (tipo: string) => ('razao-' + tipo) as empresas.cadastro.CampoCont
 /** informar: só para o dono do robô de PC (o botão Vitor é só dele) */
 export interface ContaDoRazao { conta: string; informada: boolean; informar?: (codigo: string) => void }
 
-export function useContaDoTipo(empresa: string, codigo: number | null, tipo: string | null, doDinamico: string): ContaDoRazao {
+/** soInformada: o nads não adivinha (os adiantamentos; Vitor, 19/11/2026: "peca a conta, o robo nao vai saber") */
+export function useContaDoTipo(empresa: string, codigo: number | null, tipo: string | null, doDinamico: string, soInformada = false): ContaDoRazao {
   const vivo = useCadastro(empresa, codigo);
   const op = useOperador().operador;
   const cadastro = vivo.carregada ? vivo.cadastro : null;
   const informada = tipo ? cadastro?.contasPadrao?.contas[campo(tipo)] || '' : '';
-  const contas = useContasDoBalancete(empresa && tipo && !informada && !doDinamico ? empresa : '');
-  let conta = informada || doDinamico;
-  if (!conta && tipo && contas) {
+  const contas = useContasDoBalancete(empresa && tipo && !informada && !doDinamico && !soInformada ? empresa : '');
+  let conta = informada || (soInformada ? '' : doDinamico);
+  if (!conta && tipo && contas && !soInformada) {
     const re = PELO_NOME[tipo];
     const achadas = re ? contas.filter(c => !c.sintetica && re.test(sem(c.nome))) : [];
     if (achadas.length === 1) conta = achadas[0].codigo;

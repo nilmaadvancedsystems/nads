@@ -20,7 +20,8 @@ export const MAX_CONTAS_NO_PLANO = 5000;
 
 export const CAMPOS_CONTA_PADRAO: readonly CampoContaPadrao[] = ['banco', 'juros', 'desconto', 'histPrincipal', 'histJuros', 'histDesconto', 'cartao'];
 /** as contas do razão informadas nas etapas (fora da tela Contas padrão; 19/11/2026) */
-export const CAMPOS_CONTA_DO_RAZAO: readonly CampoContaDoRazao[] = ['razao-caixa', 'razao-inss', 'razao-salarios', 'razao-fgts', 'razao-prolabore', 'razao-simples', 'razao-honorarios'];
+export const CAMPOS_CONTA_DO_RAZAO: readonly CampoContaDoRazao[] = ['razao-caixa', 'razao-inss', 'razao-salarios', 'razao-fgts', 'razao-prolabore', 'razao-simples', 'razao-honorarios',
+  'razao-adiantamento-fornecedores', 'razao-adiantamento-clientes'];
 export const CONTAS_PADRAO_DO_PLANO: readonly ContaPadraoDoPlano[] = ['banco', 'juros', 'desconto', 'cartao'];
 export const TIPOS_CONTA: readonly { id: TipoContaBancaria; rotulo: string }[] = [
   { id: 'corrente', rotulo: 'Conta corrente' },
@@ -915,6 +916,8 @@ export const ROTULO_CONTA_DO_RAZAO: Record<CampoContaDoRazao, string> = {
   'razao-prolabore': 'Conta do razão do Pró-labore a pagar',
   'razao-simples': 'Conta do razão do Simples Nacional a recolher',
   'razao-honorarios': 'Conta do razão de Honorários a pagar',
+  'razao-adiantamento-fornecedores': 'Conta do razão do Adiantamento a fornecedores',
+  'razao-adiantamento-clientes': 'Conta do razão do Adiantamento de clientes',
 };
 
 /** Grava uma conta padrão (vazio = volta ao padrão do aplicativo). Se for do plano, guarda o nome dela. */
