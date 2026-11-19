@@ -11,7 +11,7 @@
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
 import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type DocumentSnapshot, type Firestore, type FirestoreError } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type Auth } from 'firebase/auth';
+import { confirmPasswordReset, getAuth, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, verifyPasswordResetCode, type Auth } from 'firebase/auth';
 import { areaCliente as ac, demo, type mandei } from '@nads/core';
 import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModoDev';
 import { AREA_VAZIA, type AvisoDoEscritorio, type CertificadoDigital, type EstadoDaArea, type FichaDaEmpresa, type RepoAreaCliente } from './areaCliente';
@@ -67,6 +67,15 @@ function erroDoLogin(e: unknown): string {
   if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials')
     return 'E-mail ou senha não conferem. Se for o primeiro acesso, use "Criar ou trocar a senha".';
   // o resto (um problema do lado do escritório): o código ajuda o escritório a achar a causa
+  return 'Não deu certo agora' + (c ? ' (' + c.replace('auth/', '') + ')' : '') + '. Tente de novo; se continuar, avise o escritório.';
+}
+
+/** O erro do link de criar a senha (o código do e-mail) (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?") */
+function erroDoCodigo(e: unknown): string {
+  const c = String((e as { code?: string } | null)?.code ?? '');
+  if (c === 'auth/expired-action-code' || c === 'auth/invalid-action-code') return 'Este link já foi usado ou venceu. Peça outro na tela de entrar, em "Criar ou trocar a senha".';
+  if (c === 'auth/weak-password') return 'Esta senha é fraca demais. Use pelo menos 8 letras e números.';
+  if (c === 'auth/network-request-failed') return 'Sem internet agora. Confira a conexão e tente de novo.';
   return 'Não deu certo agora' + (c ? ' (' + c.replace('auth/', '') + ')' : '') + '. Tente de novo; se continuar, avise o escritório.';
 }
 
@@ -292,6 +301,29 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     async sair() {
       await signOut(loginDoCliente()).catch(() => undefined);
     },
+    // a página própria de criar a senha (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?")
+    async conferirCodigoDaSenha(codigo) {
+      try { return await verifyPasswordResetCode(loginDoCliente(), codigo); }
+      catch (e) { throw new Error(erroDoCodigo(e), { cause: e }); }
+    },
+    async gravarSenha(codigo, senha) {
+      const auth = loginDoCliente();
+      let email: string;
+      try { email = await verifyPasswordResetCode(auth, codigo); await confirmPasswordReset(auth, codigo, senha); }
+      catch (e) { throw new Error(erroDoCodigo(e), { cause: e }); }
+      // já entra com a senha nova e acha as empresas que esta pessoa abre (o nome vem do documento do link)
+      try {
+        const c = await signInWithEmailAndPassword(auth, email, senha);
+        const claims = (await c.user.getIdTokenResult(true)).claims as { a?: unknown };
+        const tokens = Array.isArray(claims.a) ? claims.a.filter((t): t is string => typeof t === 'string' && ehTokenDoLink(t)) : [];
+        const banco = abrir();
+        return await Promise.all(tokens.map(async token => {
+          const s = await getDoc(doc(banco, 'areasCliente', token)).catch(() => null);
+          const nome = s?.exists() ? s.get('nome') : '';
+          return { token, nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Sua empresa' };
+        }));
+      } catch { return []; }
+    },
 
     async abrirChamado(token, { tipo, texto }) {
       // a foto da admissão não vai: a caixa do banco ainda não tem campo para ela (e o Departamento pessoal está escondido)
@@ -492,5 +524,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     entrar: (token, email, senha) => doBanco.entrar(token, email, senha),
     criarSenha: (token, email) => doBanco.criarSenha(token, email),
     sair: () => doBanco.sair(),
+    conferirCodigoDaSenha: codigo => doBanco.conferirCodigoDaSenha(codigo),
+    gravarSenha: (codigo, senha) => doBanco.gravarSenha(codigo, senha),
   };
 }

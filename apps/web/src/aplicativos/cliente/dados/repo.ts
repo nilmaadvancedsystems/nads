@@ -26,6 +26,8 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     entrar: (token, email, senha) => escolher(token).entrar(token, email, senha),
     criarSenha: (token, email) => escolher(token).criarSenha(token, email),
     sair: () => escolher('').sair(),
+    conferirCodigoDaSenha: codigo => escolher(codigo === 'exemplo' ? TOKEN_DE_EXEMPLO : '').conferirCodigoDaSenha(codigo),
+    gravarSenha: (codigo, senha) => escolher(codigo === 'exemplo' ? TOKEN_DE_EXEMPLO : '').gravarSenha(codigo, senha),
   };
 }
 
