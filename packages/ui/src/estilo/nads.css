@@ -8212,3 +8212,7 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .btn.btn-apagar-cheio{width:36px;padding:0;justify-content:center;background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
 .btn.btn-apagar-cheio:hover:not(:disabled){filter:brightness(1.1);}
 .btn.btn-apagar-cheio svg{width:17px;height:17px;}
+/* o Excel no cabeçalho da tabela dos lançamentos (19/11/2026): o quadradinho verde do X */
+.cmc-tabela .cmc-excel{color:#1D6F42;}
+.cmc-tabela .cmc-excel svg{width:18px;height:18px;}
+.cmc-tabela .cmc-excel:hover{color:#21A366;}

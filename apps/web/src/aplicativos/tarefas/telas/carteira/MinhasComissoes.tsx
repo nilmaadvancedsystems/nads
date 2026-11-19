@@ -38,11 +38,6 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         <DadosDeTesteDaCarteira />
-        {/* a planilha dos lançamentos do mês (19/11/2026) */}
-        <button type="button" className="btn btn-outline" title="Exportar os lançamentos do mês em planilha (Excel)"
-          onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
-          <Icone nome="download" />Excel
-        </button>
         {extra}
         <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
       </div>
@@ -80,7 +75,13 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
         ) : (
           <div className="table-wrap">
             <table className="dp-tabela cmc-tabela">
-              <thead><tr><th>Data</th><th>Cliente</th><th>Porte</th><th>Tipo</th><th className="num">Valor</th><th>Status</th><th className="cmc-mais-th"><span className="sr-only">Ações</span></th></tr></thead>
+              <thead><tr><th>Data</th><th>Cliente</th><th>Porte</th><th>Tipo</th><th className="num">Valor</th><th>Status</th><th className="cmc-mais-th">
+                {/* a planilha dos lançamentos do mês, no cabeçalho da tabela (Vitor, 19/11/2026: "Coloca um icone de excel no cabecalho da tabela") */}
+                <button type="button" className="icon-btn icon-btn-sm cmc-excel" title="Exportar em Excel" aria-label="Exportar os lançamentos do mês em Excel"
+                  onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
+                </button>
+              </th></tr></thead>
               <tbody>
                 {[
                   ...lista.map(c => ({ data: c.data, chave: 'c' + c.id, linha: (

@@ -32,15 +32,15 @@ export function ComissoesDaEquipe() {
       {vm.janela === 'servicos' && <JanelaDosServicos fechar={() => vm.setJanela('')} />}
       {doMes.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{doMes.erro}</p>}
       <div className="stat-grid dp-numeros">
-        <div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="clock" /></span><p className="stat-label">Para revisar</p><p className="stat-value num">{formatos.reais(t.lancadas)}</p></div>
-        <div className="stat painel-numero painel-laranja"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="dinheiro" /></span><p className="stat-label">Aprovado, a pagar</p><p className="stat-value num">{formatos.reais(t.aprovadas)}</p></div>
+        {/* sem a aprovação (Vitor, 19/11/2026: "financeiro nao precisa aprovar nada"; "Nao tem essa regra"): a registrada já é a pagar */}
+        <div className="stat painel-numero painel-laranja"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="dinheiro" /></span><p className="stat-label">A pagar</p><p className="stat-value num">{formatos.reais(t.lancadas + t.aprovadas)}</p></div>
         <div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="checkCircle" /></span><p className="stat-label">Pago no mês</p><p className="stat-value num">{formatos.reais(t.pagas)}</p></div>
       </div>
       <section className="card dp-lista">
         {doMes.carregada && !resumo.length ? <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="As comissões que a equipe registrar na Carteira aparecem aqui." /> : (
           <div className="table-wrap">
             <table className="dp-tabela">
-              <thead><tr><th>Pessoa</th><th className="num">Comissões</th><th className="num">Para revisar</th><th className="num">A pagar</th><th className="num">Pago</th><th /></tr></thead>
+              <thead><tr><th>Pessoa</th><th className="num">Comissões</th><th className="num">A pagar</th><th className="num">Pago</th><th /></tr></thead>
               <tbody>
                 {resumo.map(p => {
                   const dela = doMes.lista.filter(c => c.uid === p.uid);
@@ -49,25 +49,23 @@ export function ComissoesDaEquipe() {
                       <tr className="linha-abre" tabIndex={0} title={aberta === p.uid ? 'Fechar' : 'Ver as comissões'} onClick={() => vm.alternar(p.uid)} onKeyDown={e => { if (e.key === 'Enter') vm.alternar(p.uid); }}>
                         <td><Icone nome={aberta === p.uid ? 'caretDown' : 'chevronRight'} width={14} height={14} /> <b>{p.nome}</b></td>
                         <td className="num">{p.quantas}</td>
-                        <td className="num">{p.aRevisar ? formatos.reais(p.aRevisar) : '—'}</td>
-                        <td className="num"><b>{p.aPagar ? formatos.reais(p.aPagar) : '—'}</b></td>
+                        <td className="num"><b>{p.aRevisar + p.aPagar ? formatos.reais(p.aRevisar + p.aPagar) : '—'}</b></td>
                         <td className="num">{p.pagas ? formatos.reais(p.pagas) : '—'}</td>
                         <td className="cart-acoes" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
-                          {p.ids.lancadas.length > 0 && <button type="button" className="btn btn-outline btn-sm" disabled={!!fazendo} onClick={() => void decidir('a' + p.uid, p.ids.lancadas, 'aprovada', 'Comissões aprovadas.')}><Icone nome="check" />Aprovar tudo</button>}
-                          {p.ids.aprovadas.length > 0 && <button type="button" className="btn btn-primary btn-sm" disabled={!!fazendo} onClick={() => void decidir('p' + p.uid, p.ids.aprovadas, 'paga', 'Marcado como pago.')}><Icone nome="dinheiro" />Marcar como pago</button>}
+                          {p.ids.lancadas.length + p.ids.aprovadas.length > 0 && <button type="button" className="btn btn-primary btn-sm" disabled={!!fazendo} onClick={() => void decidir('p' + p.uid, [...p.ids.lancadas, ...p.ids.aprovadas], 'paga', 'Marcado como pago.')}><Icone nome="dinheiro" />Marcar como pago</button>}
                         </td>
                       </tr>
                       {aberta === p.uid && dela.map(c => (
                         <tr key={c.id} className="cart-sublinha">
                           <td className="fraco">{c.data.split('-').reverse().join('/')} · {c.cliente}</td>
-                          <td colSpan={2} className="fraco">{c.descricao}{c.motivo ? ' · ' + c.motivo : ''}</td>
+                          <td className="fraco">{c.descricao}{c.motivo ? ' · ' + c.motivo : ''}</td>
                           {/* a escondida (16/11/2026): o valor só depois que o robô calcula; o do serviço não aparece */}
                           <td className="num">{carteira.esperandoCalculo(c) ? <span className="fraco">{c.calculo === 'erro' ? 'Sem cálculo' : 'Calculando…'}</span> : formatos.reais(c.valor)}</td>
-                          <td><SeloDaComissao s={c.situacao} /></td>
+                          <td><SeloDaComissao s={c.situacao} semAprovacao /></td>
                           <td className="cart-acoes">
-                            {c.situacao === 'lancada' && <BotaoIcone icone="check" titulo="Aprovar" pequeno disabled={!!fazendo || carteira.esperandoCalculo(c)} onClick={() => void decidir(c.id, [c.id], 'aprovada', 'Aprovada.')} />}
-                            {c.situacao === 'lancada' && <BotaoIcone icone="x" titulo="Recusar" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'recusada', 'Recusada.')} />}
-                            {(c.situacao === 'aprovada' || c.situacao === 'recusada') && <BotaoIcone icone="repeat" titulo="Voltar para lançada" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'lancada', 'Voltou para lançada.')} />}
+                            {(c.situacao === 'lancada' || c.situacao === 'aprovada') && <BotaoIcone icone="dinheiro" titulo="Marcar como paga" pequeno disabled={!!fazendo || carteira.esperandoCalculo(c)} onClick={() => void decidir(c.id, [c.id], 'paga', 'Marcada como paga.')} />}
+                            {(c.situacao === 'lancada' || c.situacao === 'aprovada') && <BotaoIcone icone="x" titulo="Recusar" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'recusada', 'Recusada.')} />}
+                            {(c.situacao === 'paga' || c.situacao === 'recusada') && <BotaoIcone icone="repeat" titulo="Voltar para a pagar" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'lancada', 'Voltou para a pagar.')} />}
                           </td>
                         </tr>
                       ))}

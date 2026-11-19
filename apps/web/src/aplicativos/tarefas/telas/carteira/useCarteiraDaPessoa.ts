@@ -186,8 +186,8 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
       if (problemas.length) return;
       setSalvando(true);
       try {
-        if (doFinanceiro) { await repo.registrarComissaoDe(para!, c); toast('Comissão registrada para ' + para!.nome + ', já aprovada.'); }
-        else { await repo.salvarComissao(c, comissao?.id); toast(comissao ? 'Comissão alterada.' : 'Comissão registrada. O Financeiro vê e aprova.'); }
+        if (doFinanceiro) { await repo.registrarComissaoDe(para!, c); toast('Comissão registrada para ' + para!.nome + '.'); }
+        else { await repo.salvarComissao(c, comissao?.id); toast(comissao ? 'Comissão alterada.' : 'Comissão registrada.'); }
         fechar();
       } catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
       finally { setSalvando(false); }
@@ -288,7 +288,7 @@ export function useComissoesDaEquipe() {
         motivo = digitado;
       }
       if (situacao === 'paga') {
-        const sim = await modal<boolean>({ icone: 'dinheiro', titulo: 'Marcar como pago?', texto: ids.length + (ids.length === 1 ? ' comissão aprovada passa' : ' comissões aprovadas passam') + ' para Paga. A pessoa vê na Carteira.',
+        const sim = await modal<boolean>({ icone: 'dinheiro', titulo: 'Marcar como pago?', texto: ids.length + (ids.length === 1 ? ' comissão passa' : ' comissões passam') + ' para Paga. A pessoa vê na Carteira.',
           botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Marcar como pago', valor: true, variante: 'btn-primary' }] });
         if (!sim) return;
       }
