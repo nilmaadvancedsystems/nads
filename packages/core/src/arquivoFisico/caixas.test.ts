@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adicionarEnvelopes, anosDasCaixas, buscar, codigoDaCaixa, descartar, descarteLiberadoEm, devolver, emprestados, FILTRO_VAZIO, htmlDasEtiquetasDaCaixa, idDaCaixa,
-  lerCaixa, linkDaCaixa, mesesDaCaixa, montarCaixa, mudarEnvelope, paraDescartar, paraOBanco, problemaDaCaixa, proximoNumero, removerEnvelope, retirar, rotuloDaCaixa,
+  adicionarEnvelopes, anosDasCaixas, buscar, codigoDaCaixa, devolucaoLiberadaEm, devolver, devolverAoCliente, emprestados, FILTRO_VAZIO, htmlDasEtiquetasDaCaixa, idDaCaixa,
+  lerCaixa, linkDaCaixa, mesesDaCaixa, montarCaixa, mudarEnvelope, paraDevolver, paraOBanco, problemaDaCaixa, proximoNumero, removerEnvelope, retirar, rotuloDaCaixa,
   localNaEtiqueta, rotuloDaCompetencia, situacaoDaCaixa, tipoComEspacos, type Caixa, type RascunhoDaCaixa,
 } from './index';
 import { htmlDosEnvelopes } from '../tarefas/regras/etiquetasDoEnvelope';
@@ -170,25 +170,27 @@ describe('a busca', () => {
   });
 });
 
-describe('o descarte', () => {
-  it('a partir do 1º de janeiro de ano + 1 + prazo do departamento', () => {
-    expect(descarteLiberadoEm({ ano: 2020, departamento: 'Fiscal' })).toBe('2026-01-01');
-    expect(descarteLiberadoEm({ ano: 2020, departamento: 'Pessoal' })).toBe('2031-01-01');
-    expect(descarteLiberadoEm({ ano: 2020, departamento: 'Fiscal' }, { Fiscal: 6, 'Contábil': 10, Pessoal: 10 })).toBe('2027-01-01');
+describe('a volta para o cliente (2 anos no escritório)', () => {
+  it('a partir do 1º de janeiro de ano + 3 (a de 2026 fica até 31/12/2028)', () => {
+    expect(devolucaoLiberadaEm({ ano: 2026 })).toBe('2029-01-01');
+    expect(devolucaoLiberadaEm({ ano: 2023 })).toBe('2026-01-01');
   });
 
-  it('as que passaram do prazo; descartar pede tudo no lugar e o prazo vencido', () => {
-    const velha = caixa({ ano: 2019 });
-    const nova = caixa({ ano: 2021 });
-    const cont = caixa({ ano: 2019, departamento: 'Contábil', tipo: 'PJ-C' });
-    expect(paraDescartar([nova, cont, velha], '2026-11-19').map(c => c.ano)).toEqual([2019]);
-    expect(descartar(nova, 'Admin', '2026-11-19').problema).toMatch(/01\/01\/2027/);
-    expect(descartar(retirar(velha, { envelope: null }, 'Bia', '', AGORA).caixa, 'Admin', '2026-11-19').problema).toMatch(/devolução/);
-    const d = descartar(velha, 'Admin', '2026-11-19');
+  it('as que já podem voltar; devolver pede tudo no lugar e quem recebeu', () => {
+    const velha = caixa({ ano: 2022 });
+    const nova = caixa({ ano: 2024 });
+    expect(paraDevolver([nova, velha], '2026-11-19').map(c => c.ano)).toEqual([2022]);
+    expect(devolverAoCliente(velha, 'Ana', '  ', '2026-11-19').problema).toMatch(/quem recebeu/);
+    expect(devolverAoCliente(retirar(velha, { envelope: null }, 'Bia', '', AGORA).caixa, 'Ana', 'Sr. João', '2026-11-19').problema).toMatch(/retirada/);
+    const d = devolverAoCliente(velha, 'Ana', 'Sr. João', '2026-11-19');
     expect(d.problema).toBe('');
-    expect(situacaoDaCaixa(d.caixa)).toBe('descartada');
-    expect(paraDescartar([d.caixa], '2026-11-19')).toEqual([]);
-    expect(descartar(d.caixa, 'Admin', '2026-11-19').problema).toMatch(/já foi/);
+    expect(d.caixa).toMatchObject({ devolvidaEm: '2026-11-19', devolvidaPor: 'Ana', devolvidaPara: 'Sr. João' });
+    expect(situacaoDaCaixa(d.caixa)).toBe('devolvida');
+    expect(paraDevolver([d.caixa], '2026-11-19')).toEqual([]);
+    expect(devolverAoCliente(d.caixa, 'Ana', 'X', '2026-11-19').problema).toMatch(/já voltou/);
+    expect(retirar(d.caixa, { envelope: null }, 'Bia', '', AGORA).problema).toMatch(/cliente/);
+    // a que voltou some da busca padrão (como a descartada)
+    expect(buscar([d.caixa], FILTRO_VAZIO)).toEqual([]);
   });
 });
 
@@ -216,6 +218,9 @@ describe('as etiquetas', () => {
     const html = htmlDasEtiquetasDaCaixa({ caixas: cs, qr: { [cs[0].id]: '<svg id="qr1"></svg>' }, logo: { definicao: '<svg id="def"></svg>', uso: '<svg id="uso"></svg>' } });
     expect(html.match(/<section class="pagina">/g)).toHaveLength(2);
     expect(html.match(/class="cx"/g)).toHaveLength(3);
+    // a folha em pé, com a página deitada girada nela (a impressora do escritório ignora a folha deitada)
+    expect(html).toContain('size:A4 portrait;margin:0');
+    expect(html).toContain('transform:rotate(90deg)');
     expect(html).toContain('<svg id="qr1"></svg>');
     expect(html).toContain('PJ - F');
     expect(html).toContain('>001<');

@@ -63,16 +63,19 @@ export function htmlDasEtiquetasDaCaixa(p: PedidoDeEtiquetasDaCaixa): string {
   const paginas: string[] = [];
   for (let i = 0; i < p.caixas.length; i += 2) {
     const par = p.caixas.slice(i, i + 2).map(c => etiqueta(c, p.qr[c.id] || '', p.logo.uso));
-    paginas.push(`<section class="pagina">${par.join('')}</section>`);
+    paginas.push(`<section class="pagina"><div class="folha">${par.join('')}</div></section>`);
   }
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas das caixas</title>
 <style>
-  @page{size:A4 landscape;margin:20mm 13mm}
+  /* a folha EM PÉ e a página deitada desenhada girada dentro dela (19/11/2026: a impressora do escritório ignora a folha deitada
+     e encolhe tudo): o mesmo resultado da planilha (A4 deitada, margens de 20 mm em cima e embaixo e 13 mm dos lados) */
+  @page{size:A4 portrait;margin:0}
   *{box-sizing:border-box}
   :root{color-scheme:light}
   html,body{margin:0;padding:0;background:#fff}
   body{font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .pagina{display:flex;gap:48pt;align-items:flex-start;break-after:page;page-break-after:always}
+  .pagina{position:relative;width:210mm;height:297mm;overflow:hidden;break-after:page;page-break-after:always}
+  .folha{position:absolute;top:0;left:210mm;width:297mm;height:210mm;transform-origin:0 0;transform:rotate(90deg);padding:20mm 13mm;display:flex;gap:48pt;align-items:flex-start}
   .pagina:last-child{break-after:auto;page-break-after:auto}
   .cx{width:322.5pt;border-collapse:collapse;table-layout:fixed;border:1.5pt solid #000;break-inside:avoid}
   .cx col{width:50%}

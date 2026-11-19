@@ -5,13 +5,16 @@
 // A regra (lê e grava quem é da equipe; apagar, só a caixa sem envelopes) fica em firestore.rules do Entregas, e só vale
 // depois de publicada. No modo desenvolvedor nada é gravado: a mudança fica só na tela.
 import { arquivoFisico as af } from '@nads/core';
-import { collection, deleteDoc as deleteDocBruto, doc, getDocs, runTransaction } from 'firebase/firestore';
+import { collection, deleteDoc as deleteDocBruto, doc, getDocs, query, runTransaction, setDoc as setDocBruto, where } from 'firebase/firestore';
 import { guardar, modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 import { listaDeCaixas, problemaParaExcluir, type RepoArquivoFisico } from './arquivoFisico';
 import { bancoDoEntregas } from './entregas.firestore';
 
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const COLECAO = 'arquivoFisico';
+/** os envelopes impressos que aguardam arquivamento (arquivoFisicoImpressos/{código do envelope}; 19/11/2026) */
+const IMPRESSOS = 'arquivoFisicoImpressos';
 
 const mensagem = (e: unknown) => {
   const codigo = (e as { code?: string })?.code || '';
@@ -31,6 +34,7 @@ export function criarArquivoFisicoFirestore(quem: () => string): RepoArquivoFisi
       .finally(() => { lendo = false; });
   };
   let pediu = false;
+  let lendoImpressos = false;
   return {
     exemplos: false,
     caixas() { if (!pediu) { pediu = true; ler(); } return l.estado(); },
@@ -81,6 +85,34 @@ export function criarArquivoFisicoFirestore(quem: () => string): RepoArquivoFisi
       try {
         await deleteDoc(doc(db, COLECAO, id));
         l.tirar(id);
+        return '';
+      } catch (e) { return mensagem(e); }
+    },
+    impressos() {
+      // só os que ainda aguardam (o arquivado fica no banco, mas a tela não precisa dele): uma leitura por envelope esperando
+      if (!lendoImpressos && !l.impressos().carregada) {
+        lendoImpressos = true;
+        getDocs(query(collection(db, IMPRESSOS), where('arquivadoEm', '==', '')))
+          .then(r => l.definirImpressos({ carregada: true, erro: '', lista: r.docs.map(d => af.lerImpresso(d.id, d.data())).filter((x): x is af.EnvelopeImpresso => !!x) }))
+          .catch(e => l.definirImpressos({ carregada: true, erro: mensagem(e), lista: [] }));
+      }
+      return l.impressos();
+    },
+    async registrarImpressos(lista) {
+      try {
+        // no modo desenvolvedor o setDoc finge que gravou: a fila fica só na tela
+        for (const x of lista) await setDoc(doc(db, IMPRESSOS, x.id), af.impressoParaOBanco(x));
+        l.porImpressos(lista);
+        return '';
+      } catch (e) { return mensagem(e); }
+    },
+    async confirmarArquivamento(id, caixa, quem, agora) {
+      const x = l.achaImpresso(id);
+      if (!x) return '';
+      try {
+        const feito = af.arquivarImpresso(x, caixa, quem, agora);
+        await setDoc(doc(db, IMPRESSOS, id), af.impressoParaOBanco(feito));
+        l.porImpressos([feito]);
         return '';
       } catch (e) { return mensagem(e); }
     },

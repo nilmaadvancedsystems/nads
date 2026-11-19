@@ -32,7 +32,7 @@ export function JanelaDosPapeis({ vm }: { vm: VmPapeis }) {
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
       <div ref={janela} className="modal etq-janela papeis-janela" role="dialog" aria-modal="true" aria-labelledby="papeisTitulo">
         <h3 id="papeisTitulo"><Icone nome={etiquetas ? 'fileText' : 'list'} width={16} height={16} />{TITULOS[vm.aberto]}</h3>
-        <form className="etq-corpo" onSubmit={ev => { ev.preventDefault(); vm.imprimir(); }}>
+        <form className="etq-corpo" onSubmit={ev => { ev.preventDefault(); void vm.imprimir(); }}>
           {/* as opções numa grade, como nos diálogos de impressão (22/10/2026: "organizar e simplificar") */}
           <div className="papeis-opcoes">
             {vm.doAno ? (

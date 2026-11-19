@@ -2,3 +2,4 @@
 export * from './caixas';
 export * from './etiquetas';
 export * from './locais';
+export * from './envelopeLido';
