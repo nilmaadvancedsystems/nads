@@ -8,6 +8,7 @@ import { CarteiraEmBreve } from './CarteiraEmBreve';
 import { HoleritesEPagamentos } from './HoleritesEPagamentos';
 import { Insumos } from './Insumos';
 import { MinhasComissoes } from './MinhasComissoes';
+import { useMes } from './comum';
 import { JanelaDeMateriais } from './JanelaDeMateriais';
 import { Icone } from '@nads/ui';
 import { useState } from 'react';
@@ -15,6 +16,8 @@ import { useState } from 'react';
 export function Carteira({ pagina }: { pagina: string }) {
   const { operador } = useOperador();
   const [materiais, setMateriais] = useState(false);
+  // um mês só para a tela (19/11/2026: "repetindo referencia"): o das comissões vale também para os holerites
+  const m = useMes('comecar');
   // os Insumos são de toda a equipe (12/11/2026)
   if (pagina === 'insumos') return <Insumos />;
   if (!carteiraLiberada(operador)) return <CarteiraEmBreve />;
@@ -23,15 +26,15 @@ export function Carteira({ pagina }: { pagina: string }) {
     <div className="carteira-financeiro">
       {/* as impressões e os materiais (os Insumos) numa janela, daqui mesmo (19/11/2026) */}
       {materiais && <JanelaDeMateriais fechar={() => setMateriais(false)} />}
-      <div className="carteira-materiais">
+      {/* sem o título Comissões (Vitor, 19/11/2026: "remove esse titulo"): a página já se chama Financeiro */}
+      {/* o mês, o Impressões e materiais e o Registrar comissão na mesma linha (19/11/2026) */}
+      <MinhasComissoes m={m} extra={(
         <button type="button" className="btn btn-outline" onClick={() => setMateriais(true)} title="Registrar as impressões, pastas, envelopes e caixas de cada cliente, e ver os do mês">
           <Icone nome="impressora" />Impressões e materiais
         </button>
-      </div>
-      <h3 className="carteira-secao">Comissões</h3>
-      <MinhasComissoes />
+      )} />
       <h3 className="carteira-secao">Holerites e pagamentos</h3>
-      <HoleritesEPagamentos />
+      <HoleritesEPagamentos m={m} />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { BotaoFechar, CampoData, CampoDataComCalendario, CampoReais, Icone, Menu
 import { useEffect, useRef, useState } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
-import { useJanelaDaComissao, type ClienteDaLista } from './useCarteiraDaPessoa';
+import { useJanelaDaComissao, type ClienteDaLista, type ClienteSemCodigo } from './useCarteiraDaPessoa';
 import { MeiDaComissao } from './MeiDaComissao';
 import { ehServicoDeMei } from './useMeiDaComissao';
 
@@ -19,13 +19,15 @@ const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  * parada em cima e só a lista rola, baixa, para o menu caber colado no botão (Vitor, 12/11/2026: "Dropdown tá estranho" —
  * a lista inteira abria para cima, cortada no topo da tela, e a busca sumia junto).
  */
-function EscolherCliente({ clientes, codigo, avulso, rotulo, travada, onCliente, onAvulso }: {
-  clientes: readonly ClienteDaLista[]; codigo: number | null; avulso: boolean; rotulo: string; travada: boolean;
-  onCliente: (codigo: number) => void; onAvulso: () => void;
+function EscolherCliente({ clientes, semCodigo = [], codigo, avulso, rotulo, travada, onCliente, onAvulso, onSemCodigo }: {
+  clientes: readonly ClienteDaLista[]; semCodigo?: readonly ClienteSemCodigo[]; codigo: number | null; avulso: boolean; rotulo: string; travada: boolean;
+  onCliente: (codigo: number) => void; onAvulso: () => void; onSemCodigo?: (c: ClienteSemCodigo) => void;
 }) {
   const [busca, setBusca] = useState('');
   const q = busca.trim().toLowerCase();
   const achados = (q ? clientes.filter(c => (c.codigo + ' ' + c.nome).toLowerCase().includes(q)) : clientes).slice(0, 80);
+  // as do Cadastro ainda sem código (o MEI registrado pelo cartão; 19/11/2026)
+  const semCodigoAchados = (q ? semCodigo.filter(c => c.nome.toLowerCase().includes(q)) : semCodigo).slice(0, 40);
   if (travada) return <span>{rotulo || '—'}</span>;
   const escolher = (fechar: () => void, f: () => void) => { fechar(); f(); setBusca(''); };
   return (
@@ -50,7 +52,13 @@ function EscolherCliente({ clientes, codigo, avulso, rotulo, travada, onCliente,
                 <span className="popover-texto"><b className="num">{c.codigo}</b> {c.nome}</span>
               </button>
             ))}
-            {!achados.length && <p className="hint">Nenhum cliente com essa busca.</p>}
+            {onSemCodigo && semCodigoAchados.map(c => (
+              <button key={'sem|' + c.nome} type="button" className="popover-item" role="menuitemcheckbox" aria-checked={avulso && rotulo === c.nome} onClick={() => escolher(fechar, () => onSemCodigo(c))}>
+                <span className="popover-marca">{avulso && rotulo === c.nome && <Icone nome="check" />}</span>
+                <span className="popover-texto">{c.nome} <span className="hint">· sem código{c.porte ? ' · ' + c.porte : ''}</span></span>
+              </button>
+            ))}
+            {!achados.length && !(onSemCodigo && semCodigoAchados.length) && <p className="hint">Nenhum cliente com essa busca.</p>}
           </div>
         </>
       )} />
@@ -120,8 +128,8 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
             )}
             <Propriedade icone="calendar" rotulo="Data">{travada ? <span>{vm.data}</span> : (dev ? <CampoDataComCalendario valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" /> : <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" />)}</Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
-              <EscolherCliente clientes={vm.clientes} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? '' : vm.cliente} travada={travada}
-                onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} />
+              <EscolherCliente clientes={vm.clientes} semCodigo={vm.clientesSemCodigo} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? vm.nomeAvulso : vm.cliente} travada={travada}
+                onCliente={vm.escolherCliente} onAvulso={vm.marcarAvulso} onSemCodigo={c => vm.escolherSemCodigo(c.nome, c.porte)} />
             </Propriedade>
             {vm.avulso && (
               <>
@@ -143,7 +151,7 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               )}
             </Propriedade>
             {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026) */}
-            {dev && !travada && ehServicoDeMei(vm.servico) && <MeiDaComissao nome={vm.avulso ? vm.nomeAvulso : vm.cliente} />}
+            {dev && !travada && ehServicoDeMei(vm.servico) && <MeiDaComissao nome={vm.avulso ? vm.nomeAvulso : vm.cliente} aoLerCartao={nome => { if (vm.clienteCodigo == null && !vm.nomeAvulso.trim()) vm.escolherSemCodigo(nome, 'MEI'); else if (vm.avulso && !vm.porte) vm.setPorte('MEI'); }} />}
             {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
             {!(vm.oculta && comissao) && (
               <Propriedade icone="dinheiro" rotulo="Valor do serviço">
