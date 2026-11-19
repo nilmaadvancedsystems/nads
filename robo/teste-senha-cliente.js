@@ -33,6 +33,8 @@ const pedido = (id, x) => ({ id, data: () => x, ref: { delete: async () => { apa
   assert.strictEqual(enviados[0].para, 'maria@padaria.com');
   assert.ok(enviados[0].corpo.includes('https://cliente.nilmacontabilidade.com/cliente/senha?mode=resetPassword&oobCode=CODIGO_de_teste_123'));
   assert.ok(enviados[0].corpo.includes('PERSONALY COMPANY'));
+  // a versão bonita: o botão com o link e a empresa
+  assert.ok(enviados[0].html.includes('Criar a minha senha') && enviados[0].html.includes('oobCode=CODIGO_de_teste_123') && enviados[0].html.includes('PERSONALY COMPANY'), 'o e-mail em HTML');
   assert.ok(apagados.includes('p1'), 'o pedido sai da caixa');
   // sem acesso a este link, sem conta, da equipe ou torto: nada sai
   assert.strictEqual(await r.tratar(pedido('p2', { token: OUTRO, email: 'maria@padaria.com' })), 'sem acesso');

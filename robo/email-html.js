@@ -457,6 +457,51 @@ function htmlDaNfse(o) {
   return { html, imagens };
 }
 
+// O e-mail de criar ou trocar a senha da Área do Cliente (19/11/2026; o dono: "Sim, pelo robô" e, sobre a versão em texto,
+// "feio demais"): o mesmo desenho da NFS-e (o bloco vinho com a marca e a manchete, o cartão branco, o botão), curto.
+// o = { assunto, empresa, link }
+function htmlDaSenha(o) {
+  const imagens = [];
+  const nome = 'Nilma Contabilidade';
+  const logo = imagem(imagens, PASTA_ICONES, 'marca', [14, 22], 'display:block;margin:0 auto') || '';
+  const empresa = String(o.empresa || '').trim();
+  const css = '@media only screen and (max-width:520px){.px{padding-left:16px!important;padding-right:16px!important}.hero{padding:26px 22px 60px!important}' +
+    '.manchete{font-size:24px!important;line-height:31px!important}.texto{padding:22px 20px 18px!important}}';
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>' + esc(o.assunto || nome) + '</title>' +
+    '<style>' + css + '</style></head>' +
+    '<body style="margin:0;padding:0;background:' + FUNDO_DP + ';-webkit-text-size-adjust:100%">' +
+    '<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">Clique no botão para criar a sua senha da Área do Cliente.' + '&#8199;&#65279;&#847;'.repeat(20) + '</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:' + FUNDO_DP + '"><tr><td align="center" style="padding:0 0 32px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">' +
+      // o bloco vinho: a marca, o selo e a manchete
+      '<tr><td class="hero" bgcolor="' + VINHO_FUNDO + '" style="background:' + VINHO_FUNDO + ';padding:30px 40px 68px">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>' +
+          '<td valign="middle"><table role="presentation" cellpadding="0" cellspacing="0"><tr>' +
+            (logo ? '<td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;background:#FFFFFF;border-radius:10px">' + logo + '</td>' : '') +
+            '<td style="padding-left:10px;font:700 15px/20px ' + FONTE + ';color:#FFFFFF">' + esc(nome) + '</td></tr></table></td>' +
+          '<td align="right" valign="middle"><span style="display:inline-block;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font:600 12px/16px ' + FONTE + ';color:#FFFFFF;white-space:nowrap">Área do Cliente</span></td>' +
+        '</tr></table>' +
+        '<div class="manchete" style="font:700 28px/36px ' + FONTE + ';color:#FFFFFF;margin-top:34px">Crie a sua senha</div>' +
+        (empresa ? '<div style="font:500 15px/21px ' + FONTE + ';color:#F6CFD1;margin-top:6px">Acesso de ' + esc(empresa) + '</div>' : '') +
+      '</td></tr>' +
+      // o cartão branco com o texto e o botão, encostado no bloco
+      '<tr><td class="px" bgcolor="' + FUNDO_DP + '" style="padding:0 24px;background-image:linear-gradient(180deg,' + VINHO_FUNDO + ' 0,' + VINHO_FUNDO + ' 44px,' + FUNDO_DP + ' 44px)">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;border-collapse:separate;box-shadow:0 10px 30px rgba(80,20,24,.12)"><tr><td class="texto" style="padding:28px 30px 24px">' +
+          '<div style="font:15px/23px ' + FONTE + ';color:' + COR.tinta + '">Você pediu para criar ou trocar a senha da Área do Cliente. Clique no botão abaixo e escolha uma senha só sua: o escritório não vê nem escolhe.</div>' +
+          '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px"><tr><td align="center" bgcolor="' + VINHO_FUNDO + '" style="background:' + VINHO_FUNDO + ';border-radius:99px">' +
+            '<a href="' + esc(o.link) + '" style="display:block;padding:15px 20px;font:700 16px/20px ' + FONTE + ';color:#FFFFFF;text-decoration:none;border-radius:99px">Criar a minha senha &rarr;</a></td></tr></table>' +
+          '<div style="font:12px/18px ' + FONTE + ';color:' + COR.fraca + ';margin-top:14px;text-align:center">O botão vale por 1 hora e só uma vez. Depois, peça outro na tela de entrar.</div>' +
+        '</td></tr></table>' +
+      '</td></tr>' +
+      // o rodapé
+      '<tr><td align="center" class="px" style="padding:18px 28px 0;font:12px/18px ' + FONTE + ';color:#8C7A7B">' +
+        'Não foi você que pediu? Pode ignorar este e-mail: a sua senha não muda.<br><b style="color:' + COR.suave + '">' + esc(nome) + '</b>' +
+      '</td></tr>' +
+    '</table></td></tr></table></body></html>';
+  return { html, imagens };
+}
+
 // O envio do DP ao cliente (DP › Envios, envios-do-dp.js), as guias do Fiscal (lote-fiscal.js, com o chip 'Fiscal') e o boleto
 // dos honorários (boletos-financeiro.js, com o chip 'Financeiro'), no
 // desenho "Banco digital" (05/11/2026, Vitor escolheu entre 3; a NFS-e ficou no "Recibo"):
@@ -645,4 +690,4 @@ function htmlDoAvisoFiscal(o) {
   return { html, imagens };
 }
 
-module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDoAvisoFiscal, htmlDaNfse, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };
+module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDoAvisoFiscal, htmlDaNfse, htmlDaSenha, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };
