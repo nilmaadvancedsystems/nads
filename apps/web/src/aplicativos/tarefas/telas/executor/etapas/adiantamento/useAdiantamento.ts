@@ -29,8 +29,9 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   const [semMovimento, setSemMovimento] = useGuardado<boolean>(chave + '|sem-mais-movimento', false);
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
-  // o botão Vitor do razão (19/11/2026): a conta sempre informada na etapa (o robô não tem como saber)
-  const contaDoRobo = useContaDoTipo(s.nome, s.codigo, 'adiantamento-' + lado, '', true);
+  // o botão Vitor do razão (19/11/2026): a informada na etapa ou, sem ela, a do balancete pelo nome ("adiantamento a fornecedores";
+  // Vitor, 19/11/2026: "tenta pegar do balancete... normalmente sao nomes obvios"); sem nenhuma, a etapa pede
+  const contaDoRobo = useContaDoTipo(s.nome, s.codigo, 'adiantamento-' + lado, '');
   const daImportacao = contabil.razaoDoTipo(lado === 'fornecedores' ? 'adiantamento-fornecedores' : 'adiantamento-clientes');
   const razao = proprio || (daImportacao ? { nome: rotuloDaImportacao(daImportacao), r: daImportacao.razao } : null);
 
