@@ -8037,3 +8037,6 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .ac-pessoa-nova input { flex: 1 1 160px; min-width: 0; }
 .ac-exige-senha { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; cursor: pointer; }
 .ac-exige-senha input { margin-top: 3px; }
+/* a conta do razão que o nads não achou, informada na linha (o botão Vitor; 19/11/2026) */
+.razao-informar{display:inline-flex;align-items:center;gap:4px;}
+.razao-informar input{width:78px;height:28px;padding:2px 8px;font-size:var(--fs-12);}

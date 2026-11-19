@@ -1,8 +1,12 @@
-// O código da conta de um tipo de razão (Caixa, INSS, Salários…), para o botão Vitor pedir o razão dela (19/11/2026): pelo
-// balancete dinâmico da empresa (contabilDaEmpresa) e, sem ele, pelo nome da conta no balancete da Conferência.
+// O código da conta de um tipo de razão (Caixa, INSS, Salários…), para o botão Vitor pedir o razão dela (19/11/2026): a informada
+// na etapa (gravada no Cadastro da empresa, "razao-<tipo>"); senão, a do balancete dinâmico; senão, pelo nome no balancete da
+// Conferência. Sem nenhuma, a etapa pede para informar (Vitor, 19/11/2026: "sempre que o nads ver que nao tem a conta, pede
+// para informar e grave na etapa, para o robo conseguir puxar").
+import { empresas } from '@nads/core';
 import { useContasDoBalancete } from '../../etapas/conferencia/importadosNaEtapa';
-
-type Tipo = 'caixa' | 'salarios' | 'fgts' | 'inss' | 'prolabore' | 'honorarios' | 'simples' | string;
+import { useCadastro } from '../../dados/repo';
+import { useOperador } from '../../casca/operador';
+import { roboDePcDoUsuario } from '../../dados/notasDoFiscal.firestore';
 
 const PELO_NOME: Record<string, RegExp> = {
   caixa: /^caixa( geral)?$/i,
@@ -14,12 +18,29 @@ const PELO_NOME: Record<string, RegExp> = {
   honorarios: /honor[aá]rios.*(a )?pagar/i,
 };
 const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+const campo = (tipo: string) => ('razao-' + tipo) as empresas.cadastro.CampoContaDoRazao;
 
-export function useContaDoTipo(empresa: string, tipo: Tipo | null, doDinamico: string): string {
-  const contas = useContasDoBalancete(empresa && tipo && !doDinamico ? empresa : '');
-  if (doDinamico || !tipo) return doDinamico;
-  const re = PELO_NOME[tipo];
-  if (!re || !contas) return '';
-  const achadas = contas.filter(c => !c.sintetica && re.test(sem(c.nome)));
-  return achadas.length === 1 ? achadas[0].codigo : '';
+/** informar: só para o dono do robô de PC (o botão Vitor é só dele) */
+export interface ContaDoRazao { conta: string; informada: boolean; informar?: (codigo: string) => void }
+
+export function useContaDoTipo(empresa: string, codigo: number | null, tipo: string | null, doDinamico: string): ContaDoRazao {
+  const vivo = useCadastro(empresa, codigo);
+  const op = useOperador().operador;
+  const cadastro = vivo.carregada ? vivo.cadastro : null;
+  const informada = tipo ? cadastro?.contasPadrao?.contas[campo(tipo)] || '' : '';
+  const contas = useContasDoBalancete(empresa && tipo && !informada && !doDinamico ? empresa : '');
+  let conta = informada || doDinamico;
+  if (!conta && tipo && contas) {
+    const re = PELO_NOME[tipo];
+    const achadas = re ? contas.filter(c => !c.sintetica && re.test(sem(c.nome))) : [];
+    if (achadas.length === 1) conta = achadas[0].codigo;
+  }
+  return {
+    conta, informada: !!informada,
+    informar: !roboDePcDoUsuario() ? undefined : (cod: string) => {
+      if (!cadastro || !tipo) return;
+      const novo = empresas.cadastro.definirContaPadrao(cadastro, campo(tipo), cod.replace(/\D/g, ''), null, op?.nome || 'Tarefa', new Date());
+      if (novo !== cadastro) vivo.salvar(novo);
+    },
+  };
 }
