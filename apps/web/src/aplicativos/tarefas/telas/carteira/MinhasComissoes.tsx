@@ -13,17 +13,17 @@ const ddmm = (d: string) => d.slice(0, 10).split('-').reverse().join('/').slice(
 
 /**
  * O topo redesenhado (Vitor, 15/11/2026: "melhora o visual desse inicio da carteira, não to achando legal, refaça de outra
- * maneira"): no lugar dos quatro cartões coloridos, um cartão só com o total do mês e a barra das três partes (esperando,
- * aprovadas, pagas; as cores das cápsulas da lista); e, no lugar da tabela, a lista em linhas: a data num bloquinho, o cliente
+ * maneira"): no lugar dos quatro cartões coloridos, um cartão só com o total do mês e a barra das partes (a receber e pagas,
+ * sem a aprovação desde 19/11/2026; as cores das cápsulas da lista); e, no lugar da tabela, a lista em linhas: a data num bloquinho, o cliente
  * com o serviço embaixo, o valor e a situação à direita.
  */
 export function MinhasComissoes() {
   const vm = useMinhasComissoes();
   const { m, lista, totais: t, aberta, setAberta } = vm;
   useCarregando(!vm.carregada);
+  // sem a aprovação (Vitor, 19/11/2026: "nao existe isso, nao existe aprovacao"): o que falta receber e o que já foi pago
   const partes = [
-    { id: 'lancada', rotulo: 'Esperando aprovação', valor: t.lancadas },
-    { id: 'aprovada', rotulo: 'Aprovadas, a receber', valor: t.aprovadas },
+    { id: 'aprovada', rotulo: 'A receber', valor: t.lancadas + t.aprovadas },
     { id: 'paga', rotulo: 'Pagas', valor: t.pagas },
   ];
   const nomeDoMes = carteira.mesPorExtenso(m.mes).split(' ')[0];
@@ -63,7 +63,7 @@ export function MinhasComissoes() {
 
       <section className="card cmc-lista" aria-label="As comissões do mês">
         {vm.carregada && !lista.length ? (
-          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão aqui: ela entra para pagamento no mês seguinte, e o Financeiro vê, aprova e paga.">
+          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão aqui: ela entra para pagamento no mês seguinte, e o Financeiro vê e paga.">
             <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
           </Vazio>
         ) : (
@@ -82,7 +82,7 @@ export function MinhasComissoes() {
                     {/* a escondida (16/11/2026): sem o valor */}
                     <b className="cmc-quanto num">{c.oculta ? '—' : formatos.reais(c.valor)}</b>
                     <span className="cmc-situacao">
-                      <SeloDaComissao s={c.situacao} />
+                      <SeloDaComissao s={c.situacao} semAprovacao />
                       {c.pagoEm && <span className="fraco">em {ddmm(c.pagoEm)}</span>}
                     </span>
                   </button>

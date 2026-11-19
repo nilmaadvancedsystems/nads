@@ -7,6 +7,7 @@
 import { empresas, formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCadastro } from '../../../../dados/repo';
+import { useContasInformadas } from '../../useContaDoTipo';
 import { useOperador } from '../../../../casca/operador';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
@@ -38,6 +39,8 @@ export function useEmprestimos() {
   // os empréstimos já guardados no Cadastro (número, banco, de quando até quando)
   const cadastrados = cadastro.emprestimos || [];
   const meses = s.meses;
+  // as contas dos empréstimos para o botão Vitor (19/11/2026): informadas na etapa, gravadas na empresa
+  const contasDoRobo = useContasInformadas(s.nome, s.codigo ?? null, 'emprestimos');
   // os razões ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
   const chave = useChaveDaEtapa('emprestimos');
   const [razoes, setRazoes] = useGuardado<RazaoDoEmprestimo[]>(chave + '|razoes', []);
@@ -179,6 +182,8 @@ export function useEmprestimos() {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   return {
+    /** o botão Vitor (só o dono do robô de PC): as contas informadas, adicionar e tirar */
+    robo: contasDoRobo.dono && s.nome ? { empresa: s.nome, codigo: s.codigo ?? null, meses, contas: contasDoRobo.lista, adicionar: contasDoRobo.adicionar, tirar: contasDoRobo.tirar } : null,
     periodo: t.rotuloDoPeriodo([...meses]),
     bancos: bancos.map(b => ({ id: b.id, rotulo: b.nome + (b.detalhe ? ' · ' + b.detalhe : '') })),
     importar: (fs: File[]) => { void importar(fs); },

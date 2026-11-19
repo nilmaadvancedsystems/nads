@@ -425,6 +425,10 @@ function iniciarAlterdata(db, log) {
   ouvir('pedidos do Alterdata', () => (ESPERANDO.length > 1 ? pedidos.where('status', 'in', ESPERANDO) : pedidos.where('status', '==', 'pendente')), snap => {
     for (const ch of snap.docChanges()) {
       if (ch.type === 'removed') { pendentes.delete(ch.doc.id); fila.saiu(ch.doc.id); } else {
+        // o robô do PC conectou (19/11/2026, Vitor: "se o robo nao conectar depois de 3 segundos, ja cancela ele no nads"): o
+        // pedido do dono ganha recebidoEm na hora em que chega, antes de olhar o Contábil; sem isso em 3 s, o nads cancela
+        const d = ch.doc.data();
+        if (DONO_UID && d.criadoPorUid === DONO_UID && !d.recebidoEm) pedidos.doc(ch.doc.id).update({ recebidoEm: agora(), recebidoPor: ONDE }).catch(() => {});
         pendentes.add(ch.doc.id); fila.chegou(ch.doc.id);
         // o "passar na frente" da Central dos robôs (depois de reiniciar, vale de novo: naFrenteEm fica no pedido)
         if (ch.doc.data().naFrenteEm) fila.naFrente(ch.doc.id);

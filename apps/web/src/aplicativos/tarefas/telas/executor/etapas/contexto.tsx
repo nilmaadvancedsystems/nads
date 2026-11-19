@@ -20,6 +20,8 @@ export interface EtapaAberta {
   prestaServico?: boolean | null;
   /** os meses são da Tarefa (vários, ou os da etapa); false = um mês só, o da competência */
   mesesDaTarefa?: boolean;
+  /** o período da Tarefa lá em cima (todos os meses, mesmo os que a etapa já fez): o que o robô puxa (19/11/2026) */
+  periodo?: string[];
 }
 
 /** O que falta para seguir (o Próximo da Tarefa só libera com tudo pronto). */
@@ -76,6 +78,15 @@ export function AvisoAcimaDoCabecalho({ children }: { children: ReactNode }) {
 export function useChaveDaEtapa(etapa: string): string {
   const s = useEtapaAberta();
   return etapa + '|' + (s.codigo ?? s.nome) + '|' + s.meses.join(',');
+}
+
+/**
+ * O período da Tarefa lá em cima, para o botão Vitor (Vitor, 19/11/2026: "essas puxadas de razao, respeite o periodo! 01 ao 09
+ * la em cima"): fora de uma etapa, null (a tela usa o período dela).
+ */
+export function usePeriodoDaTarefa(): string[] | null {
+  const c = useContext(Ctx);
+  return c?.etapa.periodo?.length ? c.etapa.periodo : null;
 }
 
 export function useEtapaAberta(): EtapaAberta {

@@ -119,6 +119,8 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
     /** os razões de um tipo (o de Clientes, os de Empréstimos: vários) */
     razoesDoTipo: (tipo: cl.TipoDoRazao): (RazaoGuardado & { conta: string })[] =>
       Object.entries(razoes).filter(([k]) => tipos[k] === tipo).map(([conta, r]) => ({ ...r, conta })),
+    /** o código da conta de um tipo pelo dinâmico (o botão Vitor pede o razão dela; 19/11/2026); '' = sem dinâmico ou sem a conta */
+    contaDoTipo: (tipo: cl.TipoDoRazao): string => (dinamico ? dinamico.d.linhas.find(l => cl.tipoDoRazao(dinamico.d, l.codigo) === tipo)?.codigo || '' : ''),
     /** o primeiro razão de um tipo (Caixa, INSS, Salários…) */
     razaoDoTipo: (tipo: cl.TipoDoRazao): (RazaoGuardado & { conta: string }) | null => {
       const k = Object.keys(razoes).find(x => tipos[x] === tipo);

@@ -1,5 +1,5 @@
 // O checklist da Contabilização da Folha (Vitor, 01/10/2026): montado a partir do balancete importado, na ordem
-// Salários → Pró-labore → Férias → 13º → Rescisão → FGTS → Crédito do Trabalhador → GRRF → INSS. Só entra o que a
+// Salários → Pró-labore → Férias → 13º → Rescisão → Crédito do Trabalhador → FGTS → GRRF → INSS. Só entra o que a
 // empresa tem: uma conta analítica do Passivo do assunto no balancete ("todas as contas do grupo do Passivo": as
 // obrigações — Salários a Pagar, FGTS a Recolher…; o saldo pode estar zerado, a guia já paga, e a conta continua lá).
 // O 13º só quando o período tem novembro ou dezembro; a GRRF (multa rescisória) só quando houve rescisão.
@@ -20,8 +20,9 @@ const ITENS: { id: ItemDaFolha['id']; nome: string; e: RegExp; nao?: RegExp }[] 
   { id: 'ferias', nome: 'Férias', e: /ferias/, nao: /provis|encargo/ },
   { id: 'decimo-terceiro', nome: 'Décimo terceiro', e: /\b13|decimo terceiro/, nao: /provis|encargo/ },
   { id: 'rescisao', nome: 'Rescisão', e: /rescis/, nao: /multa|grrf/ },
-  { id: 'fgts', nome: 'Guias do FGTS', e: /\bfgts\b/, nao: /multa|rescis|provis|encargos? (de|do)? ?fgts e|emprestimo|consignad|credito do trabalhador/ },
+  // o FGTS empréstimo antes das Guias do FGTS (Vitor, 19/11/2026: "inverta a ordem desses dois")
   { id: 'credito-trabalhador', nome: 'FGTS empréstimo · Crédito do Trabalhador', e: /credito do trabalhador|consignad|emprestimo.*(fgts|trabalhador|folha)/ },
+  { id: 'fgts', nome: 'Guias do FGTS', e: /\bfgts\b/, nao: /multa|rescis|provis|encargos? (de|do)? ?fgts e|emprestimo|consignad|credito do trabalhador/ },
   { id: 'grrf', nome: 'GRRF (multa rescisória)', e: /grrf|multa rescis/ },
   { id: 'inss', nome: 'INSS', e: /\binss\b/, nao: /provis/ },
 ];

@@ -8,7 +8,7 @@
 // saía (14/10/2026); a importação que vem depois, no modo desenvolvedor, continua só na tela.
 import { robos } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { addDoc as addDocBruto, collection, doc, getDocs, onSnapshot, query, updateDoc, where, type Firestore } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDocs, onSnapshot, query, runTransaction, updateDoc, where, type Firestore } from 'firebase/firestore';
 import { travarPedido } from '../../../comum/disjuntorDeGravacao';
 import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
@@ -42,6 +42,8 @@ export interface PedidoDoFiscal {
   etapa: string;
   clique: string;
   criadoEm: string;
+  /** o robô do PC já viu o pedido (recebidoEm; 19/11/2026): conectou */
+  recebido: boolean;
   /** o que o robô viu nas telas do Fiscal (enquanto ele aprende as telas: os itens de cada janela) */
   diag: string[];
   /** a planilha no banco (pronto) */
@@ -59,7 +61,7 @@ function doBanco(id: string, d: Record<string, unknown>): PedidoDoFiscal {
   const a = ((d.arquivos || {}) as Record<string, Record<string, unknown> | undefined>).fiscal;
   return {
     id, relatorio: texto(d.relatorio) as RelatorioDoFiscal, competencia: texto(d.competencia), ate: texto(d.ate || d.competencia), status: texto(d.status),
-    erro: texto(d.erro), pct: Math.max(0, Math.min(100, Number(and.pct) || 0)), etapa: texto(and.etapa), clique: texto(and.clique), criadoEm: texto(d.criadoEm),
+    erro: texto(d.erro), pct: Math.max(0, Math.min(100, Number(and.pct) || 0)), etapa: texto(and.etapa), clique: texto(and.clique), criadoEm: texto(d.criadoEm), recebido: !!d.recebidoEm,
     diag: Array.isArray(d.diag) ? (d.diag as unknown[]).map(texto) : [],
     arquivo: a && a.status === 'pronto' && Number(a.partes) > 0 ? { nome: texto(a.nome), partes: Number(a.partes) } : null,
   };
@@ -90,6 +92,22 @@ export async function pedirNotasDoFiscal(o: { codigo: number; empresa: string; r
 }
 
 /** Tira o pedido da fila (enquanto espera ou está com o robô). */
+/**
+ * Cancela o pedido que o robô ainda não viu (o prazo de conectar, 19/11/2026): numa transação, só se ainda está na fila e sem o
+ * recebidoEm — o robô que pegou no último instante segue. true = cancelou.
+ */
+export async function cancelarSeNaoConectou(id: string): Promise<boolean> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  const ref = doc(banco(), 'pedidosAlterdata', id);
+  return runTransaction(banco(), async t => {
+    const s = await t.get(ref);
+    const d = s.data();
+    if (!d || !['pendente', 'pendentePc'].includes(String(d.status)) || d.recebidoEm) return false;
+    t.update(ref, { status: 'cancelado', canceladoEm: new Date().toISOString(), canceladoPor: (u?.displayName || 'nads').slice(0, 120) });
+    return true;
+  });
+}
+
 export async function cancelarPedidoDoFiscal(id: string): Promise<void> {
   const u = getAuth(appDoEntregas()).currentUser;
   await updateDoc(doc(banco(), 'pedidosAlterdata', id), { status: 'cancelado', canceladoEm: new Date().toISOString(), canceladoPor: (u?.displayName || 'nads').slice(0, 120) });

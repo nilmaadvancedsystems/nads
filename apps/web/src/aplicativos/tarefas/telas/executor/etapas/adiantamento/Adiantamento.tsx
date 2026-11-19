@@ -3,6 +3,7 @@
 // vermelho) e a faixa com os lançamentos. Mês credor: no cabeçalho, só "<adiantamento> está credor" e o "Corrigi, irei
 // reimportar" (tira o razão para importar o corrigido; Vitor, 07/10/2026), e o Próximo da Tarefa fica travado.
 import { CampoArquivo, Icone } from '@nads/ui';
+import { ImportarRazaoComRobo } from '../../partes/ImportarRazaoComRobo';
 import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
 import { useRef } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
@@ -61,10 +62,12 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
                   <>
                     <BotaoDeTeste itens={vm.teste} />
                     <BotaoDiario onClick={vm.usarDiario} />
-                    <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + vm.nome} aria-label="Importar o razão" onClick={() => arquivo.current?.click()}>
-                      <Icone nome="upload" />
-                    </button>
-                    <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={escolher} />
+                    <ImportarRazaoComRobo robo={vm.robo} titulo={'o razão do ' + vm.nome} importar={f => escolher(f)}>
+                      <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + vm.nome} aria-label="Importar o razão" onClick={() => arquivo.current?.click()}>
+                        <Icone nome="upload" />
+                      </button>
+                      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={escolher} />
+                    </ImportarRazaoComRobo>
                   </>
                 )}
               </div>

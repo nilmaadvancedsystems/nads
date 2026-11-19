@@ -191,7 +191,12 @@ try:
     if not principais:
         fim(ok=False, erro='o Alterdata Contábil não está aberto')
     if len(principais) > 1:
-        fim(ok=False, erro='há dois Contábil abertos')
+        # mais de um Contábil aberto (Vitor, 19/11/2026: "se tiver mais de um contabil aberto, ele escolher qualquer um e usar,
+        # fechar as janelas abertas e executar a acao"): usa o que não está travado por uma janela; as janelas abertas fecham
+        # no limpar/liberar de sempre
+        import win32gui
+        principais.sort(key=lambda w: 0 if win32gui.IsWindowEnabled(w.handle) else 1)
+        print('TELA: ' + str(len(principais)) + ' Contábil abertos: usei um deles', flush=True)
     os.makedirs(os.path.dirname(DESTINO), exist_ok=True)
     if os.path.exists(DESTINO):
         os.remove(DESTINO)

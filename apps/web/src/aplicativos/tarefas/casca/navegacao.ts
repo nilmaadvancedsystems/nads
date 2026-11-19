@@ -160,6 +160,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'holerites-equipe', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe' },
     // os Insumos de todos (Vitor, 13/11/2026: "é um só, simples, que aparece no financeiro"): a mesma lista da Carteira
     { id: 'insumos-equipe', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos da equipe' },
+    // a Equipe (Vitor, 19/11/2026: "Deixa so uma aba equipe... Enviar holerites, insumos, comissoes da equipe, em um menu lateral"):
+    // para o Diretor e o Dono, no lugar das três abas e do Plano de contas (que abre pelo Configurar das Configurações)
+    { id: 'equipe', rotulo: 'Equipe', icone: 'equipe', titulo: 'Equipe' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
   // a Carteira (12/11/2026): as comissões de cada pessoa e os holerites e pagamentos (o lado do Financeiro foi para o
@@ -167,8 +170,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   // holerites de pagamento"; os valores foram para os Holerites). Por enquanto só o Vitor usa (carteiraLiberada): os outros
   // veem o botão e a tela "em desenvolvimento"
   { id: 'carteira', nome: 'Carteira', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'comissoes', rotulo: 'Comissões', icone: 'dinheiro', titulo: 'Minhas comissões' },
-    { id: 'documentos', rotulo: 'Holerites e pagamentos', icone: 'recibo', titulo: 'Holerites e pagamentos' },
+    // as Comissões e os Holerites numa tela só, o Financeiro (Vitor, 19/11/2026: "Consegue colocar tudo em uma tela so? comissoes e
+    // holerites"; "Primeira pagina, Financeiro / Segunda Insumos"); os links antigos (comissoes, documentos) caem nela
+    { id: 'financeiro', rotulo: 'Financeiro', icone: 'dinheiro', titulo: 'Financeiro' },
     // os Insumos (Vitor, 12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e caixas
     // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira
     { id: 'insumos', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos' },
@@ -249,7 +253,8 @@ export const podeTrocarRazaoSocial = (op: Operador | null) => temNivelDiretor(op
 export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
 /** A Carteira por enquanto só para o Vitor (12/11/2026); os outros veem o botão e a tela "em desenvolvimento". */
-export const carteiraLiberada = (op: Operador | null) => !!op && carteira.liberadaPara(op.nome);
+/** quem tem a Carteira inteira: a liberada (o Vitor) e, desde 19/11/2026, o Diretor e o Dono (o nível da conta) */
+export const carteiraLiberada = (op: Operador | null) => !!op && (carteira.liberadaPara(op.nome) || usuarios.nivelDeDiretor(op.nivel));
 /** as páginas do Financeiro que eram da Carteira (12/11/2026); os endereços antigos da Carteira levam para elas */
 export const PAGINAS_DA_CARTEIRA_NO_FINANCEIRO = ['comissoes-equipe', 'holerites-equipe'];
 export const CARTEIRA_PARA_O_FINANCEIRO: Record<string, string> = { pagamentos: 'comissoes-equipe', enviar: 'holerites-equipe' };
@@ -294,18 +299,26 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // a Tela de Insights: só Diretor e admin (o dono, 18/11/2026: "esses paineis so vao ser vistos por diretor e admin")
     (a.id !== 'insights' || (ehDiretor(op) && novidadeLigada('insights'))) &&
     // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
-    // link direto não abre
-    (a.id !== 'carteira' || modoDesenvolvedor()) &&
+    // link direto não abre. Na versão final, só para o Diretor e o Dono, pelo nível da conta (Vitor, 19/11/2026: "divulga a versao
+    // final do carteira apenas para os diretores, quero testar, APENAS PARA DIRETORES NA VERSAO FINAL")
+    (a.id !== 'carteira' || modoDesenvolvedor() || usuarios.nivelDeDiretor(op.nivel)) &&
     // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
     (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da
     // Carteira (Comissões da equipe e Enviar holerites) só para quem já tem a Carteira, como antes
-    .map(a => (a.id === 'carteira' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel' || p.id === 'insumos') }
+    // quem tem a Carteira vê os Insumos na janela Impressões e materiais do Financeiro dela (19/11/2026): a aba some
+    .map(a => (a.id === 'carteira' && carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => p.id !== 'insumos') }
+      : a.id === 'carteira' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel' || p.id === 'insumos') }
       : a.id === 'financeiro' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => !PAGINAS_DA_CARTEIRA_NO_FINANCEIRO.includes(p.id)) } : a))
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
+    // o Financeiro dos diretores (19/11/2026: "pode publicar tudo para versao final, apenas para diretores"): a aba Equipe no lugar das
+    // Comissões da equipe, do Enviar holerites e dos Insumos, e o Plano de contas nas Configurações; os outros, as abas de antes
+    .map(a => (a.id !== 'financeiro' ? a : usuarios.nivelDeDiretor(op.nivel)
+      ? { ...a, paginas: a.paginas.filter(p => !['plano', 'comissoes-equipe', 'holerites-equipe', 'insumos-equipe'].includes(p.id)) }
+      : { ...a, paginas: a.paginas.filter(p => p.id !== 'equipe') }))
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))
     // a lista dos usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026: "O sênior, pleno e júnior não pode em
     // hipótese alguma ter acesso onde ele vê os usuários cadastrados, em qualquer função"): os Usuários das Configurações e a

@@ -11,6 +11,7 @@ import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
+import { ImportarRazaoComRobo } from './ImportarRazaoComRobo';
 import { FgtsDaEtapa } from './FgtsDaEtapa';
 import type { FgtsDaEtapa as VmFgts } from '../useFgtsDaEtapa';
 import { MenuDeConta } from '../../../etapas/creditor/partes/MenuDeConta';
@@ -75,7 +76,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
               <div className="imp-grupo" aria-label="Razão do INSS a recolher">
                 <span className="imp-rotulo">Razão</span>
                 {inss.temRazao ? <Importado titulo="o razão do INSS" onExcluir={inss.removerRazao} />
-                  : <><BotaoDeTeste itens={testeRazao} /><BotaoDiario onClick={inss.usarDiarioRazao} /><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></>}
+                  : <><BotaoDeTeste itens={testeRazao} /><BotaoDiario onClick={inss.usarDiarioRazao} /><ImportarRazaoComRobo robo={inss.robo} titulo="o razão do INSS a recolher" importar={f => inss.importarRazao(f)}><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></ImportarRazaoComRobo></>}
               </div>
               <div className="imp-grupo" aria-label="Guias do INSS">
                 <span className="imp-rotulo">Guias</span>

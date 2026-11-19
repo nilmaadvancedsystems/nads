@@ -97,7 +97,7 @@ export interface ServicoComissionado { id: string; nome: string; percentual: num
 /** Os serviços com que a lista começa (Vitor, 12/11/2026); o Financeiro acrescenta outros e define a % de cada um. */
 export const SERVICOS_PADRAO: readonly string[] = [
   'Emissão de NFE', 'Emissão de NFSE', 'NF de Carvão', 'Emissão de GTA', 'Contrato de Locação', 'Contrato de Compra e Venda',
-  'Serviços de Licitação', 'Abertura de MEI', 'Declaração de MEI',
+  'Serviços de Licitação', 'Abertura de MEI', 'Alteração de MEI', 'Declaração de MEI',
 ];
 
 const idDoServico = (nome: string) => semAcento(nome).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'servico';

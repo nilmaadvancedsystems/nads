@@ -163,6 +163,16 @@ describe('contas padrão', () => {
     expect(definirContaPadrao(d, 'histJuros', '59648', PLANO, 'V', AGORA).contasPadrao?.contas.histJuros).toBe('59648');
   });
 
+  it('a conta do razão informada na etapa fica gravada e a tela Contas padrão não apaga (19/11/2026)', () => {
+    const c = definirContaPadrao(vazio(), 'razao-caixa', '10101', null, 'V', AGORA);
+    expect(c.contasPadrao?.contas['razao-caixa']).toBe('10101');
+    expect(c.historico[0].detalhe).toBe('Conta do razão do Caixa: 10101');
+    const lido = cadastroDoDocumento('FITO', 309, documentoDoCadastro(c));
+    expect(lido.contasPadrao?.contas['razao-caixa']).toBe('10101');
+    const depois = comContasPadrao(lido, { contas: { juros: '97304' }, nomes: {} }, 'V', AGORA);
+    expect(depois.contasPadrao?.contas).toMatchObject({ juros: '97304', 'razao-caixa': '10101' });
+  });
+
   it('avisa conta fora do plano, sintética ou com nome novo', () => {
     expect(avisoDaConta('999', PLANO)).toMatch(/não está/);
     expect(avisoDaConta('1', PLANO)).toMatch(/sintética/);

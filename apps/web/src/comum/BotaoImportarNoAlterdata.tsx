@@ -5,6 +5,7 @@
 import { Icone, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { roboDePcDoUsuario } from '../aplicativos/tarefas/dados/notasDoFiscal.firestore';
+import { marcarPedidoFeito, useConexaoDoRobo } from '../aplicativos/tarefas/dados/useConexaoDoRobo';
 import { acompanharImportacao, importarDesligado, MOTIVO_DESLIGADO, pedirImportacao, type ImportacaoNoAlterdata } from './importarNoAlterdata';
 
 export interface PropsImportarNoAlterdata {
@@ -50,6 +51,8 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
   }, [id, IMPORTAR_DESLIGADO]);
 
   const andando = !!estado && (estado.status === 'pendente' || estado.status === 'trabalhando');
+  // 3 s sem o robô do PC conectar: cancela e o botão volta, com o erro (19/11/2026, "em todos os botoes vitor")
+  const conexao = useConexaoDoRobo(estado && estado.id === id ? estado : null);
   const semCodigo = !p.codigo;
   const desligado = IMPORTAR_DESLIGADO || p.disabled || semCodigo || andando || mandando;
   const titulo = IMPORTAR_DESLIGADO ? MOTIVO_DESLIGADO : semCodigo ? 'A empresa não tem o código do Alterdata' : p.disabled ? p.motivo : andando ? 'O robô está importando' : (roboDePcDoUsuario() ? 'O robô do seu PC (' + roboDePcDoUsuario()!.rotulo + ') importa' : 'O robô do servidor importa') + ' estes lançamentos no Alterdata Contábil, no lote "IMPORTAÇÃO NADS"';
@@ -65,9 +68,11 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
     });
     if (!ok) return;
     setMandando(true);
+    conexao.limpar();
     try {
       const novo = await pedirImportacao({ codigo: p.codigo, empresa: p.empresa, lote: p.lote, origem: p.origem, planilha: pl.bytes, linhas: pl.linhas }, p.quem || '');
       lembrar(k, novo);
+      if (!novo.startsWith('exemplo-')) marcarPedidoFeito(novo);
       setEstado(null);
       setId(novo);
     } catch (e) {
@@ -106,7 +111,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
               </>
             )} />
         )}
-        {estado && <SituacaoDaImportacao e={estado} />}
+        {conexao.erro ? <span className="badge badge-warn" role="status">{conexao.erro}</span> : estado && <SituacaoDaImportacao e={estado} />}
       </span>
     );
   }
@@ -117,12 +122,21 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
         {mandando || andando ? <span className="btn-spinner" /> : <Icone nome="upload" width={16} height={16} />}
         {estado?.status === 'pronto' || estado?.status === 'erro' ? 'Importar de novo no Alterdata' : 'Importar no Alterdata'}
       </button>
-      {estado && <SituacaoDaImportacao e={estado} />}
+      {conexao.erro ? <span className="badge badge-warn" role="status">{conexao.erro}</span> : estado && <SituacaoDaImportacao e={estado} />}
     </span>
   );
 }
 
 function SituacaoDaImportacao({ e }: { e: ImportacaoNoAlterdata }) {
+  // o robô do PC ainda não viu o pedido: a barra carregando (19/11/2026); visto, na fila
+  if (e.status === 'pendente' && !e.recebido && roboDePcDoUsuario()) {
+    return (
+      <span className="importar-alterdata-andamento" role="status" aria-live="polite">
+        <span className="imp-robo-barra conectando" style={{ width: 120 }}><span /></span>
+        <span className="hint">Conectando ao robô de {roboDePcDoUsuario()!.rotulo}…</span>
+      </span>
+    );
+  }
   if (e.status === 'pendente') return <span className="hint" role="status">Na fila do robô do Alterdata…</span>;
   if (e.status === 'trabalhando') {
     return (

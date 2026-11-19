@@ -8,7 +8,7 @@ import { razaoSocialDoDocumento } from './razaoSocial';
 import { receitaDoDocumento } from './receitaNoCadastro';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
+  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaDoRazao, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
   type LembreteDaEmpresa, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
 } from './tipos';
 
@@ -19,6 +19,9 @@ export const MAX_BANCOS = 60;
 export const MAX_CONTAS_NO_PLANO = 5000;
 
 export const CAMPOS_CONTA_PADRAO: readonly CampoContaPadrao[] = ['banco', 'juros', 'desconto', 'histPrincipal', 'histJuros', 'histDesconto', 'cartao'];
+/** as contas do razão informadas nas etapas (fora da tela Contas padrão; 19/11/2026) */
+export const CAMPOS_CONTA_DO_RAZAO: readonly CampoContaDoRazao[] = ['razao-caixa', 'razao-inss', 'razao-salarios', 'razao-fgts', 'razao-prolabore', 'razao-simples', 'razao-honorarios',
+  'razao-adiantamento-fornecedores', 'razao-adiantamento-clientes', 'razao-adiantamento-salarial', 'razao-emprestimos'];
 export const CONTAS_PADRAO_DO_PLANO: readonly ContaPadraoDoPlano[] = ['banco', 'juros', 'desconto', 'cartao'];
 export const TIPOS_CONTA: readonly { id: TipoContaBancaria; rotulo: string }[] = [
   { id: 'corrente', rotulo: 'Conta corrente' },
@@ -62,7 +65,7 @@ function contasPadraoDoDocumento(v: unknown): ContasPadrao | null {
   const n = (o.nomes || {}) as Record<string, unknown>;
   const contas: ContasPadrao['contas'] = {};
   const nomes: ContasPadrao['nomes'] = {};
-  for (const k of CAMPOS_CONTA_PADRAO) if (texto(c[k])) contas[k] = texto(c[k]);
+  for (const k of [...CAMPOS_CONTA_PADRAO, ...CAMPOS_CONTA_DO_RAZAO]) if (texto(c[k])) contas[k] = texto(c[k]);
   for (const k of CONTAS_PADRAO_DO_PLANO) if (texto(n[k])) nomes[k] = texto(n[k]);
   return { contas, nomes };
 }
@@ -904,8 +907,23 @@ export const ROTULO_CONTA_PADRAO: Record<CampoContaPadrao, string> = {
   cartao: 'Cartão de crédito',
 };
 
+/** O rótulo das contas do razão informadas nas etapas (19/11/2026). */
+export const ROTULO_CONTA_DO_RAZAO: Record<CampoContaDoRazao, string> = {
+  'razao-caixa': 'Conta do razão do Caixa',
+  'razao-inss': 'Conta do razão do INSS a recolher',
+  'razao-salarios': 'Conta do razão de Salários a pagar',
+  'razao-fgts': 'Conta do razão do FGTS a recolher',
+  'razao-prolabore': 'Conta do razão do Pró-labore a pagar',
+  'razao-simples': 'Conta do razão do Simples Nacional a recolher',
+  'razao-honorarios': 'Conta do razão de Honorários a pagar',
+  'razao-adiantamento-fornecedores': 'Conta do razão do Adiantamento a fornecedores',
+  'razao-adiantamento-clientes': 'Conta do razão do Adiantamento de clientes',
+  'razao-adiantamento-salarial': 'Conta do razão do Adiantamento salarial',
+  'razao-emprestimos': 'Contas do razão dos empréstimos',
+};
+
 /** Grava uma conta padrão (vazio = volta ao padrão do aplicativo). Se for do plano, guarda o nome dela. */
-export function definirContaPadrao(c: CadastroDaEmpresa, campo: CampoContaPadrao, codigo: string, plano: PlanoDeContas | null, por: string, agora: Date): CadastroDaEmpresa {
+export function definirContaPadrao(c: CadastroDaEmpresa, campo: CampoContaPadrao | CampoContaDoRazao, codigo: string, plano: PlanoDeContas | null, por: string, agora: Date): CadastroDaEmpresa {
   const v = texto(codigo);
   const atual: ContasPadrao = c.contasPadrao ?? { contas: {}, nomes: {} };
   if ((atual.contas[campo] || '') === v && c.contasPadrao) return c;
@@ -917,7 +935,7 @@ export function definirContaPadrao(c: CadastroDaEmpresa, campo: CampoContaPadrao
     const noPlano = v ? contaNoPlano(plano, v) : null;
     if (noPlano) nomes[k] = noPlano.nome; else delete nomes[k];
   }
-  const detalhe = ROTULO_CONTA_PADRAO[campo] + ': ' + (v || 'padrão do aplicativo');
+  const detalhe = ((ROTULO_CONTA_PADRAO as Record<string, string>)[campo] || (ROTULO_CONTA_DO_RAZAO as Record<string, string>)[campo] || campo) + ': ' + (v || 'padrão do aplicativo');
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }
 
@@ -1090,6 +1108,8 @@ export function comContasPadrao(c: CadastroDaEmpresa, novas: ContasPadrao, por: 
   for (const k of CONTAS_PADRAO_DO_PLANO) if (texto(novas.nomes[k])) nomes[k] = texto(novas.nomes[k]);
   // a conta do cartão é do Cartões, não do Creditor: quem não mandou ela (undefined) não a apaga
   if (novas.contas.cartao === undefined && antes.contas.cartao) { contas.cartao = antes.contas.cartao; if (antes.nomes.cartao) nomes.cartao = antes.nomes.cartao; }
+  // as contas do razão informadas nas etapas ficam (a tela Contas padrão não mexe nelas)
+  for (const k of CAMPOS_CONTA_DO_RAZAO) { const v = texto(novas.contas[k] ?? antes.contas[k]); if (v) contas[k] = v; }
   const detalhe = mudaram.length ? mudaram.map(k => ROTULO_CONTA_PADRAO[k] + ': ' + (contas[k] || 'padrão do aplicativo')).join('; ') : 'nomes das contas conferidos';
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }

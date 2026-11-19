@@ -1,5 +1,5 @@
 # Como está o Alterdata Contábil desta máquina, sem mexer em nada (04/11/2026): o robô do Alterdata só pega um pedido
-# quando o Contábil está aberto e logado aqui. Escreve uma linha: ESTADO: ok | login | abrindo | fechado | dois | erro
+# quando o Contábil está aberto e logado aqui. Escreve uma linha: ESTADO: ok | login | abrindo | fechado | erro (dois abertos = ok)
 # e, quando não está ok, uma linha DIAG: com as janelas do Contábil que esta sessão enxerga (classe, visível, título),
 # para o log do robô dizer o porquê (no servidor, a sessão do RDP desconectado pode esconder as janelas).
 # Só win32gui (sem o pywinauto): EnumWindows, GetClassName, IsWindowVisible e GetWindowText não mandam mensagem para a
@@ -71,7 +71,10 @@ elif any(c == 'TfrmEntradaFlash' and v for c, v, _, _ in janelas):
     estado = 'abrindo'
 else:
     n = len(visiveis('TfrmPrincipal'))
-    estado = 'fechado' if n == 0 else 'ok' if n == 1 else 'dois'
+    # mais de um aberto não trava mais (19/11/2026): o roteiro usa um deles
+    estado = 'fechado' if n == 0 else 'ok'
+    if n > 1:
+        print('DOIS: ' + str(n) + ' Contábil abertos (o roteiro usa um deles)', flush=True)
 print('ESTADO: ' + estado, flush=True)
 
 # a tela de atualizações que o Alterdata mostra ao abrir (05/11/2026, Vitor: "tem uma tela de atualizacoes, ele tem que

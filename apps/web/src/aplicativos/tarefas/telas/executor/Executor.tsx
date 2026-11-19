@@ -213,7 +213,11 @@ export function Executor() {
   const checklist = visiveis.filter(e => vm.soAsMinhas || !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
     id: e.id, rotulo: e.nome + (!vm.soAsMinhas && vm.comQuem(e.id) ? ' · ' + vm.comQuem(e.id).split(' ')[0] : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
-    caixa: e.situacao === 'feita' && e.laranja ? 'laranja' as const : e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
+    // a etapa delegada, ainda não feita: o aviãozinho de papel no lugar da caixinha (Vitor, 19/11/2026: "troca o icone do check para o
+    // icone do aviaozinho de papel, para mostrar que aquela etapa esta delegada"); feita, o check de sempre. Na final desde 19/11/2026.
+    caixa: e.situacao === 'feita' && e.laranja ? 'laranja' as const : e.situacao === 'feita' ? 'marcada' as const
+      : !vm.soAsMinhas && !vm.delegada && vm.comQuem(e.id) ? 'delegada' as const
+      : e.daVez && liberada ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
     apagada: !vm.delegada && !vm.soAsMinhas && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
   }));

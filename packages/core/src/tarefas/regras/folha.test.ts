@@ -28,6 +28,6 @@ describe('checklist da Contabilização da Folha', () => {
   });
   it('o empréstimo do Crédito do Trabalhador (consignado), quando tem', () => {
     const r = checklistDaFolha([...B292, C('40020', 'Empréstimo Consignado Crédito do Trabalhador', 350)], ATE_AGOSTO);
-    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'fgts', 'credito-trabalhador']);
+    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'credito-trabalhador', 'fgts']);
   });
 });

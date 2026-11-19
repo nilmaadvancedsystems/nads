@@ -606,7 +606,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       id: vista.tela.id,
       etapa: { nome: empresa.nome, codigo: empresa.codigo, competencia: compV, meses: mesesDaEtapa.length ? mesesDaEtapa : juntosV && varios ? [...meses] : [compV], dev, prestaServico,
         // os meses que iam no ?meses= do iframe: os da etapa (o Creditor, o Cartões…) ou os do Em lote; num mês só, nenhum
-        mesesDaTarefa: mesesDaEtapa.length > 0 || (juntosV && varios) },
+        mesesDaTarefa: mesesDaEtapa.length > 0 || (juntosV && varios),
+        /** o período lá em cima (o botão Vitor puxa o razão dele inteiro, não só os meses que faltam na etapa) */
+        periodo: meses.length ? [...meses] : [compV] },
     } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),

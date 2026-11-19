@@ -32,6 +32,8 @@ async function acessoDaqui(): Promise<c.AcessoDoLogin> {
 }
 // o acesso de cada login vai uma vez por aba (abrir o cofre de novo na mesma aba não grava de novo)
 const marcados = new Set<string>();
+// o pedido sozinho sai uma vez por chave nesta aba
+const PEDIU_SOZINHO = new Set<string>();
 function marcarAcesso(repo: RepoCofre, id: string) {
   if (marcados.has(id) || modoDesenvolvedor()) return;
   marcados.add(id);
@@ -75,6 +77,21 @@ export function useCofre() {
   const estado: EstadoDoCofre = !carregado ? 'carregando' : repo.erro() ? 'erro' : !config ? 'novo'
     : aberta && aberta.versao === config.versao && aberta.dono === id ? 'aberto' : minha && temPrivada && !minha.trancada ? 'aguardando' : 'sem-chave';
 
+  // o pedido sozinho (Vitor, 19/11/2026: "libere para todos os usuarios do nads o acesso as senhas, sem pedir permissao"; "Liberar
+  // sozinho"): sem a chave neste navegador, o pedido sai na hora, sem o botão; quem já tem o cofre aberto em qualquer aba libera
+  // sozinho (dados/cofreSozinho.firestore.ts) e o cofre abre aqui quando a cópia chega
+  useEffect(() => {
+    if (estado !== 'sem-chave' || temPrivada === null || !eu || !id || PEDIU_SOZINHO.has(id) || modoDesenvolvedor() || repo.exemplos) return;
+    PEDIU_SOZINHO.add(id);
+    void (async () => {
+      try {
+        const par = await minhaChaveNova();
+        await repo.registrarChave({ id, nome: eu.nome, publica: par.publica, criadaEm: new Date().toISOString(), ultimoAcesso: await acessoDaqui() });
+      } catch { PEDIU_SOZINHO.delete(id); }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado, temPrivada, id]);
+
   /** mostra o código até a pessoa dizer que guardou; o Imprimir abre a folha para imprimir e volta para cá */
   async function mostrarCodigo(codigo: string, titulo: string) {
     for (;;) {
@@ -103,8 +120,8 @@ export function useCofre() {
     /** por que não dá para abrir uma empresa (13/10/2026: "quem não tem acesso ao cofre não pode nem abrir, deve bloquear
      *  ao clicar"); null = pode abrir */
     bloqueio: estado === 'aberto' ? null : estado === 'carregando' ? 'O cofre ainda está abrindo.' : estado === 'novo' ? 'O cofre ainda não foi criado.'
-      : estado === 'aguardando' ? 'Seu acesso ao cofre está esperando a liberação de quem já tem acesso.'
-        : estado === 'erro' ? 'O cofre não abriu. Tente de novo em instantes.' : 'Você não tem acesso ao cofre. Peça acesso no aviso do topo da página.',
+      : estado === 'aguardando' ? 'O cofre está liberando o seu acesso: abre sozinho assim que alguém com acesso estiver no nads.'
+        : estado === 'erro' ? 'O cofre não abriu. Tente de novo em instantes.' : 'O cofre está pedindo o seu acesso: abre sozinho em instantes.',
     ocupado,
     /** o modo desenvolvedor está ligado (o cofre não grava) */
     dev: modoDesenvolvedor(),

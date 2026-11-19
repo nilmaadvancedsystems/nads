@@ -3,6 +3,7 @@
 // quando a planilha volta, ela entra na linha "Razão" como se a pessoa tivesse subido. Só para o dono do robô (robosDePc).
 import { useEffect, useRef, useState } from 'react';
 import { useEsperaDoPc } from '../../../../dados/useEsperaDoPc';
+import { marcarPedidoFeito, semConectar, useConexaoDoRobo } from '../../../../dados/useConexaoDoRobo';
 import { cancelarPedidoDoFiscal, ouvirRazoesDaConta, pedirRazaoDaConta, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoRazaoDaConta } from '../../../../dados/notasDoFiscal.firestore';
 
 const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
@@ -18,6 +19,8 @@ export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: str
   const disponivel = !!doPc && !!o.codigo && !!conta && !!competencia;
   const [pedidos, setPedidos] = useState<PedidoDoRazaoDaConta[]>([]);
   const [falha, setFalha] = useState('');
+  // o clique: a barra já no primeiro segundo, antes de o pedido chegar ao banco (19/11/2026)
+  const [pedindo, setPedindo] = useState(false);
   const importar = useRef(o.importar);
   importar.current = o.importar;
   const retomar = useRef(!!o.retomar);
@@ -34,18 +37,20 @@ export function useRazaoDaContaPeloRobo(o: { codigo: number | null; empresa: str
     IMPORTADOS.add(atual.id);
     planilhaDoFiscal(atual).then(f => { void importar.current(f); }, e => setFalha('Não consegui baixar o razão do robô: ' + (e instanceof Error ? e.message : String(e))));
   }, [atual]);
-  const andando = !!atual && ANDANDO.includes(atual.status);
+  const andando = pedindo || (!!atual && ANDANDO.includes(atual.status));
   const espera = useEsperaDoPc(atual);
+  // 3 s sem o robô do PC conectar: cancela e o botão volta, com o erro (19/11/2026)
+  const conexao = useConexaoDoRobo(atual, espera);
   return {
-    disponivel, rotulo: doPc?.rotulo || '', andando, pct: atual?.pct || 0,
+    disponivel, rotulo: doPc?.rotulo || '', andando, pct: atual?.pct || 0, conectando: pedindo || semConectar(atual),
     // o Cancelar (17/11/2026): o robô para na hora e volta o Alterdata ao ponto de antes
-    cancelar: () => { if (atual && andando) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
+    cancelar: () => { if (atual && ANDANDO.includes(atual.status)) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
     // sem movimento na conta (o aviso do Alterdata): "Movimento 09/2026 não importado" (Vitor, 17/11/2026), do jeito que veio
-    erro: falha || espera || (atual?.status === 'erro' ? (/^Movimento /.test(atual.erro) ? atual.erro : 'O robô não conseguiu puxar o razão: ' + atual.erro.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '')) : ''),
+    erro: falha || conexao.erro || espera || (atual?.status === 'erro' ? (/^Movimento /.test(atual.erro) ? atual.erro : 'O robô não conseguiu puxar o razão: ' + atual.erro.replace(/\s*\(tela \d+x\d+;[\s\S]*$/, '')) : ''),
     pedir: async () => {
       if (!disponivel || !o.codigo || andando) return;
-      setFalha('');
-      try { VISTOS.add(await pedirRazaoDaConta({ codigo: o.codigo, empresa: o.empresa, conta, competencia, ate })); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); }
+      setFalha(''); conexao.limpar(); setPedindo(true);
+      try { const id = await pedirRazaoDaConta({ codigo: o.codigo, empresa: o.empresa, conta, competencia, ate }); VISTOS.add(id); marcarPedidoFeito(id); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); } finally { setPedindo(false); }
     },
   };
 }

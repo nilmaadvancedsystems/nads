@@ -125,7 +125,7 @@ function MesesDoProLabore({ vm }: { vm: VmProLabore }) {
 }
 
 /** A conta do pagamento do pró-labore: o botão com o código e o nome; aberto, o caixa e os bancos (o código e, embaixo, o nome). */
-function MenuDaContaDoPagamento({ valor, nome, contas, travado, onEscolher }: { valor: string; nome: string; contas: readonly { codigo: string; nome: string }[]; travado: boolean; onEscolher: (codigo: string) => void }) {
+export function MenuDaContaDoPagamento({ valor, nome, contas, travado, onEscolher }: { valor: string; nome: string; contas: readonly { codigo: string; nome: string }[]; travado: boolean; onEscolher: (codigo: string) => void }) {
   const rotulo = valor ? valor + (nome ? ' · ' + nome : '') : 'Pagar por qual conta?';
   const menu = (
     <Menu rotulo={rotulo} className={'btn btn-outline prolabore-conta' + (valor ? '' : ' vazio')} largura={300} dica="A conta do crédito: o caixa ou o banco que pagou" flutuante
