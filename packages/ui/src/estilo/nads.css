@@ -8120,3 +8120,8 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .insumo-caixa-total{background:var(--surface);}
 .insumo-caixa-total .insumo-caixa-icone{background:color-mix(in srgb, var(--success) 18%, transparent);color:var(--success);}
 .insumo-caixa-total b{font-size:18px;}
+/* a % da comissão embaixo do valor (19/11/2026): o destaque recebe o clique só no select */
+.comissao-destaque .popover-wrap{pointer-events:auto;margin-top:6px;}
+.comissao-destaque .comissao-pct-menu{height:30px;padding:0 10px;font-size:var(--fs-13);}
+.comissao-destaque .comissao-pct-menu.vazio{color:var(--ink-muted);}
+.comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+3){padding-right:190px;}

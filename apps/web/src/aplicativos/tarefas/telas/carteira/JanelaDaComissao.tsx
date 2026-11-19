@@ -84,7 +84,21 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
         <div className={'registro-corpo' + (destaque ? ' comissao-com-destaque' : '')}>
           {/* a comissão grande no alto, à direita (Vitor, 19/11/2026: "deixa esse valor grande, na parte superior direita, que ta meio
               vazia") */}
-          {destaque && <div className="comissao-destaque" aria-live="polite"><span>Comissão</span><b className="num">{formatos.reais(vm.valor)}</b></div>}
+          {destaque && (
+            <div className="comissao-destaque">
+              <span>Comissão</span><b className="num" aria-live="polite">{formatos.reais(vm.valor)}</b>
+              {/* a % da comissão, só para o Diretor e o Dono, num select de 5 em 5 até 50% embaixo do valor (Vitor, 19/11/2026: "coloca so uma
+                  box de select abaixo do valor comissao, que aumenta de 5 em 5 e chega ate 50%"); "A do serviço" volta para a % do serviço */}
+              {vm.podeDefinirPercentual && (
+                <MenuSuspenso rotulo={vm.pctDoDiretor ? vm.pctDoDiretor + '%' : vm.percentualDoServico ? vm.percentualDoServico + '% do serviço' : 'Escolher a %'}
+                  className={'btn btn-outline comissao-pct-menu' + (vm.pctDoDiretor || vm.percentualDoServico ? '' : ' vazio')} titulo="A % da comissão (só o Diretor define)" flutuante direita largura={180}
+                  itens={[
+                    { rotulo: vm.percentualDoServico ? 'A do serviço (' + vm.percentualDoServico + '%)' : 'A do serviço', marcado: !vm.pctDoDiretor, onClick: () => vm.setPctDoDiretor('') },
+                    ...[5, 10, 15, 20, 25, 30, 35, 40, 45, 50].map(n => ({ rotulo: n + '%', marcado: vm.pctDoDiretor === String(n), onClick: () => vm.setPctDoDiretor(String(n)) })),
+                  ]} />
+              )}
+            </div>
+          )}
           {/* a escondida (16/11/2026): só "Registrada", sem o valor; para mudar, apaga e registra de novo */}
           {travada && comissao!.oculta && comissao!.situacao === 'lancada' && <p className="registro-dica"><Icone nome="lock" />Registrada. Para mudar, apague e registre de novo.</p>}
           {travada && !(comissao!.oculta && comissao!.situacao === 'lancada') && <p className="registro-dica"><Icone nome="lock" />{comissao!.situacao === 'recusada' ? 'Recusada pelo Financeiro' + (comissao!.motivo ? ': ' + comissao!.motivo : '.') : 'Já ' + carteira.rotuloDaSituacao(comissao!.situacao).toLowerCase() + ' pelo Financeiro: não muda mais.'}</p>}
@@ -135,17 +149,6 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
               <Propriedade icone="dinheiro" rotulo="Valor do serviço">
                 {/* o R$ pronto e a máscara (Vitor, 13/11/2026: "deixa um cifrao ja pronto") */}
                 <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
-              </Propriedade>
-            )}
-            {/* a % da comissão, só para o Diretor e o Dono (Vitor, 19/11/2026: "APENAS DIRETORES podem definir a porcentagem de comissao no
-                lancamento"); vazio, vale a do serviço */}
-            {vm.podeDefinirPercentual && !travada && (
-              <Propriedade icone="hash" rotulo="% da comissão">
-                <span className="comissao-pct">
-                  <input type="text" inputMode="decimal" value={vm.pctDoDiretor} onChange={e => vm.setPctDoDiretor(e.target.value)} aria-label="Porcentagem da comissão"
-                    placeholder={vm.percentualDoServico ? String(vm.percentualDoServico).replace('.', ',') : '0'} title="Só o Diretor define. Vazio: a % do serviço" />
-                  <span className="hint">%{!vm.pctDoDiretor && (vm.percentualDoServico ? ' (a do serviço)' : ' (o serviço ainda não tem %)')}</span>
-                </span>
               </Propriedade>
             )}
             {/* só o valor, sem a porcentagem (Vitor, 13/11/2026: "oculte a porcentagem para o usuario"; "o valor da comissao aparece, menos a
