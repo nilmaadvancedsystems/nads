@@ -68,9 +68,7 @@ export function MinhasComissoes({ extra, m: mesDeFora }: { extra?: ReactNode; m?
 
       <section className="card cmc-lista" aria-label="As comissões do mês">
         {vm.carregada && !lista.length ? (
-          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão aqui: ela entra para pagamento no mês seguinte, e o Financeiro vê e paga.">
-            <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
-          </Vazio>
+          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão no botão lá em cima: ela entra para pagamento no mês seguinte, e o Financeiro vê e paga." />
         ) : (
           <ul>
             {lista.map(c => {

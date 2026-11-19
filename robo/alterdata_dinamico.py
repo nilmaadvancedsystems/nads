@@ -97,6 +97,18 @@ def texto_da_mensagem(w):
     return ' '.join(texto(c) for c in filhos(w) if texto(c) and c.class_name() not in ('TButton', 'TBitBtn', 'TcxButton'))[:300]
 
 
+def apertar(b):
+    """Aperta um botão ao limpar: o clique de verdade e, sem área de trabalho (o acesso remoto caiu no meio, 19/11/2026),
+    a mensagem de clique (BM_CLICK), que não precisa do mouse. Um botão que falha não impede os outros de fechar."""
+    try:
+        b.click_input()
+    except Exception:
+        try:
+            b.click()
+        except Exception:
+            pass
+
+
 def limpar():
     for w in janelas('#32770', 'Salvar'):
         b = botao(w, 'Cancelar')
@@ -105,11 +117,11 @@ def limpar():
     for w in janelas('TfrmConfiguraExibicaoSaldo'):
         b = botao(w, 'Fechar')
         if b:
-            b.click_input()
+            apertar(b)
     for w in janelas('TMessageForm'):
         b = botao(w, 'OK') or botao(w, 'Não') or botao(w, 'Cancelar')
         if b:
-            b.click_input()
+            apertar(b)
     for w in janelas(CLASSE):
         try:
             w.close()   # é só consulta: nada a salvar

@@ -254,6 +254,27 @@ export function JanelaDaLinha({ vm, l }: { vm: Vm; l: Linha }) {
                 : <p className="lt-cad-ok"><Icone nome="checkCircle" />Pronto.</p>}
             </section>
 
+            {/* o lançamento do razão que levou à conciliação (19/11/2026: "quando estiver no razão, quero ver o lançamento do razão
+                em que levou a conciliação"): o mesmo dia e o mesmo valor, com a contrapartida e o histórico do Alterdata */}
+            {l.doRazao && (
+              <section className="lt-cad-cartao lt-cad-razao">
+                <span className="lcdpr-rotulo"><Icone nome="checkCircle" />No razão do Alterdata</span>
+                <div className="lt-cad-razao-linha">
+                  <span className="num">{vm.dataBR(l.doRazao.data)}</span>
+                  <b className="num">R$ {vm.valor(l.doRazao.valor)}</b>
+                </div>
+                {l.doRazao.conta && (
+                  <div className="lt-cad-razao-conta">
+                    <span className="lt-cad-razao-rotulo">Contrapartida</span>
+                    <b className="num">{l.doRazao.conta}</b>
+                    <span>{vm.nomeDaConta(l.doRazao.conta) || 'fora do plano'}</span>
+                  </div>
+                )}
+                {l.doRazao.historico && <p className="lt-cad-razao-hist">{l.doRazao.historico}</p>}
+                <small className="hint">Casou com esta linha pelo mesmo dia e o mesmo valor.</small>
+              </section>
+            )}
+
             {j.podeCriarRegra && (
               <section className={'lt-cad-cartao lt-cad-regra' + (j.criarRegra ? ' ligada' : '')}>
                 <label className="lt-cad-regra-topo">

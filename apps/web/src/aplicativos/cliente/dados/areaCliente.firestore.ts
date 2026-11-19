@@ -11,7 +11,7 @@
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
 import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type DocumentSnapshot, type Firestore, type FirestoreError } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type Auth } from 'firebase/auth';
+import { confirmPasswordReset, getAuth, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, verifyPasswordResetCode, type Auth } from 'firebase/auth';
 import { areaCliente as ac, demo, type mandei } from '@nads/core';
 import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModoDev';
 import { AREA_VAZIA, type AvisoDoEscritorio, type CertificadoDigital, type EstadoDaArea, type FichaDaEmpresa, type RepoAreaCliente } from './areaCliente';
@@ -64,7 +64,19 @@ function erroDoLogin(e: unknown): string {
   if (c === 'auth/too-many-requests') return 'Muitas tentativas. Espere alguns minutos e tente de novo.';
   if (c === 'auth/network-request-failed') return 'Sem internet agora. Confira a conexão e tente de novo.';
   if (c === 'auth/invalid-email') return 'Este e-mail não parece certo.';
-  return 'E-mail ou senha não conferem. Se for o primeiro acesso, use "Criar ou trocar a senha".';
+  if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials')
+    return 'E-mail ou senha não conferem. Se for o primeiro acesso, use "Criar ou trocar a senha".';
+  // o resto (um problema do lado do escritório): o código ajuda o escritório a achar a causa
+  return 'Não deu certo agora' + (c ? ' (' + c.replace('auth/', '') + ')' : '') + '. Tente de novo; se continuar, avise o escritório.';
+}
+
+/** O erro do link de criar a senha (o código do e-mail) (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?") */
+function erroDoCodigo(e: unknown): string {
+  const c = String((e as { code?: string } | null)?.code ?? '');
+  if (c === 'auth/expired-action-code' || c === 'auth/invalid-action-code') return 'Este link já foi usado ou venceu. Peça outro na tela de entrar, em "Criar ou trocar a senha".';
+  if (c === 'auth/weak-password') return 'Esta senha é fraca demais. Use pelo menos 8 letras e números.';
+  if (c === 'auth/network-request-failed') return 'Sem internet agora. Confira a conexão e tente de novo.';
+  return 'Não deu certo agora' + (c ? ' (' + c.replace('auth/', '') + ')' : '') + '. Tente de novo; se continuar, avise o escritório.';
 }
 
 const LINK_RUIM = 'Este link não vale mais. Peça um novo ao escritório.';
@@ -274,15 +286,50 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     async criarSenha(token, email) {
       const e = email.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(e)) throw new Error('Este e-mail não parece certo.');
-      // volta para este link depois de criar a senha; o Firebase não diz se o e-mail existe (não deixa adivinhar quem tem acesso)
+      // primeiro pelo robô (19/11/2026; o dono: "Sim, pelo robô"): o e-mail da Nilma, em português, com o link da página
+      // própria. O robô só manda se este e-mail tem acesso a este link. Se a caixa ainda não aceitar (a regra), o e-mail do Firebase
+      const pedido = ac.pedidoDeSenha(token, e);
+      if (pedido) {
+        try { await addDoc(collection(abrir(), 'areaClienteSenhas'), { ...pedido, criadoEm: serverTimestamp() }); return; }
+        catch (err) { if (err instanceof Error && err.message === MENSAGEM_BLOQUEADO) throw err; /* segue para o e-mail do Firebase */ }
+      }
+      // volta para este link depois de criar a senha; o Firebase não diz se o e-mail existe (não deixa adivinhar quem tem acesso).
+      // Se o domínio da Área ainda não estiver na lista do login do Firebase (19/11/2026: UNAUTHORIZED_DOMAIN), manda sem a
+      // volta: a pessoa cria a senha na página do Firebase e abre o link de novo
+      const codigo = (err: unknown) => String((err as { code?: string } | null)?.code ?? '');
       try { await sendPasswordResetEmail(loginDoCliente(), e, { url: location.origin + '/cliente/' + token }); }
       catch (err) {
-        const c = String((err as { code?: string } | null)?.code ?? '');
-        if (c !== 'auth/user-not-found') throw new Error(erroDoLogin(err), { cause: err });
+        if (codigo(err) === 'auth/user-not-found') return;
+        if (!/unauthorized-(continue-uri|domain)|invalid-continue-uri/.test(codigo(err))) throw new Error(erroDoLogin(err), { cause: err });
+        try { await sendPasswordResetEmail(loginDoCliente(), e); }
+        catch (err2) { if (codigo(err2) !== 'auth/user-not-found') throw new Error(erroDoLogin(err2), { cause: err2 }); }
       }
     },
     async sair() {
       await signOut(loginDoCliente()).catch(() => undefined);
+    },
+    // a página própria de criar a senha (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?")
+    async conferirCodigoDaSenha(codigo) {
+      try { return await verifyPasswordResetCode(loginDoCliente(), codigo); }
+      catch (e) { throw new Error(erroDoCodigo(e), { cause: e }); }
+    },
+    async gravarSenha(codigo, senha) {
+      const auth = loginDoCliente();
+      let email: string;
+      try { email = await verifyPasswordResetCode(auth, codigo); await confirmPasswordReset(auth, codigo, senha); }
+      catch (e) { throw new Error(erroDoCodigo(e), { cause: e }); }
+      // já entra com a senha nova e acha as empresas que esta pessoa abre (o nome vem do documento do link)
+      try {
+        const c = await signInWithEmailAndPassword(auth, email, senha);
+        const claims = (await c.user.getIdTokenResult(true)).claims as { a?: unknown };
+        const tokens = Array.isArray(claims.a) ? claims.a.filter((t): t is string => typeof t === 'string' && ehTokenDoLink(t)) : [];
+        const banco = abrir();
+        return await Promise.all(tokens.map(async token => {
+          const s = await getDoc(doc(banco, 'areasCliente', token)).catch(() => null);
+          const nome = s?.exists() ? s.get('nome') : '';
+          return { token, nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Sua empresa' };
+        }));
+      } catch { return []; }
     },
 
     async abrirChamado(token, { tipo, texto }) {
@@ -484,5 +531,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     entrar: (token, email, senha) => doBanco.entrar(token, email, senha),
     criarSenha: (token, email) => doBanco.criarSenha(token, email),
     sair: () => doBanco.sair(),
+    conferirCodigoDaSenha: codigo => doBanco.conferirCodigoDaSenha(codigo),
+    gravarSenha: (codigo, senha) => doBanco.gravarSenha(codigo, senha),
   };
 }

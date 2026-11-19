@@ -9,3 +9,8 @@
 .cli-entrar-form .btn { width: 100%; justify-content: center; margin-top: 4px; }
 .cli-entrar-aviso { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: var(--fs-13); color: var(--success); }
 .cli-entrar-dica { margin: 4px 0 0; font-size: var(--fs-12); color: var(--ink-muted); }
+
+/* a página própria de criar a senha (19/11/2026) */
+.cli-pagina-senha { min-height: 100dvh; display: grid; padding: 16px; background: var(--surface-2, var(--surface)); }
+.cli-senha-empresas { width: 100%; display: grid; gap: 8px; }
+.cli-senha-empresas .btn { justify-content: flex-start; }

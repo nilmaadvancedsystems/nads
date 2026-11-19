@@ -8037,6 +8037,8 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .ac-pessoa-nova input { flex: 1 1 160px; min-width: 0; }
 .ac-exige-senha { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; cursor: pointer; }
 .ac-exige-senha input { margin-top: 3px; }
+.lt-painel-nota.lt-nota-erro{color:var(--danger);}
+.lt-atualizar .btn-spinner{width:14px;height:14px;}
 /* a conta do razão que o nads não achou, informada na linha (o botão Vitor; 19/11/2026) */
 .razao-informar{display:inline-flex;align-items:center;gap:4px;}
 .razao-informar input{width:78px;height:28px;padding:2px 8px;font-size:var(--fs-12);}
@@ -8127,3 +8129,13 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+3){padding-right:190px;}
 .cmc-salario{background:var(--accent);}
 .mei-cartao-txt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;}
+/* Lançatudo: o lançamento do razão que levou à conciliação, na janela da linha (19/11/2026) */
+.lt-cad-razao{gap:8px;border-color:color-mix(in srgb,var(--info) 35%,var(--border));}
+.lt-cad-razao .lcdpr-rotulo{display:inline-flex;align-items:center;gap:6px;}
+.lt-cad-razao .lcdpr-rotulo svg{width:14px;height:14px;color:var(--info);}
+.lt-cad-razao-linha{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:var(--fs-14);}
+.lt-cad-razao-linha b{font-size:var(--fs-16);}
+.lt-cad-razao-conta{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:var(--fs-13);}
+.lt-cad-razao-conta > span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-muted);}
+.lt-cad-razao-rotulo{flex:none;font-size:var(--fs-12);color:var(--ink-muted);}
+.lt-cad-razao-hist{margin:0;font-size:var(--fs-13);line-height:1.45;color:var(--ink);word-break:break-word;}

@@ -14,5 +14,6 @@ export {
 } from './regras/mudancas';
 export { linhasParaExportar, lancamentoDaLinha, lancamentosParaImportar, planilhaDaConferencia, nomeDoArquivoDoLancatudo, TIPO_XLSX } from './regras/exportacao';
 export { linhasDoPlano, linhasVisiveisDoPlano, gruposFechadosNoInicio, type LinhaDoPlano } from './regras/plano';
+export { razaoDaContaDoServidor, comRazaoDoServidor } from './regras/razaoDoServidor';
 export { textoEmLinhas, lerComprovante, casarComprovantes, textoParaAsRegras, textoParaAprender, type ComprovanteDoLancatudo, type ComprovanteLido, type TipoDeComprovante } from './regras/comprovantes';
 export { configDoDocumento, mesDoDocumento, documentoDaConfig, documentoDoMes, idDaChave } from './regras/documento';

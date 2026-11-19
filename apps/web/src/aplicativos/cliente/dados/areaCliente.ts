@@ -180,4 +180,8 @@ export interface RepoAreaCliente {
   criarSenha(token: string, email: string): Promise<void>;
   /** sai da conta neste aparelho */
   sair(): Promise<void>;
+  /** a página própria de criar a senha (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?"): o e-mail do código que veio no link */
+  conferirCodigoDaSenha(codigo: string): Promise<string>;
+  /** grava a senha nova, entra e devolve as empresas (os links) que a pessoa abre */
+  gravarSenha(codigo: string, senha: string): Promise<{ token: string; nome: string }[]>;
 }
