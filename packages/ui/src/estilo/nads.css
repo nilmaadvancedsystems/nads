@@ -8139,3 +8139,18 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .lt-cad-razao-conta > span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-muted);}
 .lt-cad-razao-rotulo{flex:none;font-size:var(--fs-12);color:var(--ink-muted);}
 .lt-cad-razao-hist{margin:0;font-size:var(--fs-13);line-height:1.45;color:var(--ink);word-break:break-word;}
+/* a caixa do total da Carteira (19/11/2026): o valor grande que sobe ao entrar, a barra que cresce e as partes em cartõezinhos */
+.cmc-resumo.cmc-novo{grid-template-columns:minmax(260px,auto) 1fr;gap:36px;padding:28px 28px;border-radius:14px;border-color:color-mix(in srgb,var(--accent) 28%,var(--border));
+  background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--accent) 16%,transparent) 0%,transparent 55%),var(--surface);}
+.cmc-novo .cmc-total{gap:4px;}
+.cmc-novo .cmc-total .cmc-rotulo{font-size:var(--fs-13);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);}
+.cmc-novo .cmc-valor{font-size:46px;font-weight:800;letter-spacing:-.02em;line-height:1.05;font-variant-numeric:tabular-nums;}
+.cmc-novo .cmc-partes{gap:16px;}
+.cmc-novo .cmc-barra{height:12px;}
+.cmc-novo .cmc-barra i{transform-origin:left center;animation:cmcCresce .9s cubic-bezier(.2,.8,.2,1) both;}
+.cmc-novo .cmc-legenda{gap:10px;}
+.cmc-novo .cmc-legenda li{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--surface-2) 85%,transparent);}
+.cmc-novo .cmc-legenda b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;}
+@keyframes cmcCresce{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+@media (prefers-reduced-motion:reduce){.cmc-novo .cmc-barra i{animation:none;}}
+@media (max-width:760px){.cmc-resumo.cmc-novo{grid-template-columns:1fr;gap:20px;padding:20px;}.cmc-novo .cmc-valor{font-size:38px;}.cmc-novo .cmc-legenda{grid-template-columns:1fr;}}
