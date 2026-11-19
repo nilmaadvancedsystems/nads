@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { areaCliente as ac } from '@nads/core';
 import type { DocumentoDoCliente } from './areaCliente';
-import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, iniciaisDaEmpresa, MAIS_PERFIS, ultimaEmpresa, abasDoCelular, seloDoRegime, tempoDeEmpresa, dadosParaCopiar, tokenDoLink, diaRelativo, contaDasFerias, contaDaAdmissao, primeiraDataDasFerias, mesDasFerias, marcarNoCalendario, textoDosDias, resumoDasGuias, abaDoDia, vencimentoDaGuia, legendaDoCalendario } from './regras';
+import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, comAsDaConta, iniciaisDaEmpresa, MAIS_PERFIS, ultimaEmpresa, abasDoCelular, seloDoRegime, tempoDeEmpresa, dadosParaCopiar, tokenDoLink, diaRelativo, contaDasFerias, contaDaAdmissao, primeiraDataDasFerias, mesDasFerias, marcarNoCalendario, textoDosDias, resumoDasGuias, abaDoDia, vencimentoDaGuia, legendaDoCalendario } from './regras';
 
 const hoje = new Date(2026, 9, 16, 9, 0);
 
@@ -379,5 +379,17 @@ describe('a entrega no sino', () => {
   it('cada entrega que espera vira um aviso que abre a confirmação', () => {
     const n = notificacoes({ guias: [], documentos: [], chamados: [], certificado: null, entregas: [{ id: 'ent000001', titulo: 'DAS de outubro', competencia: '2026-10' }] }, hoje, g => g.tipo);
     expect(n).toEqual([{ id: 'ent-ent000001', titulo: 'Entrega para confirmar', texto: 'DAS de outubro: toque para confirmar que recebeu', ir: 'documentos', confirmarEntrega: 'ent000001' }]);
+  });
+});
+
+describe('comAsDaConta (19/11/2026, senha parte 2)', () => {
+  const p = (token: string, nome: string): PerfilGuardadoDoTeste => ({ token, nome, documento: '1', usadoEm: '2026-11-19' });
+  type PerfilGuardadoDoTeste = { token: string; nome: string; documento: string; usadoEm: string };
+  it('as do aparelho primeiro; as da conta que faltam no fim; a aberta fica de fora', () => {
+    const r = comAsDaConta([p('a', 'A'), p('b', 'B')], [{ token: 'b', nome: 'B do login' }, { token: 'c', nome: 'C' }, { token: 'a', nome: 'A' }], 'a');
+    expect(r.map(x => [x.token, x.nome, x.usadoEm, !!x.daConta])).toEqual([['b', 'B', '2026-11-19', false], ['c', 'C', '', true]]);
+  });
+  it('sem conta, só as do aparelho', () => {
+    expect(comAsDaConta([p('a', 'A')], [], 'x').map(x => x.token)).toEqual(['a']);
   });
 });

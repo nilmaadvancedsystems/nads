@@ -7,9 +7,9 @@ import { areaCliente as ac } from '@nads/core';
 import { definirLateralOculta, lerLateralOculta, useRetorno, type NomeIcone } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { AREA_VAZIA, type EstadoDaArea } from '../dados/areaCliente';
+import { AREA_VAZIA, type ContaDoCliente, type EstadoDaArea } from '../dados/areaCliente';
 import { repoAreaCliente } from '../dados/repo';
-import { abasDoCelular, diaRelativo, seloDoRegime, tokenDoLink, iniciaisDaEmpresa, linkDoWhatsapp, nomeDaPessoa, notificacoes, perfisComEste, ultimaEmpresa, type PerfilGuardado } from '../dados/regras';
+import { abasDoCelular, diaRelativo, seloDoRegime, tokenDoLink, iniciaisDaEmpresa, linkDoWhatsapp, nomeDaPessoa, notificacoes, perfisComEste, ultimaEmpresa, comAsDaConta, type PerfilGuardado } from '../dados/regras';
 import { guardarPerfis, lerPerfis } from '../dados/perfis';
 import { guardarLidas, lidasDoSino, soAsQueAindaExistem } from '../dados/sinoLido';
 import { TOKEN_COMO_NO_BANCO, TOKEN_DE_EXEMPLO } from '../dados/areaCliente.memoria';
@@ -110,7 +110,12 @@ export function useAreaCliente() {
     { token: TOKEN_DE_EXEMPLO, nome: 'Personaly Company (exemplo completo)', documento: '00.000.000/0001-91', usadoEm: '' },
     { token: TOKEN_COMO_NO_BANCO, nome: 'Personaly Company (como no banco)', documento: '00.000.000/0001-91', usadoEm: '' },
   ].filter(e => !perfis.some(p => p.token === e.token)) : [];
-  const outrasEmpresas = [...perfis, ...exemplos].filter(p => p.token !== token).map(p => ({ ...p, iniciais: iniciaisDaEmpresa(p.nome), quando: p.usadoEm ? diaRelativo(p.usadoEm, hoje) : '' }));
+  // quem entrou com a senha (19/11/2026, senha parte 2; o dono: "as 3"): o Sair e as empresas que o login abre no menu de troca
+  const [conta, setConta] = useState<ContaDoCliente | null>(null);
+  useEffect(() => repoAreaCliente.acompanharConta(setConta), []);
+  const [saindo, setSaindo] = useState(false);
+  const sair = async () => { setSaindo(true); try { await repoAreaCliente.sair(); } finally { setSaindo(false); setMenuAberto(false); } };
+  const outrasEmpresas = comAsDaConta([...perfis, ...exemplos], conta?.empresas ?? [], token).map(p => ({ ...p, iniciais: iniciaisDaEmpresa(p.nome), quando: p.usadoEm ? diaRelativo(p.usadoEm, hoje) : '' }));
   const trocarDeEmpresa = (outro: string) => { setMenuAberto(false); navegar('/cliente/' + encodeURIComponent(outro) + '/' + atual); window.scrollTo(0, 0); };
   const esquecerEmpresa = (outro: string) => { const lista = lerPerfis().filter(p => p.token !== outro); guardarPerfis(lista); setPerfis(lista); };
 
@@ -183,7 +188,7 @@ export function useAreaCliente() {
       return { id, icone: a.icone, rotulo: ROTULO_CURTO[id] ?? a.rotulo, ativa: atual === id, conta: contadores[id] ?? 0 };
     }),
     maisAtivo: !abasDoCelular(abas.map(a => a.id)).includes(atual),
-    outrasEmpresas, trocarDeEmpresa, esquecerEmpresa, iniciais: iniciaisDaEmpresa(empresa), contadores, menuAberto, setMenuAberto, recolhida, alternarLateral, irPara, empresa, cnpj, rotuloDoDocumento, exemplos: area.exemplos,
+    outrasEmpresas, trocarDeEmpresa, esquecerEmpresa, conta, sair, saindo, iniciais: iniciaisDaEmpresa(empresa), contadores, menuAberto, setMenuAberto, recolhida, alternarLateral, irPara, empresa, cnpj, rotuloDoDocumento, exemplos: area.exemplos,
     secoes: area.secoes, temFicha: !!area.ficha,
     avisos, naoLidas: naoLidas.length, lida: (id: string) => lidas.has(id), marcarLidas: () => guardar(new Set(avisos.map(n => n.id))),
     /** um aviso lido (o cliente abriu a solicitação respondida) */

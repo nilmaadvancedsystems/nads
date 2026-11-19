@@ -145,6 +145,9 @@ export const AREA_VAZIA: EstadoDaArea = {
   documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [], entregas: [], parcelamentos: [],
 };
 
+/** Quem entrou com a senha (19/11/2026, senha parte 2): o e-mail e as empresas que o login abre */
+export interface ContaDoCliente { email: string; empresas: { token: string; nome: string }[] }
+
 export interface RepoAreaCliente {
   /** acompanha o link: chama já com o que tem e de novo a cada mudança; devolve a função que para */
   assinar(token: string, aoMudar: (e: EstadoDaArea) => void): () => void;
@@ -180,6 +183,9 @@ export interface RepoAreaCliente {
   criarSenha(token: string, email: string): Promise<void>;
   /** sai da conta neste aparelho */
   sair(): Promise<void>;
+  /** quem entrou com a senha neste aparelho e as empresas (os links) que o login abre; null = ninguém (19/11/2026, senha
+   *  parte 2: o Sair e a lista das empresas da pessoa). Chama já e a cada mudança; devolve a função que para */
+  acompanharConta(aoMudar: (c: ContaDoCliente | null) => void): () => void;
   /** a página própria de criar a senha (19/11/2026; o dono, sobre a página "Senha alterada" do Firebase: "tem como melhorar isso?"): o e-mail do código que veio no link */
   conferirCodigoDaSenha(codigo: string): Promise<string>;
   /** grava a senha nova, entra e devolve as empresas (os links) que a pessoa abre */
