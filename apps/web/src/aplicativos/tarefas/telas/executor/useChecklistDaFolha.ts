@@ -5,6 +5,7 @@
 // aparece com todos marcados (o "?" lista os que faltam). Os tiques ficam neste navegador, por empresa e período.
 import { tarefas as t } from '@nads/core';
 import { useEffect, useState } from 'react';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useContasDoBalancete } from '../../etapas/conferencia/importadosNaEtapa';
 
 const chaveDe = (empresa: string, meses: readonly string[], etapa?: string) => (etapa ? 'nads-check:' + etapa + ':' : 'nads-folha:') + empresa + ':' + meses.join(',');
@@ -41,7 +42,16 @@ export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: read
     window.addEventListener(APAGADOS, f);
     return () => window.removeEventListener(APAGADOS, f);
   }, [chave]);
-  const itens: TarefaDoChecklist[] | null = fixo ? fixo.itens : ativo && contas ? t.checklistDaFolha(contas, meses) : null;
+  // o FGTS empréstimo (Crédito do Trabalhador) antes das Guias do FGTS (Vitor, 19/11/2026: "inverta a ordem desses dois");
+  // por enquanto no modo desenvolvedor
+  const [dev] = useModoDesenvolvedor();
+  const daFolha = !fixo && ativo && contas ? t.checklistDaFolha(contas, meses) : null;
+  const naOrdem = daFolha && dev ? (() => {
+    const i = daFolha.findIndex(x => x.id === 'fgts'), j = daFolha.findIndex(x => x.id === 'credito-trabalhador');
+    if (i < 0 || j < 0 || j < i) return daFolha;
+    const n = [...daFolha]; const [cred] = n.splice(j, 1); n.splice(i, 0, cred); return n;
+  })() : daFolha;
+  const itens: TarefaDoChecklist[] | null = fixo ? fixo.itens : naOrdem;
   // em ordem: o próximo depois dos marcados fica liberado; dos marcados, só o último pode ser desmarcado
   const feitos = itens ? itens.findIndex(i => !ids.includes(i.id)) : -1;
   const ateOnde = feitos < 0 ? (itens ? itens.length : 0) : feitos;
