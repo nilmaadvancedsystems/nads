@@ -10,10 +10,13 @@ import { useAcesso, useInsumos as useRepoDosInsumos, useTodosOsCadastros } from 
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { mensagem, useMes } from './comum';
 
-export function useInsumos() {
+/** naCarteira (19/11/2026): a janela da Carteira do funcionário — os dele, sem os valores ("nao interessa para o usuario"), no mês que a
+ *  tela da Carteira já escolheu */
+export function useInsumos(naCarteira?: { mes: string }) {
   const repo = useRepoDosInsumos();
   const { operador } = useOperador();
-  const m = useMes();
+  const proprio = useMes();
+  const m = naCarteira ? { ...proprio, mes: naCarteira.mes } : proprio;
   // uma lista só, sem o Meus e o Da equipe (Vitor, 13/11/2026: "não tem meus e nem da equipe, é um só, simples, que aparece no
   // financeiro"): cada pessoa vê os dela; o Diretor (e o Dono) e quem tem o Financeiro, os de todos (a mesma conta da regra do
   // banco: podeNoFinanceiroNads), com a coluna da pessoa. A regra pede o login liberado de quem só tem o papel Financeiro; o
@@ -22,7 +25,7 @@ export function useInsumos() {
   const sessao = useAcesso().minhaSessao();
   const doFinanceiro = podeVerOFinanceiro(operador);
   const liberado = temNivelDiretor(operador) || sessao.liberada;
-  const veTodos = doFinanceiro && liberado;
+  const veTodos = doFinanceiro && liberado && !naCarteira;
   const [aberto, setAberto] = useState<carteira.Insumo | null | 'novo'>(null);
   // a lista dos insumos e os preços do Financeiro (15/11/2026): quem é do Financeiro vê os valores e muda a lista
   const [configurando, setConfigurando] = useState(false);

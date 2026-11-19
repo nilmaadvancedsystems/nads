@@ -8,8 +8,10 @@ import { useEffect, useRef } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useJanelaDoInsumo } from './useInsumos';
 
-export function JanelaDoInsumo({ insumo, fechar }: { insumo: carteira.Insumo | null; fechar: () => void }) {
-  const vm = useJanelaDoInsumo(insumo, fechar);
+/** semPreco: da Carteira do funcionário, sem o valor (19/11/2026: os valores só no Financeiro) */
+export function JanelaDoInsumo({ insumo, fechar, semPreco = false }: { insumo: carteira.Insumo | null; fechar: () => void; semPreco?: boolean }) {
+  const vm0 = useJanelaDoInsumo(insumo, fechar);
+  const vm = semPreco ? { ...vm0, vePreco: false } : vm0;
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
   const titulo = insumo ? 'Mudar registro' : 'Registrar insumo';

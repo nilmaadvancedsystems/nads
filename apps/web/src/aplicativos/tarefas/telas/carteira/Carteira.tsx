@@ -24,7 +24,7 @@ export function Carteira({ pagina }: { pagina: string }) {
   return (
     <div className="carteira-financeiro">
       {/* as impressões e os materiais (os Insumos) numa janela, daqui mesmo (19/11/2026) */}
-      {materiais && <JanelaDeMateriais fechar={() => setMateriais(false)} />}
+      {materiais && <JanelaDeMateriais mes={m.mes} fechar={() => setMateriais(false)} />}
       {/* sem o título Comissões (Vitor, 19/11/2026: "remove esse titulo"): a página já se chama Financeiro */}
       {/* o mês, o Impressões e materiais e o Registrar comissão na mesma linha (19/11/2026) */}
       <MinhasComissoes m={m} extra={(
