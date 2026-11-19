@@ -363,3 +363,31 @@ export function paraOBanco(c: Caixa): Obj {
 export function linkDaCaixa(origem: string, id: string, envelope?: string): string {
   return origem.replace(/\/+$/, '') + '/tarefas/arquivo-fisico/caixas?caixa=' + encodeURIComponent(id) + (envelope ? '&envelope=' + encodeURIComponent(envelope) : '');
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// a grade da caixa (19/11/2026: "essa tela ta com muito botão e confusa"): os 12 meses do ano da caixa, cada um com o
+// envelope dele (ou vazio), e embaixo os outros envelopes (o ano todo, os de observação, os de outro ano)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface MesDaGrade {
+  /** 'AAAA-MM' */
+  competencia: string;
+  /** 1 a 12 */
+  mes: number;
+  /** o envelope do mês (o sem observação, se houver mais de um); null quando o mês não está na caixa */
+  envelope: Envelope | null;
+}
+
+export interface GradeDaCaixa { meses: MesDaGrade[]; outros: Envelope[]; faltam: number }
+
+export function gradeDaCaixa(c: Pick<Caixa, 'ano' | 'envelopes'>): GradeDaCaixa {
+  const usados = new Set<string>();
+  const meses: MesDaGrade[] = Array.from({ length: 12 }, (_, i) => {
+    const competencia = c.ano + '-' + pad(i + 1);
+    const doMes = c.envelopes.filter(e => e.competencia === competencia);
+    const envelope = doMes.find(e => !e.observacao) || doMes[0] || null;
+    if (envelope) usados.add(envelope.id);
+    return { competencia, mes: i + 1, envelope };
+  });
+  return { meses, outros: ordenarEnvelopes(c.envelopes.filter(e => !usados.has(e.id))), faltam: meses.filter(m => !m.envelope).length };
+}

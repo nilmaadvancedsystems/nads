@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   adicionarEnvelopes, anosDasCaixas, buscar, codigoDaCaixa, descartar, descarteLiberadoEm, devolver, emprestados, FILTRO_VAZIO, htmlDasEtiquetasDaCaixa, idDaCaixa,
   lerCaixa, linkDaCaixa, mesesDaCaixa, montarCaixa, mudarEnvelope, paraDescartar, paraOBanco, problemaDaCaixa, proximoNumero, removerEnvelope, retirar, rotuloDaCaixa,
-  rotuloDaCompetencia, situacaoDaCaixa, tipoComEspacos, type Caixa, type RascunhoDaCaixa,
+  localNaEtiqueta, rotuloDaCompetencia, situacaoDaCaixa, tipoComEspacos, type Caixa, type RascunhoDaCaixa,
 } from './index';
 import { htmlDosEnvelopes } from '../tarefas/regras/etiquetasDoEnvelope';
 
@@ -222,6 +222,10 @@ describe('as etiquetas', () => {
     expect(html).toContain('19/11/2026');
     expect(html).toContain('Notas &lt;entrada&gt;');
     expect(tipoComEspacos('PF-P')).toBe('PF - P');
+    // a localização: a prateleira e a fileira saem no código curto; o texto livre, como está
+    expect(localNaEtiqueta('Prateleira 1 · Fileira 3')).toEqual({ texto: 'P1-F3', curto: true });
+    expect(localNaEtiqueta('Sala 2, armário de aço')).toEqual({ texto: 'Sala 2, armário de aço', curto: false });
+    expect(html).toContain('>P1-F3<'.replace('P1-F3', 'Estante B'));
   });
 
   it('o envelope: o mês de cada etiqueta e o QR, sem mudar a do Cadastro', () => {
