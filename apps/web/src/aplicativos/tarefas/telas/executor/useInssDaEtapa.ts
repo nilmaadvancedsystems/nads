@@ -8,7 +8,6 @@ import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../comum/guardado';
-import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 import { useContaDoTipo } from './useContaDoTipo';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
@@ -57,9 +56,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   const modelos = useModelosDeHistorico();
   // as guias que a pessoa marcou como não pagas, por competência (Vitor, 10/11/2026: no "Falta", o botão "Não pago")
   const [naoPagas, setNaoPagas] = useGuardado<string[]>('inss-nao-pagas|' + chave, []);
-  // só as verbas exatas nos lançamentos sugeridos (Vitor, 19/11/2026); por enquanto no modo desenvolvedor
-  const [dev] = useModoDesenvolvedor();
-  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos, naoPagas, { soExatas: dev }) : null;
+  // só as verbas exatas nos lançamentos sugeridos (Vitor, 19/11/2026; na final)
+  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos, naoPagas, { soExatas: true }) : null;
 
   async function importarRazao(f: File | null) {
     if (!f) return;
