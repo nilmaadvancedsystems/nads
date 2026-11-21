@@ -58,7 +58,23 @@ function etiqueta(c: Caixa, qr: string, logo: string): string {
 </table>`;
 }
 
-/** O documento A4 para imprimir: duas etiquetas por folha deitada, como na planilha. */
+/** A folha A4 deitada (o que se vê depois de girar): 297 × 210 mm, a 6 mm da beira e 12 mm entre as duas metades. */
+const FOLHA = { largura: 297, altura: 210, beira: 6, entre: 12 };
+const MM_POR_PT = 25.4 / 72;
+/** A planilha: 322,5 pt de largura e 397,9 pt de altura (a soma das linhas). */
+const PLANILHA = { largura: 322.5, altura: 397.85 };
+/** Cada etiqueta numa metade da folha (19/11/2026: "pra caber legal tem que ser 2 dessa por folha a4"; "cada uma fica numa
+ *  metade"): 136,5 × 198 mm. As letras crescem na proporção da largura e as linhas na da altura. */
+const LARGURA_MM = (FOLHA.largura - 2 * FOLHA.beira - FOLHA.entre) / 2;
+const ALTURA_MM = FOLHA.altura - 2 * FOLHA.beira;
+const KL = LARGURA_MM / (PLANILHA.largura * MM_POR_PT);
+const KA = ALTURA_MM / (PLANILHA.altura * MM_POR_PT);
+/** Um tamanho da planilha, crescido: na largura (letras) ou na altura (linhas). */
+const l = (pt: number) => (pt * KL).toFixed(2) + 'pt';
+const a = (pt: number) => (pt * KA).toFixed(2) + 'pt';
+
+/** O documento A4 para imprimir: duas etiquetas por folha, cada uma ocupando uma metade (a folha em pé, a página deitada
+ *  desenhada girada nela: a impressora do escritório ignora a folha deitada e encolhe tudo). */
 export function htmlDasEtiquetasDaCaixa(p: PedidoDeEtiquetasDaCaixa): string {
   const paginas: string[] = [];
   for (let i = 0; i < p.caixas.length; i += 2) {
@@ -67,36 +83,37 @@ export function htmlDasEtiquetasDaCaixa(p: PedidoDeEtiquetasDaCaixa): string {
   }
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas das caixas</title>
 <style>
-  /* a folha EM PÉ e a página deitada desenhada girada dentro dela (19/11/2026: a impressora do escritório ignora a folha deitada
-     e encolhe tudo): o mesmo resultado da planilha (A4 deitada, margens de 20 mm em cima e embaixo e 13 mm dos lados) */
   @page{size:A4 portrait;margin:0}
   *{box-sizing:border-box}
   :root{color-scheme:light}
   html,body{margin:0;padding:0;background:#fff}
   body{font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .pagina{position:relative;width:210mm;height:297mm;overflow:hidden;break-after:page;page-break-after:always}
-  .folha{position:absolute;top:0;left:210mm;width:297mm;height:210mm;transform-origin:0 0;transform:rotate(90deg);padding:20mm 13mm;display:flex;gap:48pt;align-items:flex-start}
   .pagina:last-child{break-after:auto;page-break-after:auto}
-  .cx{width:322.5pt;border-collapse:collapse;table-layout:fixed;border:1.5pt solid #000;break-inside:avoid}
+  .folha{position:absolute;top:0;left:210mm;width:${FOLHA.largura}mm;height:${FOLHA.altura}mm;transform-origin:0 0;transform:rotate(90deg);
+    padding:${FOLHA.beira}mm;display:flex;gap:${FOLHA.entre}mm;align-items:stretch}
+  /* a linha de corte, tracejada, no meio da folha */
+  .folha::after{content:"";position:absolute;top:3mm;bottom:3mm;left:50%;border-left:.3mm dashed #999}
+  .cx{width:${LARGURA_MM}mm;height:${ALTURA_MM}mm;border-collapse:collapse;table-layout:fixed;border:${l(1.5)} solid #000;break-inside:avoid}
   .cx col{width:50%}
-  .cx td{border:.75pt solid #000;padding:0 3pt;text-align:center;vertical-align:middle;overflow:hidden;line-height:1.1}
+  .cx td{border:${l(.75)} solid #000;padding:0 ${l(3)};text-align:center;vertical-align:middle;overflow:hidden;line-height:1.1}
   .cx td.cinza{background:#d9d9d9}
-  .r-logo td{height:71.25pt;padding:0}
-  .cx-topo{position:relative;height:71.25pt;display:flex;align-items:center;justify-content:center}
-  .cx-logo svg{height:52pt;width:auto;display:block}
-  .cx-qr{position:absolute;right:5pt;top:50%;transform:translateY(-50%)}
-  .cx-qr svg{width:60pt;height:60pt;display:block}
-  .r-nome td{height:20.25pt;font-size:11pt;font-weight:700;white-space:nowrap;text-overflow:ellipsis}
-  .r-nome td.menor{font-size:9pt}
-  .r-cod td{height:51.75pt;font-size:48pt;font-weight:700}
-  .r-rot td{height:12pt;font-size:10pt;font-weight:700;padding:0}
-  .r-rot2 td{height:14.25pt;font-size:10pt;font-weight:700;padding:0}
-  .r-tipo td{height:42pt;font-size:36pt}
-  .r-faixa td{height:12pt;padding:0}
-  .r-branco td{height:35.1pt}
-  .r-val td{height:35.1pt;font-size:14pt;font-weight:700}
-  .r-val2 td{height:35.1pt;font-size:24pt;font-weight:700}
-  .r-val2 td.local-longo{font-size:11pt;font-weight:700;white-space:normal}
-  .r-obs td{height:45pt;font-size:11pt;text-align:left;vertical-align:top;padding:3pt 4pt;white-space:pre-wrap}
+  .r-logo td{height:${a(71.25)};padding:0}
+  .cx-topo{position:relative;height:${a(71.25)};display:flex;align-items:center;justify-content:center}
+  .cx-logo svg{height:${a(52)};width:auto;display:block}
+  .cx-qr{position:absolute;right:${l(5)};top:50%;transform:translateY(-50%)}
+  .cx-qr svg{width:${a(60)};height:${a(60)};display:block}
+  .r-nome td{height:${a(20.25)};font-size:${l(11)};font-weight:700;white-space:nowrap;text-overflow:ellipsis}
+  .r-nome td.menor{font-size:${l(9)}}
+  .r-cod td{height:${a(51.75)};font-size:${l(48)};font-weight:700}
+  .r-rot td{height:${a(12)};font-size:${l(10)};font-weight:700;padding:0}
+  .r-rot2 td{height:${a(14.25)};font-size:${l(10)};font-weight:700;padding:0}
+  .r-tipo td{height:${a(42)};font-size:${l(36)}}
+  .r-faixa td{height:${a(12)};padding:0}
+  .r-branco td{height:${a(35.1)}}
+  .r-val td{height:${a(35.1)};font-size:${l(14)};font-weight:700}
+  .r-val2 td{height:${a(35.1)};font-size:${l(24)};font-weight:700}
+  .r-val2 td.local-longo{font-size:${l(11)};font-weight:700;white-space:normal}
+  .r-obs td{height:${a(45)};font-size:${l(11)};text-align:left;vertical-align:top;padding:${l(3)} ${l(4)};white-space:pre-wrap}
 </style></head><body>${p.logo.definicao}${paginas.join('')}</body></html>`;
 }
