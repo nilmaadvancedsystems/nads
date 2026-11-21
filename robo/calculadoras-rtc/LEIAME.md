@@ -16,7 +16,21 @@ alcança as portas.
   calculadora ocupa algo como 300 a 400 MB. As duas juntas não cabem.
 - O robô do SIEG roda no PC do servidor, e os XMLs das notas ficam lá.
 
-## Instalar ou atualizar
+## O robô instala sozinho
+
+Não precisa ir ao servidor: quando o SIEG liga (`sieg.js`, `iniciarSieg`), o `robo/rtc-servidor.js` confere se a
+calculadora responde. Faz isso um minuto depois de ligar e, a partir daí, a cada 6 horas. Se a calculadora não
+responde, ele roda este `instalar.ps1` por trás.
+
+- O registro mostra o andamento, e o painel do robô mostra o resultado: a memória de cada calculadora e a livre no PC.
+- A saída inteira fica em `D:\nads-rtc\instalar.log`.
+- Uma tentativa que falhou só se repete depois de 6 horas.
+- `RTC_DESLIGADA=sim` desliga essa verificação.
+
+Rodando pelo robô, sem administrador, as calculadoras não são registradas no Windows: o próprio robô as liga de novo
+depois de cada reinício do PC.
+
+## Instalar à mão
 
 No PC do servidor, na pasta do repositório:
 

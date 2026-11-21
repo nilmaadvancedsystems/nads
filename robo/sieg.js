@@ -794,6 +794,9 @@ function iniciarSieg({ db, log }) {
     estadoRef.set({ em: new Date().toISOString(), ligado: false, motivo: 'falta ' + faltam.join(', ') }, { merge: true }).catch(() => {});
     return () => {};
   }
+  // a calculadora da Receita (o IBS/CBS das notas, sieg-ibscbs.js) no ar neste PC: o robô instala ou liga sozinho, por
+  // trás, um minuto depois de ligar e a cada 6 h (robo/rtc-servidor.js; 21/11/2026). RTC_DESLIGADA=sim desliga isto
+  if (process.env.RTC_DESLIGADA !== 'sim') require('./rtc-servidor').ligar({ log, painel });
   // o que cada trabalhador da fila está fazendo (31/10/2026: dois pedidos ao mesmo tempo) e a contagem da madrugada
   const fazendo = new Map();
   let daNoite = '';

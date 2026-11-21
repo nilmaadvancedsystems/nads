@@ -54,8 +54,10 @@ foreach ($c in $Calculadoras) {
     continue
   }
   Write-Host "Instalando $($c.Nome) $($c.Versao)..."
-  if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
-  & $Git clone --quiet --depth 1 --branch $c.Versao $c.Repo $dir
+  # rmdir com \\?\: o Remove-Item do PowerShell 5.1 não apaga caminhos de mais de 260 caracteres
+  if (Test-Path $dir) { cmd.exe /c "rmdir /s /q `"\\?\$dir`"" }
+  # core.longpaths: os testes da Receita têm caminhos de mais de 260 caracteres (o git do Windows recusa sem isso)
+  & $Git -c core.longpaths=true clone --quiet --depth 1 --branch $c.Versao $c.Repo $dir
   if ($LASTEXITCODE) { throw "git clone de $($c.Nome) falhou" }
   # o Simples usa o mesmo banco do regime regular: a pasta flyway vem de lá (README do Simples)
   if (-not (Test-Path (Join-Path $dir 'flyway'))) { Copy-Item -Recurse (Join-Path $Pasta 'regime-regular\flyway') (Join-Path $dir 'flyway') }
