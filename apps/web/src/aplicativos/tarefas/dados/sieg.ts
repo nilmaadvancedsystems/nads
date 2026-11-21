@@ -69,6 +69,25 @@ export interface RepoSieg {
   versao(): number;
 }
 
+/** A conferência do IBS/CBS de exemplo (TESTE; 21/11/2026): uma emitida com a redução da cesta básica esquecida. */
+function ibsCbsDeExemplo(competencia: string): t.sieg.ConferenciaIbsCbs {
+  const [a, m] = competencia.split('-');
+  return {
+    em: new Date().toISOString(), versao: '1.7.2 (exemplo)',
+    emitidas: { conferidas: 2, certas: 1, divergentes: 1, semGrupo: 0, naoConferidas: 0 },
+    recebidas: { conferidas: 1, certas: 1, divergentes: 0, semGrupo: 0, naoConferidas: 0 },
+    notas: [{
+      chave: '', numero: '1002', tipo: 'NF-e', data: '12/' + m + '/' + a, lado: 'emitida', nome: 'CLIENTE EXEMPLO (TESTE)', situacao: 'divergente', simples: false, naoConferidos: [],
+      divergencias: [
+        { item: 2, campo: 'alíquota efetiva da CBS (redução)', naNota: 'sem redução', calculadora: '0,00%' },
+        { item: 2, campo: 'CBS', naNota: '1,80', calculadora: '0,00' },
+        { item: 2, campo: 'IBS da UF', naNota: '0,20', calculadora: '0,00' },
+      ],
+    }],
+    cortadas: 0,
+  };
+}
+
 /** Os XMLs de exemplo (TESTE): duas NF-e emitidas com itens, uma recebida, uma NFS-e com ISS e IRRF retidos e uma
  * NFS-e tomada com retenções (para a REINF). */
 function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' | 'recebidas' | 'resumo'> {
@@ -185,7 +204,7 @@ export function criarSiegMemoria(): RepoSieg {
       const k = codigo + '_' + competencia;
       // o produtor rural (o LCDPR) começa sem nada baixado: o "Puxar do SIEG" pede e traz as notas dele
       if (lcdpr.temLcdpr(Number(codigo))) return { carregadas: true, dados: notasBaixadas.get(k) || null };
-      if (!notasBaixadas.has(k)) notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, arquivos: 4, novos: 4, ...xmlsDeExemplo(competencia) });
+      if (!notasBaixadas.has(k)) notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, arquivos: 4, novos: 4, ...xmlsDeExemplo(competencia), ibsCbs: ibsCbsDeExemplo(competencia) });
       return { carregadas: true, dados: notasBaixadas.get(k)! };
     },
     async enviarXmlsDoCliente(codigo, competencia, xmls) {

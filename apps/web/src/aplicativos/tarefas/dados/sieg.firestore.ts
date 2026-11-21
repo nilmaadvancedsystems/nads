@@ -203,6 +203,8 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
               arquivos: Number(d.arquivos) || 0, novos: Number(d.novos) || 0, itensCortados: !!d.itensCortados, resumo: Number(d.resumo) || 1,
               emitidas: Array.isArray(d.emitidas) ? (d.emitidas as t.sieg.NotaDoSieg[]) : [],
               recebidas: Array.isArray(d.recebidas) ? (d.recebidas as t.sieg.NotaDoSieg[]) : [],
+              // a conferência do IBS/CBS pela calculadora da Receita (21/11/2026): o robô grava no mesmo documento
+              ibsCbs: t.sieg.lerConferenciaIbsCbs(d.ibsCbs),
             } : null,
           });
           mudou();

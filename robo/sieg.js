@@ -21,6 +21,8 @@ const CREDENCIAIS = process.env.SIEG_CREDENCIAIS || path.join(__dirname, 'sieg_c
 const PASTA_DO_DRIVE = process.env.PASTA_DESTINO || 'G:\\Meu Drive\\Claudio Secretario';
 const sx = require('./sieg-xmls');
 const siegPdfs = require('./sieg-pdfs');
+// a conferência do IBS/CBS pela calculadora da Receita, que roda neste PC (21/11/2026)
+const ibsCbs = require('./sieg-ibscbs');
 // o painel do robô (21/10/2026): o que o SIEG está fazendo agora, os XMLs baixados, as contagens e os erros
 const painel = require('./painel');
 const pausaLocal = require('./pausa-local');
@@ -873,6 +875,8 @@ function iniciarSieg({ db, log }) {
   let gravandoNoDrive = 0;
   const driveDaPasta = new Map();
   const esperarODrive = pasta => driveDaPasta.get(pasta) || Promise.resolve();
+  // a conferência do IBS/CBS (robo/sieg-ibscbs.js): um mês por vez, atrás do Drive
+  let filaIbsCbs = Promise.resolve();
   function gravarNoDrivePorTras(pasta, gravar) {
     gravandoNoDrive++;
     const vez = filaDoDrive.then(gravar).catch(err => log('SIEG: Drive por trás -', motivo(err))).finally(() => { gravandoNoDrive--; });
@@ -1263,6 +1267,10 @@ function iniciarSieg({ db, log }) {
           log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos' + (pulados ? ', ' + pulados + ' pulados: já arquivados' : '') + (pdfsNovos ? ', ' + pdfsNovos + ' PDFs' : '') + ') em', onde);
           painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
             arquivos.length + ' arquivo(s), ' + novos + ' novo(s) no Drive' + (p.madrugada ? ' · madrugada' : p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
+          // o IBS/CBS pela calculadora da Receita (21/11/2026, robo/sieg-ibscbs.js), com os XMLs já definitivos do mês: numa
+          // fila só dela, para não segurar o Drive; sem a calculadora no ar neste PC, só uma linha no registro
+          const doMes = arquivos;
+          filaIbsCbs = filaIbsCbs.then(() => ibsCbs.conferirEGravar({ db, id, arquivos: doMes, cnpj, canceladas: cancelamentosDe(doMes), log }));
         });
         return;
       }

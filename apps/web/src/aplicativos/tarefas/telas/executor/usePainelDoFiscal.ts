@@ -103,6 +103,8 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   const [importando, setImportando] = useState<{ relatorios: t.RelatorioImportavel[]; atual: TopicoDeImportar } | null>(null);
   return {
     carregado: !!lidas,
+    /** a conferência do IBS/CBS das notas do mês pela calculadora da Receita (21/11/2026); null = ainda não conferiu */
+    ibsCbs: xmlDados?.ibsCbs || null,
     folhaDoDp,
     /** o regime da empresa (o do cadastro do nads; sem ele, o do Entregas ou o da lista) */
     regime: t.regimeDaEmpresa(Number(codigo) || null),

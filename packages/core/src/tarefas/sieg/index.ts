@@ -2,6 +2,7 @@
 // (Entregas/scripts/sieg.js) conta as notas de cada cliente na madrugada (siegContagens) e, quando a etapa pede, baixa as
 // saídas do mês e grava os números por série e as canceladas (siegSaidas). Aqui: os tipos e a conferência da sequência.
 import type { Nota, NotaServico } from '../../conferencia/tipos';
+import type { ConferenciaIbsCbs } from './ibsCbs';
 
 export type TipoDeNota = 'NFe' | 'NFCe' | 'NFSe' | 'CTe' | 'CFe';
 export const TIPOS_DE_NOTA: readonly { id: TipoDeNota; rotulo: string }[] = [
@@ -63,6 +64,8 @@ export interface NotasSieg {
   itensCortados?: boolean;
   /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; 4 = mais a base, a alíquota e as despesas de cada item; 5 = as NF-e do CT-e; 6 = a entrada, a IE do destinatário e os produtos da NF-e; sem = 1) */
   resumo?: number;
+  /** a conferência do IBS/CBS pela calculadora da Receita (21/11/2026; robo/sieg-ibscbs.js); sem ela, ainda não conferiu */
+  ibsCbs?: ConferenciaIbsCbs | null;
 }
 
 /** siegSaidas/{codigo}_{AAAA-MM}: as saídas do mês (NF-e e NFC-e), série por série. */
@@ -211,6 +214,7 @@ export function faltamNoAlterdata(doXml: NotaDoSieg[], doAlterdata: readonly Not
 }
 
 export { errosDeTributacao, conferirValores, type ErroDeTributacao, type NotaQueNaoFecha, type ConferenciaDeValores } from './conferencia';
+export { notaParaConferir, conferirNota, resumoDaConferencia, lerConferenciaIbsCbs, lerGrupo, grupoDaResposta, ufDoMunicipio, NUMERO_DA_BASE, MAX_NOTAS as MAX_NOTAS_IBS_CBS, type NotaParaConferir, type ItemParaConferir, type GrupoIbsCbs, type OperacaoDaCalculadora, type ItemDaOperacao, type RespostaDaCalculadora, type ObjetoDaResposta, type ValidacaoDoGrupo, type Divergencia, type NotaConferida, type SituacaoIbsCbs, type ContagemIbsCbs, type ConferenciaIbsCbs, type LadoDaNota } from './ibsCbs';
 
 export { segregacaoDasSaidas, previaDoDas, aliquotaEfetiva, avisoDeLimite, reinfDasNotas, servicosDoMes, grupoMonofasico, temIcmsSt, ANEXOS, MONOFASICOS, SUBLIMITE, TETO, LIMITE_MEI, type Anexo, type Segregacao, type PreviaDoDas, type ParcelaDaReceita, type LinhaDaReinf } from './simples';
 export { receitasDoMes, creditosDoMes, pisCofins, icmsDoMes, irpjCsll, receitaParaIrpj, mesesDoTrimestre, temImpostosNoXml, ehVenda, PRESUNCOES, ALIQUOTAS_PIS_COFINS, type ReceitasDoMes, type CreditosDoMes, type PisCofins, type IcmsDoMes, type IrpjCsll, type ReceitaParaIrpj, type Presuncao, type RegimeDoLucro } from './lucro';
