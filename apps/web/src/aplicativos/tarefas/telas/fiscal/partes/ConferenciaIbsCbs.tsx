@@ -1,7 +1,7 @@
 // O IBS/CBS das notas pela calculadora oficial da Receita (21/11/2026), na aba "IBS/CBS" do Fiscal › SIEG. O robô do
 // SIEG confere cada NF-e/NFC-e do mês depois do "Baixar XMLs" (o grupo IBSCBS: CST, cClassTrib, base, alíquotas,
 // valores e o leiaute) e grava no resumo do mês (siegNotas.ibsCbs). Aqui só se desenha: as notas emitidas e as recebidas
-// que não batem com a calculadora, campo a campo.
+// que não batem com a calculadora, campo a campo, e à parte o aviso da base de 2026 (baseDiferente2026).
 import { formatos, tarefas as t } from '@nads/core';
 import { Alerta, Vazio } from '@nads/ui';
 
@@ -43,7 +43,14 @@ function LadoIbsCbs({ c, lado }: { c: t.sieg.ConferenciaIbsCbs; lado: t.sieg.Lad
     n.semGrupo ? n.semGrupo + ' sem o grupo IBSCBS' : '',
     n.naoConferidas ? n.naoConferidas + ' que a calculadora não conferiu' : '',
   ].filter(Boolean).join(' · ') + ' (calculadora da Receita ' + c.versao + ', ' + formatos.dataHora(c.em) + ').';
-  if (!n.divergentes) return <Alerta naLinha tom="ok" titulo={'O IBS/CBS das notas ' + oQue + ' confere com a calculadora da Receita'} texto={detalhe} />;
+  // a base de 2026 (22/11/2026: "Sim, separar"): à parte, como aviso, sem entrar na tabela das divergências
+  const avisoDaBase = n.baseDiferente2026 > 0 && (
+    <p className="hint">
+      {plural(n.baseDiferente2026, 'nota ' + lado + ' tem', 'notas ' + oQue + ' têm')} a base do IBS/CBS (vBC) diferente da calculadora da
+      Receita, que em 2026 tira o ICMS, o PIS e a COFINS da base. É só aviso: em 2026 isso não muda imposto e não entra nas divergências.
+    </p>
+  );
+  if (!n.divergentes) return <><Alerta naLinha tom="ok" titulo={'O IBS/CBS das notas ' + oQue + ' confere com a calculadora da Receita'} texto={detalhe} />{avisoDaBase}</>;
   const notas = c.notas.filter(x => x.lado === lado);
   const linhas = notas.flatMap(x => x.divergencias.map((d, i) => ({ nota: x, d, primeira: i === 0 })));
   return (
@@ -67,6 +74,7 @@ function LadoIbsCbs({ c, lado }: { c: t.sieg.ConferenciaIbsCbs; lado: t.sieg.Lad
         </table>
       </div>
       {linhas.length > 80 && <p className="hint">E mais {linhas.length - 80} diferenças.</p>}
+      {avisoDaBase}
     </>
   );
 }
