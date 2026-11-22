@@ -1,6 +1,6 @@
 // A conferência do IBS/CBS das notas do SIEG pela calculadora oficial da Receita (21/11/2026: "ligar ao nads as
 // calculadoras oficiais da Reforma Tributária"). A calculadora (ReceitaFederal/calculadora-rtc-regime-regular, Java)
-// roda neste PC, só para ele (127.0.0.1:8080; ver robo/calculadoras-rtc/LEIAME.md). Depois de cada "Baixar XMLs" do
+// roda neste PC, só para ele (127.0.0.1:18080; ver robo/calculadoras-rtc/LEIAME.md). Depois de cada "Baixar XMLs" do
 // SIEG, o robô manda cada NF-e/NFC-e do mês (de 2026 em diante, sem as canceladas) para ela:
 //   1. POST /calculadora/xml/validate?tipo=nfe|nfce&subtipo=grupo   o recorte só com os grupos IBSCBS, contra o XSD;
 //   2. POST /calculadora/observabilidade/regime-geral               cada item com a base da nota e, de novo, só com os
@@ -11,7 +11,7 @@
 // Sem a calculadora ligada, não faz nada (uma linha no registro) e o Fiscal continua como antes.
 const R = require('./gerado/ibscbs');
 
-const URL_PADRAO = 'http://127.0.0.1:8080/api';
+const URL_PADRAO = 'http://127.0.0.1:18080/api';
 const ESPERA_MS = 60000;
 
 /** O texto de um erro da calculadora (o "problem" do Spring: detail, title) ou o corpo cru. */
@@ -20,7 +20,7 @@ function motivoDaResposta(texto) {
 }
 
 /**
- * A calculadora no PC. url: a base (padrão: RTC_URL ou 127.0.0.1:8080/api); buscar: o fetch (os testes passam um falso).
+ * A calculadora no PC. url: a base (padrão: RTC_URL ou 127.0.0.1:18080/api); buscar: o fetch (os testes passam um falso).
  * Cada função devolve o que o core espera; a calculadora fora do ar vira null (a nota fica "não conferida").
  */
 function criarCalculadora({ url = process.env.RTC_URL || URL_PADRAO, buscar = globalThis.fetch } = {}) {
@@ -95,7 +95,8 @@ async function conferirMes({ arquivos, cnpj, canceladas = [], calc = criarCalcul
 function linhaDoRegistro(resumo) {
   const c = k => resumo.emitidas[k] + resumo.recebidas[k];
   return c('conferidas') + ' conferidas (' + c('divergentes') + ' com divergência), ' + c('semGrupo') + ' sem o grupo IBSCBS'
-    + (c('naoConferidas') ? ', ' + c('naoConferidas') + ' não conferidas' : '') + ' — calculadora ' + resumo.versao;
+    + (c('naoConferidas') ? ', ' + c('naoConferidas') + ' não conferidas' : '')
+    + (c('baseDiferente2026') ? ', ' + c('baseDiferente2026') + ' com a base de 2026 diferente (aviso)' : '') + ' — calculadora ' + resumo.versao;
 }
 
 const foraDoAr = { avisou: false };

@@ -317,6 +317,8 @@ const textoDoErro = (e) => [e.code, e.detail || e.title].filter(Boolean).join(" 
 function conferirNota(nota, resposta, validacao) {
 	const divergencias = [];
 	const naoConferidos = [];
+	const de2026 = nota.data.slice(6) === "2026";
+	let baseDiferente2026 = false;
 	const simples = nota.crt === "1" || nota.crt === "2" || nota.crt === "4";
 	const base = {
 		chave: nota.chave,
@@ -434,12 +436,15 @@ function conferirNota(nota, resposta, validacao) {
 		const ob = it.conferirBase ? porNumero.get(NUMERO_DA_BASE + it.nItem) : void 0;
 		if (ob && (ob.estadoItem === "CALCULADO" || ob.estadoItem === "CALCULO_SIMULADO")) {
 			const bc = grupoDaResposta(obj(ob.tribCalc?.IBSCBS)).vBC;
-			if (difere(g.vBC, bc, FOLGA_VALOR)) divergencias.push({
-				item: it.nItem,
-				campo: "base de cálculo (vBC)",
-				naNota: reais(g.vBC),
-				calculadora: reais(bc)
-			});
+			if (difere(g.vBC, bc, FOLGA_VALOR)) {
+				if (de2026) baseDiferente2026 = true;
+				else divergencias.push({
+					item: it.nItem,
+					campo: "base de cálculo (vBC)",
+					naNota: reais(g.vBC),
+					calculadora: reais(bc)
+				});
+			}
 		} else if (ob && ob.estadoItem === "INCONSISTENCIA_ENTRADA") divergencias.push({
 			item: it.nItem,
 			campo: "base de cálculo (vBC)",
@@ -468,7 +473,8 @@ function conferirNota(nota, resposta, validacao) {
 		...base,
 		situacao,
 		divergencias,
-		naoConferidos
+		naoConferidos,
+		...baseDiferente2026 ? { baseDiferente2026 } : {}
 	};
 }
 const MAX_NOTAS = 150;
@@ -478,12 +484,14 @@ const contagemVazia = () => ({
 	certas: 0,
 	divergentes: 0,
 	semGrupo: 0,
-	naoConferidas: 0
+	naoConferidas: 0,
+	baseDiferente2026: 0
 });
 function resumoDaConferencia(notas, versao, em) {
 	const emitidas = contagemVazia(), recebidas = contagemVazia();
 	for (const n of notas) {
 		const c = n.lado === "emitida" ? emitidas : recebidas;
+		if (n.baseDiferente2026) c.baseDiferente2026++;
 		if (n.situacao === "certa") {
 			c.conferidas++;
 			c.certas++;
@@ -517,7 +525,8 @@ function lerConferenciaIbsCbs(v) {
 			certas: numero(c.certas),
 			divergentes: numero(c.divergentes),
 			semGrupo: numero(c.semGrupo),
-			naoConferidas: numero(c.naoConferidas)
+			naoConferidas: numero(c.naoConferidas),
+			baseDiferente2026: numero(c.baseDiferente2026)
 		};
 	};
 	const notas = Array.isArray(d.notas) ? d.notas.map(obj).map((n) => ({
@@ -529,6 +538,7 @@ function lerConferenciaIbsCbs(v) {
 		nome: String(n.nome ?? ""),
 		situacao: "divergente",
 		simples: !!n.simples,
+		...n.baseDiferente2026 ? { baseDiferente2026: true } : {},
 		divergencias: (Array.isArray(n.divergencias) ? n.divergencias : []).map(obj).map((x) => ({
 			item: numero(x.item),
 			campo: String(x.campo ?? ""),

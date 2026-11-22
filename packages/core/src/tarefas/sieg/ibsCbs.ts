@@ -240,6 +240,12 @@ export interface NotaConferida {
   naoConferidos: { item: number; motivo: string }[];
   /** o emitente é do Simples ou MEI (em 2026 o grupo não é exigido dele) */
   simples: boolean;
+  /**
+   * em 2026, a base (vBC) diferente da calculadora não é divergência, é aviso (22/11/2026: "Sim, separar"): a calculadora
+   * tira o ICMS, o PIS e a COFINS da base e a maioria dos emissores ainda não; no ano de teste isso não muda imposto e
+   * encobriria o que importa agora (cClassTrib, CST, redução, valores). De 2027 em diante é divergência como as outras
+   */
+  baseDiferente2026?: boolean;
 }
 
 const FOLGA_VALOR = 0.01;
@@ -273,6 +279,8 @@ const textoDoErro = (e: { code?: string; title?: string; detail?: string }) => [
 export function conferirNota(nota: NotaParaConferir, resposta: RespostaDaCalculadora | null, validacao: ValidacaoDoGrupo): NotaConferida {
   const divergencias: Divergencia[] = [];
   const naoConferidos: { item: number; motivo: string }[] = [];
+  const de2026 = nota.data.slice(6) === '2026';
+  let baseDiferente2026 = false;
   const simples = nota.crt === '1' || nota.crt === '2' || nota.crt === '4';
   const base = { chave: nota.chave, numero: nota.numero, tipo: nota.tipo, data: nota.data, lado: nota.lado, nome: nota.nome, simples };
   const comGrupo = nota.itens.filter(i => i.grupo);
@@ -314,7 +322,10 @@ export function conferirNota(nota: NotaParaConferir, resposta: RespostaDaCalcula
     const ob = it.conferirBase ? porNumero.get(NUMERO_DA_BASE + it.nItem) : undefined;
     if (ob && (ob.estadoItem === 'CALCULADO' || ob.estadoItem === 'CALCULO_SIMULADO')) {
       const bc = grupoDaResposta(obj(ob.tribCalc?.IBSCBS)).vBC;
-      if (difere(g.vBC, bc, FOLGA_VALOR)) divergencias.push({ item: it.nItem, campo: 'base de cálculo (vBC)', naNota: reais(g.vBC), calculadora: reais(bc) });
+      if (difere(g.vBC, bc, FOLGA_VALOR)) {
+        if (de2026) baseDiferente2026 = true;
+        else divergencias.push({ item: it.nItem, campo: 'base de cálculo (vBC)', naNota: reais(g.vBC), calculadora: reais(bc) });
+      }
     } else if (ob && ob.estadoItem === 'INCONSISTENCIA_ENTRADA') {
       divergencias.push({ item: it.nItem, campo: 'base de cálculo (vBC)', naNota: reais(g.vBC), calculadora: textoDoErro((ob.erros || [{}])[0]) || 'a calculadora recusou os componentes da base' });
     }
@@ -329,12 +340,16 @@ export function conferirNota(nota: NotaParaConferir, resposta: RespostaDaCalcula
   }
 
   const situacao: SituacaoIbsCbs = divergencias.length ? 'divergente' : naoConferidos.length === comGrupo.length ? 'naoConferida' : 'certa';
-  return { ...base, situacao, divergencias, naoConferidos };
+  return { ...base, situacao, divergencias, naoConferidos, ...(baseDiferente2026 ? { baseDiferente2026 } : {}) };
 }
 
 // ---------------------------------------------------------------- o resumo do mês (no siegNotas)
 
-export interface ContagemIbsCbs { conferidas: number; certas: number; divergentes: number; semGrupo: number; naoConferidas: number }
+export interface ContagemIbsCbs {
+  conferidas: number; certas: number; divergentes: number; semGrupo: number; naoConferidas: number;
+  /** das conferidas de 2026, quantas têm a base (vBC) diferente da calculadora (o aviso; ver baseDiferente2026) */
+  baseDiferente2026: number;
+}
 
 /** siegNotas/{codigo}_{AAAA-MM}.ibsCbs: o que o robô gravou da conferência do mês. */
 export interface ConferenciaIbsCbs {
@@ -353,13 +368,14 @@ export interface ConferenciaIbsCbs {
 export const MAX_NOTAS = 150;
 export const MAX_DIVERGENCIAS_POR_NOTA = 12;
 
-const contagemVazia = (): ContagemIbsCbs => ({ conferidas: 0, certas: 0, divergentes: 0, semGrupo: 0, naoConferidas: 0 });
+const contagemVazia = (): ContagemIbsCbs => ({ conferidas: 0, certas: 0, divergentes: 0, semGrupo: 0, naoConferidas: 0, baseDiferente2026: 0 });
 
 /** As notas conferidas do mês → o que vai para o siegNotas (as contagens e as divergentes, as emitidas primeiro). */
 export function resumoDaConferencia(notas: readonly NotaConferida[], versao: string, em: string): ConferenciaIbsCbs {
   const emitidas = contagemVazia(), recebidas = contagemVazia();
   for (const n of notas) {
     const c = n.lado === 'emitida' ? emitidas : recebidas;
+    if (n.baseDiferente2026) c.baseDiferente2026++;
     if (n.situacao === 'certa') { c.conferidas++; c.certas++; }
     else if (n.situacao === 'divergente') { c.conferidas++; c.divergentes++; }
     else if (n.situacao === 'semGrupo') c.semGrupo++;
@@ -378,10 +394,10 @@ export function resumoDaConferencia(notas: readonly NotaConferida[], versao: str
 export function lerConferenciaIbsCbs(v: unknown): ConferenciaIbsCbs | null {
   const d = obj(v);
   if (!d.em) return null;
-  const cont = (x: unknown): ContagemIbsCbs => { const c = obj(x); return { conferidas: numero(c.conferidas), certas: numero(c.certas), divergentes: numero(c.divergentes), semGrupo: numero(c.semGrupo), naoConferidas: numero(c.naoConferidas) }; };
+  const cont = (x: unknown): ContagemIbsCbs => { const c = obj(x); return { conferidas: numero(c.conferidas), certas: numero(c.certas), divergentes: numero(c.divergentes), semGrupo: numero(c.semGrupo), naoConferidas: numero(c.naoConferidas), baseDiferente2026: numero(c.baseDiferente2026) }; };
   const notas = Array.isArray(d.notas) ? (d.notas as unknown[]).map(obj).map(n => ({
     chave: String(n.chave ?? ''), numero: String(n.numero ?? ''), tipo: (n.tipo === 'NFC-e' ? 'NFC-e' : 'NF-e') as NotaConferida['tipo'], data: String(n.data ?? ''),
-    lado: (n.lado === 'recebida' ? 'recebida' : 'emitida') as LadoDaNota, nome: String(n.nome ?? ''), situacao: 'divergente' as SituacaoIbsCbs, simples: !!n.simples,
+    lado: (n.lado === 'recebida' ? 'recebida' : 'emitida') as LadoDaNota, nome: String(n.nome ?? ''), situacao: 'divergente' as SituacaoIbsCbs, simples: !!n.simples, ...(n.baseDiferente2026 ? { baseDiferente2026: true } : {}),
     divergencias: (Array.isArray(n.divergencias) ? n.divergencias : []).map(obj).map(x => ({ item: numero(x.item), campo: String(x.campo ?? ''), naNota: String(x.naNota ?? ''), calculadora: String(x.calculadora ?? '') })),
     naoConferidos: (Array.isArray(n.naoConferidos) ? n.naoConferidos : []).map(obj).map(x => ({ item: numero(x.item), motivo: String(x.motivo ?? '') })),
   })) : [];

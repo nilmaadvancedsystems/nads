@@ -7,7 +7,7 @@
 #   1. baixa o Java 25 (Temurin, da Eclipse Adoptium) em jdk\, se ainda não tem;
 #   2. baixa o código das duas calculadoras na versão marcada abaixo (git clone --branch), gera o banco SQLite
 #      (flyway:migrate) e o .jar (package, sem os testes);
-#   3. liga as duas pelo ligar.ps1, só para este PC (127.0.0.1): o regime regular na 8080 e o Simples na 8082, com 256 MB
+#   3. liga as duas pelo ligar.ps1, só para este PC (127.0.0.1): o regime regular na 18080 e o Simples na 18082, com 256 MB
 #      no máximo cada, cada uma com o seu registro (<pasta>\<nome>.log);
 #   4. confere se respondem e mostra a memória de cada uma;
 #   5. com -Registrar, cria a tarefa agendada "nads-calculadoras-rtc", que liga as duas quando o Windows liga.
@@ -34,8 +34,8 @@ function Nativo {
 
 # As versões da Receita (as tags dos repositórios). Conferidas em 21/11/2026.
 $Calculadoras = @(
-  @{ Nome = 'regime-regular';   Repo = 'https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git';   Versao = '1.7.2'; Jar = 'api-regime-geral.jar';    Porta = 8080; Metricas = 9101 },
-  @{ Nome = 'simples-nacional'; Repo = 'https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional.git'; Versao = '1.0.2'; Jar = 'api-simples-nacional.jar'; Porta = 8082; Metricas = 9103 }
+  @{ Nome = 'regime-regular';   Repo = 'https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git';   Versao = '1.7.2'; Jar = 'api-regime-geral.jar';    Porta = 18080; Metricas = 19101 },
+  @{ Nome = 'simples-nacional'; Repo = 'https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional.git'; Versao = '1.0.2'; Jar = 'api-simples-nacional.jar'; Porta = 18082; Metricas = 19103 }
 )
 # o git: o do PATH ou o do servidor (D:\Programas\Git, o mesmo do robo\servidor\atualizar-robo.cmd)
 $Git = (Get-Command git -ErrorAction SilentlyContinue).Source

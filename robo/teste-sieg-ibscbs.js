@@ -41,7 +41,7 @@ function fetchFalso({ foraDoAr = false, operacao422 = '', xsd422 = '' } = {}) {
   const resposta = (status, corpo) => ({ status, text: async () => (typeof corpo === 'string' ? corpo : JSON.stringify(corpo)) });
   const buscar = async (url, op) => {
     if (foraDoAr) throw Object.assign(new Error('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
-    const rota = url.replace('http://127.0.0.1:8080/api', '');
+    const rota = url.replace(S.URL_PADRAO, '');
     vistos.push(op.method + ' ' + rota);
     if (rota === '/calculadora/dados-abertos/versao') return resposta(200, { versaoApp: '1.7.2', versaoDb: '2026.11' });
     if (rota.startsWith('/calculadora/xml/validate')) return xsd422 ? resposta(422, { status: 422, title: 'Erro de validação de XML', detail: xsd422 }) : resposta(200, 'true');
@@ -58,11 +58,11 @@ function fetchFalso({ foraDoAr = false, operacao422 = '', xsd422 = '' } = {}) {
 (async () => {
   // ---- o mês com a calculadora no ar ----
   const f = fetchFalso();
-  const calc = S.criarCalculadora({ url: 'http://127.0.0.1:8080/api', buscar: f.buscar });
+  const calc = S.criarCalculadora({ buscar: f.buscar });
   igual('versão da calculadora', await calc.versao(), '1.7.2 · base 2026.11');
   const andou = [];
   const r = await S.conferirMes({ arquivos: ARQUIVOS, cnpj: CLIENTE, canceladas: [chave(4)], calc, aoAndar: (i, n) => andou.push(i + '/' + n), agora: () => new Date('2026-11-21T12:00:00Z') });
-  igual('contagem das emitidas', r.emitidas, { conferidas: 2, certas: 1, divergentes: 1, semGrupo: 1, naoConferidas: 0 });
+  igual('contagem das emitidas', r.emitidas, { conferidas: 2, certas: 1, divergentes: 1, semGrupo: 1, naoConferidas: 0, baseDiferente2026: 0 });
   igual('nada recebido', r.recebidas.conferidas, 0);
   igual('só a divergente na lista', r.notas.map(n => n.numero), ['2']);
   igual('o campo divergente', r.notas[0].divergencias, [
@@ -108,7 +108,7 @@ function fetchFalso({ foraDoAr = false, operacao422 = '', xsd422 = '' } = {}) {
   const ro = await S.conferirMes({ arquivos: [ARQUIVOS[0]], cnpj: CLIENTE, calc: op });
   igual('operação recusada: não conferida, com o motivo', [ro.emitidas.naoConferidas, ro.notas.length], [1, 0]);
   const unica = await S.conferirMes({ arquivos: [ARQUIVOS[0]], cnpj: CLIENTE, calc: op });
-  igual('operação recusada: o motivo chega ao item', unica.emitidas, { conferidas: 0, certas: 0, divergentes: 0, semGrupo: 0, naoConferidas: 1 });
+  igual('operação recusada: o motivo chega ao item', unica.emitidas, { conferidas: 0, certas: 0, divergentes: 0, semGrupo: 0, naoConferidas: 1, baseDiferente2026: 0 });
 
   // ---- o motivo da resposta de erro ----
   igual('motivo: detail do problem', S.motivoDaResposta('{"title":"t","detail":"d"}'), 'd');

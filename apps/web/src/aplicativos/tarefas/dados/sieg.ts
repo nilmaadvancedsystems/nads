@@ -74,8 +74,8 @@ function ibsCbsDeExemplo(competencia: string): t.sieg.ConferenciaIbsCbs {
   const [a, m] = competencia.split('-');
   return {
     em: new Date().toISOString(), versao: '1.7.2 (exemplo)',
-    emitidas: { conferidas: 2, certas: 1, divergentes: 1, semGrupo: 0, naoConferidas: 0 },
-    recebidas: { conferidas: 1, certas: 1, divergentes: 0, semGrupo: 0, naoConferidas: 0 },
+    emitidas: { conferidas: 2, certas: 1, divergentes: 1, semGrupo: 0, naoConferidas: 0, baseDiferente2026: 2 },
+    recebidas: { conferidas: 1, certas: 1, divergentes: 0, semGrupo: 0, naoConferidas: 0, baseDiferente2026: 1 },
     notas: [{
       chave: '', numero: '1002', tipo: 'NF-e', data: '12/' + m + '/' + a, lado: 'emitida', nome: 'CLIENTE EXEMPLO (TESTE)', situacao: 'divergente', simples: false, naoConferidos: [],
       divergencias: [

@@ -1,6 +1,6 @@
 // A calculadora da Receita no ar no PC do servidor, sem ninguém precisar ir até ele (21/11/2026: "nao consigo nao estou
 // no escritorio"). Quando o SIEG liga (sieg.js › iniciarSieg), e depois a cada 6 horas: se a calculadora não responde
-// em 127.0.0.1:8080, o robô roda o robo/calculadoras-rtc/instalar.ps1 por trás. Na primeira vez ele baixa o Java 25 e as
+// em 127.0.0.1:18080, o robô roda o robo/calculadoras-rtc/instalar.ps1 por trás. Na primeira vez ele baixa o Java 25 e as
 // duas calculadoras para D:\nads-rtc e gera o banco e os .jar (uns 10 min); nas outras, só liga o que já está lá. O
 // andamento vai para o registro e o resultado (a memória de cada uma e a livre no PC) vai para o painel do robô.
 // Só no Windows. Uma tentativa que falhou só se repete depois de 6 h. O registro completo fica em D:\nads-rtc\instalar.log.
@@ -76,7 +76,9 @@ function criarGarantia({ log = () => {}, painel = null, calc = criarCalculadora(
         return 'ligada';
       }
       falhouEm = agora();
-      const ultima = String(saida || '').trim().split(/\r?\n/).filter(Boolean).slice(-3).join(' | ');
+      // o motivo: a linha de quem não ligou (a porta ocupada, o erro do registro dela); sem ela, o fim da saída
+      const problemas = linhas.filter(l => /NÃO (respondeu|ligou)|ocupada/i.test(l));
+      const ultima = problemas.length ? problemas.join(' | ') : String(saida || '').trim().split(/\r?\n/).filter(Boolean).slice(-3).join(' | ');
       log('Calculadora da Receita: não ficou no ar (código ' + codigo + ')', ultima);
       aoPainel('modulo', 'rtc', 'Calculadora da Receita (IBS/CBS)', false, 'não ficou no ar; ver ' + path.join(pasta, 'instalar.log'));
       aoPainel('erro', 'sieg', 'A calculadora da Receita não ficou no ar', 'código ' + codigo + (ultima ? ' — ' + ultima : ''));

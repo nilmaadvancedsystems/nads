@@ -85,7 +85,7 @@ describe('a leitura da NF-e para a calculadora', () => {
 });
 
 describe('a nota x a calculadora', () => {
-  it('o item certo passa; o da redução não aplicada mostra cada campo, a base e o total', () => {
+  it('o item certo passa; o da redução não aplicada mostra cada campo e o total; a base de 2026 fica só no aviso', () => {
     const n = notaParaConferir(nfe(), CLIENTE)!;
     const r = conferirNota(n, RESPOSTA, { valido: true });
     expect(r.situacao).toBe('divergente');
@@ -93,9 +93,18 @@ describe('a nota x a calculadora', () => {
     expect(r.divergencias).toContainEqual({ item: 2, campo: 'alíquota efetiva do IBS da UF (redução)', naNota: 'sem redução', calculadora: '0,00%' });
     expect(r.divergencias).toContainEqual({ item: 2, campo: 'IBS da UF', naNota: '0,20', calculadora: '0,00' });
     expect(r.divergencias).toContainEqual({ item: 2, campo: 'CBS', naNota: '1,80', calculadora: '0,00' });
-    expect(r.divergencias).toContainEqual({ item: 2, campo: 'base de cálculo (vBC)', naNota: '200,00', calculadora: '178,35' });
+    // 2026: a base diferente (a calculadora tira o ICMS, o PIS e a COFINS) é aviso, não divergência
+    expect(r.divergencias.some(d => d.campo === 'base de cálculo (vBC)')).toBe(false);
+    expect(r.baseDiferente2026).toBe(true);
     // o total da nota bate com a soma dos itens dela
     expect(r.divergencias.some(d => d.item === 0)).toBe(false);
+  });
+
+  it('de 2027 em diante a base diferente é divergência; em 2026, a nota só com ela fica certa (com o aviso)', () => {
+    const so = (dh: string) => notaParaConferir(nfe({ dhEmi: dh, itens: [{ vProd: '100.00', ncm: '10063021', ibscbs: grupo('000', '000001', '100.00', ['0.1000', '0.10'], ['0.0000', '0.00'], '0.10', ['0.9000', '0.90']) }], total: '' }), CLIENTE)!;
+    const resposta = (vbc: string): RespostaDaCalculadora => ({ objetos: [RESPOSTA.objetos![0], { nObj: 1001, estadoItem: 'CALCULADO', tribCalc: ibscbs('000', '000001', valores(vbc, '0.08', '0.00', '0.71')) }] });
+    expect(conferirNota(so('2026-10-05T10:00:00-03:00'), resposta('78.35'), { valido: true })).toMatchObject({ situacao: 'certa', divergencias: [], baseDiferente2026: true });
+    expect(conferirNota(so('2027-02-01T10:00:00-03:00'), resposta('81.35'), { valido: true }).divergencias).toEqual([{ item: 1, campo: 'base de cálculo (vBC)', naNota: '100,00', calculadora: '81,35' }]);
   });
 
   it('tudo igual (com folga de 1 centavo): certa', () => {
@@ -106,6 +115,7 @@ describe('a nota x a calculadora', () => {
     ] };
     const r = conferirNota(notaParaConferir(nfe(), CLIENTE)!, certa, { valido: true });
     expect(r).toMatchObject({ situacao: 'certa', divergencias: [], naoConferidos: [] });
+    expect(r.baseDiferente2026).toBeUndefined();
   });
 
   it('o item que a calculadora recusa (NCM fora da cClassTrib), o XSD e o total que não fecha', () => {
@@ -152,8 +162,9 @@ describe('o resumo do mês no siegNotas', () => {
       nota('5', 'recebida', 'divergente'), nota('3', 'emitida', 'divergente'), nota('1', 'emitida', 'certa'),
       nota('2', 'emitida', 'semGrupo'), nota('4', 'recebida', 'naoConferida'), nota('2', 'emitida', 'divergente'),
     ], '1.7.2', '2026-11-21T10:00:00.000Z');
-    expect(r.emitidas).toEqual({ conferidas: 3, certas: 1, divergentes: 2, semGrupo: 1, naoConferidas: 0 });
-    expect(r.recebidas).toEqual({ conferidas: 1, certas: 0, divergentes: 1, semGrupo: 0, naoConferidas: 1 });
+    expect(r.emitidas).toEqual({ conferidas: 3, certas: 1, divergentes: 2, semGrupo: 1, naoConferidas: 0, baseDiferente2026: 0 });
+    expect(r.recebidas).toEqual({ conferidas: 1, certas: 0, divergentes: 1, semGrupo: 0, naoConferidas: 1, baseDiferente2026: 0 });
+    expect(resumoDaConferencia([{ ...nota('9', 'emitida', 'certa'), baseDiferente2026: true }], '1.7.2', 'x').emitidas.baseDiferente2026).toBe(1);
     expect(r.notas.map(n => n.numero)).toEqual(['2', '3', '5']);
     expect(r.notas[0].divergencias).toHaveLength(12);
     expect(r.cortadas).toBe(0);
@@ -163,7 +174,7 @@ describe('o resumo do mês no siegNotas', () => {
   });
 
   it('o que volta do banco é lido sem confiar no formato', () => {
-    const r = resumoDaConferencia([nota('3', 'emitida', 'divergente')], '1.7.2', '2026-11-21T10:00:00.000Z');
+    const r = resumoDaConferencia([{ ...nota('3', 'emitida', 'divergente'), baseDiferente2026: true }], '1.7.2', '2026-11-21T10:00:00.000Z');
     expect(lerConferenciaIbsCbs(JSON.parse(JSON.stringify(r)))).toEqual(r);
     expect(lerConferenciaIbsCbs(null)).toBeNull();
     expect(lerConferenciaIbsCbs({ em: 'x', notas: 'lixo' })).toMatchObject({ notas: [], emitidas: { conferidas: 0 } });

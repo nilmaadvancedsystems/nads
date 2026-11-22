@@ -132,7 +132,12 @@ export function useCalculadoraDoSimples() {
   const limpar = () => { setDigitados({}); setMercadoriaEscolhida(null); setServicoEscolhido(null); };
   const rbt12Meses = n.rbt12.fonte === 'SIEG' ? comSaidas.length : null;
 
+  // as compras do mês que dariam crédito de CBS/IBS fora do DAS (o simulador da Reforma, 22/11/2026): as mesmas do crédito
+  // do Lucro Real pelos XMLs (mercadorias de revenda e insumos, e os fretes)
+  const comprasDoSieg = useMemo(() => (xml?.dados ? t.sieg.creditosDoMes(xml.dados).base : null), [xml?.dados]);
   return {
+    /** as compras do mês com crédito (SIEG), para o simulador da Reforma; null sem os XMLs */
+    comprasDoSieg,
     carregando: !!empresa && (saidas.some(x => !x.mes.carregado) || !!(xml && !xml.carregadas) || !dp.carregada || !fiscal.carregada),
     // a empresa
     empresa, busca, achadas, ativo, setAtivo, regime,

@@ -4,11 +4,14 @@ As calculadoras oficiais da CBS, do IBS e do Imposto Seletivo, publicadas pela R
 
 | Calculadora | Repositório | Versão | Onde fica |
 |---|---|---|---|
-| Regime regular | [calculadora-rtc-regime-regular](https://github.com/ReceitaFederal/calculadora-rtc-regime-regular) | 1.7.2 | `http://127.0.0.1:8080/api` |
-| Simples Nacional | [calculadora-rtc-simples-nacional](https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional) | 1.0.2 | `http://127.0.0.1:8082/api` |
+| Regime regular | [calculadora-rtc-regime-regular](https://github.com/ReceitaFederal/calculadora-rtc-regime-regular) | 1.7.2 | `http://127.0.0.1:18080/api` |
+| Simples Nacional | [calculadora-rtc-simples-nacional](https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional) | 1.0.2 | `http://127.0.0.1:18082/api` |
 
 São servidores Java 25 (Spring Boot e SQLite). Não rodam no navegador e ficam só para o próprio PC: ninguém de fora
 alcança as portas.
+
+As portas são 18080 e 18082, e 19101 e 19103 para as métricas internas. A Receita usa 8080 e 8082, mas no servidor a
+calculadora do regime regular não subiu na 8080 na primeira instalação, em 22/11/2026.
 
 ## Por que no PC do servidor e não na nuvem
 
@@ -53,8 +56,16 @@ Para mudar de versão, troque a `Versao` no topo do `instalar.ps1` e rode de nov
 ## Quem usa
 
 - `robo/sieg-ibscbs.js`: depois de cada "Baixar XMLs" do SIEG, confere o IBS/CBS das NF-e e NFC-e do mês e grava o
-  resultado em `siegNotas/{codigo}_{AAAA-MM}`, no campo `ibsCbs`. O Fiscal mostra essa conferência nas Saídas e nas
-  Entradas. Sem a calculadora no ar, o robô só escreve uma linha no registro e segue.
+  resultado em `siegNotas/{codigo}_{AAAA-MM}`, no campo `ibsCbs`. O Fiscal mostra essa conferência na aba IBS/CBS da
+  página Fiscal › SIEG. Sem a calculadora no ar, o robô só escreve uma linha no registro e segue.
 - A regra fica em `packages/core/src/tarefas/sieg/ibsCbs.ts` e chega ao robô pelo `robo/gerado/ibscbs.js`
   (`node scripts/robo-ibscbs.mjs`).
-- Para usar outro endereço, defina a variável `RTC_URL`, por exemplo `http://127.0.0.1:8080/api`.
+- Para usar outro endereço, defina a variável `RTC_URL`, por exemplo `http://127.0.0.1:18080/api`.
+
+## As tabelas oficiais no nads
+
+O `scripts/tabelas-rtc.mjs` lê o banco da calculadora (`calculadora\db\calculadora-pro.db`, na pasta da instalação) e
+grava `packages/core/src/reforma/tabelas.json`: os CST do IBS/CBS, o cClassTrib, as alíquotas de referência e as
+atividades do Simples. O Fiscal mostra essas tabelas em **Tabelas da Reforma**, e o simulador do Simples usa as alíquotas.
+Quando a Receita publicar uma versão nova, troque a versão no `instalar.ps1`, deixe o robô instalar, rode o script com o
+banco novo e commite o JSON.

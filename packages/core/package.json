@@ -16,7 +16,8 @@
     "./conversor": "./src/extratudo/conversor/index.ts",
     "./usuarios": "./src/usuarios/index.ts",
     "./entregas": "./src/entregas/index.ts",
-    "./tarefas": "./src/tarefas/index.ts"
+    "./tarefas": "./src/tarefas/index.ts",
+    "./reforma-tabelas": "./src/reforma/tabelas.json"
   },
   "dependencies": {
     "@types/node-forge": "^1.3.14",
