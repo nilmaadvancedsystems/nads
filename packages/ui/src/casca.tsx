@@ -399,6 +399,16 @@ function Rodape() {
   );
 }
 
+/** Abre numa aba nova um arquivo gerado no navegador (o PDF da DANFE; 22/11/2026). O endereço vale enquanto a aba carrega. */
+export function abrirBytesNaAba(bytes: Uint8Array, tipo: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes as BlobPart], { type: tipo }));
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+}
+
 /** Baixa um arquivo binário gerado no navegador (planilha .xlsx/.xls). */
 export function baixarBytes(bytes: Uint8Array, nome: string, tipo: string) {
   const b = new Blob([bytes as BlobPart], { type: tipo });

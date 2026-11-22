@@ -4,13 +4,18 @@
 // valor, lançamento automático (a categoria), conta devedora e credora com a lupa (a pesquisa no plano de contas da
 // empresa, o que veio do Alterdata/balancete no Cadastro; sem ele, o plano do LCDPR), histórico padrão com a lupa,
 // documento, imóvel com a lupa, os tipos e o CPF/CNPJ. Serve para o lançamento novo (id 'novo') e para corrigir o que veio
-// do SIEG ou de um relatório. A conta credora escolhida fica lembrada para o fornecedor.
-import { formatos, lcdpr } from '@nads/core';
+// do SIEG ou de um relatório. A conta credora escolhida fica lembrada para o fornecedor. O selo da origem ("Nota fiscal",
+// "CT-e") abre a nota por cima da janela, sem perder o que foi digitado (22/11/2026: "abrir a nota fiscal ali mesmo");
+// sem o XML, diz o porquê.
+import { formatos, lcdpr, type tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
-import { useCadastro, useLcdpr } from '../../../dados/repo';
+import { useCadastro, useLcdpr, useSieg } from '../../../dados/repo';
 import { useRegrasDoLcdpr } from './useRegrasDoLcdpr';
 import { lembrarContasDe, lerSessao, mesDoLancamento, mudarMes, tirarLancamentos, trocarLancamentos, useSessaoDoLcdpr } from './useSessaoDoLcdpr';
+
+/** A nota aberta por cima da janela: a nota, a empresa e o mês (para o robô buscar o XML). */
+export interface NotaAberta { nota: tarefas.sieg.NotaDoSieg; codigo: number | null; competencia: string }
 
 /** Os campos com a lupa. */
 export type CampoDaPesquisa = 'contaDeved' | 'contaCred' | 'codHist' | 'imovel';
@@ -33,6 +38,17 @@ export function useJanelaDoLancamento(id: number | 'novo', fechar: () => void) {
   const [rascunho, setRascunho] = useState<lcdpr.RascunhoDoLancamento>(() => (existente ? lcdpr.rascunhoDoLancamento(existente) : lcdpr.rascunhoNovo(r.config)));
   const [pesquisa, setPesquisa] = useState<{ campo: CampoDaPesquisa; termo: string } | null>(null);
   const [tentou, setTentou] = useState(false);
+  /** a nota aberta por cima da janela (a DANFE) */
+  const [vendoNota, setVendoNota] = useState(false);
+
+  // a nota do lançamento: do resumo do SIEG do mês dele (a mesma escuta da lista; não lê o banco de novo)
+  const sieg = useSieg();
+  const mesDaNota = existente ? mesDoLancamento(existente.id) : '';
+  const notasDoMes = existente && s.empresa != null ? sieg.notas(String(s.empresa), mesDaNota) : null;
+  const paraVer: lcdpr.NotaParaVer | null = existente
+    ? (notasDoMes && !notasDoMes.carregadas ? { nota: null, motivo: 'Carregando as notas do mês…' } : lcdpr.notaParaVer(existente, notasDoMes?.dados, mesDaNota))
+    : null;
+  const notaAberta: NotaAberta | null = vendoNota && paraVer?.nota ? { nota: paraVer.nota, codigo: s.empresa ?? null, competencia: mesDaNota } : null;
 
   // o plano de contas da empresa (o Cadastro: o do Alterdata, ou o balancete que a Conferência guardou)
   const cad = useCadastro(s.nome, s.empresa);
@@ -57,6 +73,17 @@ export function useJanelaDoLancamento(id: number | 'novo', fechar: () => void) {
     revisar: !!existente?.revisar,
     ncm: existente?.ncm || '',
     podeExcluir: existente?.origem === 'Manual',
+    /** o selo da origem abre a nota (o lançamento que veio de nota ou CT-e; o feito à mão não tem) */
+    temNota: !!existente && existente.origem !== 'Manual',
+    /** por que a nota não abre (sem o XML), para dizer na janela; vazio quando abre */
+    semNota: paraVer && !paraVer.nota ? paraVer.motivo : '',
+    /** a nota aberta por cima (com a empresa e o mês, para o robô buscar o XML) */
+    notaAberta,
+    /** clicou no selo e a nota não abre: o porquê, na faixa da janela */
+    avisoSemNota: vendoNota && paraVer && !paraVer.nota ? paraVer.motivo : '',
+    /** abre a nota por cima (sem o XML, a faixa com o porquê) */
+    verNota: () => setVendoNota(true),
+    fecharNota: () => setVendoNota(false),
     rascunho,
     mudar,
     /** o plano das lupas de conta: o da empresa (do Alterdata) ou o do LCDPR */

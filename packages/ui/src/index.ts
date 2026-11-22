@@ -7,7 +7,7 @@ export { useTema, SeletorTema, type Tema } from './tema';
 export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, SoltarArquivos, Segmentado, BlocosDeEscolha, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, BotaoFechar, Vazio, ConfigLinha, ConfigSecao, Dica, CampoData, CampoReais, useEstadoPorChave, MenuSuspenso, CampoEscolha, TituloDaConta, MedalhaGov, type ItemMenu } from './componentes';
 export { CalendarioDoMes, CampoDataComCalendario, somarMeses } from './calendario';
 export { useJanela } from './janela';
-export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
+export { Casca, abrirBytesNaAba, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
 export { BarraDeCarregamento, carregandoAte, motivoParaEsperar, trocarDeTelaComBarra, useCarregando, useMotivoParaEsperar, useOcupado } from './carregamento';

@@ -45,6 +45,25 @@ export function notaDoLancamento(l: Pick<Lancamento, 'chave' | 'documento' | 'cn
   return recebidas.find(x => (l.origem === 'CTe' ? x.tipo === 'CT-e' : x.tipo !== 'CT-e') && soDigitos(x.emitente.doc) === doc && numeroDoDocumento(x.numero, x.serie) === l.documento) || null;
 }
 
+/** A nota que o selo da janela do lançamento abre, ou por que não abre (o motivo, para dizer na tela). */
+export type NotaParaVer = { nota: NotaDoSieg; motivo: '' } | { nota: null; motivo: string };
+
+/**
+ * A nota de um lançamento para ver sem sair da janela dele (22/11/2026: "abrir a nota fiscal ali mesmo"): a do resumo
+ * do SIEG do mês (o robô busca o XML pela chave); sem ela, o motivo em palavras: o lançamento feito à mão, as notas do
+ * mês ainda não puxadas do SIEG, ou a nota fora das já baixadas. mes: AAAA-MM.
+ */
+export function notaParaVer(l: Pick<Lancamento, 'chave' | 'documento' | 'cnpj' | 'origem'>, n: Pick<NotasSieg, 'recebidas'> | null | undefined, mes: string): NotaParaVer {
+  if (l.origem === 'Manual') return { nota: null, motivo: 'Este lançamento foi feito à mão: não tem nota fiscal (XML) guardada para abrir.' };
+  const doMes = /^\d{4}-\d{2}$/.test(mes) ? mes.slice(5) + '/' + mes.slice(0, 4) : mes;
+  const numero = l.documento || 'sem número';
+  const qual = (l.origem === 'CTe' ? 'O CT-e ' : 'A nota ') + numero;
+  if (!n) return { nota: null, motivo: 'As notas de ' + doMes + ' ainda não foram puxadas do SIEG, então o nads não tem o XML ' + (l.origem === 'CTe' ? 'do CT-e ' : 'da nota ') + numero + '. Use o "Puxar do SIEG" na lista e abra de novo.' };
+  const nota = notaDoLancamento(l, n);
+  if (nota) return { nota, motivo: '' };
+  return { nota: null, motivo: qual + ' não está nas notas do SIEG de ' + doMes + ' já baixadas, então o nads não tem o XML. Baixe as notas do mês de novo no "Puxar do SIEG".' };
+}
+
 /** O que saiu do SIEG: os lançamentos, quantos de cada e o que ficou de fora. */
 export interface LeituraDoSieg {
   lancamentos: Lancamento[];

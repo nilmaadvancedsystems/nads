@@ -4213,7 +4213,7 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .gm-aba{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;padding:0 8px;border:none;border-radius:7px;background:none;color:var(--ink-muted);font:inherit;font-size:var(--fs-12);font-weight:500;cursor:pointer;}
 .gm-aba:hover{background:var(--hover-bg);color:var(--ink);}
 .gm-aba-num{min-width:20px;height:18px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-11);font-weight:600;background:var(--surface-3);color:var(--ink-muted);}
-.gm-aba.ativa .gm-aba-num{background:var(--accent);color:var(--on-accent,#fff);}
+.gm-aba.ativa .gm-aba-num{background:var(--accent);color:var(--on-accent);}
 .gm-itens{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0;}
 .gm-item{display:flex;gap:12px;border-bottom:1px solid var(--border);cursor:pointer;position:relative;outline:none;}
 .gm-item:hover{background:var(--hover-bg);}
@@ -4820,7 +4820,22 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .lcdpr-janela .registro-topo{flex:none;}
 .lcdpr-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
 .lcdpr-janela .registro-pe{flex:none;margin-top:0;}
-.lcdpr-janela-origem{margin-left:auto;margin-right:8px;}
+.lcdpr-janela-origem{position:relative;display:inline-flex;align-items:center;gap:8px;margin-left:auto;margin-right:8px;}
+/* o selo da origem que abre a nota (22/11/2026): parece o selo, com o "Ver" de botão */
+.lcdpr-selo-nota{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 4px 0 10px;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-13);font-weight:500;cursor:pointer;}
+.lcdpr-selo-nota>svg{width:14px;height:14px;color:var(--ink-muted);}
+.lcdpr-selo-ver{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:var(--fs-12);}
+.lcdpr-selo-ver svg{width:13px;height:13px;}
+.lcdpr-selo-nota:hover{border-color:var(--accent);}
+.lcdpr-selo-nota:hover .lcdpr-selo-ver{background:var(--accent);color:var(--on-accent);}
+.lcdpr-selo-nota:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.lcdpr-selo-nota.sem .lcdpr-selo-ver{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink-muted);}
+/* sem o XML: o balão com o porquê, debaixo do selo (por cima do corpo, sem empurrar nada) */
+.lcdpr-sem-nota{position:absolute;top:calc(100% + 8px);right:0;z-index:5;width:340px;display:flex;align-items:flex-start;gap:8px;padding:10px 6px 10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:var(--fs-13);line-height:1.4;color:var(--ink);}
+.lcdpr-sem-nota>svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--warn,#c77700);}
+.lcdpr-sem-nota>span{flex:1;}
+.lcdpr-sem-nota .btn{flex:none;min-height:0;height:24px;width:24px;padding:0;justify-content:center;}
+.lcdpr-sem-nota .btn svg{width:14px;height:14px;}
 /* o corpo: o formulário à esquerda e o resumo à direita (o "como vai para o LCDPR") */
 .lcdpr-corpo{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:stretch;padding-top:4px;padding-bottom:12px;}
 .lcdpr-form{min-width:0;}
@@ -8282,7 +8297,7 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .banco-acao-bola{width:52px;height:52px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink);transition:transform .12s ease,background .12s ease;}
 .banco-acao-bola svg{width:22px;height:22px;}
 .banco-acao:hover:not(:disabled) .banco-acao-bola{transform:translateY(-2px);background:var(--hover-bg);}
-.banco-acao.destaque .banco-acao-bola{background:var(--accent);color:var(--on-accent,#fff);}
+.banco-acao.destaque .banco-acao-bola{background:var(--accent);color:var(--on-accent);}
 .banco-acao:disabled{cursor:default;color:var(--ink-muted);}
 .banco-acao:disabled .banco-acao-bola{opacity:.35;}
 .banco-lista-topo{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 8px;}

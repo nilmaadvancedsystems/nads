@@ -1,6 +1,6 @@
 // A DANFE idêntica à original numa janela (11/11/2026, no LCDPR: "a danfe que tem que ficar identica a danfe original"):
 // o PDF desenhado do XML (o mesmo do robô, medido dos PDFs do portal do SIEG) aparece como a folha, branca sobre o cinza,
-// na largura da janela; no topo, o zoom (−, +, ajustar) e baixar o PDF e o XML. Sem o leitor de PDF do navegador (a barra
+// na largura da janela; no topo, o zoom (−, +, ajustar), abrir o PDF numa aba nova e baixar o PDF e o XML. Sem o leitor de PDF do navegador (a barra
 // de impressão e as miniaturas; 11/11/2026: "coloca o vizualizador de verdade nao esse trem de impressao"). Enquanto o robô busca a nota, o andamento; sem a nota, o motivo e o "Tentar de novo". Esc fecha.
 import type { tarefas as t } from '@nads/core';
 import { BotaoFechar, Icone, useJanela } from '@nads/ui';
@@ -24,8 +24,9 @@ export function JanelaDaDanfe({ nota, codigo, competencia, fechar }: { nota: t.s
                 <button type="button" className="btn btn-ghost" aria-label="Aumentar" title="Aumentar" onClick={vm.mais}>+</button>
               </span>
             )}
-            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.baixarPdf}><Icone nome="download" />PDF</button>
-            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.baixarXml}><Icone nome="download" />XML</button>
+            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.abrirNaAba} title="Abrir o PDF numa aba nova"><Icone nome="maximizar" />Abrir em nova aba</button>
+            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.baixarPdf} title="Baixar o PDF da DANFE"><Icone nome="download" />Baixar PDF</button>
+            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.baixarXml} title="Baixar o XML da nota"><Icone nome="download" />XML</button>
           </span>
           <BotaoFechar onClick={fechar} />
         </header>

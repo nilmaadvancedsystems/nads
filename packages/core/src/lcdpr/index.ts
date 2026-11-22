@@ -21,5 +21,5 @@ export {
   problemasDoRascunho, rascunhoDoLancamento, rascunhoNovo, type ContaDaEmpresa, type ItemDePesquisa, type RascunhoDoLancamento,
 } from './manual';
 export { cadastrosDoDocumento, cadastrosDoMovimento, cadastrosVazios, linhasDaPlanilhaDoMovimento, modeloDoHistorico, type CadastrosDoAlterdata, type ContaAprendida, type HistoricoAprendido } from './historicos';
-export { RESUMO_DO_LCDPR, lerDoSieg, notaDoLancamento, resumoServeParaOLcdpr, type LeituraDoSieg } from './sieg';
+export { RESUMO_DO_LCDPR, lerDoSieg, notaDoLancamento, notaParaVer, resumoServeParaOLcdpr, type LeituraDoSieg, type NotaParaVer } from './sieg';
 export { NOME_DO_BACKUP, backupDaConfig, configDoBackup, configDoDocumento, documentoDaConfig } from './documento';

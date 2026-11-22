@@ -4,7 +4,7 @@
 // para baixar o PDF e o XML. Só NF-e e NFC-e (o CT-e fica no espelho). As folhas aparecem como imagem (o pdf.js desenha
 // cada página; 11/11/2026: "coloca o vizualizador de verdade nao esse trem de impressao"), com o zoom próprio.
 import { lcdpr, type tarefas as t } from '@nads/core';
-import { baixarBytes } from '@nads/ui';
+import { abrirBytesNaAba, baixarBytes } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { imagensDoPdf } from '../../ferramentas/pdfParaArquivos';
 import { desenharDanfe } from './danfePdf';
@@ -56,6 +56,8 @@ export function useDanfeOriginal(nota: t.sieg.NotaDoSieg, codigo: string | numbe
     mais: () => setZoom(PASSOS.find(p => p > atual) ?? PASSOS[PASSOS.length - 1]),
     ajustar: () => setZoom('largura'),
     baixarPdf: () => { if (pdf) baixarBytes(pdf.bytes, 'DANFE ' + nota.numero + '.pdf', 'application/pdf'); },
+    /** o PDF numa aba nova (22/11/2026, na janela do lançamento do LCDPR) */
+    abrirNaAba: () => { if (pdf) abrirBytesNaAba(pdf.bytes, 'application/pdf'); },
     baixarXml: () => { if (o.xml) baixarBytes(new TextEncoder().encode(o.xml), (nota.chave || nota.numero) + '.xml', 'application/xml'); },
     tentarDeNovo: () => { setErroDoPdf(''); void o.abrir(); },
   };

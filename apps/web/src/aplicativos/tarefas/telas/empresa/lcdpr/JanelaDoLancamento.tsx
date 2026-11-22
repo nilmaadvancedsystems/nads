@@ -5,9 +5,12 @@
 // (o lançamento automático) com a conta devedora; o fornecedor; o histórico; o imóvel e os tipos. À direita, o resumo de
 // como o lançamento vai para a planilha (débito, crédito, valor, histórico) e o que falta. Nas lupas, o código, a lupa e
 // o nome numa caixa cinza; a lupa troca o corpo pela pesquisa (Esc volta). No rodapé, Excluir (o lançamento à mão),
-// Cancelar e Gravar (Ctrl+Enter).
+// Cancelar e Gravar (Ctrl+Enter). O selo da origem ("Nota fiscal", "CT-e") é um botão: abre a nota por cima da janela (a
+// DANFE idêntica à original, com abrir numa aba nova e baixar o PDF), sem perder o que foi digitado; sem o XML, um balão
+// diz o porquê (22/11/2026: "abrir a nota fiscal ali mesmo, sem sair da janela").
 import { BotaoFechar, Icone, LogoBanco, useJanela } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { VerANota } from '../../fiscal/partes/VerANota';
 import { useJanelaDoLancamento, type CampoDaPesquisa } from './useJanelaDoLancamento';
 
 /** Um campo com o rótulo em cima. */
@@ -37,7 +40,7 @@ export function JanelaDoLancamento({ id, fechar }: { id: number | 'novo'; fechar
   useJanela(janela, vm.pesquisa ? vm.fecharPesquisa : fechar);
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); vm.salvar(); }
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !vm.notaAberta) { e.preventDefault(); vm.salvar(); }
     };
     document.addEventListener('keydown', tecla);
     return () => document.removeEventListener('keydown', tecla);
@@ -58,7 +61,7 @@ export function JanelaDoLancamento({ id, fechar }: { id: number | 'novo'; fechar
     </span>
   );
 
-  return (
+  return (<>
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="modal registro-novo lcdpr-janela" role="dialog" aria-modal="true" aria-label={vm.novo ? 'Novo lançamento' : 'Lançamento'}>
         <header className="registro-topo">
@@ -68,7 +71,19 @@ export function JanelaDoLancamento({ id, fechar }: { id: number | 'novo'; fechar
               : <b>{vm.novo ? 'Novo lançamento' : 'Lançamento'}</b>}
           </span>
           <span className="lcdpr-janela-origem">
-            {vm.revisar ? <span className="badge badge-warn">REVISAR</span> : <span className="badge badge-neutral">{vm.origem}</span>}
+            {vm.revisar && <span className="badge badge-warn">REVISAR</span>}
+            {vm.temNota ? (
+              <button type="button" className={'lcdpr-selo-nota' + (vm.semNota ? ' sem' : '')} onClick={vm.verNota} aria-haspopup="dialog"
+                title={vm.semNota || 'Ver a nota (DANFE) sem sair do lançamento'}>
+                <Icone nome="recibo" />{vm.origem}<span className="lcdpr-selo-ver"><Icone nome="olho" />Ver</span>
+              </button>
+            ) : !vm.revisar && <span className="badge badge-neutral">{vm.origem}</span>}
+            {vm.avisoSemNota && (
+              <span className="lcdpr-sem-nota" role="status">
+                <Icone nome="alert" /><span>{vm.avisoSemNota}</span>
+                <button type="button" className="btn btn-ghost" aria-label="Fechar o aviso" onClick={vm.fecharNota}><Icone nome="x" /></button>
+              </span>
+            )}
           </span>
           <BotaoFechar onClick={fechar} />
         </header>
@@ -199,5 +214,6 @@ export function JanelaDoLancamento({ id, fechar }: { id: number | 'novo'; fechar
         </footer>
       </div>
     </div>
-  );
+    {vm.notaAberta && <VerANota nota={vm.notaAberta.nota} codigo={vm.notaAberta.codigo} competencia={vm.notaAberta.competencia} fechar={vm.fecharNota} />}
+  </>);
 }
