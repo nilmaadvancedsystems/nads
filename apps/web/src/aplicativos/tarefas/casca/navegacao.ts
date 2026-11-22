@@ -17,7 +17,7 @@ export const BASE = '/tarefas';
  * As páginas do Fiscal que ficam dentro da aba "Ferramentas" (09/11/2026: "coloque uma aba superior, chamada Ferramentas;
  * dentro dela, deixe no menu lateral…"): no alto ficam os relatórios, a REINF, o SIEG e a Ferramentas. Os endereços não mudam.
  */
-export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
+export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens', 'tabelas-reforma'];
 
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
 
@@ -96,6 +96,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // as cartas aos clientes (12/11/2026: "preciso de um envio de carta de balanco para varios clientes para o final do ano,
     // e todo mês enviar mandar um cheklist do que ele tem que enviar"): a Carta de balanço e o Checklist mensal, pelo robô
     { id: 'cartas', rotulo: 'Cartas aos clientes', icone: 'envelope', titulo: 'Cartas aos clientes', secao: 'Ferramentas' },
+    // as tabelas oficiais da Reforma (22/11/2026: a fase 2 das calculadoras da Receita): o cClassTrib, o CST e as alíquotas
+    { id: 'tabelas-reforma', rotulo: 'Tabelas da Reforma', icone: 'fileSearch', titulo: 'Tabelas da Reforma — cClassTrib, CST e alíquotas', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas

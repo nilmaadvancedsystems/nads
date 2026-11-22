@@ -10,6 +10,7 @@ import { tarefas as t } from '@nads/core';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
+import { SimuladorDaReforma } from './SimuladorDaReforma';
 import { SEM_O_QUE, useCalculadoraDoSimples, type NumeroDoSimples, type VmCalculadoraDoSimples } from './useCalculadoraDoSimples';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -140,6 +141,10 @@ function Calculo({ vm }: { vm: VmCalculadoraDoSimples }) {
                   </tbody>
                 </table>
               </div>
+            </FaixaQueAbre>
+            {/* a Reforma (22/11/2026): a partir de 2027, o IBS/CBS dentro ou fora do DAS, para orientar o cliente */}
+            <FaixaQueAbre titulo="Reforma 2027: IBS/CBS dentro ou fora do DAS" qtd={2}>
+              <SimuladorDaReforma calculo={c} comprasDoSieg={vm.comprasDoSieg} />
             </FaixaQueAbre>
             {vm.mostraFatorR && (
               <FaixaQueAbre titulo={'Fator R · ' + (vm.temFolha ? pct(vm.fator.fator) + ' (Anexo ' + vm.fator.anexo + ')' : 'sem a folha')} qtd={vm.folha.filter(x => x.fonte).length}>

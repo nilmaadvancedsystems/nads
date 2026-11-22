@@ -61,3 +61,11 @@ Para mudar de versão, troque a `Versao` no topo do `instalar.ps1` e rode de nov
 - A regra fica em `packages/core/src/tarefas/sieg/ibsCbs.ts` e chega ao robô pelo `robo/gerado/ibscbs.js`
   (`node scripts/robo-ibscbs.mjs`).
 - Para usar outro endereço, defina a variável `RTC_URL`, por exemplo `http://127.0.0.1:18080/api`.
+
+## As tabelas oficiais no nads
+
+O `scripts/tabelas-rtc.mjs` lê o banco da calculadora (`calculadora\db\calculadora-pro.db`, na pasta da instalação) e
+grava `packages/core/src/reforma/tabelas.json`: os CST do IBS/CBS, o cClassTrib, as alíquotas de referência e as
+atividades do Simples. O Fiscal mostra essas tabelas em **Tabelas da Reforma**, e o simulador do Simples usa as alíquotas.
+Quando a Receita publicar uma versão nova, troque a versão no `instalar.ps1`, deixe o robô instalar, rode o script com o
+banco novo e commite o JSON.

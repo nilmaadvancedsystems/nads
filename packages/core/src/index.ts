@@ -31,3 +31,5 @@ export * as carteira from './carteira';
 export * as cartasFiscal from './cartasFiscal';
 export * as administrativo from './administrativo';
 export * as arquivoFisico from './arquivoFisico';
+// a Reforma Tributária (22/11/2026): as tabelas oficiais (o JSON fica fora: '@nads/core/reforma-tabelas') e o simulador do Simples
+export * as reforma from './reforma';
