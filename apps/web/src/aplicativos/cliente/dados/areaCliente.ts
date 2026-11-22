@@ -177,6 +177,8 @@ export interface RepoAreaCliente {
   avaliarChamado(token: string, chamadoId: string, nota: number, comentario: string): Promise<void>;
   /** "Confirmar que recebi" a entrega: o pedido marcado vai para o robô (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
   confirmarRecebido(token: string, entregaId: string): Promise<void>;
+  /** "Não tive movimento" no mês (22/11/2026, Documentos do cliente): o pedido marcado vai para o robô, que marca o mês sem movimento */
+  marcarSemMovimento(token: string, competencia: string): Promise<void>;
   /** entra com o e-mail e a senha (o link que pede senha) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"); o erro já vem em português */
   entrar(token: string, email: string, senha: string): Promise<void>;
   /** manda o e-mail do Firebase para criar ou trocar a senha (volta para este link) */

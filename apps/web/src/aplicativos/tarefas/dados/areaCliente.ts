@@ -1,7 +1,7 @@
 // A Área do Cliente vista pelo escritório (Vitor, 16/10/2026): os links secretos de cada empresa, os chamados que os clientes
 // abrem e o que eles mandaram. O contrato dos dados é docs/area-do-cliente/contrato.md. Aqui ficam a interface, as regras
 // pequenas (o token, o endereço, o texto do WhatsApp) e a versão de exemplo, em memória; a do banco é areaCliente.firestore.ts.
-import type { areaCliente as ac } from '@nads/core';
+import { areaCliente as ac } from '@nads/core';
 
 /** O endereço da Área do Cliente (o site do cliente, fora do nads). */
 export const ENDERECO_DA_AREA = 'https://cliente.nilmacontabilidade.com/cliente/';
@@ -66,6 +66,8 @@ export interface RecebidoDoCliente {
   recebidoEm: string;
   /** o comprovante mandado pela guia: de que guia é ("Comprovante do FGTS 10/2026"); '' nos outros (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir") */
   guia: string;
+  /** a recusa do escritório, quando o robô já tratou (22/11/2026, Documentos do cliente) */
+  recusa?: { motivo: string; por: string; em: string };
 }
 
 /** Uma coleção ao vivo: `erro` diz por que não leu (regra do banco), e a lista fica vazia. */
@@ -85,6 +87,8 @@ export interface RepoAreaCliente {
   links(): ListaAoVivo<LinkDaEmpresa>;
   chamados(): ListaAoVivo<ChamadoNaEquipe>;
   recebidos(): ListaAoVivo<RecebidoDoCliente>;
+  /** recusa o arquivo com o motivo que o cliente vê (22/11/2026, Documentos do cliente): grava areaClienteRecusas/{id}; o robô faz o resto. Erro em português */
+  recusar(id: string, motivo: string): Promise<void>;
   /** gera o link da empresa (se ela já tem, devolve o que existe) */
   gerar(empresa: EmpresaDoLink): Promise<LinkDaEmpresa>;
   /** cria outro token e apaga o antigo: o link velho para de funcionar */
@@ -209,6 +213,12 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
     async apagarLogo(codigo) { logos = logos.filter(l => l.codigo !== codigo); mudou(); },
     chamados: () => vazio(chamados),
     recebidos: () => vazio(recebidos),
+    async recusar(id, motivo) {
+      const erro = ac.erroDaRecusa(motivo);
+      if (erro) throw new Error(erro);
+      const r = recebidos.find(x => x.id === id);
+      if (r) r.recusa = { motivo: motivo.trim(), por: 'Você (exemplo)', em: new Date().toISOString() };
+    },
     async gerar(e) {
       const ja = links.find(l => l.codigo === e.codigo);
       if (ja) return ja;

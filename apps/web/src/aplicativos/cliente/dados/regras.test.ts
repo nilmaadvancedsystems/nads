@@ -352,12 +352,18 @@ describe('legendaDoCalendario (só as cores que aparecem no mês)', () => {
 
 // o que o escritório espera do cliente, no sino (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei)
 describe('os pedidos do escritório no sino', () => {
+  it('a aplicação abre o extrato com o prefixo "Aplicação" (22/11/2026)', () => {
+    const n = notificacoes({ guias: [], documentos: [], chamados: [], certificado: null,
+      avisos: [{ id: 'aplicacao-2026-10', titulo: 'Extrato da aplicação de outubro', texto: '', ir: 'documentos', tipo: 'extrato' }] }, hoje, g => g.tipo);
+    expect(n[0].pendencia).toEqual({ tipo: 'extrato', prefixo: 'Aplicação', competencia: '2026-10', mes: 'outubro' });
+  });
   it('o documento que falta abre o envio no tipo; o pedido do Mandei abre o formulário', () => {
     const n = notificacoes({ guias: [], documentos: [], chamados: [], certificado: null,
       avisos: [{ id: 'extrato-2026-10', titulo: 'Extrato bancário de outubro', texto: '', ir: 'documentos', tipo: 'extrato' }],
       tickets: [{ codigo: 'AAAAAAAAAAAAAAAAAAAAAAAA', numero: '#0003', assunto: 'Saldos', validoAte: '2026-11-25T00:00:00.000Z', total: 3, faltam: 2, refazer: 0 }] }, hoje, g => g.tipo);
     expect(n).toEqual([
-      { id: 'p-extrato-2026-10', titulo: 'Falta mandar', texto: 'Extrato bancário de outubro', ir: 'documentos', enviar: 'extrato' },
+      // com a pendência (22/11/2026): a janela tem o envio e o "Não tive movimento em outubro"
+      { id: 'p-extrato-2026-10', titulo: 'Falta mandar', texto: 'Extrato bancário de outubro', ir: 'documentos', enviar: 'extrato', pendencia: { tipo: 'extrato', competencia: '2026-10', mes: 'outubro' } },
       { id: 't-AAAAAAAAAAAAAAAAAAAAAAAA-2-0', titulo: 'O escritório pediu', texto: 'Saldos · até 25/11', ir: 'mandei', codigo: 'AAAAAAAAAAAAAAAAAAAAAAAA' },
     ]);
   });
@@ -391,5 +397,18 @@ describe('comAsDaConta (19/11/2026, senha parte 2)', () => {
   });
   it('sem conta, só as do aparelho', () => {
     expect(comAsDaConta([p('a', 'A')], [], 'x').map(x => x.token)).toEqual(['a']);
+  });
+});
+
+// o documento recusado no sino (22/11/2026, Documentos do cliente)
+describe('o documento recusado no sino', () => {
+  const base = { guias: [], documentos: [], chamados: [], certificado: null };
+  const envio = (em: string) => ({ id: 'e1', nome: 'extrato.pdf', tipo: 'extrato' as const, tamanho: 1, recebidoEm: '2026-11-01T10:00:00Z', recusa: { motivo: 'É de outro mês', em } });
+  it('aparece com o motivo e abre o envio no mesmo tipo', () => {
+    const n = notificacoes({ ...base, envios: [envio('2026-11-20T10:00:00Z')] }, new Date('2026-11-22T12:00:00Z'), g => g.tipo);
+    expect(n).toEqual([{ id: 'rec-e1', titulo: 'Documento recusado', texto: 'extrato.pdf: É de outro mês', ir: 'documentos', enviar: 'extrato' }]);
+  });
+  it('some depois de 30 dias', () => {
+    expect(notificacoes({ ...base, envios: [envio('2026-10-01T10:00:00Z')] }, new Date('2026-11-22T12:00:00Z'), g => g.tipo)).toEqual([]);
   });
 });

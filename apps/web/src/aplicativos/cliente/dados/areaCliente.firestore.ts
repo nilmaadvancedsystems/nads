@@ -457,6 +457,13 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       if (!ehTokenDoLink(token) || !pedido) throw new Error('Esta entrega não pode ser confirmada.');
       await addDoc(collection(abrir(), 'areaClienteChamados'), { token, ...pedido, criadoEm: serverTimestamp() });
     },
+    // "Não tive movimento" (22/11/2026, Documentos do cliente): o pedido marcado, pela caixa dos chamados (sem regra nova)
+    async marcarSemMovimento(token, competencia) {
+      const pedido = ac.pedidoDeSemMovimento(competencia);
+      if (!ehTokenDoLink(token) || !pedido) throw new Error('Este mês não pode ser marcado.');
+      try { await addDoc(collection(abrir(), 'areaClienteChamados'), { token, ...pedido, criadoEm: serverTimestamp() }); }
+      catch (e) { throw new Error(mensagemDoErro(e), { cause: e }); }
+    },
     async pedirDanfe(token, chave) {
       const pedido = ac.pedidoDeDanfe(chave);
       if (!ehTokenDoLink(token) || !pedido) return { erro: 'Esta nota não tem DANFE.' };
@@ -544,6 +551,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     extratoDoMes: (token, codigo, mes) => de(token).extratoDoMes(tk(token), codigo, mes),
     pedirDanfe: (token, chave) => de(token).pedirDanfe(tk(token), chave),
     confirmarRecebido: (token, id) => de(token).confirmarRecebido(tk(token), id),
+    marcarSemMovimento: (token, comp) => de(token).marcarSemMovimento(tk(token), comp),
     avaliarChamado: (token, id, nota, comentario) => de(token).avaliarChamado(tk(token), id, nota, comentario),
     // a senha vale só no banco (a empresa de teste nunca pede)
     entrar: (token, email, senha) => doBanco.entrar(token, email, senha),

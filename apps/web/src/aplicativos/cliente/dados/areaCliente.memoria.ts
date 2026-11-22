@@ -142,7 +142,9 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example', whatsapp: '(31) 98888-0001' }, { nome: 'Pessoal', email: 'dp@nilma.example', whatsapp: '(31) 98888-0002' }, { nome: 'Contábil', email: 'contabil@nilma.example', whatsapp: '(31) 98888-0003' }],
     },
     avisos: [
-      { id: 'a1', titulo: 'Extratos de ' + formatos.rot(mesDe(hoje)).toLowerCase(), texto: 'Mande os extratos bancários do mês até o dia 5 de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1))).toLowerCase() + ' para o escritório fechar a contabilidade.', ir: 'documentos', tipo: 'extrato' },
+      // no formato do banco (o id 'extrato-aaaa-mm'): o aviso abre a janela com o envio e o "Não tive movimento" (22/11/2026)
+      { id: 'extrato-' + mesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)), titulo: 'Extrato bancário de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1))).toLowerCase().split(' ')[0], texto: '', ir: 'documentos', tipo: 'extrato' },
+      { id: 'aplicacao-' + mesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)), titulo: 'Extrato da aplicação de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1))).toLowerCase().split(' ')[0], texto: '', ir: 'documentos', tipo: 'extrato' },
     ],
   };
 }
@@ -468,6 +470,11 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
     async confirmarRecebido(token, entregaId) {
       await new Promise(r => setTimeout(r, 300));
       mudar(token, e => ({ ...e, entregas: e.entregas.filter(x => x.id !== entregaId) }));
+    },
+    // o mês marcado sem movimento sai dos avisos (o robô faria isso) (22/11/2026, Documentos do cliente)
+    async marcarSemMovimento(token, competencia) {
+      await new Promise(r => setTimeout(r, 300));
+      mudar(token, e => ({ ...e, avisos: e.avisos.filter(a => !a.id.endsWith('-' + competencia)) }));
     },
     async pedirDanfe(_token, chave) {
       const c = ac.chaveDeNota(chave);

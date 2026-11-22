@@ -75,8 +75,8 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
     expect(pendenciasDoCliente(real, hoje).map(x => x.origem)).toEqual(['guia', 'chamado']);
     const vazia = areaComoNoBanco(hoje, true);
     expect(vereditoDoMes(pendenciasDoCliente(vazia, hoje), guiasDoMomento(vazia.guias, hoje)).titulo).toBe('Tudo em dia');
-    // o exemplo completo: a vencida, a resposta, o certificado e o recado dos extratos (4, o mais urgente primeiro)
-    expect(pendenciasDoCliente(areaDeExemplo(hoje), hoje).map(x => x.origem)).toEqual(['guia', 'chamado', 'certificado', 'aviso']);
+    // o exemplo completo: a vencida, a resposta, o certificado e os recados do extrato e da aplicação (22/11/2026; o mais urgente primeiro)
+    expect(pendenciasDoCliente(areaDeExemplo(hoje), hoje).map(x => x.origem)).toEqual(['guia', 'chamado', 'certificado', 'aviso', 'aviso']);
   });
 });
 

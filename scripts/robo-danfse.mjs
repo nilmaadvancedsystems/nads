@@ -43,7 +43,7 @@ const codigo = [
   // o certificado A1 do cofre na Área do Cliente (17/11/2026, ficha certificado-digital)
   'export { certificadoDoLink } from ' + caminho('packages/core/src/areaCliente/certificado.ts') + ';',
   // o que falta mandar e os pedidos do Mandei no sino da Área do Cliente (17/11/2026)
-  'export { pendenciasDoMes, competenciaDoEnvio } from ' + caminho('packages/core/src/areaCliente/pendencias.ts') + ';',
+  'export { pendenciasDoMes, competenciaDoEnvio, documentoDoEnvio } from ' + caminho('packages/core/src/areaCliente/pendencias.ts') + ';',
   // o registro de abertura da guia (17/11/2026, ficha comprovante-de-leitura)
   // o lembrete de vencimento ao cliente (17/11/2026, ficha lembrete-de-vencimento)
   'export { guiasParaLembrar, emailDoLembrete, diasDoLembrete, lembreteDaEmpresa } from ' + caminho('packages/core/src/areaCliente/lembretes.ts') + ';',
@@ -75,6 +75,9 @@ const codigo = [
   'export { guiaDoComprovante, rotuloDoComprovante } from ' + caminho('packages/core/src/areaCliente/comprovanteDaGuia.ts') + ';',
   // o cliente confirma a entrega pela Área (18/11/2026, ficha confirmar-entrega)
   'export { entregaDoPedidoDeRecebido, entregasParaConfirmar } from ' + caminho('packages/core/src/areaCliente/entregaRecebida.ts') + ';',
+  // "Não tive movimento" pela Área do Cliente (22/11/2026, Documentos do cliente)
+  'export { competenciaDoPedidoDeSemMovimento, competenciaAceitaNoSemMovimento } from ' + caminho('packages/core/src/areaCliente/semMovimento.ts') + ';',
+  'export { recusaLida } from ' + caminho('packages/core/src/areaCliente/recusa.ts') + ';',
   'export { orgaoDaCertidao, ultimaPorOrgao } from ' + caminho('packages/core/src/areaCliente/certidoes.ts') + ';',
   'export { fichaDoCliente } from ' + caminho('packages/core/src/areaCliente/ficha.ts') + ';',
   'export { precisaAvisar, emailDoAviso } from ' + caminho('packages/core/src/areaCliente/avisoDeResposta.ts') + ';',

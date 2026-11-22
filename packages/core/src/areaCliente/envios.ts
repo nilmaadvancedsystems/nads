@@ -12,6 +12,8 @@ export interface ReciboDeEnvio {
   tamanho: number;
   /** ISO */
   recebidoEm: string;
+  /** o escritório recusou, com o motivo que o cliente vê (22/11/2026, Documentos do cliente) */
+  recusa?: { motivo: string; em: string };
 }
 
 /** O envio como o robô o guarda: com o caminho no Drive, a situação do processamento, erro e tentativas (nada disso sai). */
@@ -21,6 +23,7 @@ export interface EnvioInterno {
   tipo: string;
   tamanho: number;
   recebidoEm: string;
+  recusa?: { motivo?: unknown; em?: unknown } | null;
 }
 
 export const TIPOS_DE_ENVIO: { valor: TipoDeEnvio; rotulo: string }[] = [
@@ -59,7 +62,9 @@ export function erroDoEnvio(arquivo: { nome: string; tamanho: number }): string 
 
 /** O recibo que o cliente vê: lista branca de campos. */
 export function reciboDoEnvio(e: EnvioInterno): ReciboDeEnvio {
-  return { id: e.id, nome: e.nome, tipo: (TIPOS.has(e.tipo) ? e.tipo : 'outro') as TipoDeEnvio, tamanho: e.tamanho, recebidoEm: e.recebidoEm };
+  const motivo = typeof e.recusa?.motivo === 'string' ? e.recusa.motivo.trim().slice(0, 300) : '';
+  const em = typeof e.recusa?.em === 'string' ? e.recusa.em : '';
+  return { id: e.id, nome: e.nome, tipo: (TIPOS.has(e.tipo) ? e.tipo : 'outro') as TipoDeEnvio, tamanho: e.tamanho, recebidoEm: e.recebidoEm, ...(motivo ? { recusa: { motivo, em } } : {}) };
 }
 
 /** "2,3 MB", "480 KB". */

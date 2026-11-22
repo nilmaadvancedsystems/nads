@@ -348,7 +348,9 @@ export function lerRecibo(id: string, x: unknown): ac.ReciboDeEnvio | null {
   const e = objeto(x);
   if (!e || !texto(e.nome)) return null;
   const tamanho = typeof e.tamanho === 'number' && Number.isFinite(e.tamanho) ? e.tamanho : 0;
-  return ac.reciboDoEnvio({ id, nome: texto(e.nome), tipo: texto(e.tipo), tamanho, recebidoEm: instante(e.recebidoEm) });
+  // a recusa do escritório, com o motivo (22/11/2026, Documentos do cliente)
+  const recusa = objeto(e.recusa);
+  return ac.reciboDoEnvio({ id, nome: texto(e.nome), tipo: texto(e.tipo), tamanho, recebidoEm: instante(e.recebidoEm), ...(recusa ? { recusa: { motivo: texto(recusa.motivo), em: instante(recusa.em) } } : {}) });
 }
 
 /** chamados/{id}: { id, tipo, titulo, situacao, mensagens: [{ de, autor, texto, em }] } (do escritório, o primeiro nome de quem respondeu ou "Escritório"). */

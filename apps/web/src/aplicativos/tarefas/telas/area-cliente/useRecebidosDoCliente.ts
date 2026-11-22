@@ -3,6 +3,7 @@
 import { areaCliente as ac } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useAreaCliente } from '../../dados/repo';
+import type { RecebidoDoCliente } from '../../dados/areaCliente';
 
 export type FiltroDosRecebidos = 'todos' | ac.TipoDeEnvio;
 export const rotuloDoEnvio = (t: string) => ac.TIPOS_DE_ENVIO.find(x => x.valor === t)?.rotulo || t;
@@ -19,7 +20,30 @@ export function useRecebidosDoCliente() {
     const q = simples(busca.trim());
     return todos.lista.filter(r => (filtro === 'todos' || r.tipo === filtro) && (!q || simples(r.empresa + ' ' + r.nome + ' ' + r.codigo).includes(q)));
   }, [todos.lista, filtro, busca]);
+  // a recusa com o motivo (22/11/2026, Documentos do cliente): a janela escolhe um motivo pronto ou escreve
+  const [recusando, setRecusando] = useState<RecebidoDoCliente | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [erroDaRecusa, setErroDaRecusa] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [recusados, setRecusados] = useState<Record<string, string>>({});
   return {
+    recusa: {
+      aberta: recusando, motivo, erro: erroDaRecusa, enviando, prontos: ac.MOTIVOS_DA_RECUSA,
+      abrir: (r: RecebidoDoCliente) => { setRecusando(r); setMotivo(''); setErroDaRecusa(''); },
+      fechar: () => { if (!enviando) setRecusando(null); },
+      setMotivo: (m: string) => { setMotivo(m); setErroDaRecusa(''); },
+      async confirmar() {
+        if (!recusando) return;
+        const e = ac.erroDaRecusa(motivo);
+        if (e) { setErroDaRecusa(e); return; }
+        setEnviando(true);
+        try { await repo.recusar(recusando.id, motivo); setRecusados(x => ({ ...x, [recusando.id]: motivo.trim() })); setRecusando(null); }
+        catch (err) { setErroDaRecusa(err instanceof Error ? err.message : 'Não deu para recusar agora.'); }
+        finally { setEnviando(false); }
+      },
+    },
+    /** o motivo da recusa (a do robô ou a que acabou de ser gravada) */
+    recusaDe: (r: RecebidoDoCliente) => r.recusa?.motivo || recusados[r.id] || '',
     exemplos: repo.exemplos,
     carregando: !todos.carregada,
     erro: todos.erro,

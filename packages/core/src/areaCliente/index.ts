@@ -26,6 +26,8 @@ export * from './ficha';
 export * from './certidoes';
 // o cliente confirma a entrega pela Área (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
 export * from './entregaRecebida';
+export * from './semMovimento';
+export * from './recusa';
 export * from './avaliacao';
 export * from './guiaPaga';
 export * from './parcelamentos';

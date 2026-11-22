@@ -38,3 +38,20 @@ export function useJanelaDoComprovante(props: DaCasca): (g: ac.GuiaDoCliente) =>
     botoes: [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
   });
 }
+
+/**
+ * O que falta mandar (22/11/2026, Documentos do cliente; o dono: "vamos continuar e terminar as funcionalidades"): a mesma
+ * janela, no tipo do documento (a aplicação leva o prefixo "Aplicação" no nome, para o robô baixar a pendência certa), com o
+ * botão "Não tive movimento em <mês>". Devolve true quando o cliente escolheu o "sem movimento".
+ */
+export function useJanelaDaPendencia(props: DaCasca): (p: { tipo: ac.TipoDeEnvio; prefixo?: string; mes: string }, titulo: string) => Promise<boolean> {
+  const { modal } = useRetorno();
+  return async (p, titulo) => {
+    const r = await modal({
+      titulo, texto: 'Mande o arquivo por aqui. Se não houve movimento em ' + p.mes + ', é só avisar.',
+      corpo: <div className="cli-app cli-janela cli-janela-envio"><Enviar {...props} inicial={{ tipo: p.tipo, ...(p.prefixo ? { prefixo: p.prefixo } : {}) }} /></div>,
+      botoes: [{ rotulo: 'Não tive movimento em ' + p.mes, valor: 'sem', variante: 'btn-outline' }, { rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
+    });
+    return r === 'sem';
+  };
+}

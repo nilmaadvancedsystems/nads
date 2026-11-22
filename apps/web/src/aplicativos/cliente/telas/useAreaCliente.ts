@@ -173,8 +173,8 @@ export function useAreaCliente() {
   // cada notificação com o ícone e o tom pelo que é (12/11/2026: o sino refeito): a guia, os documentos, a resposta, o certificado
   const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo === 'DARF' && g.tributo ? 'DARF ' + g.tributo : g.tipo).map(n => ({
     ...n,
-    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : n.id.startsWith('p-') ? 'upload' : 'mensagem') as NomeIcone,
-    tom: n.id.startsWith('g-') && n.titulo.endsWith('vencida') ? 'ruim' : n.id.startsWith('g-') || n.id.startsWith('cert-') || n.id.startsWith('p-') || n.id.startsWith('t-') ? 'atencao' : n.id.startsWith('c-') ? 'bom' : 'neutro',
+    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : n.id.startsWith('p-') ? 'upload' : n.id.startsWith('rec-') ? 'alert' : 'mensagem') as NomeIcone,
+    tom: n.id.startsWith('g-') && n.titulo.endsWith('vencida') ? 'ruim' : n.id.startsWith('rec-') ? 'ruim' : n.id.startsWith('g-') || n.id.startsWith('cert-') || n.id.startsWith('p-') || n.id.startsWith('t-') ? 'atencao' : n.id.startsWith('c-') ? 'bom' : 'neutro',
   }));
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
   /** marca como lidos e guarda (só os que ainda estão no sino, para a lista não crescer à toa) */
@@ -200,6 +200,14 @@ export function useAreaCliente() {
       if (!ok) return;
       try { await repoAreaCliente.confirmarRecebido(token, entregaId); toastDoRetorno('Obrigado, anotamos que chegou.'); }
       catch (e) { toastDoRetorno(e instanceof Error ? e.message : 'Não deu para confirmar agora. Tente de novo.'); }
+    },
+    /** "Não tive movimento" (22/11/2026, Documentos do cliente): pergunta antes e manda o pedido ao robô, que marca o mês */
+    async marcarSemMovimento(competencia: string, mes: string) {
+      const ok = await modal({ titulo: 'Não houve movimento em ' + mes + '?', texto: 'O escritório fica sabendo que não houve movimento em ' + mes + ' e para de pedir os documentos deste mês.',
+        botoes: [{ rotulo: 'Confirmar', valor: true, variante: 'btn-primary' }, { rotulo: 'Voltar', valor: false, variante: 'btn-outline' }] });
+      if (!ok) return;
+      try { await repoAreaCliente.marcarSemMovimento(token, competencia); toastDoRetorno('Pronto: avisamos o escritório que não houve movimento em ' + mes + '.'); }
+      catch (e) { toastDoRetorno(e instanceof Error ? e.message : 'Não deu para avisar agora. Tente de novo.'); }
     },
     abrirAviso: (n: { ir: string; codigo?: string; id: string }) => {
       if (n.ir === 'mandei' && n.codigo) { setMenuAberto(false); navegar('/mandei/' + encodeURIComponent(n.codigo)); return; }

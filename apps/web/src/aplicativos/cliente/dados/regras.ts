@@ -65,6 +65,10 @@ export function mesesDosDocumentos(docs: DocumentoDoCliente[]): string[] {
   return [...new Set(docs.map(d => d.competencia).filter(Boolean))].sort().reverse();
 }
 
+const MESES_POR_EXTENSO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+/** 'aaaa-mm' → "outubro" */
+export const mesPorExtenso = (competencia: string) => MESES_POR_EXTENSO[Number(competencia.slice(5, 7)) - 1] ?? competencia;
+
 export interface Notificacao {
   id: string; titulo: string; texto: string; ir: 'documentos' | 'guias' | 'chamados' | 'mandei';
   /** o pedido do Mandei: o código do link do formulário (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino") */
@@ -73,10 +77,12 @@ export interface Notificacao {
   enviar?: ac.TipoDeEnvio;
   /** a entrega que o cliente confirma que recebeu (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
   confirmarEntrega?: string;
+  /** o documento do mês que falta (22/11/2026, Documentos do cliente): a janela tem o envio e o "Não tive movimento" */
+  pendencia?: { tipo: ac.TipoDeEnvio; prefixo?: string; competencia: string; mes: string };
 }
 
 /** O que o sino mostra: guias vencidas ou que vencem hoje, documentos novos, chamados respondidos e o certificado perto de vencer. */
-export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'chamados' | 'certificado'> & Partial<Pick<EstadoDaArea, 'avisos' | 'tickets' | 'entregas'>>, hoje: Date, rotuloDaGuia: (g: ac.GuiaDoCliente) => string): Notificacao[] {
+export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'chamados' | 'certificado'> & Partial<Pick<EstadoDaArea, 'avisos' | 'tickets' | 'entregas' | 'envios'>>, hoje: Date, rotuloDaGuia: (g: ac.GuiaDoCliente) => string): Notificacao[] {
   const lista: Notificacao[] = [];
   for (const g of e.guias) {
     if (g.situacao === 'vencida') lista.push({ id: 'g-' + g.id, titulo: rotuloDaGuia(g) + ' vencida', texto: 'Venceu em ' + g.vencimento, ir: 'guias' });
@@ -89,10 +95,22 @@ export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'cha
   }
   // o que o escritório espera do cliente (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): o documento do mês que falta (abre o
   // envio no tipo certo) e o pedido do Mandei (abre o formulário). Mandou ou respondeu, o aviso some sozinho.
-  for (const a of e.avisos ?? []) lista.push({ id: 'p-' + a.id, titulo: 'Falta mandar', texto: a.titulo, ir: a.ir === 'chamados' ? 'chamados' : 'documentos', ...(a.tipo ? { enviar: a.tipo } : {}) });
+  for (const a of e.avisos ?? []) {
+    const pend = acValor.envioDaPendencia(a.id);
+    lista.push({ id: 'p-' + a.id, titulo: 'Falta mandar', texto: a.titulo, ir: a.ir === 'chamados' ? 'chamados' : 'documentos', ...(a.tipo ? { enviar: a.tipo } : {}),
+      ...(pend ? { pendencia: { tipo: pend.tipo, ...(pend.prefixo ? { prefixo: pend.prefixo } : {}), competencia: pend.competencia, mes: mesPorExtenso(pend.competencia) } } : {}) });
+  }
   for (const t of e.tickets ?? []) {
     const ate = /^\d{4}-\d{2}-\d{2}/.test(t.validoAte) ? ' · até ' + t.validoAte.slice(8, 10) + '/' + t.validoAte.slice(5, 7) : '';
     lista.push({ id: 't-' + t.codigo + '-' + t.faltam + '-' + t.refazer, titulo: t.refazer ? 'O escritório pediu de novo' : 'O escritório pediu', texto: t.assunto + ate, ir: 'mandei', codigo: t.codigo });
+  }
+  // o documento recusado pelo escritório, com o motivo (22/11/2026, Documentos do cliente): até 30 dias depois da recusa;
+  // abre o envio no mesmo tipo para mandar de novo
+  for (const r of e.envios ?? []) {
+    if (!r.recusa) continue;
+    const quando = Date.parse(r.recusa.em || r.recebidoEm);
+    if (Number.isFinite(quando) && hoje.getTime() - quando > 30 * 864e5) continue;
+    lista.push({ id: 'rec-' + r.id, titulo: 'Documento recusado', texto: r.nome + ': ' + r.recusa.motivo, ir: 'documentos', enviar: r.tipo });
   }
   // a entrega que espera o cliente confirmar (plano do Acessórias, 18/11/2026, ficha confirmar-entrega)
   for (const en of e.entregas ?? []) lista.push({ id: 'ent-' + en.id, titulo: 'Entrega para confirmar', texto: en.titulo + ': toque para confirmar que recebeu', ir: 'documentos', confirmarEntrega: en.id });

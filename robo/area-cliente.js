@@ -1057,6 +1057,9 @@ function iniciarAreaDoCliente(db, log) {
       // o "Confirmar que recebi" da entrega (plano do Acessórias, 18/11/2026, ficha confirmar-entrega; frase do dono: "Seguir"): não vira chamado
       const entregaRecebida = doCore().entregaDoPedidoDeRecebido(atual.data());
       if (entregaRecebida) { await tratarRecebido(doc, atual.data(), entregaRecebida); return; }
+      // o "Não tive movimento" do aviso "Falta mandar" (22/11/2026, Documentos do cliente): não vira chamado
+      const semMovimento = doCore().competenciaDoPedidoDeSemMovimento(atual.data());
+      if (semMovimento) { await tratarSemMovimento(doc, atual.data(), semMovimento); return; }
       // a guia que o cliente baixou (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura; frase do dono: "vamos continuar"): não vira chamado
       const guiaLida = doCore().guiaDoPedidoDeLeitura(atual.data());
       if (guiaLida) { await tratarLeitura(doc, atual.data(), guiaLida); return; }
@@ -1145,6 +1148,36 @@ function iniciarAreaDoCliente(db, log) {
       fila.add(token); agendar();
     } catch (err) { log('Área do Cliente: a entrega', entregaId, 'mudou no meio; deixei como estava'); }
     await doc.ref.delete();
+  }
+
+  // "Não tive movimento" (22/11/2026, Documentos do cliente; o dono: "vamos continuar e terminar as funcionalidades"): marca
+  // documentosMensal.semMovimento das empresas do link no mês (só o anterior ou o atual), com quem marcou; a régua para de
+  // cobrar e o aviso do sino some na próxima volta do espelho. Até 20 por link por dia.
+  const semMovimentoHoje = { dia: '', porToken: {} };
+  async function tratarSemMovimento(doc, p, comp) {
+    const token = R.tokenValido(p.token) ? p.token : '';
+    const linkSnap = token ? await espelhoDe(token).get() : null;
+    if (!linkSnap || !linkSnap.exists || !doCore().competenciaAceitaNoSemMovimento(comp, new Date())) { await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (semMovimentoHoje.dia !== dia) { semMovimentoHoje.dia = dia; semMovimentoHoje.porToken = {}; }
+    if ((semMovimentoHoje.porToken[token] || 0) >= 20) { await doc.ref.delete(); return; }
+    semMovimentoHoje.porToken[token] = (semMovimentoHoje.porToken[token] || 0) + 1;
+    const link = Object.assign({ codigos: [] }, linkSnap.data());
+    const mapa = await clientesDoEntregas();
+    const agora = new Date().toISOString();
+    for (const codigo of link.codigos || []) {
+      const cli = mapa.get(String(codigo));
+      if (!cli || !cli._id) continue;
+      await db.collection('documentosMensal').doc(cli._id + '_' + comp).set({
+        clienteId: cli._id, clienteNome: cli.nome || '', competencia: comp, atualizadoEm: agora,
+        semMovimento: true, semMovimentoPor: 'cliente', semMovimentoEm: agora,
+      }, { merge: true });
+      pendenciasEmCache.delete(cli._id + '_' + comp);
+      db.collection('auditoria').add({ acao: 'sem_movimento_pela_area_do_cliente', detalhe: (cli.nome || 'cliente') + ' · ' + comp, origem: 'area-cliente', feitoPor: '', feitoPorNome: 'Área do Cliente (pelo robô)', quando: agora }).catch(() => {});
+    }
+    log('Área do Cliente: sem movimento marcado pelo cliente -', (link.nome || token.slice(0, 6)) + ' ' + comp);
+    await doc.ref.delete();
+    fila.add(token); agendar();
   }
 
   // a avaliação do atendimento (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir"): só no chamado concluído
@@ -1283,13 +1316,16 @@ function iniciarAreaDoCliente(db, log) {
       // antigo: a tela de Pendências mostra recebido e a régua para de cobrar (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino").
       // Um erro aqui não impede o recibo.
       try {
-        const comp = doCore().competenciaDoEnvio(v.envio.tipo, agora, v.envio.nome);
+        // qual documento baixa (22/11/2026, Documentos do cliente): o extrato, a aplicação (o nome começa por "Aplicação") e o
+        // comprovante; antes o comprovante nunca baixava e a aplicação baixava o extrato
+        const qual = doCore().documentoDoEnvio(v.envio.tipo, v.envio.nome);
+        const comp = qual ? doCore().competenciaDoEnvio(v.envio.tipo, agora, v.envio.nome) : null;
         const cli = comp ? (await clientesDoEntregas()).get(String(empresa.codigo)) : null;
         if (comp && cli && cli._id) {
           await db.collection('documentosMensal').doc(cli._id + '_' + comp).set({
             clienteId: cli._id, clienteNome: cli.nome || empresa.nome, competencia: comp, atualizadoEm: recebidoEm,
-            [v.envio.tipo]: true,
-            detalhes: { [v.envio.tipo]: { origem: 'areaCliente', em: recebidoEm, arquivos: [path.basename(final)] } },
+            [qual]: true,
+            detalhes: { [qual]: { origem: 'areaCliente', em: recebidoEm, arquivos: [path.basename(final)] } },
           }, { merge: true });
           pendenciasEmCache.delete(cli._id + '_' + comp);
         }
@@ -1309,6 +1345,47 @@ function iniciarAreaDoCliente(db, log) {
   ouvir('Área do Cliente: caixa dos envios', () => db.collection('areaClienteEnvios').limit(5), snap => verEnvios(snap.docs), log);
   // o que ficou esperando (Drive fora do ar) tenta de novo
   setInterval(() => { db.collection('areaClienteEnvios').limit(5).get().then(s => verEnvios(s.docs)).catch(() => {}); }, A_CADA_MS);
+
+  // ---------- 4b. as recusas da equipe (22/11/2026, Documentos do cliente; o dono: "Faz e publica a regra") ----------
+  // A equipe grava areaClienteRecusas/{id do recebido} { motivo, por, porUid, em, tratada: false }. O robô: marca o recibo do
+  // cliente como recusado (o motivo aparece na lista de enviados e no sino), desfaz a baixa do documento no mês só quando
+  // foi este envio pela Área que a deu (o "Falta mandar" volta), anota em areaClienteRecebidos para a equipe ver e marca a
+  // recusa como tratada. Recusa torta ou de recebido que não existe: tratada sem mexer em nada.
+  const tratandoRecusas = new Set();
+  async function tratarRecusa(doc) {
+    if (tratandoRecusas.has(doc.id)) return;
+    tratandoRecusas.add(doc.id);
+    try {
+      const recusa = doCore().recusaLida(doc.data());
+      const recSnap = await db.collection('areaClienteRecebidos').doc(doc.id).get();
+      const rec = recSnap.exists ? recSnap.data() : null;
+      const agora = new Date().toISOString();
+      if (!recusa || !rec || !R.tokenValido(rec.token)) { await doc.ref.set({ tratada: true, tratadaEm: agora, semEfeito: true }, { merge: true }); return; }
+      // o recibo do cliente com o motivo
+      await gravar(rec.token, 'envios/' + doc.id, R.reciboDoEnvio({ id: doc.id, nome: rec.nome, tipo: rec.tipo, tamanho: rec.tamanho, recebidoEm: rec.recebidoEm, recusa: { motivo: recusa.motivo, em: recusa.em || agora } }), 'recibo');
+      // a baixa do documento no mês volta atrás (só a que veio deste envio pela Área)
+      try {
+        const qual = doCore().documentoDoEnvio(rec.tipo, rec.nome);
+        const comp = qual ? doCore().competenciaDoEnvio(rec.tipo, new Date(rec.recebidoEm || agora), rec.nome) : null;
+        const cli = comp ? (await clientesDoEntregas()).get(String(rec.codigo)) : null;
+        if (comp && cli && cli._id) {
+          const ref = db.collection('documentosMensal').doc(cli._id + '_' + comp);
+          const d = (await ref.get()).data() || {};
+          const det = (d.detalhes || {})[qual] || {};
+          if (d[qual] === true && det.origem === 'areaCliente' && (det.arquivos || []).includes(rec.arquivoDrive)) {
+            await ref.set({ [qual]: false, atualizadoEm: agora, detalhes: { [qual]: { origem: 'areaCliente', recusadoEm: agora, motivo: recusa.motivo } } }, { merge: true });
+            pendenciasEmCache.delete(cli._id + '_' + comp);
+          }
+        }
+      } catch (e) { log('Área do Cliente: a recusa não reabriu a pendência -', e.message); }
+      await recSnap.ref.set({ recusa: { motivo: recusa.motivo, por: recusa.por, em: recusa.em || agora } }, { merge: true });
+      await doc.ref.set({ tratada: true, tratadaEm: agora }, { merge: true });
+      db.collection('auditoria').add({ acao: 'recusa_de_documento', detalhe: (rec.empresa || '') + ' · ' + (rec.nome || '') + ' · ' + recusa.motivo, origem: 'area-cliente', feitoPor: '', feitoPorNome: (recusa.por || 'Escritório') + ' (pelo robô)', quando: agora }).catch(() => {});
+      log('Área do Cliente: documento recusado -', (rec.empresa || '') + ' · ' + (rec.nome || ''));
+      fila.add(rec.token); agendar();
+    } catch (e) { log('Área do Cliente: a recusa ficou esperando -', e.message); } finally { tratandoRecusas.delete(doc.id); }
+  }
+  ouvir('Área do Cliente: recusas', () => db.collection('areaClienteRecusas').where('tratada', '==', false).limit(20), snap => { for (const d of snap.docs) void tratarRecusa(d); }, log);
 
   // ---------- 5. os espelhos órfãos: na hora em que o link some e, por garantia, uma varredura por dia ----------
   let limpoEm = '';

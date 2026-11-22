@@ -12,7 +12,7 @@
 // O cliente nunca lê estas coleções: só o espelho por token, que o robô grava.
 import { arrayUnion, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, type Query } from 'firebase/firestore';
 import { areaCliente as ac } from '@nads/core';
-import { bancoDoEntregas } from './entregas.firestore';
+import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import { maisRecente, novoToken, SITUACOES_DO_CHAMADO, type ChamadoNaEquipe, type LeituraDaGuia, type LinkDaEmpresa, type ListaAoVivo, type LogoDaEmpresa, type MensagemNaEquipe, type PessoaComSenha, type RecebidoDoCliente, type RepoAreaCliente } from './areaCliente';
 
@@ -90,6 +90,8 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     id, token: texto(x.token), codigo: numero(x.codigo), empresa: texto(x.empresa), nome: texto(x.nome),
     tipo: dentro(TIPOS_DE_ENVIO, x.tipo, 'outro'), tamanho: numero(x.tamanho), pastaDrive: texto(x.pastaDrive), recebidoEm: instante(x.recebidoEm),
     guia: guiaDoRecebido(texto(x.tipo), texto(x.nome)),
+    ...(x.recusa && typeof x.recusa === 'object' && texto((x.recusa as Record<string, unknown>).motivo)
+      ? { recusa: { motivo: texto((x.recusa as Record<string, unknown>).motivo), por: texto((x.recusa as Record<string, unknown>).por), em: instante((x.recusa as Record<string, unknown>).em) } } : {}),
   }));
 
   const logos = aoVivo<LogoDaEmpresa>(() => collection(db, 'logosDasEmpresas'), (id, x) => {
@@ -183,6 +185,15 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
       // o doc do token primeiro: sem ele, o cliente já não lê o espelho
       await deleteDoc(doc(db, 'areasCliente', token));
       for (const c of new Set([codigo, ...codigos(velho?.codigos)])) await deleteDoc(doc(db, 'areasClientePorEmpresa', String(c)));
+    },
+    // a recusa do documento (22/11/2026, Documentos do cliente; o dono: "Faz e publica a regra"): um recebido, uma recusa
+    // (a regra só deixa a equipe criar; o robô marca tratada)
+    async recusar(id, motivo) {
+      const conta = contaDoEntregas();
+      const pedido = ac.pedidoDeRecusa(motivo, quem(), conta?.uid ?? '', new Date());
+      if (!pedido) throw new Error(ac.erroDaRecusa(motivo) || 'Entre de novo para recusar.');
+      try { await setDoc(doc(db, 'areaClienteRecusas', id), pedido); }
+      catch (e) { throw new Error(/permission/i.test(String((e as { code?: string }).code ?? e)) ? 'O banco não deixou recusar (este arquivo já foi recusado, ou falta a regra nova).' : 'Não deu para recusar agora. Tente de novo.', { cause: e }); }
     },
     async responder(id, resposta) {
       const agora = new Date().toISOString();

@@ -155,7 +155,10 @@ function erroDoEnvio(arquivo) {
 
 /** O recibo que o cliente vê: lista branca de campos. */
 function reciboDoEnvio(e) {
-  return { id: e.id, nome: e.nome, tipo: TIPOS_EN.has(e.tipo) ? e.tipo : 'outro', tamanho: e.tamanho, recebidoEm: e.recebidoEm };
+  // a recusa do escritório, com o motivo que o cliente vê (22/11/2026, Documentos do cliente)
+  const motivo = e.recusa && typeof e.recusa.motivo === 'string' ? e.recusa.motivo.trim().slice(0, 300) : '';
+  const em = e.recusa && typeof e.recusa.em === 'string' ? e.recusa.em : '';
+  return Object.assign({ id: e.id, nome: e.nome, tipo: TIPOS_EN.has(e.tipo) ? e.tipo : 'outro', tamanho: e.tamanho, recebidoEm: e.recebidoEm }, motivo ? { recusa: { motivo, em } } : {});
 }
 
 // =====================================================================================================================
