@@ -7,7 +7,8 @@
 #   1. baixa o Java 25 (Temurin, da Eclipse Adoptium) em jdk\, se ainda não tem;
 #   2. baixa o código das duas calculadoras na versão marcada abaixo (git clone --branch), gera o banco SQLite
 #      (flyway:migrate) e o .jar (package, sem os testes);
-#   3. liga as duas, só para este PC (127.0.0.1): o regime regular na 8080 e o Simples na 8082, com 256 MB no máximo cada;
+#   3. liga as duas pelo ligar.ps1, só para este PC (127.0.0.1): o regime regular na 8080 e o Simples na 8082, com 256 MB
+#      no máximo cada, cada uma com o seu registro (<pasta>\<nome>.log);
 #   4. confere se respondem e mostra a memória de cada uma;
 #   5. com -Registrar, cria a tarefa agendada "nads-calculadoras-rtc", que liga as duas quando o Windows liga.
 # Pode rodar quantas vezes for: o que já está feito fica como está. Para trocar de versão, mude as versões abaixo.
@@ -17,6 +18,19 @@ param(
   [switch]$Registrar
 )
 $ErrorActionPreference = 'Stop'
+
+# Os programas de fora (git, java, mvnw) escrevem avisos na saída de erro ("Note: switching to...", os WARNING do Maven).
+# Rodando pelo robô (sem console), o PowerShell 5.1 transforma cada linha dessas em erro e, com o Stop acima, parava a
+# instalação no meio (21/11/2026, no servidor: "código 1 — RemoteException"). Aqui a saída de erro vira texto e quem
+# decide se deu certo é o código de saída ($LASTEXITCODE), conferido depois de cada chamada.
+function Nativo {
+  param([string]$Exe, [string[]]$Argumentos)
+  $ErrorActionPreference = 'Continue'
+  & $Exe @Argumentos 2>&1 | ForEach-Object {
+    $t = if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { "$_" }
+    if ($t -and $t.Trim() -and $t -ne 'System.Management.Automation.RemoteException') { Write-Host $t }
+  }
+}
 
 # As versões da Receita (as tags dos repositórios). Conferidas em 21/11/2026.
 $Calculadoras = @(
@@ -43,7 +57,8 @@ if (-not (Test-Path $Java)) {
   Remove-Item -Recurse -Force $tmp, $zip
 }
 $env:JAVA_HOME = $Jdk
-& $Java -version
+Nativo $Java @('-version')
+if ($LASTEXITCODE) { throw "o Java em $Jdk não abriu" }
 
 # 2. o código, o banco e o .jar de cada uma
 foreach ($c in $Calculadoras) {
@@ -57,41 +72,30 @@ foreach ($c in $Calculadoras) {
   # rmdir com \\?\: o Remove-Item do PowerShell 5.1 não apaga caminhos de mais de 260 caracteres
   if (Test-Path $dir) { cmd.exe /c "rmdir /s /q `"\\?\$dir`"" }
   # core.longpaths: os testes da Receita têm caminhos de mais de 260 caracteres (o git do Windows recusa sem isso)
-  & $Git -c core.longpaths=true clone --quiet --depth 1 --branch $c.Versao $c.Repo $dir
+  Nativo $Git @('-c', 'core.longpaths=true', '-c', 'advice.detachedHead=false', 'clone', '--quiet', '--depth', '1', '--branch', $c.Versao, $c.Repo, $dir)
   if ($LASTEXITCODE) { throw "git clone de $($c.Nome) falhou" }
   # o Simples usa o mesmo banco do regime regular: a pasta flyway vem de lá (README do Simples)
   if (-not (Test-Path (Join-Path $dir 'flyway'))) { Copy-Item -Recurse (Join-Path $Pasta 'regime-regular\flyway') (Join-Path $dir 'flyway') }
   Push-Location $dir
   try {
     New-Item -ItemType Directory -Force 'calculadora\db' | Out-Null
-    & .\mvnw.cmd --batch-mode --quiet flyway:migrate '-Dflyway.configFiles=flyway\flyway-pro.conf'
+    Nativo '.\mvnw.cmd' @('--batch-mode', '--quiet', 'flyway:migrate', '-Dflyway.configFiles=flyway\flyway-pro.conf')
     if ($LASTEXITCODE) { throw "o banco de $($c.Nome) não foi gerado" }
-    & .\mvnw.cmd --batch-mode --quiet clean package -DskipTests
+    Nativo '.\mvnw.cmd' @('--batch-mode', '--quiet', 'clean', 'package', '-DskipTests')
     if ($LASTEXITCODE) { throw "o .jar de $($c.Nome) não foi gerado" }
   } finally { Pop-Location }
   Set-Content -Encoding ascii $marca $c.Versao
 }
 
-# 3. o iniciar.cmd (o que a tarefa agendada chama): as duas, só para este PC
-$linhas = @('@echo off', 'rem Gerado por robo\calculadoras-rtc\instalar.ps1. Liga as calculadoras da Receita, so para este PC.')
-foreach ($c in $Calculadoras) {
-  $dir = Join-Path $Pasta $c.Nome
-  $linhas += "start `"rtc-$($c.Nome)`" /min /d `"$dir`" `"$Java`" -Xms32m -Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dspring.profiles.active=offline -Dserver.address=127.0.0.1 -Dmanagement.server.address=127.0.0.1 -jar target\$($c.Jar)"
-}
-$iniciar = Join-Path $Pasta 'iniciar.cmd'
-Set-Content -Encoding ascii $iniciar $linhas
+# 3. liga cada uma que está fora do ar (o ligar.ps1 ao lado: também o que a tarefa agendada chama) e confere
+$ligar = Join-Path $PSScriptRoot 'ligar.ps1'
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Pasta 'iniciar.cmd')   # o de antes de 21/11/2026 à noite
+& $ligar -Pasta $Pasta
+$todasNoAr = ($LASTEXITCODE -eq 0)
 
-# 4. liga (se ainda não está no ar), confere e mede
-function NoAr($porta, $rota) { try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 "http://127.0.0.1:$porta/api$rota").StatusCode -eq 200 } catch { $false } }
-$rotas = @{ 8080 = '/calculadora/dados-abertos/versao'; 8082 = '/versao' }
-if (-not ($Calculadoras | Where-Object { NoAr $_.Porta $rotas[$_.Porta] })) { Start-Process -WindowStyle Hidden cmd.exe "/c `"$iniciar`"" }
-foreach ($c in $Calculadoras) {
-  $ok = $false
-  for ($i = 0; $i -lt 60 -and -not $ok; $i++) { Start-Sleep 2; $ok = NoAr $c.Porta $rotas[$c.Porta] }
-  Write-Host ("{0}: {1}" -f $c.Nome, $(if ($ok) { "no ar em 127.0.0.1:$($c.Porta)" } else { 'NÃO respondeu em 2 minutos' }))
-}
+# 4. a memória de cada uma e a livre no PC
 Start-Sleep 10
-Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" | Where-Object { $_.CommandLine -like '*-Dspring.profiles.active=offline*' } | ForEach-Object {
+Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" | Where-Object { $_.CommandLine -match 'target\\api-(regime-geral|simples-nacional)\.jar' } | ForEach-Object {
   $p = Get-Process -Id $_.ProcessId
   $jar = if ($_.CommandLine -match 'target\\(\S+\.jar)') { $Matches[1] } else { '?' }
   Write-Host ("Memória de {0}: {1:N0} MB (pico {2:N0} MB)" -f $jar, ($p.WorkingSet64 / 1MB), ($p.PeakWorkingSet64 / 1MB))
@@ -99,10 +103,11 @@ Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" | Where-Object { $_.Co
 $livre = (Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1KB
 Write-Host ("Memória livre no PC agora: {0:N0} MB" -f $livre)
 
-# 5. junto com o Windows
+# 5. junto com o Windows (precisa de administrador)
 if ($Registrar) {
-  $acao = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$iniciar`""
+  $acao = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ligar`" -Pasta `"$Pasta`""
   $quando = New-ScheduledTaskTrigger -AtStartup
   Register-ScheduledTask -TaskName 'nads-calculadoras-rtc' -Action $acao -Trigger $quando -RunLevel Limited -Force | Out-Null
   Write-Host 'Tarefa agendada nads-calculadoras-rtc criada (liga as calculadoras quando o Windows liga).'
 }
+if (-not $todasNoAr) { exit 1 }

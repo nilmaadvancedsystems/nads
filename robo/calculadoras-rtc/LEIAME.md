@@ -30,6 +30,12 @@ responde, ele roda este `instalar.ps1` por trás.
 Rodando pelo robô, sem administrador, as calculadoras não são registradas no Windows: o próprio robô as liga de novo
 depois de cada reinício do PC.
 
+## Ligar e ver por que caiu
+
+`ligar.ps1` liga cada calculadora que não responde. A que já responde fica como está. Cada uma grava a sua saída em
+`D:\nads-rtc\regime-regular.log` e `D:\nads-rtc\simples-nacional.log`, e os erros em `*.erro.log`. Se uma cair, o motivo
+fica nesses arquivos. O `instalar.ps1` chama o `ligar.ps1` no fim, e a tarefa agendada do `-Registrar` também.
+
 ## Instalar à mão
 
 No PC do servidor, na pasta do repositório:

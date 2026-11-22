@@ -37,6 +37,12 @@ function rodarInstalador({ pasta, executar = spawn, esperaMax = ESPERA_MAX_MS } 
     p.stdout && p.stdout.on('data', b => { saida += b.toString('utf8'); });
     p.stderr && p.stderr.on('data', b => { saida += b.toString('utf8'); });
     p.on('error', err => { saida += '\n' + err.message; acabar(-2); });
+    // 'exit', não 'close' (21/11/2026): as calculadoras (Java) que o script liga herdam a saída do PowerShell, e o 'close'
+    // só viria quando elas desligassem — o robô ficava esperando para sempre. Meio segundo para a última saída chegar
+    p.on('exit', codigo => setTimeout(() => {
+      acabar(codigo);
+      for (const s of [p.stdout, p.stderr]) { try { if (s && s.destroy) s.destroy(); } catch { /* já fechou */ } }
+    }, 500));
     p.on('close', codigo => acabar(codigo));
   });
 }
