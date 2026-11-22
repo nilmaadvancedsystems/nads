@@ -1,13 +1,14 @@
 // Fiscal › SIEG (31/10/2026: "coloca uma função de baixar do sieg q tinha na rotina"; "faz uma visualização mais completa, e
 // também puxe entrada saída etc, tudo que de para puxar do sieg"): a empresa e o mês na barra; embaixo, o painel do SIEG da
 // rotina (as notas do mês com Contar agora e Baixar XMLs), os números do mês (saídas, entradas, serviços, CT-e e os
-// impostos) e as abas Saídas | Entradas | Serviços prestados | Serviços tomados | CT-e | Sequência, cada uma com o resumo
+// impostos) e as abas Saídas | Entradas | Serviços prestados | Serviços tomados | CT-e | Sequência | IBS/CBS, cada uma com o resumo
 // por CFOP/CST/NBS e a tabela das notas com busca (clicar abre o espelho). Só as peças do catálogo (busca curta, Botão com
 // borda, SeletorMes, Segmentado, Stat, Cartão, Tabela padrão, Vazio, Esqueleto).
 import { BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, Stat, useCarregando, Vazio } from '@nads/ui';
 import type { KeyboardEvent } from 'react';
 import { documentoFormatado } from '../../financeiro/formatosDaNota';
 import { SiegDaEtapa } from '../../executor/partes/SiegDaEtapa';
+import { AbaIbsCbs, divergentesIbsCbs } from '../partes/ConferenciaIbsCbs';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
 import { VerANota } from '../partes/VerANota';
 import { useBaixarDoSieg, type AbaDaTela, type VmBaixarDoSieg } from './useBaixarDoSieg';
@@ -31,6 +32,8 @@ export function BaixarDoSieg() {
   const opcoes: { valor: AbaDaTela; rotulo: string }[] = [
     ...ABAS_DE_NOTAS.map(a => ({ valor: a, rotulo: ROTULO_DA_ABA[a] + (vm.painel ? ' (' + vm.painel.abas[a].quantidade + ')' : '') })),
     { valor: 'sequencia', rotulo: 'Sequência das saídas' },
+    // a conferência do IBS/CBS pela calculadora da Receita (21/11/2026): o número é o das notas divergentes
+    { valor: 'ibscbs', rotulo: 'IBS/CBS' + (divergentesIbsCbs(vm.ibsCbs) ? ' (' + divergentesIbsCbs(vm.ibsCbs) + ')' : '') },
   ];
   return (
     <section className="fc">
@@ -48,7 +51,9 @@ export function BaixarDoSieg() {
               <>
                 {vm.painel && <Numeros vm={vm} />}
                 <Segmentado valor={vm.aba} onMudar={vm.mudarAba} opcoes={opcoes} />
-                {vm.aba === 'sequencia'
+                {vm.aba === 'ibscbs'
+                  ? <AbaIbsCbs c={vm.ibsCbs} rotuloCompetencia={vm.rotuloCompetencia} />
+                  : vm.aba === 'sequencia'
                   ? <SiegDaEtapa key={'s' + codigo + vm.competencia} tipo="saidas" codigo={codigo} competencia={vm.competencia} />
                   : !vm.painel
                     ? <div className="card fc-cartao"><Vazio icone="download" titulo={'Os XMLs de ' + vm.rotuloCompetencia + ' ainda não foram baixados'} texto="Clique em Baixar do SIEG, no alto (XML, PDF ou os dois)." /></div>

@@ -11,7 +11,8 @@ import { competenciasDaTela } from '../../../casca/navegacao';
 import { useRepo, useSieg } from '../../../dados/repo';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 
-export type AbaDaTela = t.sieg.AbaDoSieg | 'sequencia';
+/** 'ibscbs': a conferência do IBS/CBS pela calculadora da Receita (21/11/2026) */
+export type AbaDaTela = t.sieg.AbaDoSieg | 'sequencia' | 'ibscbs';
 /** o resumo da aba: por CFOP, por CST (mercadorias) ou por NBS (serviços) */
 export type ResumoPor = 'cfop' | 'cst' | 'nbs';
 /** quantas notas a tabela mostra de cada vez (o resto pela busca) */
@@ -42,7 +43,7 @@ export function useBaixarDoSieg() {
   const dados = doSieg?.dados || null;
   const painel = useMemo(() => (dados ? t.sieg.painelDoSieg(dados) : null), [dados]);
 
-  const resumo = painel && aba !== 'sequencia' ? painel.abas[aba] : null;
+  const resumo = painel && aba !== 'sequencia' && aba !== 'ibscbs' ? painel.abas[aba] : null;
   const servico = aba === 'prestados' || aba === 'tomados';
   // o resumo escolhido vale para a aba (serviço só tem NBS; CT-e só CFOP)
   const por: ResumoPor = servico ? 'nbs' : aba === 'ctes' ? 'cfop' : resumoPor === 'nbs' ? 'cfop' : resumoPor;
@@ -65,6 +66,8 @@ export function useBaixarDoSieg() {
     carregando: !!empresa && !!doSieg && !doSieg.carregadas,
     semXml: !!empresa && !!doSieg?.carregadas && !dados,
     painel,
+    /** a conferência do IBS/CBS do mês (o robô grava no resumo do SIEG); null = ainda não conferiu */
+    ibsCbs: dados?.ibsCbs || null,
     aba, mudarAba,
     resumo,
     servico,
