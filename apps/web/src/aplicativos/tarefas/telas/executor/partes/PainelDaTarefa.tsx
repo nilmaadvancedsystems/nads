@@ -156,51 +156,6 @@ function FaltamNoAlterdata({ faltam, oQue, baixar, baixando }: { faltam: readonl
   );
 }
 
-/**
- * O IBS/CBS das notas pela calculadora oficial da Receita (21/11/2026): o robô do SIEG confere cada NF-e/NFC-e do mês
- * (o grupo IBSCBS: CST, cClassTrib, base, alíquotas e valores, e o leiaute) e grava aqui as divergentes. Sem a
- * conferência (a calculadora ainda não rodou para o mês), não aparece nada.
- */
-function ConferenciaIbsCbs({ c, lado }: { c: t.sieg.ConferenciaIbsCbs | null; lado: t.sieg.LadoDaNota }) {
-  if (!c) return null;
-  const n = lado === 'emitida' ? c.emitidas : c.recebidas;
-  if (!n.conferidas && !n.semGrupo && !n.naoConferidas) return null;
-  const oQue = lado === 'emitida' ? 'emitidas' : 'recebidas';
-  const plural = (q: number, um: string, varios: string) => q + ' ' + (q === 1 ? um : varios);
-  const detalhe = [
-    plural(n.conferidas, 'nota conferida', 'notas conferidas'),
-    n.semGrupo ? plural(n.semGrupo, 'sem o grupo IBSCBS', 'sem o grupo IBSCBS') : '',
-    n.naoConferidas ? plural(n.naoConferidas, 'que a calculadora não conferiu', 'que a calculadora não conferiu') : '',
-  ].filter(Boolean).join(' · ') + ' (calculadora da Receita ' + c.versao + ', ' + formatos.dataHora(c.em) + ').';
-  if (!n.divergentes) return <Alerta naLinha tom="ok" titulo={'O IBS/CBS das notas ' + oQue + ' confere com a calculadora da Receita'} texto={detalhe} />;
-  const notas = c.notas.filter(x => x.lado === lado);
-  const linhas = notas.flatMap(x => x.divergencias.map((d, i) => ({ nota: x, d, primeira: i === 0 })));
-  return (
-    <>
-      <Alerta naLinha titulo={plural(n.divergentes, 'nota ' + (lado === 'emitida' ? 'emitida' : 'recebida'), 'notas ' + oQue) + ' com o IBS/CBS diferente da calculadora da Receita'}
-        texto={detalhe + (lado === 'emitida' ? ' Corrija o cadastro do produto (cClassTrib e CST) no emissor do cliente.' : ' Confira o crédito com o fornecedor.')} />
-      <div className="table-wrap table-compact">
-        <table>
-          <thead><tr><th>Nota</th><th className="num">Item</th><th>O que</th><th>Na nota</th><th>A calculadora</th></tr></thead>
-          <tbody>
-            {linhas.slice(0, 80).map(({ nota, d, primeira }, i) => (
-              <tr key={nota.chave + '|' + i}>
-                <td className="wrap">{primeira ? <><b>{nota.nome || '—'}</b><span className="hint" style={{ display: 'block', margin: 0 }}>{nota.tipo} · nº {nota.numero} · {nota.data}</span></> : null}</td>
-                <td className="num">{d.item || 'nota'}</td>
-                <td className="wrap">{d.campo}</td>
-                <td className="wrap">{d.naNota}</td>
-                <td className="wrap">{d.calculadora}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {linhas.length > 80 && <p className="hint">E mais {linhas.length - 80} diferenças.</p>}
-      {c.cortadas > 0 && <p className="hint">Mais {c.cortadas} notas com divergência ficaram fora da lista (o limite do resumo).</p>}
-    </>
-  );
-}
-
 /** Os itens das notas emitidas com a tributação para revisar (09/10/2026: "erros de tributação apontados sozinhos"). */
 function ErrosDeTributacao({ erros }: { erros: readonly t.sieg.ErroDeTributacao[] }) {
   if (!erros.length) return <Alerta naLinha tom="ok" titulo="Tributação das notas emitidas sem nada para revisar" />;
@@ -818,9 +773,8 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       const r = painel === 'saidas' ? vm.saidas : vm.entradas;
       const fiscal = painel === 'saidas' ? vm.fiscalSaidas : vm.fiscalEntradas;
       const doXml = painel === 'saidas' ? vm.doXml.saidas : vm.doXml.entradas;
-      const lado: t.sieg.LadoDaNota = painel === 'saidas' ? 'emitida' : 'recebida';
       // sem o relatório do Alterdata: o que os XMLs já mostram, e o importar
-      if (!r.qtd) return doXml ? <>{vazio(painel)}{painel === 'saidas' && <ErrosDeTributacao erros={vm.errosTributacao} />}<ConferenciaIbsCbs c={vm.ibsCbs} lado={lado} /><TabelaFiscal r={fiscal} abrir={abrir} xml quando={vm.xml?.quando} /></> : vazio(painel);
+      if (!r.qtd) return doXml ? <>{vazio(painel)}{painel === 'saidas' && <ErrosDeTributacao erros={vm.errosTributacao} />}<TabelaFiscal r={fiscal} abrir={abrir} xml quando={vm.xml?.quando} /></> : vazio(painel);
       return (
         <>
           <div className="stat-grid">
@@ -837,7 +791,6 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
           <TabelaPorCfop r={r} abrir={abrir} />
           {vm.xml && <ValoresNotaANota c={painel === 'saidas' ? vm.valoresSaidas : vm.valoresEntradas} />}
           {vm.xml && painel === 'saidas' && <ErrosDeTributacao erros={vm.errosTributacao} />}
-          {vm.xml && <ConferenciaIbsCbs c={vm.ibsCbs} lado={lado} />}
           {vm.xml && <FaltamNoAlterdata faltam={painel === 'saidas' ? vm.faltamSaidas : vm.faltamEntradas} oQue={painel === 'saidas' ? 'notas emitidas' : 'notas recebidas'} baixar={c => { void vm.baixarFaltam(c); }} baixando={vm.baixandoFaltam} />}
           <TabelaFiscal r={fiscal} abrir={abrir} xml={doXml} quando={vm.xml?.quando} />
           <SemConta r={r} />

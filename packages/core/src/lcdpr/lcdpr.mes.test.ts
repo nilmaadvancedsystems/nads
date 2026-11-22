@@ -5,7 +5,7 @@ import type { NotaDoSieg, NotasSieg } from '../tarefas/sieg';
 import {
   aplicarAutomatico, aplicarContaCredora, aplicarHistoricoPadrao, comContaDosFornecedores, configPadrao, contasDaPesquisa, historicosDaPesquisa, imoveisDaPesquisa,
   lancamentoDoRascunho, mudarNoRascunho, nomeNaPesquisa, pesquisar, problemasDoRascunho, rascunhoDoLancamento, rascunhoNovo, contasDePagamento, contasDoDocumento, documentoDoMes, juntarNoMes, lembrarContas, lerDoSieg,
-  linhasDaPlanilha, marcaDaConta, mesDoDocumento, notaDoLancamento, semEntidades, alternarMes, baseDoMes, mesDoId, mesesAte, mesesDoAno, porMes, mesVazio, proximoIdDoMes, resumoServeParaOLcdpr, rotuloDaConta, situacaoDoMes, type Lancamento,
+  linhasDaPlanilha, marcaDaConta, mesDoDocumento, notaDoLancamento, notaParaVer, semEntidades, alternarMes, baseDoMes, mesDoId, mesesAte, mesesDoAno, porMes, mesVazio, proximoIdDoMes, resumoServeParaOLcdpr, rotuloDaConta, situacaoDoMes, type Lancamento,
 } from '.';
 
 const ids = () => { let n = 1; return () => n++; };
@@ -52,6 +52,17 @@ describe('as notas puxadas do SIEG', () => {
     const doRelatorio = { origem: 'NF' as const, documento: '124/2', cnpj: '11.222.333/0001-81' };
     expect(notaDoLancamento(doRelatorio, res)?.chave).toBe('K2');
     expect([notaDoLancamento({ ...doRelatorio, origem: 'CTe' }, res), notaDoLancamento({ ...doRelatorio, origem: 'Manual' }, res), notaDoLancamento(a, null)]).toEqual([null, null, null]);
+  });
+
+  it('a nota para ver na janela do lançamento: a do mês, ou o motivo em palavras', () => {
+    const res = resumo([nfe()]);
+    const [a] = lerDoSieg(res, configPadrao(), ids()).lancamentos;
+    expect(notaParaVer(a, res, '2026-10')).toEqual({ nota: res.recebidas[0], motivo: '' });
+    expect(notaParaVer({ ...a, origem: 'Manual' }, res, '2026-10').motivo).toMatch(/feito à mão/);
+    const semPuxar = notaParaVer(a, null, '2026-10');
+    expect([semPuxar.nota, semPuxar.motivo]).toEqual([null, 'As notas de 10/2026 ainda não foram puxadas do SIEG, então o nads não tem o XML da nota ' + a.documento + '. Use o "Puxar do SIEG" na lista e abra de novo.']);
+    expect(notaParaVer({ ...a, chave: 'OUTRA' }, res, '2026-10').motivo).toBe('A nota ' + a.documento + ' não está nas notas do SIEG de 10/2026 já baixadas, então o nads não tem o XML. Baixe as notas do mês de novo no "Puxar do SIEG".');
+    expect(notaParaVer({ ...a, origem: 'CTe', chave: 'X' }, res, '2026-10').motivo).toMatch(/^O CT-e /);
   });
 
   it('o nome com as entidades do XML sai limpo (no SIEG e no que já estava guardado no mês)', () => {
