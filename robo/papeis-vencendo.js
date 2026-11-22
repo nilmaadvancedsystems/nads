@@ -62,7 +62,49 @@ function textoDoAviso(lista) {
   };
 }
 
-function iniciarPapeisVencendo({ db, log, avisos }) {
+// O documento vencendo vira tarefa (22/11/2026, ficha M03; o dono: "pode fazer tudo"): a 30 dias de vencer, uma tarefa no
+// Início do responsável do Contábil da empresa (o Cadastro do nads; sem ele, um Diretor), com o id determinístico (create:
+// se já existe, não faz nada). Só com config/papeisViramTarefa.ligado == true (Robôs › Ajustes; vem desligado).
+// deps: { db, core, log, clientes: [{ codigoOrigem, nome, nomeFantasia, ativo, papeis }], hoje: 'aaaa-mm-dd', agora: Date }
+async function criarTarefasDosPapeis({ db, core, log, clientes, hoje, agora = new Date() }) {
+  const P = core();
+  const vencendo = [];
+  for (const c of clientes || []) {
+    if (!c || c.ativo === false) continue;
+    for (const p of Array.isArray(c.papeis) ? c.papeis : []) if (p && p.vence && P.papelViraTarefaHoje(p.vence, hoje)) vencendo.push({ c, p });
+  }
+  if (!vencendo.length) return 0;
+  // a equipe: o responsável pelo nome; sem ele, o primeiro Diretor ativo
+  const equipe = (await db.collection('usuarios').get()).docs.map(d => Object.assign({ uid: d.id }, d.data())).filter(u => u.ativo !== false && u.nome);
+  const diretor = equipe.find(u => u.nivel === 'diretor' || u.nivel === 'dono') || null;
+  let criadas = 0;
+  for (const { c, p } of vencendo.slice(0, MAX_POR_DIA)) {
+    // o código do ERP mora em codigoOrigem nos clientes do Entregas
+    const bruto = c.codigoOrigem != null && String(c.codigoOrigem).trim() !== '' ? c.codigoOrigem : c.codigo;
+    const codigo = bruto != null && String(bruto).trim() !== '' && Number.isFinite(Number(bruto)) ? Number(bruto) : null;
+    const nomeCli = String(c.nomeFantasia || c.nome || 'cliente').slice(0, 80);
+    const id = P.idDaTarefaDoPapel(codigo, p.tipo, p.vence);
+    const ref = db.collection('nadsTarefasDelegadas').doc(id);
+    if ((await ref.get()).exists) continue;
+    let nomeResp = '';
+    if (codigo != null) {
+      const cad = await db.collection('cadastro').where('codigo', '==', codigo).limit(1).get().catch(() => null);
+      nomeResp = cad && !cad.empty ? String(((cad.docs[0].data() || {}).responsaveis || {}).contabil || '') : '';
+    }
+    const u = (nomeResp && equipe.find(x => P.chaveDoNome(x.nome) === P.chaveDoNome(nomeResp) && (x.departamento === 'contabil' || (x.roles || []).includes('contabil')))) || diretor;
+    if (!u) { log('documento vencendo: ninguém para receber a tarefa de', nomeCli); continue; }
+    const ultima = await db.collection('nadsTarefasDelegadas').orderBy('numero', 'desc').limit(1).get();
+    const numero = (Number(ultima.empty ? 0 : ultima.docs[0].get('numero')) || 0) + 1;
+    const t = P.tarefaDoPapel(p, { codigo, nome: nomeCli }, { uid: u.uid, nome: String(u.nome) }, { numero, em: agora.toISOString() });
+    const campos = Object.assign({}, t, { pessoas: P.pessoasDaTarefa(t) });
+    delete campos.id;
+    try { await ref.create(campos); criadas++; } catch (e) { if (e.code !== 6) throw e; }
+  }
+  if (criadas) log('documento vencendo: ' + criadas + ' tarefa(s) criada(s)');
+  return criadas;
+}
+
+function iniciarPapeisVencendo({ db, log, avisos, core }) {
   if (!avisos) { log('papéis vencendo: sem aviso no celular, módulo parado'); return; }
   const estadoRef = db.collection('robo').doc('estado');
   let rodando = false;
@@ -76,6 +118,13 @@ function iniciarPapeisVencendo({ db, log, avisos }) {
     try {
       const clientes = [];
       (await cacheDeClientes.clientesAtivos(db, log)).forEach(d => clientes.push(Object.assign({ id: d.id }, d.data())));
+      // as tarefas dos papéis a 30 dias (só ligado; rodar de novo no mesmo dia não cria outra)
+      if (core) {
+        try {
+          const cfg = (await db.collection('config').doc('papeisViramTarefa').get()).data() || {};
+          if (cfg.ligado === true) await criarTarefasDosPapeis({ db, core, log, clientes, hoje, agora });
+        } catch (e) { log('documento vencendo: as tarefas não saíram -', e.message); }
+      }
       const lista = papeisParaAvisar(clientes, agora);
       if (!lista.length) { feitoEm = hoje; return; }
       const estado = (await estadoRef.get()).data() || {};
@@ -97,4 +146,4 @@ function iniciarPapeisVencendo({ db, log, avisos }) {
   log('aviso de certidão/procuração/certificado ligado (a partir das ' + HORA_MINIMA + 'h)');
 }
 
-module.exports = { diasAte, papeisParaAvisar, textoDoAviso, iniciarPapeisVencendo };
+module.exports = { diasAte, papeisParaAvisar, textoDoAviso, iniciarPapeisVencendo, criarTarefasDosPapeis };

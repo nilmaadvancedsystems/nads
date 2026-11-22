@@ -129,6 +129,8 @@ export interface EstadoDaArea {
   ficha: FichaDaEmpresa | null;
   atendimento: Atendimento | null;
   avisos: AvisoDoEscritorio[];
+  /** os comunicados do escritório que valem hoje para o link (22/11/2026, ficha comunicados) */
+  comunicados: ac.ComunicadoNaArea[];
   /**
    * Os tickets do Mandei esperando o cliente (11/11/2026: o que o escritório pede, num lugar só, como no Liscio e no G-Click
    * da Omie). Por enquanto só nos dados de exemplo: o banco ainda não liga o Mandei (o robô não espelha os tickets).
@@ -142,7 +144,7 @@ export interface EstadoDaArea {
 
 export const AREA_VAZIA: EstadoDaArea = {
   carregado: false, valido: false, pedeLogin: null, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [], entregas: [], parcelamentos: [],
+  documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], comunicados: [], tickets: [], entregas: [], parcelamentos: [],
 };
 
 /** Quem entrou com a senha (19/11/2026, senha parte 2): o e-mail e as empresas que o login abre */
@@ -177,6 +179,8 @@ export interface RepoAreaCliente {
   avaliarChamado(token: string, chamadoId: string, nota: number, comentario: string): Promise<void>;
   /** "Confirmar que recebi" a entrega: o pedido marcado vai para o robô (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
   confirmarRecebido(token: string, entregaId: string): Promise<void>;
+  /** o aceite da política de privacidade (22/11/2026, ficha aceite-lgpd): o registro por link e versão */
+  aceitarPolitica(token: string, versao: string): Promise<void>;
   /** "Não tive movimento" no mês (22/11/2026, Documentos do cliente): o pedido marcado vai para o robô, que marca o mês sem movimento */
   marcarSemMovimento(token: string, competencia: string): Promise<void>;
   /** entra com o e-mail e a senha (o link que pede senha) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"); o erro já vem em português */

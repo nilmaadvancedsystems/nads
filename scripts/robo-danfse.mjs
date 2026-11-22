@@ -78,6 +78,13 @@ const codigo = [
   // "Não tive movimento" pela Área do Cliente (22/11/2026, Documentos do cliente)
   'export { competenciaDoPedidoDeSemMovimento, competenciaAceitaNoSemMovimento } from ' + caminho('packages/core/src/areaCliente/semMovimento.ts') + ';',
   'export { recusaLida } from ' + caminho('packages/core/src/areaCliente/recusa.ts') + ';',
+  'export { comunicadosDoLink, lerComunicado } from ' + caminho('packages/core/src/areaCliente/comunicados.ts') + ';',
+  // o documento vencendo vira tarefa (22/11/2026, ficha M03): a tarefa no formato das delegadas e quem é a pessoa pelo nome
+  'export { tarefaDoPapel, papelViraTarefaHoje, idDaTarefaDoPapel } from ' + caminho('packages/core/src/tarefas/regras/papelViraTarefa.ts') + ';',
+  'export { pessoasDaTarefa } from ' + caminho('packages/core/src/tarefas/regras/delegadas.ts') + ';',
+  'export { chaveDoNome } from ' + caminho('packages/core/src/tarefas/regras/insights.ts') + ';',
+  // o aviso de acesso novo e o "Não fui eu" (22/11/2026, ficha E21)
+  'export { textoDoAvisoDeAcesso, textoDoAlertaNaoFuiEu } from ' + caminho('packages/core/src/usuarios/regras/liberacao.ts') + ';',
   'export { orgaoDaCertidao, ultimaPorOrgao } from ' + caminho('packages/core/src/areaCliente/certidoes.ts') + ';',
   'export { fichaDoCliente } from ' + caminho('packages/core/src/areaCliente/ficha.ts') + ';',
   'export { precisaAvisar, emailDoAviso } from ' + caminho('packages/core/src/areaCliente/avisoDeResposta.ts') + ';',

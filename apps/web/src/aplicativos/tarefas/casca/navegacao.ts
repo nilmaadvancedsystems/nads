@@ -232,6 +232,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
     { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem', titulo: 'Solicitações dos clientes' },
     { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Recebidos' },
+    // os comunicados aos clientes (22/11/2026, ficha comunicados): a equipe vê; o admin e os diretores publicam
+    { id: 'comunicados', rotulo: 'Comunicados', icone: 'sino', titulo: 'Comunicados aos clientes' },
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
     { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
   ] },

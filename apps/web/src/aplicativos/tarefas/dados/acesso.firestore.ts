@@ -33,6 +33,14 @@ let ultimoPonto = 0;
 let presencaSemRegra = false;
 
 export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
+  // o registro das alterações sensíveis (22/11/2026, ficha E20; o dono: "pode fazer tudo"): na auditoria, depois da ação;
+  // se o registro falhar, a ação já foi (o trabalho nunca trava por causa dele)
+  const registrar = (acao: u.AcaoDoRegistro, detalhe: string) => {
+    const q = quem();
+    if (!q) return;
+    addDoc(collection(bancoDoEntregas(), 'auditoria'), u.linhaDoRegistro(acao, q, detalhe, new Date())).catch(e => console.warn('[nads] o registro não gravou', acao, e instanceof Error ? e.message : e));
+  };
+  const nomeDe = (uid: string) => String(equipe.docs[uid]?.nome || 'alguém');
   const db = bancoDoEntregas();
   let ver = 0;
   const ouvintes = new Set<() => void>();
@@ -144,11 +152,13 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
         validoAte: Timestamp.fromMillis(Date.now() + u.PRAZO_DO_CODIGO_MS),
       });
       await b.commit();
+      registrar('acesso-liberado', p.nome + ' · ' + p.computador);
       return codigo;
     },
     async recusar(p) {
       const q = eu();
       await updateDoc(doc(db, 'nadsPedidos', p.id), { status: 'recusado', aprovadoPor: q.nome, aprovadoEm: new Date().toISOString() });
+      registrar('acesso-recusado', p.nome + ' · ' + p.computador);
     },
     sessoes: () => { ouvir(); return sessoes; },
     async revogar(s) {
@@ -161,6 +171,25 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
         b.delete(doc(db, 'nadsPedidos', s.pedidoId, 'codigo', 'atual'));
       }
       await b.commit();
+      registrar('acesso-revogado', s.nome + ' · ' + s.computador);
+    },
+    // os acessos da própria pessoa e o "Não fui eu" (22/11/2026, ficha E21; regra: a pessoa lê e apaga as sessões dela, e cria o alerta dela)
+    async meusAcessos() {
+      const q = eu();
+      try {
+        const snap = await getDocs(query(collection(db, 'nadsSessoes'), where('uid', '==', q.uid), limit(30)));
+        return u.meusAcessosOrdenados(snap.docs.map(d => u.sessaoDoDocumento(d.id, d.data())));
+      } catch (e) { throw new Error(/permission/i.test(String((e as { code?: string }).code ?? e)) ? 'Ainda não dá para ver os seus acessos (falta a regra nova no banco).' : 'Não deu para ler os seus acessos agora.', { cause: e }); }
+    },
+    async naoFuiEu(s) {
+      const q = eu();
+      if (s.uid !== q.uid) throw new Error('Este acesso não é seu.');
+      const b = writeBatch(db);
+      b.delete(doc(db, 'nadsSessoes', s.id));
+      b.set(doc(collection(db, 'nadsAlertas')), u.alertaNaoFuiEu(s, new Date()));
+      try { await b.commit(); }
+      catch (e) { throw new Error('Não deu para encerrar o acesso agora. Avise o Diretor.', { cause: e }); }
+      registrar('acesso-revogado', s.nome + ' · ' + s.computador + ' (Não fui eu)');
     },
     equipe: () => { ouvir(); return equipe; },
     async salvarCargo(uid, departamento, nivel) {
@@ -170,8 +199,9 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       // o "—" (sem departamento ou sem nível) vem como undefined, que o banco ignora (ignoreUndefinedProperties): o campo
       // antigo ficava gravado, e as regras (doSetor, ehDiretorNads) e a tela continuavam lendo o cargo que saiu. Apaga.
       await updateDoc(doc(db, 'usuarios', uid), { roles: m.roles, departamento: m.departamento ?? deleteField(), nivel: m.nivel ?? deleteField() });
+      registrar('usuario-cargo', nomeDe(uid) + ': ' + (departamento || 'sem departamento') + ' · ' + (nivel || 'sem nível'));
     },
-    async salvarPapeis(uid, papeis) { await updateDoc(doc(db, 'usuarios', uid), { roles: papeis }); },
+    async salvarPapeis(uid, papeis) { await updateDoc(doc(db, 'usuarios', uid), { roles: papeis }); registrar('usuario-papeis', nomeDe(uid) + ': ' + papeis.join(', ')); },
     minhaFoto: () => { ouvir(); const q = quem(); return (q && equipe.docs[q.uid]?.fotoPerfil) || null; },
     // as regras deixam o dono mexer na própria foto (usuarios/{uid}.fotoPerfil), como as Configurações do Entregas
     async salvarMinhaFoto(foto) {
@@ -211,7 +241,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
         if (--ouvindoPresencas === 0 && pararPresencas) { pararPresencas(); pararPresencas = null; }
       };
     },
-    async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
+    async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); registrar(ativo ? 'usuario-ativado' : 'usuario-desativado', nomeDe(uid)); },
     // excluir usuário (16/11/2026): um documento basta em cada lugar (limit 1); as buscas vão juntas. O lugar que não deu para
     // ler (negado, fora do ar) volta em semConferir, e a tela não deixa excluir sem conferir
     async registrosDe(p) {
@@ -237,6 +267,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       if (!d) throw new Error('Não achei essa pessoa.');
       if (d.ativo !== false) throw new Error('Só uma conta inativa pode ser excluída.');
       await deleteDoc(doc(db, 'usuarios', uid));
+      registrar('usuario-excluido', String(d.nome || 'alguém'));
       // o último ponto dela (sem a regra no ar, ou já apagado, não faz falta)
       await deleteDoc(doc(db, 'nadsPresenca', uid)).catch(() => undefined);
     },
@@ -248,6 +279,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       const novo = u.docDaContaNova(c, new Date());
       const uid = await criarLoginNoEntregas(String(novo.email), c.senha);
       await setDoc(doc(db, 'usuarios', uid), novo);
+      registrar('usuario-criado', String(novo.nome || '') + (novo.departamento ? ' · ' + novo.departamento : ''));
       return String(novo.email);
     },
     // os convites (15/10/2026), no formato do Entregas (convites/{codigo}; as regras de lá conferem): o código é a senha,
@@ -284,6 +316,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       const ref = await addDoc(collection(db, 'pedidosConta'), {
         acao: 'trocarEmail', uidAlvo: uid, emailNovo: email.trim().toLowerCase(), pedidoPor: { uid: q.uid, nome: q.nome }, em: new Date().toISOString(), status: 'fila',
       });
+      registrar('usuario-email', nomeDe(uid));
       // o robô da nuvem troca em segundos; sem resposta em 2 min, o pedido fica na fila e a tela avisa
       await new Promise<void>((ok, falhou) => {
         let parar = () => {};

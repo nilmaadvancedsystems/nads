@@ -73,6 +73,9 @@ export interface RecebidoDoCliente {
 /** Uma coleção ao vivo: `erro` diz por que não leu (regra do banco), e a lista fica vazia. */
 export interface ListaAoVivo<T> { carregada: boolean; lista: readonly T[]; erro: string }
 
+/** O comunicado como a tela escreve (sem id, quem publicou e a hora: o repositório põe). */
+export type RascunhoDoComunicado = Pick<ac.Comunicado, 'titulo' | 'texto' | 'alvo' | 'publicarEm' | 'ate'>;
+
 export interface EmpresaDoLink { codigo: number; nome: string }
 
 /** logosDasEmpresas/{codigo} (12/11/2026): a logo que a Área do Cliente mostra no topo, como data URL (PNG/JPG/WebP). */
@@ -87,6 +90,11 @@ export interface RepoAreaCliente {
   links(): ListaAoVivo<LinkDaEmpresa>;
   chamados(): ListaAoVivo<ChamadoNaEquipe>;
   recebidos(): ListaAoVivo<RecebidoDoCliente>;
+  /** os comunicados aos clientes (22/11/2026, ficha comunicados; o dono: "pode fazer tudo") */
+  comunicados(): ListaAoVivo<ac.Comunicado>;
+  /** grava o comunicado (sem id: um novo); só admin e diretores. Erro em português */
+  salvarComunicado(c: RascunhoDoComunicado, id?: string): Promise<void>;
+  apagarComunicado(id: string): Promise<void>;
   /** recusa o arquivo com o motivo que o cliente vê (22/11/2026, Documentos do cliente): grava areaClienteRecusas/{id}; o robô faz o resto. Erro em português */
   recusar(id: string, motivo: string): Promise<void>;
   /** gera o link da empresa (se ela já tem, devolve o que existe) */
@@ -190,6 +198,8 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
       ],
     },
   ];
+  // um comunicado de exemplo (22/11/2026, ficha comunicados)
+  const comunicados: ac.Comunicado[] = [{ id: 'com-1', titulo: 'Recesso de fim de ano', texto: 'O escritório fecha de 24/12 a 02/01. As guias de dezembro saem até o dia 20.', alvo: { todos: true }, publicarEm: '2026-12-01', ate: '2027-01-02', por: 'Vitor', atualizadoEm: '2026-11-22T10:00:00.000Z' }];
   const recebidos: RecebidoDoCliente[] = [
     { id: 'rx-1', token: tokenDe(462), codigo: 462, empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', nome: 'extrato-sicoob-setembro.pdf', tipo: 'extrato', tamanho: 482113, pastaDrive: '462 › 2026 › Bancos › Sicoob', recebidoEm: ha(75), guia: '' },
     { id: 'rx-2', token: tokenDe(515), codigo: 515, empresa: 'A7 MOBILE LTDA', nome: 'nfe-compra-1043.xml', tipo: 'nota', tamanho: 18340, pastaDrive: '515 › 2026 › Notas', recebidoEm: ha(60 * 6), guia: '' },
@@ -213,6 +223,15 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
     async apagarLogo(codigo) { logos = logos.filter(l => l.codigo !== codigo); mudou(); },
     chamados: () => vazio(chamados),
     recebidos: () => vazio(recebidos),
+    comunicados: () => vazio(comunicados),
+    async salvarComunicado(c, id) {
+      const erro = ac.erroDoComunicado(c);
+      if (erro) throw new Error(erro);
+      const novo: ac.Comunicado = { ...c, titulo: c.titulo.trim(), texto: c.texto.trim(), id: id || 'com-' + Date.now(), por: 'Você (exemplo)', atualizadoEm: new Date().toISOString() };
+      const i = comunicados.findIndex(x => x.id === novo.id);
+      if (i >= 0) comunicados[i] = novo; else comunicados.unshift(novo);
+    },
+    async apagarComunicado(id) { const i = comunicados.findIndex(x => x.id === id); if (i >= 0) comunicados.splice(i, 1); },
     async recusar(id, motivo) {
       const erro = ac.erroDaRecusa(motivo);
       if (erro) throw new Error(erro);

@@ -172,6 +172,15 @@ export function lerPendencias(x: unknown): AvisoDoEscritorio[] {
       ...(['extrato', 'nota', 'comprovante', 'outro'].includes(texto(i.tipo)) ? { tipo: texto(i.tipo) as ac.TipoDeEnvio } : {}) }));
 }
 
+/** resumo/comunicados (22/11/2026, ficha comunicados): os avisos do escritório; o torto fica de fora. */
+export function lerComunicados(x: unknown): ac.ComunicadoNaArea[] {
+  const itens = objeto(x)?.itens;
+  if (!Array.isArray(itens)) return [];
+  return itens.map(objeto).filter((i): i is Record<string, unknown> => !!i)
+    .filter(i => typeof i.id === 'string' && texto(i.titulo).trim() !== '' && texto(i.texto).trim() !== '')
+    .slice(0, 10).map(i => ({ id: i.id as string, titulo: texto(i.titulo).slice(0, 80), texto: texto(i.texto).slice(0, 600), ate: texto(i.ate).slice(0, 10) }));
+}
+
 /** resumo/tickets (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): os pedidos do Mandei esperando o cliente; o torto fica de fora. */
 export function lerTickets(x: unknown): mandei.TicketNaArea[] {
   const lista = objeto(x)?.tickets;
@@ -428,6 +437,8 @@ export interface PartesDoEspelho {
   certificado?: CertificadoDigital | null;
   /** o que falta mandar (resumo/pendencias) e os pedidos do Mandei (resumo/tickets), no sino (17/11/2026) */
   avisos?: AvisoDoEscritorio[];
+  /** os comunicados do escritório (22/11/2026, ficha comunicados) */
+  comunicados?: ac.ComunicadoNaArea[];
   tickets?: mandei.TicketNaArea[];
   /** as DANFEs prontas (documentos com tipo 'danfe') */
   danfes?: DanfeNoEspelho[];
@@ -455,7 +466,7 @@ export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [
     // a aba Pagas só aparece quando o robô achou alguma paga pelo extrato (ficha guia-paga-confirmada, 18/11/2026)
     secoes: { ...SECOES_DO_BANCO, documentos: (p.documentos ?? []).length > 0, pagas: p.guias.some(g => g.pagoEm) },
     documentos: (p.documentos ?? []).map(({ partes: _partes, ...d }) => d),
-    resumo, pessoal, documentosDp, faturamento: p.faturamento ?? null, logo: p.logo ?? null, danfes: p.danfes ?? [], certificado: p.certificado ?? null, avisos: p.avisos ?? [], tickets: p.tickets ?? [], ficha: p.ficha ?? null, entregas: p.entregas ?? [], parcelamentos: p.parcelamentos ?? [],
+    resumo, pessoal, documentosDp, faturamento: p.faturamento ?? null, logo: p.logo ?? null, danfes: p.danfes ?? [], certificado: p.certificado ?? null, avisos: p.avisos ?? [], comunicados: p.comunicados ?? [], tickets: p.tickets ?? [], ficha: p.ficha ?? null, entregas: p.entregas ?? [], parcelamentos: p.parcelamentos ?? [],
     // a paga sai de "a pagar" e vai para Pagas (o comprovante para baixar ainda não tem fonte)
     guias: p.guias.filter(g => !g.pagoEm),
     pagas: p.guias.filter(g => g.pagoEm).map(guiaPaga),

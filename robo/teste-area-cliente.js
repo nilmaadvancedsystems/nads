@@ -363,6 +363,14 @@ if (modulo) {
     igual('o pedido de DANFE: a chave pela marca', G.chaveDoPedidoDeDanfe({ tipo: 'documento', titulo: 'DANFE', texto: 'danfe:' + chave }), chave);
     igual('o chamado comum não é DANFE', G.chaveDoPedidoDeDanfe({ tipo: 'documento', titulo: 'Certidão', texto: 'preciso da certidão' }), '');
     igual('a DANFE no espelho passa na lista branca', joga(() => R.conferirListaBranca('documentoDanfe', { tipo: 'danfe', id: G.idDaDanfe(chave), nome: 'DANFE 1842.pdf', chave, partes: 1, atualizadoEm: 'x' })), '');
+    // a recusa do escritório no recibo e os comunicados (22/11/2026): passam na lista branca, e campo a mais não sai
+    const recibo = R.reciboDoEnvio({ id: 'e1', nome: 'x.pdf', tipo: 'extrato', tamanho: 1, recebidoEm: 'x', recusa: { motivo: 'É de outro mês', em: 'y' } });
+    igual('o recibo recusado passa na lista branca', joga(() => R.conferirListaBranca('recibo', recibo)), '');
+    igual('o recibo recusado leva o motivo', recibo.recusa, { motivo: 'É de outro mês', em: 'y' });
+    igual('o recibo comum segue igual', joga(() => R.conferirListaBranca('recibo', R.reciboDoEnvio({ id: 'e2', nome: 'y.pdf', tipo: 'nota', tamanho: 2, recebidoEm: 'x' }))), '');
+    const com = { itens: G.comunicadosDoLink([{ id: 'c1', titulo: 'Recesso', texto: 'Fechado de 24/12 a 02/01.', alvo: { todos: true }, publicarEm: '2026-12-01', ate: '2027-01-02', por: 'Vitor', atualizadoEm: 'x' }], [{ codigo: 292 }], '2026-12-10'), atualizadoEm: 'x' };
+    igual('os comunicados passam na lista branca', joga(() => R.conferirListaBranca('comunicados', com)), '');
+    igual('os comunicados: quem publicou não sai', JSON.stringify(com).includes('Vitor'), false);
   }
 }
 

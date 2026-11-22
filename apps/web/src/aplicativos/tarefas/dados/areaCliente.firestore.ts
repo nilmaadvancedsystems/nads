@@ -94,6 +94,9 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
       ? { recusa: { motivo: texto((x.recusa as Record<string, unknown>).motivo), por: texto((x.recusa as Record<string, unknown>).por), em: instante((x.recusa as Record<string, unknown>).em) } } : {}),
   }));
 
+  // os comunicados aos clientes (22/11/2026, ficha comunicados): o robô do PC espelha para os links do alvo
+  const comunicados = aoVivo<ac.Comunicado>(() => collection(db, 'areaClienteComunicados'), (id, x) => ac.lerComunicado(id, x), (a, b) => b.publicarEm.localeCompare(a.publicarEm));
+
   const logos = aoVivo<LogoDaEmpresa>(() => collection(db, 'logosDasEmpresas'), (id, x) => {
     const codigo = Number(id);
     const logo = texto(x.logo);
@@ -185,6 +188,18 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
       // o doc do token primeiro: sem ele, o cliente já não lê o espelho
       await deleteDoc(doc(db, 'areasCliente', token));
       for (const c of new Set([codigo, ...codigos(velho?.codigos)])) await deleteDoc(doc(db, 'areasClientePorEmpresa', String(c)));
+    },
+    comunicados,
+    async salvarComunicado(c, id) {
+      const erro = ac.erroDoComunicado(c);
+      if (erro) throw new Error(erro);
+      const dados = { titulo: c.titulo.trim(), texto: c.texto.trim(), alvo: c.alvo, publicarEm: c.publicarEm, ate: c.ate, por: (quem() || 'Escritório').slice(0, 120), atualizadoEm: new Date().toISOString() };
+      try { await setDoc(id ? doc(db, 'areaClienteComunicados', id) : doc(collection(db, 'areaClienteComunicados')), dados); }
+      catch (e) { throw new Error(/permission/i.test(String((e as { code?: string }).code ?? e)) ? 'Só o admin e os diretores publicam comunicados.' : 'Não deu para gravar agora. Tente de novo.', { cause: e }); }
+    },
+    async apagarComunicado(id) {
+      try { await deleteDoc(doc(db, 'areaClienteComunicados', id)); }
+      catch (e) { throw new Error('Não deu para apagar agora. Tente de novo.', { cause: e }); }
     },
     // a recusa do documento (22/11/2026, Documentos do cliente; o dono: "Faz e publica a regra"): um recebido, uma recusa
     // (a regra só deixa a equipe criar; o robô marca tratada)

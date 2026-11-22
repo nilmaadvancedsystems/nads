@@ -24,6 +24,7 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     pedirDanfe: (token, chave) => escolher(token).pedirDanfe(token, chave),
     confirmarRecebido: (token, id) => escolher(token).confirmarRecebido(token, id),
     marcarSemMovimento: (token, comp) => escolher(token).marcarSemMovimento(token, comp),
+    aceitarPolitica: (token, versao) => escolher(token).aceitarPolitica(token, versao),
     entrar: (token, email, senha) => escolher(token).entrar(token, email, senha),
     criarSenha: (token, email) => escolher(token).criarSenha(token, email),
     sair: () => escolher('').sair(),

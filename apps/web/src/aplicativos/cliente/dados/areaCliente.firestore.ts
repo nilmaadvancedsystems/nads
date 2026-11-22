@@ -17,7 +17,7 @@ import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModo
 import { AREA_VAZIA, type AvisoDoEscritorio, type CertificadoDigital, type EstadoDaArea, type FichaDaEmpresa, type RepoAreaCliente } from './areaCliente';
 import type { DanfeNoEspelho } from './biblioteca';
 import {
-  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerFaturamento, lerDanfe, lerGuia, lerListaDeNotas, lerExtratoDoMes, lerMarca, lerCertificado, lerCertidao, lerEntregas, lerParcelamentos, lerDocumentoDoEscritorio, lerFicha, lerPendencias, lerTickets, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
+  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerFaturamento, lerDanfe, lerGuia, lerListaDeNotas, lerExtratoDoMes, lerMarca, lerCertificado, lerCertidao, lerEntregas, lerParcelamentos, lerDocumentoDoEscritorio, lerFicha, lerPendencias, lerComunicados, lerTickets, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
   type ChamadoPendente, type PartesDoEspelho, type RespostaPendente,
 } from './espelho';
 import { juntarPedacosDoPdf, mimeDoArquivo, type PedacoDoPdf } from './regras';
@@ -154,7 +154,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       let nomeDoLink = '';
       // undefined = ainda não chegou
       const partes: { resumo?: ac.ResumoDoCliente | null; guias?: ac.GuiaDoCliente[]; agenda?: ac.AgendaDoMes[]; envios?: ac.ReciboDeEnvio[]; chamados?: ac.ChamadoDoCliente[];
-        pessoal?: ac.ResumoDoPessoal | null; documentosDp?: ac.DocumentoDoDp[]; faturamento?: ac.ResumoDoFaturamento | null; logo?: string | null; danfes?: DanfeNoEspelho[]; certificado?: CertificadoDigital | null; avisos?: AvisoDoEscritorio[]; tickets?: mandei.TicketNaArea[]; documentos?: PartesDoEspelho['documentos']; certidoes?: PartesDoEspelho['documentos']; ficha?: FichaDaEmpresa | null; entregas?: ac.EntregaParaConfirmar[]; parcelamentos?: ac.ParcelamentoNaArea[] } = {};
+        pessoal?: ac.ResumoDoPessoal | null; documentosDp?: ac.DocumentoDoDp[]; faturamento?: ac.ResumoDoFaturamento | null; logo?: string | null; danfes?: DanfeNoEspelho[]; certificado?: CertificadoDigital | null; avisos?: AvisoDoEscritorio[]; comunicados?: ac.ComunicadoNaArea[]; tickets?: mandei.TicketNaArea[]; documentos?: PartesDoEspelho['documentos']; certidoes?: PartesDoEspelho['documentos']; ficha?: FichaDaEmpresa | null; entregas?: ac.EntregaParaConfirmar[]; parcelamentos?: ac.ParcelamentoNaArea[] } = {};
 
       const parar = () => { parado = true; paradas.splice(0).forEach(f => f()); redesenhar.get(token)?.delete(desenhar); };
       const mostrar = (e: EstadoDaArea) => { if (!parado) aoMudar(e); };
@@ -172,7 +172,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         // (17/11/2026) as partes que não seguram a tela vão junto: o certificado, o que falta mandar, os pedidos do Mandei e o
         // acervo do escritório (antes ficavam lidas e não chegavam à tela)
         const p: PartesDoEspelho = { resumo, nomeDoLink, guias, agenda, envios, chamados, pessoal, documentosDp, faturamento, logo, danfes: partes.danfes ?? [],
-          certificado: partes.certificado ?? null, avisos: partes.avisos ?? [], tickets: partes.tickets ?? [], documentos: [...(partes.documentos ?? []), ...(partes.certidoes ?? [])], ficha: partes.ficha ?? null, entregas: partes.entregas ?? [], parcelamentos: partes.parcelamentos ?? [] };
+          certificado: partes.certificado ?? null, avisos: partes.avisos ?? [], comunicados: partes.comunicados ?? [], tickets: partes.tickets ?? [], documentos: [...(partes.documentos ?? []), ...(partes.certidoes ?? [])], ficha: partes.ficha ?? null, entregas: partes.entregas ?? [], parcelamentos: partes.parcelamentos ?? [] };
         ultimo.set(token, p);
         // o que já voltou pelo espelho sai da lista dos pendentes
         novos.set(token, (novos.get(token) ?? []).filter(n => !chamados.some(c => c.id === n.id)));
@@ -246,6 +246,8 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'marca'), r => { partes.logo = r.exists() ? lerMarca(r.data()) : null; desenhar(); }, falhou));
         // o que falta mandar e os pedidos do Mandei, no sino (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): não seguram a tela
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'pendencias'), r => { partes.avisos = r.exists() ? lerPendencias(r.data()) : []; desenhar(); }, () => { partes.avisos = []; desenhar(); }));
+        // os comunicados do escritório (22/11/2026, ficha comunicados): sem eles, a tela segue
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'comunicados'), r => { partes.comunicados = r.exists() ? lerComunicados(r.data()) : []; desenhar(); }, () => { partes.comunicados = []; desenhar(); }));
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'tickets'), r => { partes.tickets = r.exists() ? lerTickets(r.data()) : []; desenhar(); }, () => { partes.tickets = []; desenhar(); }));
         // o certificado A1 do cofre (17/11/2026, ficha certificado-digital): não segura a tela
         paradas.push(onSnapshot(doc(espelho, 'resumo', 'certificado'), r => { partes.certificado = r.exists() ? lerCertificado(r.data()) : null; desenhar(); }, () => { partes.certificado = null; desenhar(); }));
@@ -457,6 +459,12 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       if (!ehTokenDoLink(token) || !pedido) throw new Error('Esta entrega não pode ser confirmada.');
       await addDoc(collection(abrir(), 'areaClienteChamados'), { token, ...pedido, criadoEm: serverTimestamp() });
     },
+    // o aceite da política de privacidade (22/11/2026, ficha aceite-lgpd): areaClienteAceites { token, versao, criadoEm } (regra nova: o cliente só cria)
+    async aceitarPolitica(token, versao) {
+      const pedido = ac.pedidoDeAceite(token, versao);
+      if (!pedido) return;
+      await addDoc(collection(abrir(), 'areaClienteAceites'), { ...pedido, criadoEm: serverTimestamp() });
+    },
     // "Não tive movimento" (22/11/2026, Documentos do cliente): o pedido marcado, pela caixa dos chamados (sem regra nova)
     async marcarSemMovimento(token, competencia) {
       const pedido = ac.pedidoDeSemMovimento(competencia);
@@ -552,6 +560,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     pedirDanfe: (token, chave) => de(token).pedirDanfe(tk(token), chave),
     confirmarRecebido: (token, id) => de(token).confirmarRecebido(tk(token), id),
     marcarSemMovimento: (token, comp) => de(token).marcarSemMovimento(tk(token), comp),
+    aceitarPolitica: (token, versao) => de(token).aceitarPolitica(tk(token), versao),
     avaliarChamado: (token, id, nota, comentario) => de(token).avaliarChamado(tk(token), id, nota, comentario),
     // a senha vale só no banco (a empresa de teste nunca pede)
     entrar: (token, email, senha) => doBanco.entrar(token, email, senha),

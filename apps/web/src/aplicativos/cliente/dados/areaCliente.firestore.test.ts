@@ -102,7 +102,7 @@ describe('abrir o link', () => {
 
   it('link bom: ouve o espelho e só mostra quando tudo chegou; nada do documento do link além do nome', () => {
     const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
-    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/resumo/faturamento', RAIZ + '/resumo/marca', RAIZ + '/resumo/certificado', RAIZ + '/resumo/pendencias', RAIZ + '/resumo/tickets', RAIZ + '/resumo/ficha', RAIZ + '/resumo/entregas', RAIZ + '/resumo/parcelamentos'].sort()); // o certificado (17/11/2026, ficha certificado-digital)
+    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/resumo/faturamento', RAIZ + '/resumo/marca', RAIZ + '/resumo/certificado', RAIZ + '/resumo/pendencias', RAIZ + '/resumo/comunicados', RAIZ + '/resumo/tickets', RAIZ + '/resumo/ficha', RAIZ + '/resumo/entregas', RAIZ + '/resumo/parcelamentos'].sort()); // o certificado (17/11/2026, ficha certificado-digital)
     expect(telas).toHaveLength(1);
     const e = telas[0];
     expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: true, pagas: false } });

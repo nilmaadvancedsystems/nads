@@ -9,4 +9,5 @@ export * from './regras/conta';
 export * from './regras/liberacao';
 export * from './regras/presenca';
 export * from './regras/exclusao';
+export * from './regras/registro';
 export { EQUIPE_EXEMPLO } from './__exemplos__/equipe';

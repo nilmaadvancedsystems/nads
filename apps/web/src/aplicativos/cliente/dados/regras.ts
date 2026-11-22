@@ -77,12 +77,14 @@ export interface Notificacao {
   enviar?: ac.TipoDeEnvio;
   /** a entrega que o cliente confirma que recebeu (plano do Acessórias, 18/11/2026, ficha confirmar-entrega) */
   confirmarEntrega?: string;
+  /** o comunicado do escritório (22/11/2026, ficha comunicados): abre o texto inteiro */
+  comunicado?: { titulo: string; texto: string };
   /** o documento do mês que falta (22/11/2026, Documentos do cliente): a janela tem o envio e o "Não tive movimento" */
   pendencia?: { tipo: ac.TipoDeEnvio; prefixo?: string; competencia: string; mes: string };
 }
 
 /** O que o sino mostra: guias vencidas ou que vencem hoje, documentos novos, chamados respondidos e o certificado perto de vencer. */
-export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'chamados' | 'certificado'> & Partial<Pick<EstadoDaArea, 'avisos' | 'tickets' | 'entregas' | 'envios'>>, hoje: Date, rotuloDaGuia: (g: ac.GuiaDoCliente) => string): Notificacao[] {
+export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'chamados' | 'certificado'> & Partial<Pick<EstadoDaArea, 'avisos' | 'tickets' | 'entregas' | 'envios' | 'comunicados'>>, hoje: Date, rotuloDaGuia: (g: ac.GuiaDoCliente) => string): Notificacao[] {
   const lista: Notificacao[] = [];
   for (const g of e.guias) {
     if (g.situacao === 'vencida') lista.push({ id: 'g-' + g.id, titulo: rotuloDaGuia(g) + ' vencida', texto: 'Venceu em ' + g.vencimento, ir: 'guias' });
@@ -104,6 +106,8 @@ export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'cha
     const ate = /^\d{4}-\d{2}-\d{2}/.test(t.validoAte) ? ' · até ' + t.validoAte.slice(8, 10) + '/' + t.validoAte.slice(5, 7) : '';
     lista.push({ id: 't-' + t.codigo + '-' + t.faltam + '-' + t.refazer, titulo: t.refazer ? 'O escritório pediu de novo' : 'O escritório pediu', texto: t.assunto + ate, ir: 'mandei', codigo: t.codigo });
   }
+  // os comunicados do escritório (22/11/2026, ficha comunicados): o título no sino; o texto inteiro ao abrir
+  for (const c of e.comunicados ?? []) lista.push({ id: 'com-' + c.id, titulo: 'Comunicado do escritório', texto: c.titulo, ir: 'documentos', comunicado: { titulo: c.titulo, texto: c.texto } });
   // o documento recusado pelo escritório, com o motivo (22/11/2026, Documentos do cliente): até 30 dias depois da recusa;
   // abre o envio no mesmo tipo para mandar de novo
   for (const r of e.envios ?? []) {

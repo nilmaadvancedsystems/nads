@@ -100,3 +100,30 @@ export const pedidoVencido = (p: PedidoDeLiberacao, agora = Date.now()) => !Date
 
 /** O código digitado: só os 6 dígitos. */
 export const codigoDigitado = (s: string) => s.replace(/\D/g, '').slice(0, 6);
+
+// ------------------------- o aviso de acesso novo e o "Não fui eu" (22/11/2026, ficha E21; o dono: "pode fazer tudo") -------------------------
+
+/** A hora 'hh:mm' de Brasília de um ISO ('' sem ele). */
+const horaDeBrasilia = (iso: string) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : ''; };
+const diaDeBrasilia = (iso: string) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : ''; };
+
+/** O aviso para a própria pessoa quando a conta dela é liberada num computador (o robô manda no celular). */
+export function textoDoAvisoDeAcesso(s: Pick<SessaoLiberada, 'computador' | 'liberadoEm'>): { titulo: string; corpo: string } {
+  const quando = diaDeBrasilia(s.liberadoEm) + (horaDeBrasilia(s.liberadoEm) ? ' às ' + horaDeBrasilia(s.liberadoEm) : '');
+  return { titulo: 'Sua conta foi liberada num computador', corpo: 'Seu login no nads foi liberado em ' + (s.computador || 'um computador novo') + (quando.trim() ? ', ' + quando : '') + '. Se não foi você, abra o nads › sua foto › Meus acessos › Não fui eu.' };
+}
+
+/** O alerta do "Não fui eu" (nadsAlertas/{auto}): a pessoa só cria o dela. */
+export function alertaNaoFuiEu(s: Pick<SessaoLiberada, 'id' | 'uid' | 'nome' | 'computador'>, agora: Date): { tipo: 'nao-fui-eu'; uid: string; nome: string; sessao: string; computador: string; em: string } {
+  return { tipo: 'nao-fui-eu', uid: s.uid, nome: String(s.nome || '').slice(0, 80), sessao: s.id.slice(0, 120), computador: String(s.computador || '').slice(0, 120), em: agora.toISOString() };
+}
+
+/** O aviso aos admins quando alguém diz "Não fui eu". */
+export function textoDoAlertaNaoFuiEu(a: { nome?: unknown; computador?: unknown }): { titulo: string; corpo: string } {
+  return { titulo: 'Acesso suspeito no nads', corpo: String(a.nome || 'Alguém') + ' disse "Não fui eu" para o acesso em ' + String(a.computador || 'um computador') + '. O acesso já foi encerrado; confira em Senhas › Liberação de acessos e mande um link de senha nova.' };
+}
+
+/** Os acessos da própria pessoa, o mais novo primeiro. */
+export function meusAcessosOrdenados(lista: readonly SessaoLiberada[]): SessaoLiberada[] {
+  return [...lista].sort((a, b) => b.liberadoEm.localeCompare(a.liberadoEm));
+}

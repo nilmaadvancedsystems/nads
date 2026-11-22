@@ -141,6 +141,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h',
       setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example', whatsapp: '(31) 98888-0001' }, { nome: 'Pessoal', email: 'dp@nilma.example', whatsapp: '(31) 98888-0002' }, { nome: 'Contábil', email: 'contabil@nilma.example', whatsapp: '(31) 98888-0003' }],
     },
+    comunicados: [{ id: 'c1', titulo: 'Recesso de fim de ano', texto: 'O escritório fecha de 24/12 a 02/01. As guias de dezembro saem até o dia 20; mande os documentos do mês até o dia 18.', ate: '2027-01-02' }],
     avisos: [
       // no formato do banco (o id 'extrato-aaaa-mm'): o aviso abre a janela com o envio e o "Não tive movimento" (22/11/2026)
       { id: 'extrato-' + mesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)), titulo: 'Extrato bancário de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1))).toLowerCase().split(' ')[0], texto: '', ir: 'documentos', tipo: 'extrato' },
@@ -471,6 +472,8 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
       await new Promise(r => setTimeout(r, 300));
       mudar(token, e => ({ ...e, entregas: e.entregas.filter(x => x.id !== entregaId) }));
     },
+    // o aceite no exemplo não vai a lugar nenhum (22/11/2026, ficha aceite-lgpd)
+    async aceitarPolitica() { /* nada a gravar */ },
     // o mês marcado sem movimento sai dos avisos (o robô faria isso) (22/11/2026, Documentos do cliente)
     async marcarSemMovimento(token, competencia) {
       await new Promise(r => setTimeout(r, 300));

@@ -412,3 +412,11 @@ describe('o documento recusado no sino', () => {
     expect(notificacoes({ ...base, envios: [envio('2026-10-01T10:00:00Z')] }, new Date('2026-11-22T12:00:00Z'), g => g.tipo)).toEqual([]);
   });
 });
+
+// os comunicados do escritório no sino (22/11/2026, ficha comunicados)
+describe('o comunicado no sino', () => {
+  it('o título no sino e o texto inteiro para abrir', () => {
+    const n = notificacoes({ guias: [], documentos: [], chamados: [], certificado: null, comunicados: [{ id: 'c1', titulo: 'Recesso', texto: 'Fechado de 24/12 a 02/01.', ate: '2027-01-02' }] }, new Date('2026-12-10T12:00:00Z'), g => g.tipo);
+    expect(n).toEqual([{ id: 'com-c1', titulo: 'Comunicado do escritório', texto: 'Recesso', ir: 'documentos', comunicado: { titulo: 'Recesso', texto: 'Fechado de 24/12 a 02/01.' } }]);
+  });
+});

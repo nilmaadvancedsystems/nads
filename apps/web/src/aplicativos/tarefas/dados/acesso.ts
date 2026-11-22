@@ -24,6 +24,10 @@ export interface RepoAcesso {
   sessoes(): usuarios.SessaoLiberada[];
   /** apaga a liberação e invalida o código do pedido (a pessoa pede de novo e recebe outro código) */
   revogar(s: usuarios.SessaoLiberada): Promise<void>;
+  /** os acessos liberados da própria pessoa (22/11/2026, ficha E21) */
+  meusAcessos(): Promise<usuarios.SessaoLiberada[]>;
+  /** "Não fui eu": encerra o acesso da própria pessoa e avisa os admins (nadsAlertas). Erro em português */
+  naoFuiEu(s: usuarios.SessaoLiberada): Promise<void>;
   /** a equipe (usuarios do Entregas) */
   equipe(): { carregada: boolean; lista: usuarios.Usuario[]; docs: Record<string, usuarios.DocUsuario> };
   salvarCargo(uid: string, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null): Promise<void>;
@@ -113,6 +117,8 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
       if (pedido && pedido.id === s.pedidoId) { pedido = { ...pedido, status: 'revogado', revogadoPor: quem()?.nome || '' }; codigo = ''; }
       mudou();
     },
+    async meusAcessos() { return usuarios.meusAcessosOrdenados(sessoes.filter(x => x.uid === 'eu')); },
+    async naoFuiEu(s) { sessoes = sessoes.filter(x => x.id !== s.id); if (s.id === 'eu_1') liberada = false; mudou(); },
     equipe: () => ({ carregada: true, lista: equipe(), docs }),
     async salvarCargo(uid, dep, nivel) { Object.assign(docs[uid], usuarios.mudancaDeCargo(docs[uid], dep, nivel)); mudou(); },
     async salvarPapeis(uid, papeis) { docs[uid].roles = papeis as usuarios.Papel[]; mudou(); },

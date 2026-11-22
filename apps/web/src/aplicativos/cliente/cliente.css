@@ -2389,3 +2389,8 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-menu .subnav-item.cli-sec > span:nth-of-type(2){flex:1;min-width:0;}
 .cli-app.cli-recolhida .cli-menu .subnav-item.cli-sec > span.cli-sec-ico,.cli-app.sidebar-oculta .cli-menu .subnav-item.cli-sec > span.cli-sec-ico{display:inline-grid;}
 .cli-app.cli-recolhida .cli-menu .subnav-item.cli-sec > span:nth-of-type(2){display:none;}
+
+/* a política de privacidade (22/11/2026, ficha aceite-lgpd) */
+.cli-politica{max-height:50vh;overflow:auto;display:grid;gap:10px;text-align:left;}
+.cli-politica h4{margin:0 0 2px;font-size:14px;}
+.cli-politica p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-muted);}

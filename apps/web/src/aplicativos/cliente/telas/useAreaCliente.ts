@@ -173,7 +173,7 @@ export function useAreaCliente() {
   // cada notificação com o ícone e o tom pelo que é (12/11/2026: o sino refeito): a guia, os documentos, a resposta, o certificado
   const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo === 'DARF' && g.tributo ? 'DARF ' + g.tributo : g.tipo).map(n => ({
     ...n,
-    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : n.id.startsWith('p-') ? 'upload' : n.id.startsWith('rec-') ? 'alert' : 'mensagem') as NomeIcone,
+    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : n.id.startsWith('p-') ? 'upload' : n.id.startsWith('rec-') ? 'alert' : n.id.startsWith('com-') ? 'sino' : 'mensagem') as NomeIcone,
     tom: n.id.startsWith('g-') && n.titulo.endsWith('vencida') ? 'ruim' : n.id.startsWith('rec-') ? 'ruim' : n.id.startsWith('g-') || n.id.startsWith('cert-') || n.id.startsWith('p-') || n.id.startsWith('t-') ? 'atencao' : n.id.startsWith('c-') ? 'bom' : 'neutro',
   }));
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
@@ -209,6 +209,8 @@ export function useAreaCliente() {
       try { await repoAreaCliente.marcarSemMovimento(token, competencia); toastDoRetorno('Pronto: avisamos o escritório que não houve movimento em ' + mes + '.'); }
       catch (e) { toastDoRetorno(e instanceof Error ? e.message : 'Não deu para avisar agora. Tente de novo.'); }
     },
+    /** o comunicado do escritório inteiro (22/11/2026, ficha comunicados) */
+    abrirComunicado: (c: { titulo: string; texto: string }) => void modal({ titulo: c.titulo, texto: c.texto, botoes: [{ rotulo: 'Entendi', valor: null, variante: 'btn-primary' }] }),
     abrirAviso: (n: { ir: string; codigo?: string; id: string }) => {
       if (n.ir === 'mandei' && n.codigo) { setMenuAberto(false); navegar('/mandei/' + encodeURIComponent(n.codigo)); return; }
       if (n.ir !== 'mandei') irPara(n.ir as IdAba);

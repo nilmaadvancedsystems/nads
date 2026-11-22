@@ -23,6 +23,7 @@ import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
 import { EntrarComSenha } from './EntrarComSenha';
+import { usePolitica } from './usePolitica';
 import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
 import { Contato, Empresa, Faturamento } from './Administrativo';
@@ -75,6 +76,8 @@ function Area() {
   // o aviso "Falta mandar" do sino abre o envio já no tipo (17/11/2026, ficha o-que-falta-mandar)
   const abrirEnvioDoTipo = useJanelaDeEnvioDoTipo(daCasca);
   const abrirPendencia = useJanelaDaPendencia(daCasca);
+  // o aceite da política de privacidade, uma vez por versão (22/11/2026, ficha aceite-lgpd; desligado até o escritório aprovar o texto)
+  usePolitica(vm.token, area.carregado && area.valido && !area.pedeLogin && !area.exemplos);
   // a gaveta (celular): o foco vai para o ✕ quando abre e volta para o ☰ quando fecha
   const xDaGaveta = useRef<HTMLButtonElement>(null);
   const botaoDoMenu = useRef<HTMLButtonElement>(null);
@@ -231,7 +234,7 @@ function Area() {
                       {vm.naoLidas > 0 && <button type="button" className="btn btn-ghost" onClick={vm.marcarLidas}>Marcar como lidas</button>}
                     </div>
                     {vm.avisos.length ? vm.avisos.map(n => (
-                      <button key={n.id} type="button" className={'cli-aviso-item' + (vm.lida(n.id) ? ' lida' : '')} onClick={() => { fecharMenu(); if (n.confirmarEntrega) { vm.marcarLida(n.id); void vm.confirmarEntrega(n.confirmarEntrega, n.texto.split(':')[0]); } else if (n.pendencia) { vm.marcarLida(n.id); const p = n.pendencia; void abrirPendencia(p, n.texto).then(sem => { if (sem) void vm.marcarSemMovimento(p.competencia, p.mes); }); } else if (n.enviar) { vm.marcarLida(n.id); abrirEnvioDoTipo(n.enviar); } else vm.abrirAviso(n); }}>
+                      <button key={n.id} type="button" className={'cli-aviso-item' + (vm.lida(n.id) ? ' lida' : '')} onClick={() => { fecharMenu(); if (n.confirmarEntrega) { vm.marcarLida(n.id); void vm.confirmarEntrega(n.confirmarEntrega, n.texto.split(':')[0]); } else if (n.comunicado) { vm.marcarLida(n.id); vm.abrirComunicado(n.comunicado); } else if (n.pendencia) { vm.marcarLida(n.id); const p = n.pendencia; void abrirPendencia(p, n.texto).then(sem => { if (sem) void vm.marcarSemMovimento(p.competencia, p.mes); }); } else if (n.enviar) { vm.marcarLida(n.id); abrirEnvioDoTipo(n.enviar); } else vm.abrirAviso(n); }}>
                         <span className={'cli-notif-ico t-' + n.tom} aria-hidden="true"><Icone nome={n.icone} width={16} height={16} /></span>
                         <span className="cli-notif-txt"><b>{n.titulo}</b><span>{n.texto}</span></span>
                         <Icone nome="chevronRight" width={16} height={16} className="cli-notif-seta" />

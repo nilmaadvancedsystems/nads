@@ -32,11 +32,14 @@ function NivelDasAnimacoes() {
 import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 import { EmpresasDaPessoa } from '../cadastro/responsaveis/EmpresasDaPessoa';
+import { MeusAcessos } from './MeusAcessos';
 
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string; soAdmin?: boolean }[] = [
   { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha tema claro escuro aparência animações animacoes movimento' },
   // as próprias empresas, com o Transferir (Vitor, 07/10/2026: "dentro do usuário/configurações vai ter as próprias empresas")
   { id: 'empresas', rotulo: 'Minhas empresas', icone: 'briefcase', grupo: 'Conta', busca: 'empresas responsável transferir transferência' },
+  // os computadores liberados e o "Não fui eu" (22/11/2026, ficha E21)
+  { id: 'acessos', rotulo: 'Meus acessos', icone: 'lock', grupo: 'Conta', busca: 'acessos computador liberado login segurança não fui eu suspeito' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
   // os Feedbacks saíram daqui (Vitor, 28/10/2026: "para visualizar, deixe apenas no lateral"): só no pé do menu lateral
 ];
@@ -298,7 +301,7 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
           {/* por enquanto só Minha conta, e Versão do sistema (Vitor, 05/10/2026: saíram a Caixa de entrada, as
               Anotações, Aparência e telas, Perguntar à IA e Perguntas frequentes) */}
           <div ref={rola} className="pessoal-rola">
-            {topico === 'aplicativo' ? <Aplicativo vm={vm} /> : topico === 'empresas' ? <EmpresasDaPessoa pessoa={vm.conta.nome} /> : <MinhaConta vm={vm} />}
+            {topico === 'aplicativo' ? <Aplicativo vm={vm} /> : topico === 'acessos' ? <MeusAcessos /> : topico === 'empresas' ? <EmpresasDaPessoa pessoa={vm.conta.nome} /> : <MinhaConta vm={vm} />}
           </div>
         </section>
       </div>

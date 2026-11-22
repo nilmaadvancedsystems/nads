@@ -31,7 +31,7 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(cadastroDe(op('diretor'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
     const doAdmin = cadastroDe(op('senior', true));
     expect(doAdmin?.nome).toBe('Configurações');
-    expect(doAdmin?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'visao-geral', 'robo', 'saude-robos', 'arquivador', 'uso', 'banco', 'cota', 'feedbacks', 'sistema', 'releitura']);
+    expect(doAdmin?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'visao-geral', 'robo', 'saude-robos', 'arquivador', 'uso', 'banco', 'cota', 'feedbacks', 'registro', 'sistema', 'releitura']); // o Registro de alterações (22/11/2026, ficha E20)
     expect(cadastroDe(op('pleno'))).toBeUndefined();
   });
 

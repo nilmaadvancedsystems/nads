@@ -28,6 +28,8 @@ export * from './certidoes';
 export * from './entregaRecebida';
 export * from './semMovimento';
 export * from './recusa';
+export * from './comunicados';
+export * from './privacidade';
 export * from './avaliacao';
 export * from './guiaPaga';
 export * from './parcelamentos';

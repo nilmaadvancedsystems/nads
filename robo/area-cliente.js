@@ -114,6 +114,8 @@ function iniciarAreaDoCliente(db, log) {
 
   // ---------- o que os ouvintes guardam ----------
   const links = new Map();            // token → { codigos, nome }
+  // os comunicados do escritório aos clientes (22/11/2026, ficha comunicados; o dono: "pode fazer tudo"): id → comunicado
+  const comunicados = new Map();
   const pedidosFgts = new Map();      // id → pedido pronto
   const saidasSieg = new Map();       // '<código>_<AAAA-MM>' → as saídas do SIEG do mês (o Faturamento)
   const notasDoMesSieg = new Map();   // '<código>_<AAAA-MM>' → o resumo das notas do mês (o painel do mês; a nota não fica)
@@ -710,6 +712,14 @@ function iniciarAreaDoCliente(db, log) {
       if (comLogo) { if (await gravar(token, 'resumo/marca', { logo: comLogo, atualizadoEm: agora }, 'marca')) gravados++; }
       else if (await hashAtual(ref, token + '/resumo/marca')) { await ref.delete(); hashes.set(token + '/resumo/marca', ''); }
     } catch (e) { log('Logo: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
+    // os comunicados do escritório que valem para as empresas do link (22/11/2026, ficha comunicados): sem nenhum, o resumo sai
+    try {
+      const itens = doCore().comunicadosDoLink([...comunicados.values()], empresas.map(e => ({ codigo: Number(e.codigo), regime: e.regime || '' })), hojeIso());
+      const ref = espelhoDe(token).collection('resumo').doc('comunicados');
+      if (itens.length) { if (await gravar(token, 'resumo/comunicados', { itens, atualizadoEm: agora }, 'comunicados')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/comunicados')) { await ref.delete(); hashes.set(token + '/resumo/comunicados', ''); }
+    } catch (e) { log('Comunicados: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
 
     // o que falta mandar no mês (a matriz do documentosMensal, a mesma da régua) (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino").
     // Sem nada faltando, o resumo sai.
@@ -1345,6 +1355,16 @@ function iniciarAreaDoCliente(db, log) {
   ouvir('Área do Cliente: caixa dos envios', () => db.collection('areaClienteEnvios').limit(5), snap => verEnvios(snap.docs), log);
   // o que ficou esperando (Drive fora do ar) tenta de novo
   setInterval(() => { db.collection('areaClienteEnvios').limit(5).get().then(s => verEnvios(s.docs)).catch(() => {}); }, A_CADA_MS);
+
+  // ---------- 4c. os comunicados do escritório (22/11/2026, ficha comunicados) ----------
+  // A coleção é pequena (o admin e os diretores publicam de vez em quando): mudou, todos os links refazem o resumo/comunicados.
+  let primeiroComunicado = true;
+  ouvir('Área do Cliente: comunicados', () => db.collection('areaClienteComunicados'), snap => {
+    comunicados.clear();
+    for (const d of snap.docs) { const c = doCore().lerComunicado(d.id, d.data()); if (c) comunicados.set(d.id, c); }
+    if (!primeiroComunicado) { for (const t of links.keys()) fila.add(t); agendar(); }
+    primeiroComunicado = false;
+  }, log);
 
   // ---------- 4b. as recusas da equipe (22/11/2026, Documentos do cliente; o dono: "Faz e publica a regra") ----------
   // A equipe grava areaClienteRecusas/{id do recebido} { motivo, por, porUid, em, tratada: false }. O robô: marca o recibo do

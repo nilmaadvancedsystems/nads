@@ -13,6 +13,7 @@ const FeedbacksDoAdmin = pedaco(() => import('../../../admin/telas/feedbacks/Fee
 const PainelDoRobo = pedaco(() => import('../cadastro/painel-robo/PainelDoRobo'), 'PainelDoRobo');
 const UsoDoSistema = pedaco(() => import('../uso/UsoDoSistema'), 'UsoDoSistema');
 const RobosEAgentes = pedaco(() => import('../cadastro/configuracoes/ConfiguracoesDoNads'), 'RobosEAgentes');
+const Registro = pedaco(() => import('../../../admin/telas/registro/Registro'), 'Registro');
 
 function Tela({ pagina }: { pagina: IdPaginaAdmin }) {
   switch (pagina) {
@@ -25,6 +26,7 @@ function Tela({ pagina }: { pagina: IdPaginaAdmin }) {
     case 'cota': return <CotaECustos />;
     case 'feedbacks': return <FeedbacksDoAdmin />;
     case 'sistema': return <RobosEAgentes />;
+    case 'registro': return <Registro />;
   }
 }
 

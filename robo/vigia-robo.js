@@ -1061,7 +1061,7 @@ async function iniciar() {
   catch (err) { log('entrega pelo link desligada:', err.message); }
   try { require('./resumo-semanal').iniciarResumoSemanal({ db, log, enviar, destino: destinoDosAvisos }); }
   catch (err) { log('resumo da semana desligado:', err.message); }
-  try { require('./papeis-vencendo').iniciarPapeisVencendo({ db, log, avisos }); }
+  try { require('./papeis-vencendo').iniciarPapeisVencendo({ db, log, avisos, core: () => require('./gerado/danfse') }); }
   catch (err) { log('aviso de documento vencendo desligado:', err.message); }
   // o extrato das contas do escritório pela API do Sicoob e do Efí (19/11/2026): uma vez por dia, só com o metadado
   // financeiro-bancos (as chaves e o certificado ficam lá, não no repositório)
@@ -1083,6 +1083,9 @@ async function iniciar() {
   catch (err) { log('aviso de tarefas e parcelas atrasadas desligado:', err.message); }
   try { require('./pedidos-do-portal').iniciarPedidosDoPortal(db, log, avisos); }
   catch (err) { log('recados da página do cliente desligados:', err.message); }
+  // o aviso de acesso novo à própria pessoa e o "Não fui eu" aos admins (22/11/2026, ficha E21)
+  try { require('./aviso-de-acesso').iniciarAvisoDeAcesso({ db, log, avisos, core: () => require('./gerado/danfse') }); }
+  catch (err) { log('aviso de acesso novo desligado:', err.message); }
   // pedido de liberação do login do nads: avisa os admins no celular
   try { require('./avisos-liberacao-nads').iniciarAvisosDeLiberacao(db, log, avisos); }
   catch (err) { log('aviso de liberação do nads desligado:', err.message); }

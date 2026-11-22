@@ -4,7 +4,7 @@ import type { NomeIcone } from '@nads/ui';
 
 export const BASE = '/admin';
 
-export type IdPaginaAdmin = 'visao-geral' | 'robo' | 'saude-robos' | 'arquivador' | 'uso' | 'banco' | 'cota' | 'feedbacks' | 'sistema';
+export type IdPaginaAdmin = 'visao-geral' | 'robo' | 'saude-robos' | 'arquivador' | 'uso' | 'banco' | 'cota' | 'feedbacks' | 'sistema' | 'registro';
 
 export interface PaginaAdmin { id: IdPaginaAdmin; rotulo: string; titulo: string; icone: NomeIcone }
 
@@ -19,6 +19,8 @@ export const PAGINAS_DO_ADMIN: readonly PaginaAdmin[] = [
   { id: 'banco', rotulo: 'Saúde do banco', titulo: 'Saúde do banco', icone: 'escudo' },
   { id: 'cota', rotulo: 'Cota e custos', titulo: 'Cota e custos', icone: 'dinheiro' },
   { id: 'feedbacks', rotulo: 'Feedbacks', titulo: 'Feedbacks', icone: 'mensagem' },
+  // quem mudou o quê nos usuários e nos acessos (22/11/2026, ficha E20)
+  { id: 'registro', rotulo: 'Registro de alterações', titulo: 'Registro de alterações', icone: 'clock' },
   { id: 'sistema', rotulo: 'Sistema e agentes', titulo: 'Sistema e agentes', icone: 'settings' },
 ];
 

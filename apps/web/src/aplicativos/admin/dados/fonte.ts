@@ -7,6 +7,8 @@ import { criarSaudeDoBancoMemoria, type RepoSaudeDoBanco } from './saudeBanco';
 import { criarSaudeDoBancoFirestore } from './saudeBanco.firestore';
 import { criarArquivadorNovoMemoria, type RepoArquivadorNovo } from './arquivadorNovo';
 import { criarArquivadorNovoFirestore } from './arquivadorNovo.firestore';
+import { criarRegistroMemoria, type RepoDoRegistro } from './registro';
+import { criarRegistroFirestore } from './registro.firestore';
 
 let saudeDoBanco: RepoSaudeDoBanco | null = null;
 
@@ -22,4 +24,12 @@ let arquivadorNovo: RepoArquivadorNovo | null = null;
 export function repoDoArquivadorNovo(): RepoArquivadorNovo {
   if (!arquivadorNovo) arquivadorNovo = noBanco ? criarArquivadorNovoFirestore() : criarArquivadorNovoMemoria();
   return arquivadorNovo;
+}
+
+let registro: RepoDoRegistro | null = null;
+
+/** O registro de alterações (a auditoria; 22/11/2026, ficha E20). */
+export function repoDoRegistro(): RepoDoRegistro {
+  if (!registro) registro = noBanco ? criarRegistroFirestore() : criarRegistroMemoria();
+  return registro;
 }

@@ -60,6 +60,10 @@ export const AJUSTES: GrupoDeAjustes[] = [
   { doc: 'insights', titulo: 'Tela de Insights', robo: 'area-cliente', campos: [
     { campo: 'ligado', nome: 'Montar os números', descricao: 'A cada 15 minutos, o robô do PC junta os números do escritório para a Tela de Insights (só Diretor e admin veem).', tipo: 'chave', padrao: false },
   ] },
+  // o documento do cliente vencendo vira tarefa (22/11/2026, ficha M03; o dono: "pode fazer tudo"): vem desligado
+  { doc: 'papeisViramTarefa', titulo: 'Documento vencendo vira tarefa', robo: 'vigia', campos: [
+    { campo: 'ligado', nome: 'Criar a tarefa', descricao: 'A 30 dias do vencimento de uma certidão, procuração ou alvará do cliente, cria uma tarefa para o responsável do Contábil da empresa (sem ele, um Diretor).', tipo: 'chave', padrao: false },
+  ] },
   { doc: 'avisoCertificados', titulo: 'Certificados', robo: 'vigia', campos: [
     { campo: 'ligado', nome: 'Avisar dos certificados vencendo', descricao: 'Avisa os administradores dos certificados do cofre perto do vencimento.', tipo: 'chave', padrao: true },
   ] },

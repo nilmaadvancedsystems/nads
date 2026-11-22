@@ -640,7 +640,9 @@ const CAMPOS_DO_ESPELHO = {
   item: ['id', 'nome', 'vence', 'situacao', 'feitoEm'],
   chamado: ['id', 'tipo', 'titulo', 'situacao', 'mensagens'],
   mensagem: ['de', 'autor', 'texto', 'em'],
-  recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm'],
+  // a recusa do escritório, com o motivo que o cliente vê (22/11/2026, Documentos do cliente)
+  recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm', 'recusa'],
+  recusaRecibo: ['motivo', 'em'],
   // o Registro (12/11/2026): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF mascarado) e os documentos do DP
   // (documentos/{id} com tipo 'dp'; os bytes em documentos/{id}~{n}, com 'de' = o id do documento)
   pessoal: ['funcionarios', 'competencia', 'total', 'historico', 'atualizadoEm'],
@@ -698,11 +700,14 @@ const CAMPOS_DO_ESPELHO = {
   // o que falta mandar e os pedidos do Mandei (plano do Acessórias, 17/11/2026, fichas o-que-falta-mandar e pedidos-do-mandei; frase do dono: "No sino"): sem quem cobrou nem quando
   pendencias: ['itens', 'competencia', 'atualizadoEm'],
   itemPendencia: ['id', 'titulo', 'tipo', 'competencia'],
+  // os comunicados do escritório (22/11/2026, ficha comunicados): sem o alvo nem quem publicou
+  comunicados: ['itens', 'atualizadoEm'],
+  itemComunicado: ['id', 'titulo', 'texto', 'ate'],
   tickets: ['tickets', 'atualizadoEm'],
   ticketNaArea: ['codigo', 'numero', 'assunto', 'validoAte', 'total', 'faltam', 'refazer'],
   serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
+const DENTRO = { recibo: { recusa: 'recusaRecibo' }, comunicados: { itens: 'itemComunicado' }, parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {

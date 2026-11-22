@@ -92,7 +92,9 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
     expect(C.item).toEqual(['id', 'nome', 'vence', 'situacao', 'feitoEm']);
     expect(C.chamado).toEqual(['id', 'tipo', 'titulo', 'situacao', 'mensagens']);
     expect(C.mensagem).toEqual(['de', 'autor', 'texto', 'em']);
-    expect(C.recibo).toEqual(['id', 'nome', 'tipo', 'tamanho', 'recebidoEm']);
+    expect(C.recibo).toEqual(['id', 'nome', 'tipo', 'tamanho', 'recebidoEm', 'recusa']); // a recusa com o motivo (22/11/2026)
+    expect(C.recusaRecibo).toEqual(['motivo', 'em']);
+    expect(C.itemComunicado).toEqual(['id', 'titulo', 'texto', 'ate']); // os comunicados (22/11/2026)
     expect(C.pdf).toEqual(['base64', 'n', 'total']);
   });
 });
