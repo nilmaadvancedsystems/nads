@@ -93,6 +93,8 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           {destaque && (
             <div className="comissao-destaque">
               <span>Comissão</span><b className="num" aria-live="polite">{formatos.reais(vm.valor)}</b>
+              {/* a comissão muda enquanto preenche (Vitor, 23/11/2026: "valor que mude o 0,00"): sem o serviço não há a %, e diz o que falta */}
+              {!vm.servico && <span>Escolha o serviço para calcular</span>}
               {/* a % da comissão, só para o Diretor e o Dono, num select de 5 em 5 até 50% embaixo do valor (Vitor, 19/11/2026: "coloca so uma
                   box de select abaixo do valor comissao, que aumenta de 5 em 5 e chega ate 50%"); "A do serviço" volta para a % do serviço */}
               {vm.podeDefinirPercentual && (
@@ -152,10 +154,28 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
             </Propriedade>
             {/* Abertura e Alteração de MEI: o cartão CNPJ (registra no sistema, porte MEI) e a senha gov (Vitor, 19/11/2026) */}
             {/* a escondida registrada não mostra o valor do serviço (o robô tira do banco quando calcula) */}
+            {/* a quantidade (23/11/2026: "Adiciona quantidade tambem, que as vezes tem"): o − e o + em volta do número */}
+            {vm.comQuantidade && !(vm.oculta && comissao) && (
+              <Propriedade icone="hash" rotulo="Quantidade">
+                {travada ? <span className="num">{vm.qtd}</span> : (
+                  <span className="comissao-qtd">
+                    <button type="button" className="icon-btn" disabled={vm.qtd <= 1} onClick={() => vm.mudarQuantidade(-1)} aria-label="Um a menos" title="Um a menos">−</button>
+                    <input type="text" inputMode="numeric" className="num" value={vm.quantidade} onChange={e => vm.setQuantidade(e.target.value)}
+                      onBlur={() => vm.setQuantidade(String(vm.qtd))} aria-label="Quantidade" />
+                    <button type="button" className="icon-btn" disabled={vm.qtd >= carteira.QUANTIDADE_MAXIMA} onClick={() => vm.mudarQuantidade(1)} aria-label="Um a mais" title="Um a mais">+</button>
+                  </span>
+                )}
+              </Propriedade>
+            )}
             {!(vm.oculta && comissao) && (
-              <Propriedade icone="dinheiro" rotulo="Valor do serviço">
-                {/* o R$ pronto e a máscara (Vitor, 13/11/2026: "deixa um cifrao ja pronto") */}
-                <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
+              <Propriedade icone="dinheiro" rotulo={vm.comQuantidade && vm.qtd > 1 ? 'Valor de cada' : 'Valor do serviço'}>
+                {/* o valor que o Financeiro definiu para o serviço vem pronto (23/11/2026: "o usuario coloca manual [o que não foi inputado
+                    no financeiro], mas deixa configurado no financeiro"); sem ele, o R$ pronto e a máscara (13/11/2026: "deixa um cifrao ja pronto") */}
+                {vm.valorFixo > 0 ? (
+                  <span className="comissao-valor-fixo"><b className="num">{formatos.reais(vm.valorFixo)}</b><span className="hint"><Icone nome="lock" />definido pelo Financeiro</span></span>
+                ) : (
+                  <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
+                )}
               </Propriedade>
             )}
             {/* só o valor, sem a porcentagem (Vitor, 13/11/2026: "oculte a porcentagem para o usuario"; "o valor da comissao aparece, menos a

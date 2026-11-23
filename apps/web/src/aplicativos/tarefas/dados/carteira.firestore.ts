@@ -3,7 +3,7 @@
 //     decididoEm?, motivo?, pagoEm?, clienteCodigo, porte, servico, valorServico, percentual} — a pessoa lê as dela, cria
 //     lançada (no mês seguinte) e mexe enquanto está lançada; o Financeiro lê todas, decide (aprova, recusa, paga) e
 //     registra a de qualquer pessoa, em qualquer mês, já aprovada (a retroativa; 12/11/2026);
-//   - carteiraConfig/servicos: {lista: [{id, nome, percentual}], atualizadoEm, atualizadoPor} — os serviços comissionados e a %
+//   - carteiraConfig/servicos: {lista: [{id, nome, percentual, valor?}], atualizadoEm, atualizadoPor} — os serviços comissionados e a %
 //     de cada um; todos leem, o Financeiro grava (12/11/2026);
 //   - a comissão escondida (16/11/2026: a % própria de uma pessoa, que nenhuma tela vê, nem a do Diretor):
 //     carteiraPropriaSegredo/{uid}: {percentual} — ninguém lê nem grava pelo nads; só o robô da nuvem (Admin SDK) lê;
@@ -54,17 +54,17 @@ function comissaoDoBanco(id: string, d: Record<string, unknown>): carteira.Comis
 function servicosDoBanco(d: Record<string, unknown> | undefined): carteira.ServicoComissionado[] {
   const l = Array.isArray(d?.lista) ? (d!.lista as Record<string, unknown>[]) : null;
   if (!l) return carteira.servicosPadrao();
-  return l.map(x => ({ id: texto(x.id), nome: texto(x.nome), percentual: numero(x.percentual) })).filter(x => x.id && x.nome);
+  return l.map(x => ({ id: texto(x.id), nome: texto(x.nome), percentual: numero(x.percentual), ...(numero(x.valor) > 0 ? { valor: numero(x.valor) } : {}) })).filter(x => x.id && x.nome);
 }
 /** a escondida: sem o valor e sem a %, que o robô calcula */
 const camposDaOculta = (c: carteira.ComissaoParaSalvar) => ({
   data: c.data, cliente: c.cliente.trim(), clienteCodigo: c.clienteCodigo, porte: c.clienteCodigo == null ? c.porte : null,
-  servico: c.servico, descricao: c.servico, valorServico: centavos(c.valorServico), oculta: true, calculo: 'fila',
+  servico: c.servico, descricao: carteira.descricaoDaComissao(c), valorServico: centavos(c.valorServico), oculta: true, calculo: 'fila',
 });
-/** os campos da comissão no banco (a descrição é o nome do serviço; o valor sai do valor do serviço × a %) */
+/** os campos da comissão no banco (a descrição é o nome do serviço, com a quantidade; o valor sai do valor do serviço × a %) */
 const camposDaComissao = (c: carteira.ComissaoParaSalvar) => ({
   data: c.data, cliente: c.cliente.trim(), clienteCodigo: c.clienteCodigo, porte: c.clienteCodigo == null ? c.porte : null,
-  servico: c.servico, descricao: c.servico, valorServico: centavos(c.valorServico), percentual: c.percentual, valor: carteira.valorDaComissao(c.valorServico, c.percentual),
+  servico: c.servico, descricao: carteira.descricaoDaComissao(c), valorServico: centavos(c.valorServico), percentual: c.percentual, valor: carteira.valorDaComissao(c.valorServico, c.percentual),
 });
 function lancamentoDoBanco(id: string, d: Record<string, unknown>): carteira.Lancamento {
   return { id, tipo: d.tipo === 'entrada' ? 'entrada' : 'saida', data: texto(d.data), descricao: texto(d.descricao), categoria: texto(d.categoria) || 'Outros', valor: numero(d.valor) };
@@ -201,7 +201,7 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
       const q = precisa();
       const em = new Date().toISOString();
       await setDoc(doc(db, 'carteiraConfig', 'servicos'), {
-        lista: lista.map(s => ({ id: s.id, nome: s.nome.trim(), percentual: centavos(s.percentual) })), atualizadoEm: em, atualizadoPor: q.nome,
+        lista: lista.map(s => ({ id: s.id, nome: s.nome.trim(), percentual: centavos(s.percentual), ...(s.valor && s.valor > 0 ? { valor: centavos(s.valor) } : {}) })), atualizadoEm: em, atualizadoPor: q.nome,
       });
     },
     async registrarComissaoDe(para, c) {
