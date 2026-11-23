@@ -12,6 +12,7 @@ import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import { useCentralDeTarefas, type AbaDaCentral } from '../../delegador/useCentralDeTarefas';
 import type { PessoaComFoto } from '../useInicioNovo';
+import { DelegadasPorMim } from './DelegadasPorMim';
 import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
@@ -26,6 +27,9 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
   const cobrarLigado = useNovidade('cobrar-tarefa');
   // com a janela grande da cobrança (16/11/2026), o Cobrada da lista fica só o sino
   const discreta = useNovidade('cobranca-notificada');
+  // Delegadas por mim reestruturada, com o Por pessoa (a novidade 'delegadas-por-pessoa'; 23/11/2026)
+  const delegadasNovas = useNovidade('delegadas-por-pessoa') && !documentos && vm.aba === 'delegadas';
+  if (delegadasNovas) return <DelegadasPorMim vm={vm} abrir={abrir} comFoto={comFoto} cobrarLigado={cobrarLigado} discreta={discreta} lugarDosFiltros={lugarDosFiltros} lugarDoFim={lugarDoFim} />;
   const filtros = !vm.abaVazia && (
     <>
       <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />

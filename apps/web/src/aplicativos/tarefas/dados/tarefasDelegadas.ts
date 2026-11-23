@@ -192,6 +192,50 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
     t(24, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'O comprovante de pagamento da guia. (EXEMPLO)', clientes: [delta], prioridade: 'normal', prazo: '', status: 'concluida', criadaPor: eu, responsavel: fernando,
       criadaEm: ha(30), concluidaEm: ha(25), atualizadaEm: ha(25), visualizadaEm: ha(28), historico: [...criada(eu, fernando, 30), { por: 'Fernando', em: ha(25), texto: 'Confirmou o recebimento' }],
       anexos: [{ id: 'ax-24', nome: 'comprovante.txt', extensao: 'txt', tamanho: 46, em: ha(30), por: eu.nome, partes: 1 }] }),
+    ...delegadasPorPessoaDeExemplo(agora, eu),
+  ];
+}
+
+/**
+ * As delegadas para o Por pessoa (23/11/2026): três pessoas fictícias com jeitos diferentes. A Ana vê e faz rápido, no prazo; o
+ * Bruno demora para abrir, conclui fora do prazo, tem uma atrasada e uma parada há dias; a Carla foi cobrada e pediu mais tempo.
+ */
+function delegadasPorPessoaDeExemplo(agora: Date, eu: Pessoa): TarefaDelegada[] {
+  const ha = (h: number) => new Date(agora.getTime() - h * 3600_000).toISOString();
+  const dia = (n: number) => d.hojeIso(new Date(agora.getTime() + n * 86400_000));
+  const ana = { uid: 'exemplo-ana', nome: 'Ana Exemplo' }, bruno = { uid: 'exemplo-bruno', nome: 'Bruno Exemplo' }, carla = { uid: 'exemplo-carla', nome: 'Carla Exemplo' };
+  const omega = { codigo: 52, nome: 'OMEGA DISTRIBUIDORA DE PECAS E ACESSORIOS AUTOMOTIVOS LTDA' }, sigma = { codigo: 58, nome: 'SIGMA CONSULTORIA LTDA' };
+  const base = { descricao: '', prazoHora: '', concluidaEm: '', pareceres: [], anexos: [], criadaPor: eu };
+  const criada = (para: Pessoa, h: number) => [{ por: eu.nome, em: ha(h), texto: 'Criou a tarefa' }, { por: eu.nome, em: ha(h), texto: 'Delegou para ' + para.nome }];
+  const mov = (p: Pessoa, h: number, texto: string) => ({ por: p.nome, em: ha(h), texto });
+  const t = (n: number, x: Omit<TarefaDelegada, 'id' | 'numero' | 'cliente' | 'descricao' | 'prazoHora' | 'concluidaEm' | 'pareceres' | 'anexos' | 'criadaPor'> & Partial<TarefaDelegada>): TarefaDelegada =>
+    ({ ...base, id: 'td-' + n, numero: n, cliente: x.clientes[0] || null, ...x });
+  return [
+    t(30, { titulo: 'Conferir as retenções de INSS das notas de serviço de outubro e lançar as diferenças no razão', clientes: [omega], prioridade: 'alta', prazo: dia(-1), status: 'concluida',
+      responsavel: ana, criadaEm: ha(50), visualizadaEm: ha(49.8), concluidaEm: ha(30), atualizadaEm: ha(30),
+      historico: [...criada(ana, 50), mov(ana, 49.5, 'Iniciou a tarefa'), mov(ana, 30, 'Concluiu a tarefa')] }),
+    t(31, { titulo: 'Enviar o relatório de faturamento', clientes: [sigma], prioridade: 'normal', prazo: dia(2), status: 'andamento', responsavel: ana, criadaEm: ha(6), visualizadaEm: ha(5.9), atualizadaEm: ha(5),
+      historico: [...criada(ana, 6), mov(ana, 5, 'Iniciou a tarefa')] }),
+    t(32, { titulo: 'Baixar as notas de entrada do SIEG', clientes: [omega], prioridade: 'normal', prazo: dia(-6), status: 'concluida', responsavel: bruno, criadaEm: ha(220), visualizadaEm: ha(170),
+      concluidaEm: ha(90), atualizadaEm: ha(90), historico: [...criada(bruno, 220), mov(bruno, 150, 'Iniciou a tarefa'), mov(bruno, 90, 'Concluiu a tarefa')] }),
+    t(33, { titulo: 'Atualizar o cadastro de fornecedores', clientes: [sigma], prioridade: 'baixa', prazo: dia(-3), status: 'pendente', responsavel: bruno, criadaEm: ha(140), visualizadaEm: ha(100), atualizadaEm: ha(100),
+      historico: criada(bruno, 140) }),
+    t(34, { titulo: 'Conciliar o cartão de crédito empresarial', clientes: [omega], prioridade: 'normal', prazo: dia(4), status: 'pausada', responsavel: bruno, criadaEm: ha(260), visualizadaEm: ha(200), atualizadaEm: ha(180),
+      pareceres: [{ por: bruno.nome, em: ha(180), texto: 'Falta a fatura de setembro.' }],
+      historico: [...criada(bruno, 260), mov(bruno, 190, 'Iniciou a tarefa'), mov(bruno, 180, 'Pausou a tarefa')] }),
+    t(35, { titulo: 'Fechar a apuração do PIS e da COFINS', clientes: [sigma], prioridade: 'urgente', prazo: dia(0), prazoHora: '16:00', status: 'andamento', responsavel: carla, criadaEm: ha(28), visualizadaEm: ha(27), atualizadaEm: ha(1),
+      pareceres: [
+        { por: eu.nome, em: ha(4), texto: 'O cliente pediu o valor ainda hoje.', tipo: 'cobranca' },
+        { por: carla.nome, em: ha(3.9), texto: 'Estou terminando a conferência das notas.', tipo: 'adiamento', minutos: 10 },
+        { por: carla.nome, em: ha(3.7), texto: 'Fecho até as 16h.', tipo: 'resposta' },
+        { por: eu.nome, em: ha(1), texto: d.TEXTO_DA_COBRANCA, tipo: 'cobranca' },
+      ],
+      historico: [...criada(carla, 28), mov(carla, 24, 'Iniciou a tarefa'), { por: eu.nome, em: ha(4), texto: 'Cobrou uma atualização de ' + carla.nome },
+        mov(carla, 3.9, 'Pediu mais 10 minutos para responder à cobrança'), mov(carla, 3.7, 'Respondeu à cobrança'), { por: eu.nome, em: ha(1), texto: 'Cobrou uma atualização de ' + carla.nome }] }),
+    t(36, { titulo: 'Conferir a folha de pagamento', clientes: [omega], prioridade: 'alta', prazo: dia(-4), status: 'concluida', responsavel: carla, criadaEm: ha(120), visualizadaEm: ha(118), concluidaEm: ha(70), atualizadaEm: ha(70),
+      pareceres: [{ por: eu.nome, em: ha(100), texto: d.TEXTO_DA_COBRANCA, tipo: 'cobranca' }, { por: carla.nome, em: ha(99), texto: 'Já pego.', tipo: 'adiamento', minutos: 5 }],
+      historico: [...criada(carla, 120), mov(carla, 110, 'Iniciou a tarefa'), mov(carla, 70, 'Concluiu a tarefa')] }),
+    t(37, { titulo: 'Revisar o contrato de prestação de serviços', clientes: [], prioridade: 'normal', prazo: '', status: 'pendente', responsavel: carla, criadaEm: ha(2), atualizadaEm: ha(2), historico: criada(carla, 2) }),
   ];
 }
 

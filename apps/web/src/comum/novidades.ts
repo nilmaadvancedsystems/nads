@@ -54,6 +54,10 @@ export const NOVIDADES = {
   /** o Arquivo físico (19/11/2026: "preciso montar no nads um controle do arquivo físico do escritório"): as caixas e os envelopes,
    *  a busca, a retirada e a devolução, o descarte pelo prazo e as etiquetas com QR; aprovada para todo o escritório no mesmo dia ("Liberar para todos") */
   'arquivo-fisico': { desde: '19/11/2026', aprovada: true },
+  /** Delegadas por mim reestruturada (uma tabela só, sem cortes) e o Por pessoa: os números de quem recebe as tarefas (23/11/2026: "Dá uma
+   *  reestruturada nesse painel de delegadas por mim, quero tambem uma opção de ver dados de tarefas delegadas por usuario, quanto tempo tá
+   *  demorando, etc, dados uteis para mim") */
+  'delegadas-por-pessoa': { desde: '23/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

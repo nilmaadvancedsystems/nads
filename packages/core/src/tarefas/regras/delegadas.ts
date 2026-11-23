@@ -1256,3 +1256,116 @@ export function rascunhoDaProxima(t: TarefaDelegada): Rascunho | null {
     status: 'pendente', responsavel: t.responsavel, recorrencia: p.recorrencia,
   };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// os dados das delegadas por pessoa (23/11/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+// "quero tambem uma opção de ver dados de tarefas delegadas por usuario, quanto tempo tá demorando, etc, dados uteis para mim".
+// Só com o que a tarefa já guarda: criadaEm, visualizadaEm, o histórico (Iniciou, Pausou, Concluiu), concluidaEm, o prazo e os
+// pareceres de cobrança e de mais tempo. Os tempos contam só o expediente (o mesmo relógio do cronômetro): a tarefa passada às
+// 17:50 e vista às 7:10 do dia seguinte demorou 20 minutos, não 13 horas.
+
+/** Os números de uma pessoa: o que está com ela agora e o que fez no período. As médias em minutos de expediente (null = sem caso). */
+export interface DadosDaPessoa {
+  pessoa: Pessoa;
+  /** agora: em aberto (pendente, em andamento ou pausada), em andamento e com o prazo passado */
+  abertas: number; emAndamento: number; atrasadas: number;
+  /** no período: concluídas, e quantas delas tinham prazo e quantas passaram dele */
+  concluidas: number; comPrazo: number; foraDoPrazo: number;
+  /** as médias das tarefas passadas no período: da criação até abrir, até começar e até concluir */
+  ateVer: number | null; ateIniciar: number | null; ateConcluir: number | null;
+  /** o cronômetro: os minutos em andamento dentro do período */
+  trabalhados: number;
+  /** no período: as cobranças que recebeu, os pedidos de mais tempo e quantos minutos pediu */
+  cobrancas: number; adiamentos: number; minutosPedidos: number;
+  /** a em aberto parada há mais tempo (pendente ou pausada), desde o último movimento (ou a criação) */
+  maisAntigaParada: { id: string; numero: number; titulo: string; desde: string } | null;
+}
+
+/** O dia e a hora de Brasília de um instante ISO ('aaaa-mm-dd', 'hh:mm'). */
+function diaEHoraDeBrasilia(iso: string): { dia: string; hora: string } {
+  const local = new Date(Date.parse(iso) + FUSO_DE_BRASILIA * MIN).toISOString();
+  return { dia: local.slice(0, 10), hora: local.slice(11, 16) };
+}
+
+/** A concluída passou do prazo? (o dia depois do prazo; no dia, só se tem a hora e passou dela) */
+export function concluidaForaDoPrazo(t: Pick<TarefaDelegada, 'status' | 'prazo' | 'prazoHora' | 'concluidaEm'>): boolean {
+  if (t.status !== 'concluida' || !t.prazo || !t.concluidaEm || !Number.isFinite(Date.parse(t.concluidaEm))) return false;
+  const c = diaEHoraDeBrasilia(t.concluidaEm);
+  return c.dia > t.prazo || (c.dia === t.prazo && !!t.prazoHora && c.hora > t.prazoHora);
+}
+
+const media = (xs: readonly number[]): number | null => (xs.length ? Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) : null);
+const expedienteEntre = (de: string, ate: string): number | null => {
+  const a = Date.parse(de), b = Date.parse(ate);
+  return Number.isFinite(a) && Number.isFinite(b) ? minutosDeExpediente(a, b) : null;
+};
+
+/**
+ * Os dados de quem recebeu as tarefas que eu deleguei (uid), uma linha por pessoa, quem tem mais em aberto primeiro. desde = o
+ * começo do período (ISO; '' = tudo). As canceladas e as que a pessoa passou para si mesma ficam de fora.
+ */
+export function dadosPorPessoa(lista: readonly TarefaDelegada[], uid: string, desde: string, agora: Date | string): DadosDaPessoa[] {
+  const inicio = desde ? Date.parse(desde) : -Infinity;
+  const noPeriodo = (iso: string | undefined) => !!iso && Date.parse(iso) >= inicio;
+  const hoje = diaEHoraDeBrasilia(new Date(msDe(agora)).toISOString());
+  const porPessoa = new Map<string, TarefaDelegada[]>();
+  for (const t of lista) {
+    if (t.criadaPor.uid !== uid || t.responsavel.uid === uid || t.status === 'cancelada') continue;
+    porPessoa.set(t.responsavel.uid, [...(porPessoa.get(t.responsavel.uid) || []), t]);
+  }
+  const linhas: DadosDaPessoa[] = [];
+  for (const tarefas of porPessoa.values()) {
+    const abertas = tarefas.filter(emAberto);
+    const concluidas = tarefas.filter(t => t.status === 'concluida' && noPeriodo(t.concluidaEm));
+    const passadas = tarefas.filter(t => noPeriodo(t.criadaEm));
+    const ver: number[] = [], iniciar: number[] = [], concluir: number[] = [];
+    for (const t of passadas) {
+      const v = t.visualizadaEm ? expedienteEntre(t.criadaEm, t.visualizadaEm) : null;
+      if (v != null) ver.push(v);
+      const comecou = trechosEmAndamento(t, agora)[0];
+      if (comecou) iniciar.push(minutosDeExpediente(Date.parse(t.criadaEm), comecou.de));
+      const c = t.status === 'concluida' && t.concluidaEm ? expedienteEntre(t.criadaEm, t.concluidaEm) : null;
+      if (c != null) concluir.push(c);
+    }
+    const notas = tarefas.flatMap(t => t.pareceres.filter(p => noPeriodo(p.em)));
+    const adiamentos = notas.filter(p => p.tipo === 'adiamento');
+    let parada: DadosDaPessoa['maisAntigaParada'] = null;
+    for (const t of abertas) {
+      if (t.status === 'andamento') continue;
+      const desdeQuando = ultimoMovimento(t)?.em || t.criadaEm;
+      if (!parada || desdeQuando < parada.desde) parada = { id: t.id, numero: t.numero, titulo: t.titulo, desde: desdeQuando };
+    }
+    linhas.push({
+      pessoa: tarefas[0].responsavel,
+      abertas: abertas.length,
+      emAndamento: abertas.filter(t => t.status === 'andamento').length,
+      atrasadas: abertas.filter(t => atrasada(t, hoje.dia, hoje.hora)).length,
+      concluidas: concluidas.length,
+      comPrazo: concluidas.filter(t => !!t.prazo).length,
+      foraDoPrazo: concluidas.filter(concluidaForaDoPrazo).length,
+      ateVer: media(ver), ateIniciar: media(iniciar), ateConcluir: media(concluir),
+      trabalhados: tarefas.reduce((s, t) => s + trechosEmAndamento(t, agora).reduce((m, x) => m + minutosDeExpediente(Math.max(x.de, inicio), x.ate), 0), 0),
+      cobrancas: notas.filter(p => p.tipo === 'cobranca').length,
+      adiamentos: adiamentos.length,
+      minutosPedidos: adiamentos.reduce((s, p) => s + (p.minutos || 0), 0),
+      maisAntigaParada: parada,
+    });
+  }
+  return linhas.sort((a, b) => b.abertas - a.abertas || b.atrasadas - a.atrasadas || a.pessoa.nome.localeCompare(b.pessoa.nome, 'pt-BR'));
+}
+
+/** Os períodos do Por pessoa: os últimos 7, 30 e 90 dias, ou tudo. */
+export const PERIODOS_DOS_DADOS = [
+  { valor: '7', rotulo: 'Últimos 7 dias', dias: 7 },
+  { valor: '30', rotulo: 'Últimos 30 dias', dias: 30 },
+  { valor: '90', rotulo: 'Últimos 90 dias', dias: 90 },
+  { valor: 'tudo', rotulo: 'Desde o começo', dias: 0 },
+] as const;
+export type PeriodoDosDados = (typeof PERIODOS_DOS_DADOS)[number]['valor'];
+
+/** O começo do período (ISO), ou '' para tudo. */
+export function inicioDoPeriodo(p: PeriodoDosDados, agora: Date | string): string {
+  const dias = PERIODOS_DOS_DADOS.find(x => x.valor === p)?.dias || 0;
+  return dias ? new Date(msDe(agora) - dias * 1440 * MIN).toISOString() : '';
+}

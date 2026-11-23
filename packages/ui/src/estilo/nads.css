@@ -7224,6 +7224,13 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-marca .subnav-caixa{width:18px;height:18px;cursor:pointer;background:none;padding:0;}
 .ini-marca button.subnav-caixa:hover{border-color:var(--success);}
 .ini-marca .subnav-caixa svg{width:12px;height:12px;}
+/* Delegadas por mim reestruturada (23/11/2026: o nome cortado, o responsável quebrando, o sino solto): o título e o cliente quebram
+   em vez de cortar; o prazo, os selos, a pessoa e os números ficam numa linha só, do tamanho do conteúdo; o sino na coluna dele */
+.ini-delegadas .ini-abrir{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;}
+.ini-delegadas-curta,.ini-delegadas td.num{white-space:nowrap;width:1%;}
+.ini-delegadas .ini-pessoa{white-space:nowrap;}
+.ini-delegadas-sino{width:40px;text-align:right;white-space:nowrap;}
+.ini-delegadas-dica{margin:0 0 8px;}
 /* a tarefa nova do Início novo: o passo do cliente, o cliente escolhido no alto e os anexos curtos (o clipe e o link) */
 .ini-passo-titulo{font-size:var(--fs-18);font-weight:600;margin:4px 0 6px;}
 .ini-qual-cliente{gap:12px;}
