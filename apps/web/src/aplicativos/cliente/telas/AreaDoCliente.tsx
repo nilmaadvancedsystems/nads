@@ -33,24 +33,6 @@ import { useJanelaDeEnvio, useJanelaDeEnvioDoTipo, useJanelaDaPendencia } from '
 import { useAreaCliente } from './useAreaCliente';
 import '../cliente.css';
 
-/**
- * Outra empresa (23/11/2026: "isso aqui vai confundir a cabeca do cliente leigo"; antes, um campo para colar o link): só a
- * frase do que fazer. A outra empresa entra na lista sozinha quando o cliente abre o link dela; sem o link, pede ao
- * escritório pelo WhatsApp.
- */
-function OutraEmpresa({ onWhatsapp }: { onWhatsapp?: () => void }) {
-  return (
-    <div className="cli-troca-outra">
-      <span className="cli-troca-mais-ico" aria-hidden="true"><Icone nome="ajuda" width={14} height={14} /></span>
-      <span className="cli-troca-outra-txt">
-        <b>Tem outra empresa com a gente?</b>
-        <small>Abra o link dela que o escritório mandou. Ela passa a aparecer aqui.</small>
-        {onWhatsapp && <button type="button" className="cli-link-mini" onClick={onWhatsapp}>Não tem o link? Peça pelo WhatsApp</button>}
-      </span>
-    </div>
-  );
-}
-
 // a Área inteira com os ícones dela (15/11/2026: "podia melhorar os icones"), até o que abre por cima (janelas, menus)
 export function AreaDoCliente() {
   return <JogoDeIcones desenhos={ICONES_DO_CLIENTE}><Area /></JogoDeIcones>;
@@ -200,7 +182,8 @@ function Area() {
                           ))}
                         </>
                       )}
-                      <OutraEmpresa onWhatsapp={c.whatsappLink ? () => { fechar(); abrirWhatsapp(); } : undefined} />
+                      {/* as outras empresas vêm do login, que o escritório define (23/11/2026: "melhor o escritorio setar isso por cada
+                          login"); antes, um campo de colar o link */}
                       {/* quem entrou com a senha (19/11/2026, senha parte 2): o e-mail e o Sair deste aparelho */}
                       {vm.conta && (
                         <div className="cli-troca-conta">
