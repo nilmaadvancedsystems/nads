@@ -12,7 +12,7 @@ import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import { useCentralDeTarefas, type AbaDaCentral } from '../../delegador/useCentralDeTarefas';
 import type { PessoaComFoto } from '../useInicioNovo';
-import { DelegadasPorMim } from './DelegadasPorMim';
+import { ClienteDaLinha, DelegadasPorMim, TituloDaLinha } from './DelegadasPorMim';
 import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
@@ -29,6 +29,8 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
   const discreta = useNovidade('cobranca-notificada');
   // Delegadas por mim reestruturada, com o Por pessoa (a novidade 'delegadas-por-pessoa'; 23/11/2026)
   const delegadasNovas = useNovidade('delegadas-por-pessoa') && !documentos && vm.aba === 'delegadas';
+  // a tarefa da etapa em partes em Minhas tarefas e Concluídas (a novidade 'titulo-da-etapa'; 23/11/2026)
+  const emPartes = useNovidade('titulo-da-etapa');
   if (delegadasNovas) return <DelegadasPorMim vm={vm} abrir={abrir} comFoto={comFoto} cobrarLigado={cobrarLigado} discreta={discreta} lugarDosFiltros={lugarDosFiltros} lugarDoFim={lugarDoFim} />;
   const filtros = !vm.abaVazia && (
     <>
@@ -82,11 +84,11 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
                           ? <button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + l.titulo} onClick={() => vm.fazerAcao(l.id, concluir.status)} />
                           : <span className={'subnav-caixa ' + (l.status.valor === 'concluida' ? 'marcada' : 'vazia')} aria-hidden="true">{l.status.valor === 'concluida' && <Icone nome="check" />}</span>}
                       </td>
-                      <td><button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button></td>
+                      <td>{emPartes ? <TituloDaLinha l={l} abrir={abrir} /> : <button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button>}</td>
                       <td className={l.atrasada ? 'tdl-atrasada' : undefined}>{l.prazoCurto || '—'}</td>
                       <td><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
                       <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
-                      <td title={l.clientes}>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
+                      <td title={l.clientes}>{emPartes ? <ClienteDaLinha l={l} /> : <>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</>}</td>
                       <td>
                         {/* o sino ao lado da pessoa (Vitor, 13/11/2026: "Coloca o sino do lado do responsavel"): cobrar quem faz, a
                             cobrança esperando a resposta, ou (em Minhas tarefas) que quem delegou cobrou */}

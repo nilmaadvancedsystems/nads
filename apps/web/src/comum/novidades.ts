@@ -58,6 +58,10 @@ export const NOVIDADES = {
    *  reestruturada nesse painel de delegadas por mim, quero tambem uma opção de ver dados de tarefas delegadas por usuario, quanto tempo tá
    *  demorando, etc, dados uteis para mim") */
   'delegadas-por-pessoa': { desde: '23/11/2026', aprovada: false },
+  /** a tarefa que veio de uma etapa em Minhas tarefas e Concluídas: o nome da etapa com o período embaixo, e no Cliente o código em
+   *  destaque e o nome ao lado (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"); na Delegadas
+   *  por mim, vem junto com a 'delegadas-por-pessoa' */
+  'titulo-da-etapa': { desde: '23/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

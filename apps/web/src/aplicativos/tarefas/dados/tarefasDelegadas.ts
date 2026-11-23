@@ -236,6 +236,29 @@ function delegadasPorPessoaDeExemplo(agora: Date, eu: Pessoa): TarefaDelegada[] 
       pareceres: [{ por: eu.nome, em: ha(100), texto: d.TEXTO_DA_COBRANCA, tipo: 'cobranca' }, { por: carla.nome, em: ha(99), texto: 'Já pego.', tipo: 'adiamento', minutos: 5 }],
       historico: [...criada(carla, 120), mov(carla, 110, 'Iniciou a tarefa'), mov(carla, 70, 'Concluiu a tarefa')] }),
     t(37, { titulo: 'Revisar o contrato de prestação de serviços', clientes: [], prioridade: 'normal', prazo: '', status: 'pendente', responsavel: carla, criadaEm: ha(2), atualizadaEm: ha(2), historico: criada(carla, 2) }),
+    ...etapasDelegadasDeExemplo(agora, eu, { bruno, carla }),
+  ];
+}
+
+/**
+ * As tarefas que vieram das etapas (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"), na empresa de
+ * teste (9999) e com o título como as etapas gravam ("etapa · código · empresa · período"): duas delegadas por mim (sem prazo, como na
+ * Tarefa), uma recebida (Minhas tarefas) e uma concluída.
+ */
+function etapasDelegadasDeExemplo(agora: Date, eu: Pessoa, p: { bruno: Pessoa; carla: Pessoa }): TarefaDelegada[] {
+  const ha = (h: number) => new Date(agora.getTime() - h * 3600_000).toISOString();
+  const teste = { codigo: 9999, nome: 'PERSONALY COMPANY' };
+  const etapa = (id: string, periodo: string, conjunto = false): tarefas.delegadas.EtapaDelegada => ({ etapa: id, rota: '9999', periodo, todas: true, contas: [], feitas: [], ...(conjunto ? { conjunto: true as const } : {}) });
+  const tarefa = (n: number, nome: string, periodoTexto: string, x: Partial<TarefaDelegada> & Pick<TarefaDelegada, 'responsavel' | 'criadaPor' | 'status' | 'etapaDelegada'>, h: number): TarefaDelegada => ({
+    id: 'td-' + n, numero: n, titulo: nome + ' · 9999 · PERSONALY COMPANY · ' + periodoTexto, descricao: 'Todas as contas.', cliente: teste, clientes: [teste], prioridade: 'normal',
+    prazo: '', prazoHora: '', criadaEm: ha(h), concluidaEm: '', atualizadaEm: ha(h), pareceres: [], anexos: [],
+    historico: [{ por: x.criadaPor.nome, em: ha(h), texto: 'Criou a tarefa' }, { por: x.criadaPor.nome, em: ha(h), texto: 'Delegou para ' + x.responsavel.nome }], ...x,
+  });
+  return [
+    tarefa(40, 'Fornecedores', 'Julho a Agosto/2026', { criadaPor: eu, responsavel: p.bruno, status: 'pendente', etapaDelegada: etapa('fornecedores', '2026-07..2026-08') }, 30),
+    tarefa(41, 'Contabilização da Folha', 'Julho a Agosto/2026', { criadaPor: eu, responsavel: p.carla, status: 'pendente', etapaDelegada: etapa('folha', '2026-07..2026-08', true) }, 30),
+    tarefa(42, 'Clientes', 'Agosto/2026', { criadaPor: p.carla, responsavel: eu, status: 'pendente', etapaDelegada: etapa('clientes', '2026-08') }, 12),
+    tarefa(43, 'Clientes', 'Julho/2026', { criadaPor: eu, responsavel: p.bruno, status: 'concluida', concluidaEm: ha(20), visualizadaEm: ha(70), etapaDelegada: etapa('clientes', '2026-07') }, 72),
   ];
 }
 

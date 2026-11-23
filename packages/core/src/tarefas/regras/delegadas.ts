@@ -1369,3 +1369,19 @@ export function inicioDoPeriodo(p: PeriodoDosDados, agora: Date | string): strin
   const dias = PERIODOS_DOS_DADOS.find(x => x.valor === p)?.dias || 0;
   return dias ? new Date(msDe(agora) - dias * 1440 * MIN).toISOString() : '';
 }
+
+/**
+ * O título da tarefa que veio de uma etapa ("Fornecedores · 309 · EMPRESA LTDA · Janeiro a Setembro/2026") em partes, só para a tela
+ * (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"): o nome da etapa e o período; a empresa fica
+ * na coluna Cliente. O que está gravado não muda; o título que não segue esse formato (editado à mão, por exemplo) fica inteiro.
+ */
+export function partesDoTitulo(t: Pick<TarefaDelegada, 'titulo' | 'etapaDelegada' | 'clientes'>): { titulo: string; periodo: string } {
+  const inteiro = { titulo: t.titulo, periodo: '' };
+  if (!t.etapaDelegada) return inteiro;
+  const partes = t.titulo.split(' · ');
+  if (partes.length < 3 || !partes[0].trim()) return inteiro;
+  const empresa = partes.slice(1, -1).join(' · ');
+  const c = t.clientes[0];
+  if (c && empresa !== nomeDoCliente(c) && empresa !== c.nome) return inteiro;
+  return { titulo: partes[0], periodo: partes[partes.length - 1] };
+}

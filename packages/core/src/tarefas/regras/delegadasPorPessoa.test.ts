@@ -1,6 +1,6 @@
 // Os dados das delegadas por pessoa (23/11/2026): os números de quem recebeu, só com o que a tarefa já guarda.
 import { describe, expect, it } from 'vitest';
-import { concluidaForaDoPrazo, dadosPorPessoa, inicioDoPeriodo, type TarefaDelegada } from './delegadas';
+import { concluidaForaDoPrazo, dadosPorPessoa, inicioDoPeriodo, partesDoTitulo, type TarefaDelegada } from './delegadas';
 
 const EU = { uid: 'eu', nome: 'Pessoa Que Delega' };
 const ANA = { uid: 'a', nome: 'Ana Exemplo' };
@@ -104,5 +104,23 @@ describe('concluidaForaDoPrazo', () => {
   it('sem prazo ou não concluída, nunca', () => {
     expect(concluidaForaDoPrazo({ ...base, prazo: '', concluidaEm: br('2026-11-20T10:00') })).toBe(false);
     expect(concluidaForaDoPrazo({ ...base, status: 'andamento', concluidaEm: '' })).toBe(false);
+  });
+});
+
+describe('partesDoTitulo', () => {
+  const etapaDelegada = { etapa: 'fornecedores', rota: 'x', periodo: '2026-01..2026-09', todas: true, contas: [], feitas: [] };
+  const empresa = { codigo: 309, nome: 'EMPRESA EXEMPLO LTDA' };
+  it('a tarefa da etapa: o nome da etapa e o período, sem a empresa', () => {
+    expect(partesDoTitulo({ titulo: 'Fornecedores · 309 · EMPRESA EXEMPLO LTDA · Janeiro a Setembro/2026', etapaDelegada, clientes: [empresa] }))
+      .toEqual({ titulo: 'Fornecedores', periodo: 'Janeiro a Setembro/2026' });
+  });
+  it('a empresa sem código também', () => {
+    expect(partesDoTitulo({ titulo: 'Clientes · EMPRESA NOVA · Outubro/2026', etapaDelegada, clientes: [{ codigo: null, nome: 'EMPRESA NOVA' }] }))
+      .toEqual({ titulo: 'Clientes', periodo: 'Outubro/2026' });
+  });
+  it('fica inteiro: tarefa comum, título fora do formato ou outra empresa no meio', () => {
+    expect(partesDoTitulo({ titulo: 'Ligar · para · o cliente', clientes: [] })).toEqual({ titulo: 'Ligar · para · o cliente', periodo: '' });
+    expect(partesDoTitulo({ titulo: 'Fornecedores de outubro', etapaDelegada, clientes: [empresa] }).periodo).toBe('');
+    expect(partesDoTitulo({ titulo: 'Fornecedores · 12 · OUTRA LTDA · Outubro/2026', etapaDelegada, clientes: [empresa] }).periodo).toBe('');
   });
 });

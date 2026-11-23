@@ -15,6 +15,27 @@ import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
 type Modo = 'lista' | 'pessoas';
+type Linha = ReturnType<typeof useCentralDeTarefas>['grupos'][number]['linhas'][number];
+
+/**
+ * A tarefa na coluna Tarefa (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"): a que veio de uma
+ * etapa mostra só o nome da etapa, com o período embaixo, menor e cinza (o título e a linha de baixo do cartão Delegadas do Início).
+ */
+export function TituloDaLinha({ l, abrir }: { l: Linha; abrir: (id: string) => void }) {
+  return <>
+    <button type="button" className="ini-abrir" title={l.titulo} onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.partes.titulo}</button>
+    {l.partes.periodo && <><br /><span className="hint">{l.partes.periodo}</span></>}
+  </>;
+}
+
+/** O cliente: o código em destaque e o nome ao lado (com mais clientes, o +N). */
+export function ClienteDaLinha({ l }: { l: Linha }) {
+  if (!l.cliente) return <>—</>;
+  return <>
+    {l.clienteCodigo != null ? <><span className="ini-empresa">{l.clienteCodigo}</span> {l.clienteNome}</> : <span className="ini-empresa">{l.clienteNome}</span>}
+    {(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}
+  </>;
+}
 
 export function DelegadasPorMim({ vm, abrir, comFoto, cobrarLigado, discreta, lugarDosFiltros, lugarDoFim }: {
   vm: ReturnType<typeof useCentralDeTarefas>;
@@ -77,11 +98,11 @@ function Lista({ vm, abrir, comFoto, cobrarLigado, discreta }: {
               <tr key={'g-' + g.id} className="fc-grupo"><th colSpan={7} scope="colgroup">{g.rotulo || 'Tarefas'}<span> · {g.linhas.length}</span></th></tr>,
               ...g.linhas.map(l => (
                 <tr key={l.id} className="ini-tr" onClick={() => abrir(l.id)} title="Abrir a tarefa">
-                  <td><button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button></td>
+                  <td><TituloDaLinha l={l} abrir={abrir} /></td>
                   <td className={'ini-delegadas-curta' + (l.atrasada ? ' tdl-atrasada' : '')}>{l.prazoCurto || '—'}</td>
                   <td className="ini-delegadas-curta"><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
                   <td className="ini-delegadas-curta"><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
-                  <td title={l.clientes}>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
+                  <td title={l.clientes}><ClienteDaLinha l={l} /></td>
                   <td className="ini-delegadas-curta"><span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span></td>
                   <td className="ini-delegadas-sino" onClick={e => e.stopPropagation()}>
                     {cobrarLigado && l.cobranca === 'cobrada' && <span className="ini-sino" title={l.dicaDaCobranca}><Icone nome="sino" />{!discreta && 'Cobrada'}</span>}

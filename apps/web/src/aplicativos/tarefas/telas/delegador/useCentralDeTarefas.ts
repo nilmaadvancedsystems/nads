@@ -90,6 +90,9 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     prioridade: { valor: t.prioridade, rotulo: d.rotuloDaPrioridade(t.prioridade) },
     prazo: d.prazoComHora(t), atrasada: d.atrasada(t, hoje, agora),
     cliente: t.clientes[0] ? nomeDoCliente(t.clientes[0]) : '',
+    // a tarefa da etapa em partes, só para a tela (23/11/2026): o nome da etapa e o período; o código e o nome do cliente separados
+    partes: d.partesDoTitulo(t),
+    clienteCodigo: t.clientes[0]?.codigo ?? null, clienteNome: t.clientes[0]?.nome || '',
     maisClientes: t.clientes.length - 1,
     clientes: t.clientes.map(nomeDoCliente).join('\n'),
     pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
