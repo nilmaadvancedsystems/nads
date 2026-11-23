@@ -66,6 +66,10 @@ export const NOVIDADES = {
    *  destaque e o nome ao lado (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"); na Delegadas
    *  por mim, vem junto com a 'delegadas-por-pessoa'; aprovada para todos no mesmo dia ("Sim, liberar") */
   'titulo-da-etapa': { desde: '23/11/2026', aprovada: true },
+  /** o ShadersCI (23/11/2026: "Vamos buildar um aplicativo chamado ShadersCI … uma abinha de lançamentos onde o usuario lance, adicione,
+   *  remova, edite … copie e cole com o botao direito"): a aba de lançamentos do SCI, com os planos padrão 90113 e 90011; só o Contábil
+   *  e o admin; os lançamentos ficam só no navegador */
+  shadersci: { desde: '23/11/2026', aprovada: false },
   /** a ferramenta nads → SCI (23/11/2026, docs/sci): as planilhas de importação do nads viram a planilha que o SCI importa,
    *  sem banco ("é só um intermediador entre o NADS e SCI"); nas Ferramentas, só no modo desenvolvedor até o teste no SCI */
   sci: { desde: '23/11/2026', aprovada: false },
