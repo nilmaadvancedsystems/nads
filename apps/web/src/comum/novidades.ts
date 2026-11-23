@@ -56,12 +56,12 @@ export const NOVIDADES = {
   'arquivo-fisico': { desde: '19/11/2026', aprovada: true },
   /** Delegadas por mim reestruturada (uma tabela só, sem cortes) e o Por pessoa: os números de quem recebe as tarefas (23/11/2026: "Dá uma
    *  reestruturada nesse painel de delegadas por mim, quero tambem uma opção de ver dados de tarefas delegadas por usuario, quanto tempo tá
-   *  demorando, etc, dados uteis para mim") */
-  'delegadas-por-pessoa': { desde: '23/11/2026', aprovada: false },
+   *  demorando, etc, dados uteis para mim"); aprovada para todos no mesmo dia ("Sim, liberar") */
+  'delegadas-por-pessoa': { desde: '23/11/2026', aprovada: true },
   /** a tarefa que veio de uma etapa em Minhas tarefas e Concluídas: o nome da etapa com o período embaixo, e no Cliente o código em
    *  destaque e o nome ao lado (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"); na Delegadas
-   *  por mim, vem junto com a 'delegadas-por-pessoa' */
-  'titulo-da-etapa': { desde: '23/11/2026', aprovada: false },
+   *  por mim, vem junto com a 'delegadas-por-pessoa'; aprovada para todos no mesmo dia ("Sim, liberar") */
+  'titulo-da-etapa': { desde: '23/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
