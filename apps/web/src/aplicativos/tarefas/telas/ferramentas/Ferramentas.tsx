@@ -6,7 +6,9 @@
 import { BlocosDeEscolha, BotaoAcao, BotaoIcone, CampoArquivo, Icone, IconeDeArquivo, Segmentado, SoltarArquivos, Vazio, formatoPeloNome } from '@nads/ui';
 import { ferramentas } from '@nads/core';
 import type { ReactNode } from 'react';
-import { COM_UM_PDF, FERRAMENTAS, GRUPOS_DAS_FERRAMENTAS, useFerramentas, type Ferramenta, type ItemDaLista } from './useFerramentas';
+import { useNovidade } from '../../../../comum/novidades';
+import { NadsParaSci } from './NadsParaSci';
+import { COM_UM_PDF, FERRAMENTAS, gruposDasFerramentas, useFerramentas, type Ferramenta, type ItemDaLista } from './useFerramentas';
 
 type Vm = ReturnType<typeof useFerramentas>;
 type Lista = Vm['juntar'];
@@ -16,15 +18,17 @@ const plural = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? u
 
 export function Ferramentas() {
   const vm = useFerramentas();
+  const comSci = useNovidade('sci');
   const icone = FERRAMENTAS.find(f => f.valor === vm.ferramenta)?.icone ?? 'upload';
   return (
     <div className="ferramentas">
-      <BlocosDeEscolha<Ferramenta> valor={vm.ferramenta} onMudar={vm.setFerramenta} grupos={GRUPOS_DAS_FERRAMENTAS} rotulo="A ferramenta" />
+      <BlocosDeEscolha<Ferramenta> valor={vm.ferramenta} onMudar={vm.setFerramenta} grupos={gruposDasFerramentas(comSci)} rotulo="A ferramenta" />
       <p className="ferramentas-descricao"><Icone nome={icone} />{vm.descricao}</p>
       {COM_UM_PDF.includes(vm.ferramenta) && <ComPdf vm={vm} />}
       {vm.ferramenta === 'juntar' && <Juntar vm={vm} />}
       {vm.ferramenta === 'imagem-pdf' && <ImagemEmPdf vm={vm} />}
       {vm.ferramenta === 'planilha' && <Planilha vm={vm} />}
+      {vm.ferramenta === 'sci' && comSci && <NadsParaSci />}
     </div>
   );
 }
