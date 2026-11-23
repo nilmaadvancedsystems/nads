@@ -458,6 +458,28 @@ Registro `LCPR` do item A. FAQ 7414, 4897 e 7588.
 
 ## Q. Balancete de volta para o nads
 
+**O formato real, conferido em 23/11/2026** (balancete de uma empresa exportado do SCI; o nads lê com
+`sci.lerBalanceteDoSci`):
+- *Relatórios › Balancete*, com **"Imprimir conta: Curta" e "Longa"** marcados (sem eles não vem a classificação) e
+  "Exportar CSV com cabeçalho". Depois *Exportar para… › CSV*; o nome sugerido é `Balancete.csv`.
+- Windows-1252, sem BOM, CRLF, separador `;`, sem aspas, vírgula decimal e ponto no milhar.
+- Linha 1: `BALANCETE DE 01/10/2026 A 31/10/2026;;;;;;`. Linha 2: `EMPRESA: 999 - NOME;CIDADE/UF -CNPJ:11.222.333/0001-81`.
+  Depois duas linhas vazias, os títulos `CONTA;CLASSIFICAÇÃO;NOME DA CONTA CONTÁBIL;SALDO ANTERIOR;DÉBITO;CRÉDITO;SALDO
+  ATUAL` e uma linha vazia. **CONTA** é o código curto e **CLASSIFICAÇÃO** é a longa.
+- **Sem D/C**: o saldo vem com o sinal natural do grupo (1 e 4 devedores; 2 e 3 credores). Um saldo ao contrário vem
+  **entre parênteses**: `(4.692,44)`. **Sem linha de totais** (a não ser que se marque "Totalizar embaixo"). Por
+  padrão, só saem as contas com saldo ou movimento.
+- Não há coluna dizendo se a conta é analítica: o nads deduz pela classificação (quem não tem conta abaixo).
+- Ao emitir, o SCI pode avisar "Existe uma diferença contábil entre Ativo x Passivo. Deseja emitir relatório mesmo
+  assim?" (acontece quando o resultado ainda não foi encerrado). É só responder Sim.
+
+**O razão** (*Razão e livro caixa*, atalho Ctrl+A no SCI), exportado em "CSV sem quebra de página":
+- vem em UTF-8 **com BOM**, diferente do balancete;
+- só traz `Histórico;Valor;Saldo`, com a data numa linha própria (`05/10/2026;;`) e o valor sem sinal;
+- sem chave, contrapartida, documento nem D/C, a menos que essas opções sejam marcadas na tela;
+- **a última linha pode sumir** nesse modo. Por isso, para conferir, vale o balancete, ou o razão em CSV comum com
+  "Totais › Conta".
+
 - *Relatórios › Balancete* › "Exportar CSV com cabeçalho" (FAQ 5378). A linha 1 traz a data, a linha 2 traz a empresa,
   a cidade/UF e o CNPJ, e depois vêm as contas. As colunas exatas ficam **a confirmar** com um arquivo real, que o
   usuário exporta uma vez.

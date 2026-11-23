@@ -110,8 +110,8 @@ Formato escolhido pelo dono em 23/11/2026: **planilha .xlsx**, melhor para anali
 >   CSV exportado do SCI e a Ferramenta mostra:
 >   - as contas com o saldo contrário à natureza (fornecedor devedor, caixa credor; as redutoras ficam de fora);
 >   - conta a conta, o que o nads mandou × o movimento no SCI (bate, faltou, a mais, fora do balancete).
->   **O leitor ainda espera o arquivo real** (pedido à sessão do PC do SCI): ele acha a linha de títulos e aceita D/C,
->   sinal e vírgula ou ponto e vírgula, mas as colunas exatas ficam a confirmar.
+>   **Conferido com o arquivo real** (balancete exportado pela sessão do PC do SCI, formato no doc 02, Q): CONTA =
+>   código curto, saldos sem D/C com o sinal natural do grupo e parênteses quando ao contrário, Windows-1252.
 
 - **Core** (nada é gravado no Firestore):
   - o leitor do plano de contas e do plano de históricos **exportados do SCI**;

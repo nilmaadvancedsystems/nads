@@ -57,7 +57,7 @@ function Balancete({ vm }: { vm: Vm }) {
           <CampoArquivo id="sci-balancete" aceitar={ACEITAR} semCaixa onEscolher={f => f && vm.escolherBalancete([f])} />
         </span>
       </div>
-      {!b && <p className="hint">No SCI: Relatórios › Balancete › Exportar CSV com cabeçalho. Aqui aparecem as contas com o saldo contrário à natureza (fornecedor devedor, caixa credor) e, com as planilhas do nads acima, o que faltou ou sobrou no SCI.</p>}
+      {!b && <p className="hint">No SCI: Relatórios › Balancete, com "Imprimir conta: Curta" e "Longa" marcados e "Exportar CSV com cabeçalho"; depois Exportar para… › CSV. Aqui aparecem as contas com o saldo contrário à natureza (fornecedor devedor, caixa credor) e, com as planilhas do nads acima, o que faltou ou sobrou no SCI.</p>}
       {b && (
         <>
           <h4>Saldo contrário à natureza ({vm.invertidos.length})</h4>

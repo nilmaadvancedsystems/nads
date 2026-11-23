@@ -168,51 +168,58 @@ describe('o de/para pelo plano padrão do SCI (90113)', () => {
   });
 });
 
-describe('o balancete do SCI de volta (formato a confirmar com o arquivo real)', () => {
-  const enc = (s: string) => new TextEncoder().encode(s);
+describe('o balancete do SCI de volta (o formato real, com dados fictícios)', () => {
+  // como o SCI exporta: Windows-1252, ";", sem aspas, sem D/C (o sinal natural do grupo; ao contrário, entre parênteses)
+  const win = (s: string) => new Uint8Array(Buffer.from(s, 'latin1'));
   const csv = [
-    '31/10/2026',
-    'EMPRESA EXEMPLO LTDA;MONTES CLAROS/MG;11.222.333/0001-81',
-    'Classificação;Código;Descrição;Saldo anterior;Débito;Crédito;Saldo atual',
-    '01;1;ATIVO;1.000,00D;2.330,40;1.500,00;1.830,40D',
-    '01.1.1.01.001;5;Caixa;1.000,00D;0,00;1.500,00;500,00C',
-    '01.1.1.02.001;7;Banco do Brasil S/A;0,00;2.330,40;0,00;2.330,40D',
-    '02;140;PASSIVO;0,00;830,40;0,00;830,40D',
-    '02.1.1.01.001;148;Fornecedores;0,00;830,40;0,00;830,40D',
-    '04.2.1.01.002;457;Pró-Labore;0,00;1.500,00;0,00;1.500,00D',
-    '01.2.3.01.002;250;(-) Depreciação acumulada;0,00;0,00;100,00;100,00C',
-    'Totais;;;;4.660,80;1.600,00;',
-  ].join('\r\n');
+    'BALANCETE DE 01/10/2026 A 31/10/2026;;;;;;',
+    'EMPRESA: 999 - EMPRESA EXEMPLO LTDA;MONTES CLAROS/MG -CNPJ:11.222.333/0001-81',
+    '',
+    '',
+    'CONTA;CLASSIFICAÇÃO;NOME DA CONTA CONTÁBIL;SALDO ANTERIOR;DÉBITO;CRÉDITO;SALDO ATUAL',
+    '',
+    '1;01;ATIVO;1.000,00;2.330,40;1.500,00;1.830,40',
+    '5;01.1.1.01.001;Caixa;1.000,00;0,00;1.500,00;(500,00)',
+    '7;01.1.1.02.001;Banco do Brasil S/A;0,00;2.330,40;0,00;2.330,40',
+    '250;01.2.3.01.002;(-) Depreciação acumulada;0,00;0,00;100,00;(100,00)',
+    '140;02;PASSIVO;0,00;830,40;0,00;(830,40)',
+    '148;02.1.1.01.001;Fornecedores;0,00;830,40;0,00;(830,40)',
+    '272;03.1.2;DEDUÇÕES DAS RECEITAS C/VENDAS E SERVIÇO;(100,00);100,00;0,00;(200,00)',
+    '284;03.1.2.02.008;Simples Nacional sobre vendas e serviços;(100,00);100,00;0,00;(200,00)',
+    '457;04.2.1.01.002;Pró-Labore;0,00;1.500,00;0,00;1.500,00',
+  ].join('\r\n') + '\r\n';
 
-  it('acha os títulos, a empresa e o CNPJ, e lê os valores com D/C', () => {
-    const r = lerBalanceteDoSci(enc(csv), 'balancete.csv');
+  it('lê o cabeçalho (empresa, CNPJ, período), a CONTA como código e o sinal natural', () => {
+    const r = lerBalanceteDoSci(win(csv), 'Balancete.csv');
     expect(r.erro).toBeNull();
     const b = r.balancete!;
-    expect(b).toMatchObject({ empresa: 'EMPRESA EXEMPLO LTDA', cnpj: '11.222.333/0001-81' });
-    expect(b.contas).toHaveLength(7);
-    expect(b.contas.find(c => c.codigo === '5')).toMatchObject({ analitica: true, anterior: 100000, debito: 0, credito: 150000, atual: -50000 });
+    expect(b).toMatchObject({ empresa: 'EMPRESA EXEMPLO LTDA', cnpj: '11.222.333/0001-81', inicio: '2026-10-01', fim: '2026-10-31' });
+    expect(b.contas).toHaveLength(9);
+    // + = devedor, − = credor: o caixa ficou credor; o fornecedor, entre parênteses no grupo 02, ficou devedor
+    expect(b.contas.find(c => c.codigo === '5')).toMatchObject({ nome: 'Caixa', analitica: true, anterior: 100000, debito: 0, credito: 150000, atual: -50000 });
+    expect(b.contas.find(c => c.codigo === '148')).toMatchObject({ atual: 83040 });
     expect(b.contas.find(c => c.codigo === '1')?.analitica).toBe(false);
   });
 
-  it('aponta o saldo contrário à natureza (caixa credor, fornecedor devedor), menos as redutoras', () => {
-    const b = lerBalanceteDoSci(enc(csv)).balancete!;
+  it('aponta o saldo contrário à natureza, menos as redutoras (depreciação, deduções da receita)', () => {
+    const b = lerBalanceteDoSci(win(csv)).balancete!;
     expect(saldosInvertidos(b).map(c => c.codigo)).toEqual(['5', '148']);
     expect(naturezaDaConta('03.1.1')).toBe('C');
   });
 
-  it('entende também vírgula com aspas, sinal de menos e o D/C numa coluna ao lado', () => {
+  it('aceita também D/C no valor ou na coluna ao lado (outros exportadores)', () => {
     const outro = [
       '"Classificacao","Codigo","Descricao","Saldo Anterior","","Debito","Credito","Saldo Atual",""',
       '"01.1.1.01.001","5","Caixa","1.000,00","D","0,00","1.500,00","500,00","C"',
-      '"02.1.1.01.001","148","Fornecedores","-10,00","","0,00","0,00","-10,00",""',
+      '"02.1.1.01.001","148","Fornecedores","10,00D","","0,00","0,00","10,00D",""',
     ].join('\n');
-    const b = lerBalanceteDoSci(enc(outro), 'b.csv').balancete!;
-    expect(b.contas.map(c => [c.codigo, c.anterior, c.atual])).toEqual([['5', 100000, -50000], ['148', -1000, -1000]]);
+    const b = lerBalanceteDoSci(new TextEncoder().encode(outro), 'b.csv').balancete!;
+    expect(b.contas.map(c => [c.codigo, c.anterior, c.atual])).toEqual([['5', 100000, -50000], ['148', 1000, 1000]]);
     expect(valorDoBalancete('(1.234,56)')).toBe(-123456);
   });
 
   it('confere o que o nads mandou com o movimento do SCI', () => {
-    const b = lerBalanceteDoSci(enc(csv)).balancete!;
+    const b = lerBalanceteDoSci(win(csv)).balancete!;
     const linhas = [
       { data: '2026-10-05', debito: '457', credito: '5', valor: 150000, codHistorico: '1', complemento: '', documento: '', origem: 'x' },
       { data: '2026-10-10', debito: '148', credito: '7', valor: 83040, codHistorico: '1', complemento: '', documento: '', origem: 'x' },
@@ -224,7 +231,9 @@ describe('o balancete do SCI de volta (formato a confirmar com o arquivo real)',
     expect(por).toEqual({ '5': 'bate', '7': 'faltou', '148': 'bate', '457': 'bate', '296': 'fora do balancete' });
   });
 
-  it('diz o que falta quando o arquivo não é balancete', () => {
-    expect(lerBalanceteDoSci(enc('a;b;c\n1;2;3'), 'x.csv').erro).toMatch(/títulos/);
+  it('pede a classificação quando o balancete veio sem ela, e diz quando nem é balancete', () => {
+    const semCodigos = 'BALANCETE DE 01/10/2026 A 31/10/2026;;;;\r\nNOME DA CONTA CONTÁBIL;SALDO ANTERIOR;DÉBITO;CRÉDITO;SALDO ATUAL\r\nCaixa;1,00;0,00;0,00;1,00\r\n';
+    expect(lerBalanceteDoSci(win(semCodigos), 'b.csv').erro).toMatch(/Imprimir conta/);
+    expect(lerBalanceteDoSci(win('a;b;c\n1;2;3'), 'x.csv').erro).toMatch(/títulos/);
   });
 });
