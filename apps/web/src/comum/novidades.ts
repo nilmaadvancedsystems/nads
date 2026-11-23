@@ -35,8 +35,9 @@ export const NOVIDADES = {
    *  iniciar em lote nessa tela tb"); aprovada para todos no mesmo dia ("pode publicar na versão original") */
   'em-lote-na-empresa': { desde: '16/11/2026', aprovada: true },
   /** a comissão escondida (16/11/2026): quem tem uma % própria registra a comissão sem ver o valor; a % fica num lugar do banco
-   *  que nenhuma tela lê e o robô da nuvem calcula; o Financeiro vê o valor, sem o do serviço */
-  'comissao-oculta': { desde: '16/11/2026', aprovada: false },
+   *  que nenhuma tela lê e o robô da nuvem calcula; o Financeiro vê o valor, sem o do serviço; aprovada para todos com o Ihul!
+   *  (23/11/2026: "Pode lançar o ihul na versão final, ocultando TUDO sobre comissões") */
+  'comissao-oculta': { desde: '16/11/2026', aprovada: true },
   /** a Entrega na tarefa nova delegada ao office boy (16/11/2026: "quando for delegado para o officeboy, a opcao 'entrega' que vai
    *  jogar direto no modulo de entregas"): marcada, nenhuma tarefa é criada; o pedido vai para Entregas › Solicitações */
   'entrega-do-office-boy': { desde: '16/11/2026', aprovada: false },

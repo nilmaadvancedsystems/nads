@@ -42,7 +42,8 @@ export function usePorCliente() {
       if (vistas.has(x.id) || !x.data.startsWith(m.mes) || x.situacao === 'recusada') continue;
       vistas.add(x.id);
       const c = doCliente(x.clienteCodigo ?? null, x.cliente);
-      const valor = x.valorServico ?? 0;
+      // a escondida (23/11/2026: "NAO MOSTRA ISSO PARA O USUARIO DE MANEIRA ALGUMA"): sem o valor do serviço (o "—"), nem no total
+      const valor = x.oculta ? 0 : x.valorServico ?? 0;
       c.servicos.push({ id: x.id, data: x.data, servico: x.servico || x.descricao, valor, pessoa: x.nome });
       c.totalServicos += valor;
     }
