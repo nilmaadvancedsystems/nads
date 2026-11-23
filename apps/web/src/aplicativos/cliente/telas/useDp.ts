@@ -137,6 +137,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
     ],
     // as férias (13/11/2026: os avisos de férias)
     ferias, feriasParaTirar, feriasUrgentes,
+    // quem vem primeiro para programar (a lista já vem pela urgência): o link "com férias para tirar" abre o pedido dela
+    // (23/11/2026: "quando eu clicar aqui quero que abra a requisiçao de ferias")
+    primeiraParaTirar: ferias.find(x => x.podeProgramar)?.nome,
     feriasFonte,
     // (16/11/2026: "muita informação") a nota do pé das férias numa frase; os três cartões de número viram dois fatos
     // curtos embaixo do título

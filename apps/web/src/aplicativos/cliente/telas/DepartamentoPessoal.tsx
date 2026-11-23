@@ -408,7 +408,7 @@ export function DepartamentoPessoal(props: DaCasca) {
               férias, que levam à aba Férias */}
           <p className="cli-subtitulo cli-rg-resumo">
             {vm.resumo.map((t, i) => t.aba ? (
-              <button key={i} type="button" className={'cli-rg-trecho cli-rg-trecho-link' + (t.tom ? ' t-' + t.tom : '')} onClick={() => vm.escolherAba('ferias')}><b>{t.valor}</b> {t.depois}</button>
+              <button key={i} type="button" className={'cli-rg-trecho cli-rg-trecho-link' + (t.tom ? ' t-' + t.tom : '')} onClick={() => { vm.escolherAba('ferias'); void abrirPedido('ferias', vm.novasFerias(vm.primeiraParaTirar)); }}><b>{t.valor}</b> {t.depois}</button>
             ) : (
               <span key={i} className="cli-rg-trecho"><b>{t.valor}</b> {t.depois}</span>
             ))}
