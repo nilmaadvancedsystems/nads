@@ -6843,6 +6843,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .sci-de-para > span{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;}
 .sci-janela{display:flex;flex-direction:column;gap:6px;text-align:left;margin-top:8px;}
 .sci-janela .hint{margin:4px 0 0;}
+.sci-balancete{margin-top:16px;}
+.sci-balancete h4{margin:12px 0 6px;font-size:var(--fs-14);}
+.sci-balancete .table-wrap{max-height:360px;overflow:auto;}
 
 /* as páginas em miniatura */
 .paginas-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:20px 16px;}

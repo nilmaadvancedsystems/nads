@@ -99,6 +99,20 @@ Formato escolhido pelo dono em 23/11/2026: **planilha .xlsx**, melhor para anali
 
 ## Fase 2: o de/para das contas e dos históricos, sem banco
 
+> **Feito em 23/11/2026 (itens 1 e 2 da conversa, só no modo desenvolvedor), na Ferramenta nads → SCI:**
+> - **De/para automático** (`sci.deParaPeloPlano`): escolhe-se o plano padrão do SCI (90113 ou 90011, que o ShadersCI
+>   trouxe) e solta-se o plano da empresa exportado do Alterdata. Ele casa primeiro pela classificação (sem os zeros da
+>   esquerda, com o nome parecido) e depois pelo nome. A "classificação igual, nome diferente" fica a conferir, nunca
+>   automática. A planilha de de/para baixa para conferir e guardar no Drive, e a do escritório vale mais que o
+>   automático. Com o plano escolhido, a planilha aponta a conta que não existe no SCI, a sintética e a que pede
+>   participante.
+> - **Balancete do SCI de volta** (`sci.lerBalanceteDoSci`, `saldosInvertidos`, `conferirComOBalancete`): solta-se o
+>   CSV exportado do SCI e a Ferramenta mostra:
+>   - as contas com o saldo contrário à natureza (fornecedor devedor, caixa credor; as redutoras ficam de fora);
+>   - conta a conta, o que o nads mandou × o movimento no SCI (bate, faltou, a mais, fora do balancete).
+>   **O leitor ainda espera o arquivo real** (pedido à sessão do PC do SCI): ele acha a linha de títulos e aceita D/C,
+>   sinal e vírgula ou ponto e vírgula, mas as colunas exatas ficam a confirmar.
+
 - **Core** (nada é gravado no Firestore):
   - o leitor do plano de contas e do plano de históricos **exportados do SCI**;
   - `deParaDasContas(planoAlterdata, planoSci, planilhaDeDePara?)`: casa pela classificação e pelo nome, como a

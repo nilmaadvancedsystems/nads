@@ -6,3 +6,5 @@ export * from './regras/leitura';
 export * from './regras/planilha';
 export * from './regras/plano';
 export * from './regras/lancamentos';
+export * from './regras/dePara';
+export * from './regras/balancete';

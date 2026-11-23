@@ -1,3 +1,5 @@
+import type { PlanoSci } from './regras/plano';
+
 // nads → SCI (23/11/2026, docs/sci): o Contábil passa para o SCI (Único / Novo Visual), mas lá só entram importações,
 // em planilha (decisão do dono: "planilha é melhor para a análise"; o SBS, que daria a API, é pago à parte). O
 // intermediário não usa banco: arquivo entra (a planilha de importação que as telas do nads já baixam), arquivo sai (a
@@ -37,6 +39,8 @@ export interface OpcoesDoSci {
   historicoPadrao?: string;
   /** sem = as contas vão como vieram (o SCI com os mesmos códigos do Alterdata) */
   dePara?: DeParaDasContas | null;
+  /** o plano padrão do SCI da empresa: confere se a conta existe, se recebe lançamento e se pede participante */
+  planoSci?: PlanoSci | null;
 }
 
 /** Um lançamento pronto para a planilha do SCI, com o que impede a importação. */
