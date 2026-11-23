@@ -445,12 +445,18 @@ function conferirNota(nota, resposta, validacao) {
 					calculadora: reais(bc)
 				});
 			}
-		} else if (ob && ob.estadoItem === "INCONSISTENCIA_ENTRADA") divergencias.push({
-			item: it.nItem,
-			campo: "base de cálculo (vBC)",
-			naNota: reais(g.vBC),
-			calculadora: textoDoErro((ob.erros || [{}])[0]) || "a calculadora recusou os componentes da base"
-		});
+		} else if (ob && ob.estadoItem === "INCONSISTENCIA_ENTRADA") {
+			if (de2026) {
+				baseDiferente2026 = true;
+				continue;
+			}
+			divergencias.push({
+				item: it.nItem,
+				campo: "base de cálculo (vBC)",
+				naNota: reais(g.vBC),
+				calculadora: textoDoErro((ob.erros || [{}])[0]) || "a calculadora recusou os componentes da base"
+			});
+		}
 	}
 	if (nota.total) {
 		const soma = (f) => comGrupo.reduce((s, i) => s + (i.grupo.temValores ? f(i.grupo) : 0), 0);

@@ -327,6 +327,9 @@ export function conferirNota(nota: NotaParaConferir, resposta: RespostaDaCalcula
         else divergencias.push({ item: it.nItem, campo: 'base de cálculo (vBC)', naNota: reais(g.vBC), calculadora: reais(bc) });
       }
     } else if (ob && ob.estadoItem === 'INCONSISTENCIA_ENTRADA') {
+      // a calculadora recusou os componentes da base (REG-023, "base negativa"): em 2026 é aviso, como a base diferente
+      // (22/11/2026, no Presumido de outubro: 5 notas de um posto só com isso)
+      if (de2026) { baseDiferente2026 = true; continue; }
       divergencias.push({ item: it.nItem, campo: 'base de cálculo (vBC)', naNota: reais(g.vBC), calculadora: textoDoErro((ob.erros || [{}])[0]) || 'a calculadora recusou os componentes da base' });
     }
   }

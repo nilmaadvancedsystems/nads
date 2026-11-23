@@ -107,6 +107,15 @@ describe('a nota x a calculadora', () => {
     expect(conferirNota(so('2027-02-01T10:00:00-03:00'), resposta('81.35'), { valido: true }).divergencias).toEqual([{ item: 1, campo: 'base de cálculo (vBC)', naNota: '100,00', calculadora: '81,35' }]);
   });
 
+  it('a base recusada pela calculadora (REG-023, base negativa): aviso em 2026, divergência depois', () => {
+    const so = (dh: string) => notaParaConferir(nfe({ dhEmi: dh, itens: [{ vProd: '100.00', ncm: '10063021', ibscbs: grupo('000', '000001', '100.00', ['0.1000', '0.10'], ['0.0000', '0.00'], '0.10', ['0.9000', '0.90']) }], total: '' }), CLIENTE)!;
+    const recusa: RespostaDaCalculadora = { objetos: [RESPOSTA.objetos![0], { nObj: 1001, estadoItem: 'INCONSISTENCIA_ENTRADA', erros: [{ code: 'REG-023', detail: 'A base de cálculo calculada a partir dos componentes é negativa' }] }] };
+    expect(conferirNota(so('2026-10-05T10:00:00-03:00'), recusa, { valido: true })).toMatchObject({ situacao: 'certa', divergencias: [], baseDiferente2026: true });
+    expect(conferirNota(so('2027-02-01T10:00:00-03:00'), recusa, { valido: true }).divergencias).toEqual([
+      { item: 1, campo: 'base de cálculo (vBC)', naNota: '100,00', calculadora: 'REG-023 — A base de cálculo calculada a partir dos componentes é negativa' },
+    ]);
+  });
+
   it('tudo igual (com folga de 1 centavo): certa', () => {
     const certa: RespostaDaCalculadora = { objetos: [
       RESPOSTA.objetos![0], RESPOSTA.objetos![1],
