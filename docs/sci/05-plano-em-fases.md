@@ -42,6 +42,13 @@ Commit, push e publicação só com autorização. Telas novas entram primeiro n
 
 ## Fase 0: validar antes de programar (com o usuário, sem código no nads)
 
+> **23/11/2026, à noite.** O SCI voltou, e outra sessão do Claude, no PC do SCI, cadastrou o gerador oficial
+> **`nads` (código 13)**: linha inicial 2, descartar 1, colunas A a K como no doc 02, C, e L a O sem campo. Ela
+> passou a planilha de teste na empresa 583. Na grade, o formato foi aceito inteiro: classificação, participante,
+> acento e Total (detalhes no doc 02, C). **Gravou** as 3 linhas (F12) e depois **excluiu** pelo lote `NADS2611`;
+> a exclusão pede a senha de master. A fase 0.1 está feita. Fica em aberto quais históricos de texto neutro usar
+> (o texto do histórico vai antes do complemento).
+
 | Passo | Quem | Resultado |
 |---|---|---|
 | 0.1 Cadastrar no SCI o **gerador da planilha SCI** (doc 02, C) e importar, numa empresa de teste, uma planilha de 3 linhas. Testar: conta pela classificação (além do código curto), colunas sem campo no meio (L a O), linha de total no fim, participante e acento no complemento | Eu gero a planilha e o passo a passo; você cadastra o gerador e importa | Saber exatamente o que o SCI aceita |
