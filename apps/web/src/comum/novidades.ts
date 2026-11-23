@@ -40,7 +40,7 @@ export const NOVIDADES = {
   'comissao-oculta': { desde: '16/11/2026', aprovada: true },
   /** o valor de cada serviço comissionado, definido pelo Financeiro, e a quantidade na comissão (23/11/2026: "O valor que nao foi
    *  inputado no financeiro, o usuario coloca manual, mas deixa configurado no financeiro"; "Adiciona quantidade tambem") */
-  'comissao-quantidade': { desde: '23/11/2026', aprovada: false },
+  'comissao-quantidade': { desde: '23/11/2026', aprovada: true },
   /** a Entrega na tarefa nova delegada ao office boy (16/11/2026: "quando for delegado para o officeboy, a opcao 'entrega' que vai
    *  jogar direto no modulo de entregas"): marcada, nenhuma tarefa é criada; o pedido vai para Entregas › Solicitações */
   'entrega-do-office-boy': { desde: '16/11/2026', aprovada: false },
