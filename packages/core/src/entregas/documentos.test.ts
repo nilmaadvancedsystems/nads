@@ -4,6 +4,7 @@ import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
   ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, jaNaRota, avisoDeJaNaRota, guiasJaEntregues, avisoDasGuiasDeFora, type ClienteDaRota, type Entrega,
+  porColaboradorDoFiscal, SEM_RESPONSAVEL_FISCAL,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
@@ -379,6 +380,18 @@ describe('painel', () => {
     expect(f('rota')).toEqual(['c2', 'avulsa-e4']);
     expect(f('falha')).toEqual([]);
     expect(f('com_entrega')).toEqual(['c1', 'c2', 'avulsa-e4']);
+  });
+  it('o filtro por colaborador do Fiscal (23/11/2026): as opções, "Sem responsável" e o avulso só sem filtro', () => {
+    const l = linhasDoPainel({ clientes: [A, B, C], pendentes: [{ clienteId: 'c3' }], doMes, busca: '', filtro: 'todos' });
+    const quem: Record<string, string> = { c1: 'Heverton', c2: 'ADIVANIA', c3: '' };
+    const r = (escolhido: string) => porColaboradorDoFiscal(l, c => quem[c.id], escolhido);
+    expect(r('').opcoes).toEqual([{ valor: 'Adivania', rotulo: 'Adivania' }, { valor: 'Heverton', rotulo: 'Heverton' }, { valor: SEM_RESPONSAVEL_FISCAL, rotulo: 'Sem responsável' }]);
+    expect(r('').linhas.map(x => x.chave)).toEqual(['c1', 'c2', 'c3', 'avulsa-e4']);
+    expect(r('heverton').linhas.map(x => x.chave)).toEqual(['c1']);
+    expect(r(SEM_RESPONSAVEL_FISCAL).linhas.map(x => x.chave)).toEqual(['c3']);
+    expect(r('Adivania').linhas.map(x => x.chave)).toEqual(['c2']);
+    // a mesma pessoa em caixas diferentes é uma opção só, com a grafia do Cadastro
+    expect(porColaboradorDoFiscal(l, c => ({ c1: 'GUSTAVO.S', c2: 'Gustavo.S', c3: 'Gustavo.S' } as Record<string, string>)[c.id], '').opcoes).toEqual([{ valor: 'Gustavo.S', rotulo: 'Gustavo.S' }]);
   });
   it('os números, o ranking, a meta e as entregas por dia', () => {
     expect(numerosDoMes([A, B], doMes)).toEqual({ total: 2, entregue: 1, rota: 1, falha: 0, sem_entrega: 0, porcento: 50 });
