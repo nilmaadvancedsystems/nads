@@ -371,6 +371,13 @@ if (modulo) {
     const com = { itens: G.comunicadosDoLink([{ id: 'c1', titulo: 'Recesso', texto: 'Fechado de 24/12 a 02/01.', alvo: { todos: true }, publicarEm: '2026-12-01', ate: '2027-01-02', por: 'Vitor', atualizadoEm: 'x' }], [{ codigo: 292 }], '2026-12-10'), atualizadoEm: 'x' };
     igual('os comunicados passam na lista branca', joga(() => R.conferirListaBranca('comunicados', com)), '');
     igual('os comunicados: quem publicou não sai', JSON.stringify(com).includes('Vitor'), false);
+    // o passo atual do pedido (23/11/2026): o robô e o core dão o mesmo, passa na lista branca e a nota interna não sai
+    const interno = { id: 'c9', tipo: 'admissao', titulo: 'Admissão', situacao: 'em andamento', mensagens: [{ de: 'escritorio', texto: 'nota', em: 'x', interna: true }], passos: { 'Pedido recebido': 'a', 'Documentos conferidos': 'b' } };
+    const projetado = R.chamadoDoCliente(interno);
+    igual('o passo atual vai ao cliente', projetado.passo, { nome: 'Documentos conferidos', n: 2, total: 4 });
+    igual('o passo: o robô igual ao core', projetado.passo, G.passoAtual('admissao', interno.passos));
+    igual('o chamado com o passo passa na lista branca', joga(() => R.conferirListaBranca('chamado', projetado)), '');
+    igual('o chamado sem passos segue igual', R.chamadoDoCliente(Object.assign({}, interno, { tipo: 'duvida' })).passo, undefined);
   }
 }
 

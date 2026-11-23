@@ -58,6 +58,12 @@ export function useChamadosDoCliente() {
       }
       catch (e) { toast('Não deu para responder: ' + motivo(e)); } finally { setEnviando(false); }
     },
+    /** os passos do pedido do DP, para marcar (23/11/2026, ficha processos-visiveis); [] nos outros tipos */
+    passosDe: (c: { tipo: ac.TipoDeChamado; passos: Record<string, string> }) => ac.passosDoTipo(c.tipo).map(nome => ({ nome, feito: !!c.passos[nome] })),
+    async marcarPasso(id: string, passo: string, marcar: boolean) {
+      try { await repo.marcarPasso(id, passo, marcar); toast(marcar ? 'Passo marcado: ' + passo + '. O cliente vê este passo.' : 'Passo desmarcado.'); }
+      catch (e) { toast('Não deu para marcar o passo: ' + motivo(e)); }
+    },
     async mudarSituacao(id: string, situacao: ac.SituacaoDoChamado) {
       try { await repo.mudarSituacao(id, situacao); toast('Solicitação: ' + ac.ROTULO_DA_SITUACAO_DO_CHAMADO[situacao].toLowerCase() + '.'); }
       catch (e) { toast('Não deu para mudar a situação: ' + motivo(e)); }

@@ -369,7 +369,11 @@ export function lerChamado(id: string, x: unknown): ac.ChamadoDoCliente | null {
   const mensagens = lista(c.mensagens).map(objeto).filter((m): m is Solto => !!m && !!texto(m.texto))
     .map(m => ({ de: texto(m.de), autor: texto(m.autor), texto: texto(m.texto), em: instante(m.em) }));
   // a mesma lista branca do robô (chamadoDoCliente): tipo e situação desconhecidos viram "outro" e "aberto"
-  return ac.chamadoDoCliente({ id, tipo: texto(c.tipo), titulo: texto(c.titulo) || 'Chamado', situacao: texto(c.situacao), mensagens });
+  const ch = ac.chamadoDoCliente({ id, tipo: texto(c.tipo), titulo: texto(c.titulo) || 'Chamado', situacao: texto(c.situacao), mensagens });
+  // o passo atual do pedido do DP, como o robô projetou (23/11/2026, ficha processos-visiveis): só um
+  const p = objeto(c.passo);
+  const n = Number(p?.n), total = Number(p?.total);
+  return p && texto(p.nome) && Number.isInteger(n) && Number.isInteger(total) && n >= 1 && n <= total && total <= 10 ? { ...ch, passo: { nome: texto(p.nome).slice(0, 60), n, total } } : ch;
 }
 
 /** a última mensagem (ou a primeira, se não tem hora): a ordem do histórico, o mais recente em cima */

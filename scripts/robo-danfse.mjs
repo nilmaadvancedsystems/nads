@@ -79,6 +79,7 @@ const codigo = [
   'export { competenciaDoPedidoDeSemMovimento, competenciaAceitaNoSemMovimento } from ' + caminho('packages/core/src/areaCliente/semMovimento.ts') + ';',
   'export { recusaLida } from ' + caminho('packages/core/src/areaCliente/recusa.ts') + ';',
   'export { comunicadosDoLink, lerComunicado } from ' + caminho('packages/core/src/areaCliente/comunicados.ts') + ';',
+  'export { passoAtual } from ' + caminho('packages/core/src/areaCliente/chamados.ts') + ';',
   // o documento vencendo vira tarefa (22/11/2026, ficha M03): a tarefa no formato das delegadas e quem é a pessoa pelo nome
   'export { tarefaDoPapel, papelViraTarefaHoje, idDaTarefaDoPapel } from ' + caminho('packages/core/src/tarefas/regras/papelViraTarefa.ts') + ';',
   'export { pessoasDaTarefa } from ' + caminho('packages/core/src/tarefas/regras/delegadas.ts') + ';',

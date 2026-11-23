@@ -90,7 +90,8 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
     expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm']); // o tributo da DARF (17/11/2026, ficha todas-as-guias); pagoEm (18/11/2026, ficha guia-paga-confirmada)
     expect(C.agenda).toEqual(['mes', 'itens', 'atualizadoEm']);
     expect(C.item).toEqual(['id', 'nome', 'vence', 'situacao', 'feitoEm']);
-    expect(C.chamado).toEqual(['id', 'tipo', 'titulo', 'situacao', 'mensagens']);
+    expect(C.chamado).toEqual(['id', 'tipo', 'titulo', 'situacao', 'mensagens', 'passo']); // o passo atual do pedido (23/11/2026)
+    expect(C.passoChamado).toEqual(['nome', 'n', 'total']);
     expect(C.mensagem).toEqual(['de', 'autor', 'texto', 'em']);
     expect(C.recibo).toEqual(['id', 'nome', 'tipo', 'tamanho', 'recebidoEm', 'recusa']); // a recusa com o motivo (22/11/2026)
     expect(C.recusaRecibo).toEqual(['motivo', 'em']);

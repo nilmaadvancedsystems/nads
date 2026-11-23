@@ -378,5 +378,13 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
       baixarArquivo('faturamento-' + formatos.slug(e.nome) + '.xlsx', new Blob([ac.planilhaDoFaturamento(e, fonte)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       toast('Planilha baixada.');
     },
+    /** os impostos das guias emitidas no ano (23/11/2026, ficha relatorio-de-impostos; o dono: "Faz agora") */
+    temImpostos: area.guias.some(g => g.competencia.startsWith(String(hoje.getFullYear()))),
+    baixarImpostosDoAno: () => {
+      const ano = hoje.getFullYear();
+      const nome = e?.nome || area.resumo?.empresas[0]?.nome || 'empresa';
+      baixarArquivo('impostos-' + ano + '-' + formatos.slug(nome) + '.xlsx', new Blob([ac.planilhaDosImpostos(nome, area.guias, ano)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      toast('Planilha dos impostos das guias de ' + ano + ' baixada.');
+    },
   };
 }

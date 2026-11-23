@@ -99,7 +99,23 @@ function chamadoDoCliente(c) {
       const doCliente = m.de === 'cliente';
       return { de: doCliente ? 'cliente' : 'escritorio', autor: doCliente ? 'Você' : autorDoEscritorio(m.autor), texto: m.texto, em: m.em };
     }),
+    ...(passoDoChamado(c) ? { passo: passoDoChamado(c) } : {}),
   };
+}
+
+// o passo atual do pedido do DP (23/11/2026, ficha processos-visiveis; o mesmo de core/areaCliente/passosDoPedido.ts: o teste
+// confere): só um passo, nunca a lista; nada de nota interna
+const PASSOS_POR_TIPO = {
+  admissao: ['Pedido recebido', 'Documentos conferidos', 'eSocial enviado', 'Contrato pronto'],
+  demissao: ['Pedido recebido', 'Cálculo da rescisão', 'Guias geradas', 'Rescisão pronta'],
+  ferias: ['Pedido recebido', 'Férias calculadas', 'Recibo pronto'],
+};
+function passoDoChamado(c) {
+  const nomes = PASSOS_POR_TIPO[c.tipo] || [];
+  const p = c.passos && typeof c.passos === 'object' ? c.passos : {};
+  let atual = -1;
+  nomes.forEach((n, i) => { if (typeof p[n] === 'string' && p[n]) atual = i; });
+  return atual < 0 ? null : { nome: nomes[atual], n: atual + 1, total: nomes.length };
 }
 
 /** Confere o que o cliente digitou ao abrir um chamado; devolve o erro em português, ou '' se está bom. */
@@ -536,6 +552,7 @@ function chamadoInterno(id, x) {
     mensagens: (Array.isArray(x.mensagens) ? x.mensagens : [])
       .filter(m => m && typeof m === 'object' && texto(m.texto))
       .map(m => ({ de: texto(m.de), texto: m.texto, em: instante(m.em), autor: texto(m.autor), interna: m.interna === true })),
+    passos: x.passos && typeof x.passos === 'object' ? x.passos : {},
   };
 }
 
@@ -638,7 +655,8 @@ const CAMPOS_DO_ESPELHO = {
   pdf: ['base64', 'n', 'total'],
   agenda: ['mes', 'itens', 'atualizadoEm'],
   item: ['id', 'nome', 'vence', 'situacao', 'feitoEm'],
-  chamado: ['id', 'tipo', 'titulo', 'situacao', 'mensagens'],
+  chamado: ['id', 'tipo', 'titulo', 'situacao', 'mensagens', 'passo'],
+  passoChamado: ['nome', 'n', 'total'],
   mensagem: ['de', 'autor', 'texto', 'em'],
   // a recusa do escritório, com o motivo que o cliente vê (22/11/2026, Documentos do cliente)
   recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm', 'recusa'],
@@ -707,7 +725,7 @@ const CAMPOS_DO_ESPELHO = {
   ticketNaArea: ['codigo', 'numero', 'assunto', 'validoAte', 'total', 'faltam', 'refazer'],
   serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { recibo: { recusa: 'recusaRecibo' }, comunicados: { itens: 'itemComunicado' }, parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
+const DENTRO = { recibo: { recusa: 'recusaRecibo' }, comunicados: { itens: 'itemComunicado' }, parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem', passo: 'passoChamado' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {

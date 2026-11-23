@@ -82,6 +82,7 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     mensagens: (Array.isArray(x.mensagens) ? x.mensagens : []).map(mensagem).filter((m): m is MensagemNaEquipe => m != null),
     criadoEm: instante(x.criadoEm), atualizadoEm: instante(x.atualizadoEm),
     avaliacao: avaliacaoDe(x.avaliacao),
+    passos: ac.lerPassos(texto(x.tipo), x.passos),
   }), maisRecente);
 
   // o comprovante mandado pela guia: a guia sai do nome (vale também para os que chegaram antes do robô novo) (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir")
@@ -217,6 +218,13 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     },
     async mudarSituacao(id, situacao) {
       await updateDoc(doc(db, 'chamados', id), { situacao, atualizadoEm: new Date().toISOString() });
+    },
+    // o passo do pedido do DP (23/11/2026, ficha processos-visiveis): o robô leva só o atual ao cliente
+    async marcarPasso(id, passo, marcar) {
+      const c = chamados().lista.find(x => x.id === id);
+      if (!c) throw new Error('Solicitação não encontrada.');
+      const agora = new Date().toISOString();
+      await updateDoc(doc(db, 'chamados', id), { passos: ac.marcarPasso(c.tipo, c.passos, passo, marcar, agora), atualizadoEm: agora });
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

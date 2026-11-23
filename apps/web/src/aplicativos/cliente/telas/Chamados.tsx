@@ -146,6 +146,8 @@ export function Chamados(props: DaCasca) {
                 {/* 16/11/2026 ("muita informação"): só o selo e o assunto; os passos Recebida › Em andamento ›
                     Respondida repetiam o selo e a data de abertura já está no "Você" logo abaixo */}
                 <p className="cli-sol-meta"><span className={SELO[s.situacao]}>{s.rotulo}</span><span className="hint">{s.assunto}</span></p>
+                {/* o passo atual do pedido do DP (23/11/2026: "Faz, só o passo atual"): um só, dentro da solicitação aberta */}
+                {s.passo && <p className="cli-sol-passo"><span className="hint">Passo {s.passo.n} de {s.passo.total}:</span> <b>{s.passo.nome}</b></p>}
               </div>
               <ol className="cli-sol-tempo">
                 <li className="cli-sol-evento voce">

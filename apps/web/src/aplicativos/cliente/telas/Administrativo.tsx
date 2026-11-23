@@ -266,6 +266,7 @@ export function Faturamento(props: DaCasca) {
             )}
             <SeletorMes valor={vm.mes} onMudar={vm.abrirMes} rotulo="Mês do painel" max={vm.maxMes} />
             <button type="button" className="btn cli-botao-excel" onClick={vm.baixarPlanilha}><LogoExcel />Baixar planilha</button>
+            {vm.temImpostos && <button type="button" className="btn cli-botao-excel" onClick={vm.baixarImpostosDoAno} title="O valor das guias que o escritório emitiu no ano, por imposto e mês"><LogoExcel />Impostos do ano</button>}
           </span>
         )}
       </div>

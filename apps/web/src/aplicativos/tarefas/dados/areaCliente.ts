@@ -49,6 +49,8 @@ export interface ChamadoNaEquipe {
   atualizadoEm: string;
   /** a nota que o cliente deu na concluída (o robô grava) (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir") */
   avaliacao: { nota: number; comentario: string; em: string } | null;
+  /** os passos marcados do pedido do DP ({ nome: ISO }; 23/11/2026, ficha processos-visiveis) */
+  passos: Record<string, string>;
 }
 
 /** areaClienteRecebidos/{id}: um arquivo que o cliente mandou (o robô guarda no Drive do cliente). */
@@ -113,6 +115,8 @@ export interface RepoAreaCliente {
   /** acrescenta a resposta do escritório e passa o chamado para "respondido" */
   responder(chamadoId: string, texto: string): Promise<void>;
   mudarSituacao(chamadoId: string, situacao: ac.SituacaoDoChamado): Promise<void>;
+  /** marca (ou desmarca) um passo do pedido do DP; o cliente vê só o atual (23/11/2026, ficha processos-visiveis) */
+  marcarPasso(chamadoId: string, passo: string, marcar: boolean): Promise<void>;
   /** as pessoas com senha (todas as empresas; pedir já começa a ouvir) (18/11/2026; o dono: "a area de cliente vai ter senha de acesso", "Uma por pessoa"; docs/acessorias/desenho-senha-por-pessoa.md) */
   pessoas(): ListaAoVivo<PessoaComSenha>;
   /** cadastra a pessoa na empresa (o robô cria o login); o e-mail repetido na mesma empresa religa a ficha */
@@ -170,7 +174,7 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
   // a 4ª empresa de exemplo (205) fica sem link, para ver o "Gerar"
   const tokenDe = (codigo: number) => links.find(l => l.codigo === codigo)?.token || '';
   let chamados: ChamadoNaEquipe[] = [
-    {
+    { passos: {},
       id: 'ex-1', token: tokenDe(462), codigos: [462], empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', tipo: 'admissao',
       titulo: 'Contratar um ajudante de campo', situacao: 'aberto', criadoEm: ha(190), atualizadoEm: ha(35), avaliacao: null,
       mensagens: [
@@ -179,7 +183,7 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
         { de: 'cliente', autor: 'Você', texto: 'O exame admissional eu faço onde? Já tenho o PCMSO.', em: ha(35) },
       ],
     },
-    {
+    { passos: {},
       id: 'ex-2', token: tokenDe(356), codigos: [356], empresa: 'A7 COMERCIO DE VEICULOS LTDA', tipo: 'documento',
       titulo: 'Certidão negativa de débitos', situacao: 'respondido', criadoEm: ha(60 * 26), atualizadoEm: ha(60 * 20), avaliacao: null,
       mensagens: [
@@ -188,7 +192,7 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
       ],
     },
     // a concluída e avaliada (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
-    {
+    { passos: {},
       id: 'ex-3', token: tokenDe(515), codigos: [515], empresa: 'A7 MOBILE LTDA', tipo: 'documento',
       titulo: 'Segunda via do contrato social', situacao: 'concluido', criadoEm: ha(60 * 50), atualizadoEm: ha(60 * 40),
       avaliacao: { nota: 5, comentario: 'Resolveram no mesmo dia, obrigado!', em: ha(60 * 30) },
@@ -265,6 +269,11 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
     },
     async mudarSituacao(id, situacao) {
       chamados = chamados.map(c => (c.id === id ? { ...c, situacao, atualizadoEm: new Date().toISOString() } : c));
+      mudou();
+    },
+    async marcarPasso(id, passo, marcar) {
+      const agora = new Date().toISOString();
+      chamados = chamados.map(c => (c.id === id ? { ...c, passos: ac.marcarPasso(c.tipo, c.passos, passo, marcar, agora), atualizadoEm: agora } : c));
       mudou();
     },
     pessoas: () => vazio(pessoas.filter(p => p.ativo)),

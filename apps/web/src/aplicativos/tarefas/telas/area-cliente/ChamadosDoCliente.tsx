@@ -66,6 +66,15 @@ export function ChamadosDoCliente() {
                         </div>
                         <div className="ac-chamado">
                           <p className="hint">{d.empresa} · aberto em {vm.data(d.criadoEm)}</p>
+                          {/* os passos do pedido do DP (23/11/2026, ficha processos-visiveis): o cliente vê só o último marcado */}
+                          {vm.passosDe(d).length > 0 && (
+                            <div className="ac-passos" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 8px' }}>
+                              <span className="hint" style={{ alignSelf: 'center' }}>Passos (o cliente vê o último marcado):</span>
+                              {vm.passosDe(d).map((p, i) => (
+                                <button key={p.nome} type="button" className={'btn btn-sm ' + (p.feito ? 'btn-primary' : 'btn-outline')} title={p.feito ? 'Desmarcar este passo e os seguintes' : 'Marcar este passo (e os anteriores)'} onClick={() => void vm.marcarPasso(d.id, p.nome, !p.feito)}>{i + 1}. {p.nome}</button>
+                              ))}
+                            </div>
+                          )}
                           <PedidoDoChamado mensagens={d.mensagens} />
                           {d.avaliacao && (
                             <p className="hint">Avaliação do cliente: <b>{vm.estrelas(d.avaliacao.nota)}</b> {d.avaliacao.nota} de 5 ({vm.rotuloDaNota(d.avaliacao.nota)}) em {vm.data(d.avaliacao.em)}{d.avaliacao.comentario && <> · “{d.avaliacao.comentario}”</>}</p>

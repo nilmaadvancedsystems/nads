@@ -30,6 +30,7 @@ export * from './semMovimento';
 export * from './recusa';
 export * from './comunicados';
 export * from './privacidade';
+export * from './impostosDoAno';
 export * from './avaliacao';
 export * from './guiaPaga';
 export * from './parcelamentos';

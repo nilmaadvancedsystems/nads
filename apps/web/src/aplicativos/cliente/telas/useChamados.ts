@@ -80,6 +80,8 @@ export function useChamados({ token, area, marcarLida }: DaCasca) {
       pedido: partes.pedido, complementos: partes.complementos,
       respostas: partes.respostas.map(r => ({ texto: r.texto, quando: quando(r.em), autor: r.autor })),
       escolhida: c.id === atualId,
+      // o passo atual do pedido do DP (23/11/2026, ficha processos-visiveis)
+      passo: c.passo ?? null,
       whatsapp: whatsappDaSolicitacao(whatsapp, c.titulo),
       aceitaArquivo: c.situacao !== 'concluido',
       // só a concluída pede a nota; a já avaliada neste aparelho mostra o obrigado
