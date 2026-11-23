@@ -3,8 +3,8 @@
 // resposta); à direita o painel: a solicitação escolhida (a situação, o pedido, a resposta do escritório, enviar arquivos
 // e o WhatsApp) ou a nova (o assunto em cartões, depois o formulário). No celular, um de cada vez. Só desenha: o estado e
 // as ações vêm de useChamados.ts.
-import { Icone, type NomeIcone } from '@nads/ui';
-import { useId } from 'react';
+import { CampoData, CampoEscolha, Icone, MenuSuspenso, type NomeIcone } from '@nads/ui';
+import { useEffect, useId, useRef } from 'react';
 import type { areaCliente as ac } from '@nads/core';
 import { AreaDeSoltar } from '../partes/AreaDeSoltar';
 import { Avatar } from '../partes/Avatar';
@@ -12,6 +12,7 @@ import { WhatsAppContorno } from '../partes/WhatsAppContorno';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { useChamados } from './useChamados';
+import { FormDoPedido } from './DepartamentoPessoal';
 import type { DaCasca } from './useAreaCliente';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
@@ -25,6 +26,17 @@ export function Chamados(props: DaCasca) {
   const vm = useChamados(props);
   const idAnexo = useId();
   const s = vm.atual;
+  // como num chat (23/11/2026: "deve descer para baixo assim que eu enviar um documento"): quando a conversa aberta ganha
+  // uma mensagem, a tela desce até o fim dela; abrir outra solicitação não mexe
+  const fim = useRef<HTMLDivElement>(null);
+  const visto = useRef({ id: '', n: 0 });
+  const idAberta = s?.id ?? '';
+  const nMensagens = s ? s.conversa.length : 0;
+  useEffect(() => {
+    const antes = visto.current;
+    visto.current = { id: idAberta, n: nMensagens };
+    if (idAberta && antes.id === idAberta && nMensagens > antes.n) fim.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [idAberta, nMensagens]);
   return (
     <>
       <div className="cli-titulo">
@@ -96,41 +108,65 @@ export function Chamados(props: DaCasca) {
                   <span className="cli-sol-assunto-selo">
                     <span className="cli-sol-assunto-ico"><Icone nome={ICONE_DO_ASSUNTO[vm.tipo]} width={15} height={15} /></span>
                     {vm.rotuloDoTipo}
-                    <button type="button" className="cli-link-mini" onClick={() => vm.escolherTipo('')}>Trocar</button>
+                    {/* (23/11/2026: "ao apertar em trocar aparece um dropdown") */}
+                    <MenuSuspenso className="cli-link-mini cli-sol-trocar" rotulo="Trocar" semSeta direita flutuante titulo="Trocar o assunto"
+                      itens={vm.tipos.map(t => ({ rotulo: t.rotulo, icone: ICONE_DO_ASSUNTO[t.valor], marcado: t.valor === vm.tipo, onClick: () => vm.escolherTipo(t.valor) }))} />
                   </span>
                 </div>
-                <div className="cli-sol-form">
-                  <div className="cli-sol-form-linha">
-                    <div className="field">
-                      <label htmlFor="cli-titulo-chamado">Título resumido</label>
-                      <input id="cli-titulo-chamado" type="text" value={vm.titulo} onChange={e => vm.mudarTitulo(e.target.value)} placeholder="Ex.: certidão negativa estadual" />
-                    </div>
-                    <div className="field">
-                      <span className="cli-sol-form-rotulo" id="cli-prioridade">Prioridade</span>
-                      <span className="cli-sol-prioridade" role="radiogroup" aria-labelledby="cli-prioridade">
-                        {vm.prioridades.map(p => <button key={p} type="button" role="radio" aria-checked={vm.prioridade === p} className={'p-' + p.toLowerCase() + (vm.prioridade === p ? ' on' : '')} onClick={() => vm.mudarPrioridade(p)}>{p}</button>)}
-                      </span>
-                    </div>
+                {/* cada assunto com a sua tela (23/11/2026: "cada solicitacao tenha uma tela diferente"): os do DP com o
+                    formulário do RH; o documento com a lista; a dúvida e o outro assunto com o texto livre */}
+                {vm.doDp && vm.dadosDp ? (
+                  <div className="cli-sol-form cli-sol-form-dp">
+                    <FormDoPedido key={vm.tipo} pedido={vm.tipo as 'admissao' | 'ferias' | 'demissao'} inicial={vm.dadosDp} erro={vm.erro} nomes={vm.nomes} equipe={vm.equipe} hoje={vm.hoje} aoMudar={vm.mudarDadosDp} />
                   </div>
-                  <div className="field">
-                    <label htmlFor="cli-texto">O que você precisa</label>
-                    <textarea id="cli-texto" rows={4} value={vm.texto} onChange={e => vm.mudarTexto(e.target.value)} placeholder="Os dados, os nomes, os prazos ou o que mais for importante." />
-                  </div>
-                  {vm.anexo ? (
-                    <div className="cli-sol-anexo tem">
-                      <Icone nome="clipe" width={16} height={16} />
-                      <span className="cli-sol-anexo-txt"><b>{vm.anexo.name}</b><span className="hint">anexado</span></span>
-                      <button type="button" className="icon-btn" title="Tirar o anexo" aria-label="Tirar o anexo" onClick={() => vm.mudarAnexo(null)}><Icone nome="x" width={16} height={16} /></button>
+                ) : (
+                  <div className="cli-sol-form">
+                    <div className="cli-sol-form-linha">
+                      {vm.tipo === 'documento' ? (
+                        <div className="field">
+                          <label>Qual documento</label>
+                          <CampoEscolha rotulo="Qual documento" valor={vm.documento} opcoes={vm.documentos} onMudar={vm.mudarDocumento} />
+                        </div>
+                      ) : (
+                        <div className="field">
+                          <label htmlFor="cli-titulo-chamado">{vm.tipo === 'duvida' ? 'Sobre o que é a dúvida' : 'Assunto'}</label>
+                          <input id="cli-titulo-chamado" type="text" value={vm.titulo} onChange={e => vm.mudarTitulo(e.target.value)} placeholder={vm.tipo === 'duvida' ? 'Ex.: pró-labore, nota fiscal, imposto' : 'Ex.: mudança de endereço da empresa'} />
+                        </div>
+                      )}
+                      <div className="field">
+                        <span className="cli-sol-form-rotulo" id="cli-prioridade">Prioridade</span>
+                        <span className="cli-sol-prioridade" role="radiogroup" aria-labelledby="cli-prioridade">
+                          {vm.prioridades.map(p => <button key={p} type="button" role="radio" aria-checked={vm.prioridade === p} className={'p-' + p.toLowerCase() + (vm.prioridade === p ? ' on' : '')} onClick={() => vm.mudarPrioridade(p)}>{p}</button>)}
+                        </span>
+                      </div>
                     </div>
-                  ) : (
-                    <label className="cli-sol-anexo" htmlFor={idAnexo}>
-                      <Icone nome="clipe" width={16} height={16} />
-                      <span className="cli-sol-anexo-txt"><b>Anexar um arquivo</b><span className="hint">opcional · PDF, imagem, XML ou ZIP até {vm.limite}</span></span>
-                    </label>
-                  )}
-                  <input id={idAnexo} type="file" className="sr-only" accept={vm.aceitar} onChange={e => { vm.mudarAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
-                  {vm.erro && <p className="cli-erro" role="alert">{vm.erro}</p>}
-                </div>
+                    {vm.tipo === 'documento' && (
+                      <div className="field cli-sol-prazo">
+                        <label htmlFor="cli-prazo">Preciso até <span className="cli-pf-opc">opcional</span></label>
+                        <CampoData id="cli-prazo" rotulo="Preciso até" valor={vm.prazo} onMudar={vm.mudarPrazo} />
+                      </div>
+                    )}
+                    <div className="field">
+                      <label htmlFor="cli-texto">{vm.tipo === 'documento' ? <>Detalhes {vm.documento !== 'Outro documento' && <span className="cli-pf-opc">opcional</span>}</> : vm.tipo === 'duvida' ? 'Sua dúvida' : 'O que você precisa'}</label>
+                      <textarea id="cli-texto" rows={4} value={vm.texto} onChange={e => vm.mudarTexto(e.target.value)}
+                        placeholder={vm.tipo === 'documento' ? 'Ex.: para a licitação da prefeitura; a guia do DAS de outubro' : vm.tipo === 'duvida' ? 'Escreva a pergunta do jeito que vier. O escritório responde aqui.' : 'Os dados, os nomes, os prazos ou o que mais for importante.'} />
+                    </div>
+                    {vm.anexo ? (
+                      <div className="cli-sol-anexo tem">
+                        <Icone nome="clipe" width={16} height={16} />
+                        <span className="cli-sol-anexo-txt"><b>{vm.anexo.name}</b><span className="hint">anexado</span></span>
+                        <button type="button" className="icon-btn" title="Tirar o anexo" aria-label="Tirar o anexo" onClick={() => vm.mudarAnexo(null)}><Icone nome="x" width={16} height={16} /></button>
+                      </div>
+                    ) : (
+                      <label className="cli-sol-anexo" htmlFor={idAnexo}>
+                        <Icone nome="clipe" width={16} height={16} />
+                        <span className="cli-sol-anexo-txt"><b>Anexar um arquivo</b><span className="hint">opcional · PDF, imagem, XML ou ZIP até {vm.limite}</span></span>
+                      </label>
+                    )}
+                    <input id={idAnexo} type="file" className="sr-only" accept={vm.aceitar} onChange={e => { vm.mudarAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                    {vm.erro && <p className="cli-erro" role="alert">{vm.erro}</p>}
+                  </div>
+                )}
                 <div className="cli-sol-rodape">
                   <button type="button" className="btn btn-ghost" onClick={vm.cancelarNova}>Cancelar</button>
                   <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={vm.criar}><Icone nome="seta" width={16} height={16} />{vm.enviando ? 'Enviando…' : 'Enviar solicitação'}</button>
@@ -155,18 +191,26 @@ export function Chamados(props: DaCasca) {
                   <div className="cli-sol-fala">
                     <p className="cli-sol-fala-topo"><b>Você</b><span className="hint">{s.abertaEm}</span></p>
                     <p className="cli-sol-texto">{s.pedido}</p>
-                    {s.complementos.map((t, i) => <p key={i} className="cli-sol-texto cli-sol-complemento">{t}</p>)}
                   </div>
                 </li>
-                {s.respostas.length ? s.respostas.map((r, i) => (
-                  <li key={i} className="cli-sol-evento escritorio">
-                    <span className="cli-sol-quem" aria-hidden="true"><MarcaDoEscritorio tamanho={30} /></span>
+                {s.conversa.map(m => m.deVoce ? (
+                  <li key={m.chave} className="cli-sol-evento voce">
+                    <span className="cli-sol-quem cli-sc-voce" aria-hidden="true">{vm.empresa.logo ? <img src={vm.empresa.logo} alt="" /> : <Avatar nome={vm.empresa.nome} tamanho={30} />}</span>
                     <div className="cli-sol-fala">
-                      <p className="cli-sol-fala-topo"><b>{r.autor || 'Escritório'}</b>{r.autor && <span className="cli-sol-do-escritorio">Escritório</span>}<span className="hint">{r.quando}</span></p>
-                      <p className="cli-sol-texto">{r.texto}</p>
+                      <p className="cli-sol-fala-topo"><b>Você</b><span className="hint">{m.quando}</span></p>
+                      <p className="cli-sol-texto">{m.texto}</p>
                     </div>
                   </li>
-                )) : (
+                ) : (
+                  <li key={m.chave} className="cli-sol-evento escritorio">
+                    <span className="cli-sol-quem" aria-hidden="true"><MarcaDoEscritorio tamanho={30} /></span>
+                    <div className="cli-sol-fala">
+                      <p className="cli-sol-fala-topo"><b>{m.autor || 'Escritório'}</b>{m.autor && <span className="cli-sol-do-escritorio">Escritório</span>}<span className="hint">{m.quando}</span></p>
+                      <p className="cli-sol-texto">{m.texto}</p>
+                    </div>
+                  </li>
+                ))}
+                {!s.respostas.length && (
                   <li className="cli-sol-evento esperando">
                     <span className="cli-sol-quem" aria-hidden="true"><Icone nome="clock" width={15} height={15} /></span>
                     <div className="cli-sol-fala"><p className="hint">Aguardando a resposta do escritório.</p></div>
@@ -192,7 +236,7 @@ export function Chamados(props: DaCasca) {
                       </div>
                       {vm.nota > 0 && (
                         <>
-                          <textarea rows={2} maxLength={vm.maiorComentario} aria-label="Comentário (opcional)" value={vm.comentario} onChange={e => vm.mudarComentario(e.target.value)} placeholder="Quer contar mais alguma coisa? (opcional, só o escritório vê)" />
+                          <textarea className="cli-sol-comentario" rows={2} maxLength={vm.maiorComentario} aria-label="Comentário (opcional)" value={vm.comentario} onChange={e => vm.mudarComentario(e.target.value)} placeholder="Quer contar mais alguma coisa? (opcional, só o escritório vê)" />
                           <div className="cli-sol-rodape">
                             <button type="button" className="btn btn-primary" disabled={vm.avaliando} onClick={() => vm.avaliar(s.id)}>{vm.avaliando ? 'Enviando…' : 'Enviar avaliação'}</button>
                           </div>
@@ -202,6 +246,7 @@ export function Chamados(props: DaCasca) {
                   )}
                 </div>
               )}
+              <div ref={fim} aria-hidden="true" />
               {(s.aceitaArquivo || s.whatsapp) && (
                 <div className="cli-sol-fim">
                   {s.aceitaArquivo && (

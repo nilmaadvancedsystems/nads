@@ -10,7 +10,7 @@
 // Polida de 17/10/2026: a gaveta do celular leva o foco para o ✕ ao abrir e devolve ao ☰ ao fechar; o WhatsApp do cartão
 // de atendimento abre a conversa. "Melhora mais" de 17/10/2026: na Visão geral o envio fica no cartão dela, sem o botão do topo.
 import { Icone, JogoDeIcones, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { Aparencia } from '../partes/Aparencia';
 import { BuscaGeral } from '../partes/BuscaGeral';
@@ -33,26 +33,20 @@ import { useJanelaDeEnvio, useJanelaDeEnvioDoTipo, useJanelaDaPendencia } from '
 import { useAreaCliente } from './useAreaCliente';
 import '../cliente.css';
 
-/** Abrir outra empresa colando o link dela (13/11/2026): o botão vira o campo; Enter abre; o erro embaixo. */
-function AbrirPeloLink({ abrir }: { abrir: (texto: string) => string }) {
-  const [aberto, setAberto] = useState(false);
-  const [texto, setTexto] = useState('');
-  const [erro, setErro] = useState('');
-  const ir = () => setErro(abrir(texto));
-  if (!aberto) return (
-    <button type="button" className="cli-troca-mais" onClick={() => setAberto(true)}>
-      <span className="cli-troca-mais-ico"><Icone nome="plus" width={14} height={14} /></span>
-      <span><b>Abrir outra empresa</b><small>Cole o link que o escritório mandou</small></span>
-    </button>
-  );
+/**
+ * Outra empresa (23/11/2026: "isso aqui vai confundir a cabeca do cliente leigo"; antes, um campo para colar o link): só a
+ * frase do que fazer. A outra empresa entra na lista sozinha quando o cliente abre o link dela; sem o link, pede ao
+ * escritório pelo WhatsApp.
+ */
+function OutraEmpresa({ onWhatsapp }: { onWhatsapp?: () => void }) {
   return (
-    <div className="cli-troca-colar">
-      <div className="cli-troca-colar-linha">
-        <input type="text" autoFocus value={texto} onChange={e => { setTexto(e.target.value); setErro(''); }} onKeyDown={e => { if (e.key === 'Enter') ir(); }}
-          placeholder="https://…/cliente/…" aria-label="Link da outra empresa" />
-        <button type="button" className="btn btn-primary btn-sm" disabled={!texto.trim()} onClick={ir}>Abrir</button>
-      </div>
-      {erro ? <p className="cli-erro">{erro}</p> : <p className="cli-troca-dica-mini">Depois de aberta uma vez, ela fica nesta lista neste aparelho.</p>}
+    <div className="cli-troca-outra">
+      <span className="cli-troca-mais-ico" aria-hidden="true"><Icone nome="ajuda" width={14} height={14} /></span>
+      <span className="cli-troca-outra-txt">
+        <b>Tem outra empresa com a gente?</b>
+        <small>Abra o link dela que o escritório mandou. Ela passa a aparecer aqui.</small>
+        {onWhatsapp && <button type="button" className="cli-link-mini" onClick={onWhatsapp}>Não tem o link? Peça pelo WhatsApp</button>}
+      </span>
     </div>
   );
 }
@@ -206,7 +200,7 @@ function Area() {
                           ))}
                         </>
                       )}
-                      <AbrirPeloLink abrir={t => { const erro = vm.abrirPeloLink(t); if (!erro) fechar(); return erro; }} />
+                      <OutraEmpresa onWhatsapp={c.whatsappLink ? () => { fechar(); abrirWhatsapp(); } : undefined} />
                       {/* quem entrou com a senha (19/11/2026, senha parte 2): o e-mail e o Sair deste aparelho */}
                       {vm.conta && (
                         <div className="cli-troca-conta">

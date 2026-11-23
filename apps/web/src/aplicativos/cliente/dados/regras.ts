@@ -217,6 +217,34 @@ export function textoDasFerias(p: PedidoDeFerias): string {
   ]);
 }
 
+/**
+ * Os motivos da demissão explicados (23/11/2026: "se a pessoa nao entender, como ela vai preencher isso?"): cada um com uma
+ * frase do que é e do que acontece, e os avisos prévios que cabem nele ([] = não tem aviso, ou o escritório decide). Os
+ * valores são os mesmos de antes (o texto que chega ao escritório não muda).
+ */
+export const MOTIVOS_DA_DEMISSAO: readonly { valor: string; titulo: string; explica: string; avisos: readonly string[] }[] = [
+  { valor: 'Dispensa sem justa causa', titulo: 'A empresa quer desligar', explica: 'Sem falta grave, o caso mais comum. A empresa paga o aviso e a multa de 40% do FGTS.', avisos: ['Trabalhado', 'Indenizado'] },
+  { valor: 'O funcionário pediu demissão', titulo: 'O funcionário pediu para sair', explica: 'Foi ele quem quis sair. Não tem multa do FGTS e ele não saca o saldo.', avisos: ['Trabalhado', 'Dispensado'] },
+  { valor: 'Acordo entre as partes', titulo: 'Os dois combinaram a saída', explica: 'A empresa e o funcionário concordam. A multa do FGTS cai para 20% e ele saca parte do saldo.', avisos: ['Trabalhado', 'Indenizado'] },
+  { valor: 'Fim do contrato de experiência', titulo: 'Acabou a experiência', explica: 'O contrato de experiência (até 90 dias) terminou e a empresa não vai continuar. Sem aviso e sem multa.', avisos: [] },
+  { valor: 'Dispensa com justa causa', titulo: 'Justa causa', explica: 'Só por falta grave e comprovada (abandono, furto, agressão). Fale antes com o escritório.', avisos: [] },
+  { valor: 'Ainda não sei', titulo: 'Ainda não sei', explica: 'O escritório entra em contato para entender o caso e dizer o melhor caminho.', avisos: [] },
+];
+
+/** Os avisos prévios explicados. */
+export const AVISOS_DA_DEMISSAO: Record<string, string> = {
+  Trabalhado: 'O funcionário continua trabalhando durante o aviso (30 dias, e mais 3 por ano de casa) e sai no fim.',
+  Indenizado: 'O funcionário sai já, e a empresa paga os dias do aviso junto com a rescisão.',
+  Dispensado: 'A empresa libera o funcionário de cumprir o aviso, sem descontar nada dele.',
+  'Não sei': 'O escritório diz qual é o melhor na resposta.',
+};
+
+/** Os avisos que cabem no motivo, com o "Não sei" no fim ([] = o campo some). */
+export function avisosDoMotivo(motivo: string): string[] {
+  const m = MOTIVOS_DA_DEMISSAO.find(x => x.valor === motivo);
+  return m && m.avisos.length ? [...m.avisos, 'Não sei'] : [];
+}
+
 export function erroDaDemissao(p: PedidoDeDemissao): string {
   if (!p.empregado) return 'Escolha o funcionário.';
   if (!DATA.test(p.ultimoDia)) return 'Escreva o último dia de trabalho (dd/mm/aaaa).';
@@ -224,8 +252,10 @@ export function erroDaDemissao(p: PedidoDeDemissao): string {
   return '';
 }
 export function textoDaDemissao(p: PedidoDeDemissao): string {
-  return linhas('Desligamento: ' + p.empregado + ' (último dia ' + p.ultimoDia + ')', [
-    ['Funcionário', p.empregado], ['Último dia', p.ultimoDia], ['Motivo', p.motivo], ['Aviso prévio', p.aviso], ['Observações', p.observacoes],
+  // o aviso só vai quando cabe no motivo (na justa causa e no fim da experiência não tem)
+  const aviso = avisosDoMotivo(p.motivo).includes(p.aviso) ? p.aviso : '';
+  return linhas('Demissão: ' + p.empregado + ' (último dia ' + p.ultimoDia + ')', [
+    ['Funcionário', p.empregado], ['Último dia', p.ultimoDia], ['Motivo', p.motivo], ['Aviso prévio', aviso], ['Observações', p.observacoes],
   ]);
 }
 
@@ -233,6 +263,26 @@ export function textoDaDemissao(p: PedidoDeDemissao): string {
  * O texto do chamado aberto pela tela de Solicitações: o título resumido na primeira linha (o core tira o título do chamado
  * dela), depois o pedido; a prioridade e o anexo vão no fim.
  */
+/** Os documentos que o cliente pede em Solicitações › Pedir um documento (23/11/2026: "cada solicitação tenha uma tela
+ *  diferente"). */
+export const DOCUMENTOS_PARA_PEDIR = [
+  'Certidão negativa federal', 'Certidão negativa estadual', 'Certidão negativa municipal', 'Certidão do FGTS', 'Certidão trabalhista',
+  'Guia nova (segunda via)', 'Declaração de faturamento', 'Outro documento',
+] as const;
+
+/** O texto do pedido de documento: o documento na primeira linha (vira o título), o prazo e os detalhes. */
+export function textoDoPedidoDeDocumento(documento: string, prazo: string, detalhes: string, prioridade: string, anexo: string): string {
+  const corpo = [prazo ? 'Preciso até: ' + prazo : '', detalhes.trim()].filter(Boolean).join('\n');
+  return textoDoChamado(documento, corpo, prioridade, anexo);
+}
+
+/** Confere o pedido de documento; '' quando está bom. */
+export function erroDoPedidoDeDocumento(documento: string, detalhes: string): string {
+  if (!documento) return 'Escolha o documento.';
+  if (documento === 'Outro documento' && !detalhes.trim()) return 'Conte qual documento você precisa.';
+  return '';
+}
+
 export function textoDoChamado(titulo: string, texto: string, prioridade: string, anexo: string): string {
   const extras = [prioridade && prioridade !== 'Normal' ? 'Prioridade: ' + prioridade : '', anexo ? 'Anexo enviado: ' + anexo : ''].filter(Boolean);
   const corpo = [titulo.trim(), texto.trim()].filter(Boolean).join('\n\n');
