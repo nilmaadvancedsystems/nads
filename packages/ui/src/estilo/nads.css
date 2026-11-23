@@ -6831,6 +6831,18 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ferramentas-texto{width:100%;min-height:480px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.5;
   border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--input-bg);color:var(--ink);}
 .ferramentas-numero{max-width:120px;}
+/* nads → SCI (23/11/2026, docs/sci): a prévia dos lançamentos e o que tem problema */
+.sci-origens{margin-bottom:12px;}
+.sci-origens li > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.sci-origens li > span:last-child{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.sci-previa{max-height:520px;overflow:auto;}
+.sci-previa td:nth-child(6){max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sci-com-problema td:last-child{color:var(--destructive);}
+.sci-de-para{background:var(--success-soft);}
+.sci-de-para svg{color:var(--success);}
+.sci-de-para > span{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;}
+.sci-janela{display:flex;flex-direction:column;gap:6px;text-align:left;margin-top:8px;}
+.sci-janela .hint{margin:4px 0 0;}
 
 /* as páginas em miniatura */
 .paginas-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:20px 16px;}

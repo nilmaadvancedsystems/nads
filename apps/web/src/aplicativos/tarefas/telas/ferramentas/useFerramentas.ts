@@ -10,9 +10,9 @@ import { imagemParaPdf, imagensDoPdf, miniaturasDoPdf, paginasEmJpg, textoDoPdf,
 
 const { arquivos: arq, pdf: regras } = ferramentas;
 
-export type Ferramenta = 'separar' | 'juntar' | 'paginas' | 'comprimir' | 'numerar' | 'imagens' | 'texto' | 'imagem-pdf' | 'planilha';
+export type Ferramenta = 'separar' | 'juntar' | 'paginas' | 'comprimir' | 'numerar' | 'imagens' | 'texto' | 'imagem-pdf' | 'planilha' | 'sci';
 
-/** Os grupos da escolha da ferramenta (12/11/2026: "deixa essa seleção mais bonita"). */
+/** Os grupos da escolha da ferramenta (12/11/2026: "deixa essa seleção mais bonita"); o nads → SCI só com a novidade 'sci'. */
 export type GrupoDaFerramenta = 'Organizar' | 'Otimizar' | 'Converter';
 
 /** As ferramentas, com o grupo, o ícone e a frase do que cada uma faz (a primeira coisa que a pessoa lê). */
@@ -26,13 +26,17 @@ export const FERRAMENTAS: { valor: Ferramenta; rotulo: string; grupo: GrupoDaFer
   { valor: 'texto', rotulo: 'PDF → texto', grupo: 'Converter', icone: 'fileText', descricao: 'Copie o texto do PDF. Se ele for digitalizado (foto), o OCR lê a imagem.' },
   { valor: 'imagem-pdf', rotulo: 'Imagem → PDF', grupo: 'Converter', icone: 'camera', descricao: 'Transforme fotos e prints (JPG, PNG) num PDF, uma página por imagem.' },
   { valor: 'planilha', rotulo: 'Planilha', grupo: 'Converter', icone: 'grade', descricao: 'Converta planilhas entre Excel (.xls, .xlsx), LibreOffice (.ods) e CSV.' },
+  // nads → SCI (23/11/2026, docs/sci): só no modo desenvolvedor (novidade 'sci'), por gruposDasFerramentas
+  { valor: 'sci', rotulo: 'nads → SCI', grupo: 'Converter', icone: 'upload', descricao: 'Junte as planilhas de importação do nads e baixe a planilha que o SCI importa (Lançamentos contábeis via planilha).' },
 ];
 
 /** As ferramentas nos grupos, na ordem da lista (para os blocos da escolha). */
-export const GRUPOS_DAS_FERRAMENTAS = (['Organizar', 'Otimizar', 'Converter'] as const).map(titulo => ({
-  titulo,
-  opcoes: FERRAMENTAS.filter(f => f.grupo === titulo).map(f => ({ valor: f.valor, rotulo: f.rotulo, icone: f.icone, dica: f.descricao })),
-}));
+export function gruposDasFerramentas(comSci: boolean) {
+  return (['Organizar', 'Otimizar', 'Converter'] as const).map(titulo => ({
+    titulo,
+    opcoes: FERRAMENTAS.filter(f => f.grupo === titulo && (comSci || f.valor !== 'sci')).map(f => ({ valor: f.valor, rotulo: f.rotulo, icone: f.icone, dica: f.descricao })),
+  }));
+}
 
 /** As ferramentas que trabalham com um PDF só (escolhido uma vez e usado em qualquer uma delas). */
 export const COM_UM_PDF: readonly Ferramenta[] = ['separar', 'paginas', 'comprimir', 'numerar', 'imagens', 'texto'];

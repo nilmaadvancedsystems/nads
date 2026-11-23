@@ -45,6 +45,16 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
   };
 }
 
+/**
+ * O CNPJ da empresa no Cadastro (o campo cnpj ou o que a Receita disse), só os números; '' se não tiver. Uma leitura só,
+ * no clique do "Baixar para o SCI" (23/11/2026, docs/sci).
+ */
+export async function cnpjNoCadastro(nome: string): Promise<string> {
+  const s = await getDoc(doc(bancoDoEntregas(), 'cadastro', formatos.slug(nome)));
+  const d = s.exists() ? (s.data() as { cnpj?: unknown; receita?: { cnpj?: unknown } }) : null;
+  return String(d?.cnpj || d?.receita?.cnpj || '').replace(/\D/g, '');
+}
+
 /** O documento da empresa na Conferência (só leitura: de onde sai o plano "do balancete"). */
 export async function conferenciaNoBanco(nome: string): Promise<Record<string, unknown> | null> {
   const s = await getDoc(doc(bancoDaConferencia(), 'empresas', formatos.slug(nome)));

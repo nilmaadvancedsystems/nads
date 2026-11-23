@@ -63,6 +63,9 @@ export const NOVIDADES = {
    *  destaque e o nome ao lado (23/11/2026: "Deixa mais bonitinho essa apresentacao, de empresa, periodo e tarefa"); na Delegadas
    *  por mim, vem junto com a 'delegadas-por-pessoa'; aprovada para todos no mesmo dia ("Sim, liberar") */
   'titulo-da-etapa': { desde: '23/11/2026', aprovada: true },
+  /** a ferramenta nads → SCI (23/11/2026, docs/sci): as planilhas de importação do nads viram a planilha que o SCI importa,
+   *  sem banco ("é só um intermediador entre o NADS e SCI"); nas Ferramentas, só no modo desenvolvedor até o teste no SCI */
+  sci: { desde: '23/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
