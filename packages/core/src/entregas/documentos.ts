@@ -584,6 +584,35 @@ export function subtituloDaLinhaDoPainel(l: LinhaDoPainel): string {
     + (l.entregas.length > 1 ? ' · +' + (l.entregas.length - 1) + ' entrega(s) nesta competência' : '');
 }
 
+/** O valor do filtro por colaborador do Fiscal para as empresas sem ninguém no Fiscal. */
+export const SEM_RESPONSAVEL_FISCAL = '__sem__';
+
+/**
+ * O filtro por colaborador do Fiscal no Painel (23/11/2026: "coloca uma opcao para filtrar por colaborador do fiscal"):
+ * as opções são quem cuida, no Fiscal, de alguma empresa da lista (em ordem alfabética) e "Sem responsável" quando alguma
+ * não tem ninguém; '' mostra todas. As entregas avulsas (sem cliente) não têm responsável e só aparecem sem filtro.
+ */
+export function porColaboradorDoFiscal<L extends Pick<LinhaDoPainel, 'cliente'>>(linhas: readonly L[], responsavelDe: (c: ClienteDaRota) => string, escolhido: string) {
+  const deQuem = (l: L) => (l.cliente ? responsavelDe(l.cliente).trim() : null);
+  // o mesmo nome em caixas diferentes ("Gustavo" do Cadastro, "GUSTAVO" da planilha) é uma pessoa só: fica a grafia com
+  // minúsculas; só em maiúsculas, vira "Gustavo" ("GUSTAVO.S" → "Gustavo.S")
+  const bonito = (n: string) => (n === n.toUpperCase() ? n.toLowerCase().replace(/(^|[.\s])(\p{L})/gu, (_, a: string, b: string) => a + b.toUpperCase()) : n);
+  const nomes = new Map<string, string>();
+  let algumaSem = false;
+  for (const l of linhas) {
+    const r = deQuem(l);
+    if (r === '') algumaSem = true;
+    else if (r && (!nomes.has(r.toLowerCase()) || nomes.get(r.toLowerCase()) === nomes.get(r.toLowerCase())?.toUpperCase())) nomes.set(r.toLowerCase(), r);
+  }
+  const opcoes = [...nomes.values()].map(bonito).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(n => ({ valor: n, rotulo: n }));
+  if (algumaSem) opcoes.push({ valor: SEM_RESPONSAVEL_FISCAL, rotulo: 'Sem responsável' });
+  const filtradas = !escolhido ? [...linhas] : linhas.filter(l => {
+    const r = deQuem(l);
+    return r !== null && (escolhido === SEM_RESPONSAVEL_FISCAL ? r === '' : r.toLowerCase() === escolhido.toLowerCase());
+  });
+  return { opcoes, linhas: filtradas };
+}
+
 /** Quantos dos clientes do Entregas já receberam no mês (o anel do Painel: a entrega mais nova está confirmada). */
 export function numerosDoMes(clientesDoMes: readonly ClienteDaRota[], doMes: readonly Entrega[]) {
   const porCliente = new Map<string, Entrega[]>();

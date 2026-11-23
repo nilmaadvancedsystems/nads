@@ -80,9 +80,16 @@ export function useAreaCliente() {
   const rotuloDoDocumento = cnpj.replace(/\D/g, '').length === 11 ? 'CPF' : 'CNPJ';
 
   const guias = guiasDoMomento(area.guias, hoje);
+  // o lido do sino (guardado neste aparelho); também guarda os documentos novos já vistos ('dv-<id>')
+  const [lidas, setLidas] = useState<Set<string>>(() => lidasDoSino(token));
+  useEffect(() => { setLidas(lidasDoSino(token)); }, [token]);
+  // os documentos novos que ainda não foram vistos (23/11/2026: "quando eu clico ela nao some?"): abrir a Central marca
+  // todos como vistos neste aparelho; a bolinha e o aviso do sino somem. As guias vencidas continuam até serem pagas.
+  const docsNovos = area.documentos.filter(d => d.novo);
+  const docsNaoVistos = docsNovos.filter(d => !lidas.has('dv-' + d.id));
   // o número ao lado do item do menu, como no protótipo: os documentos novos e as guias vencidas
   const contadores: Partial<Record<IdAba, number>> = {
-    documentos: area.documentos.filter(d => d.novo).length,
+    documentos: docsNaoVistos.length,
     guias: guias.filter(g => g.situacao === 'vencida').length,
   };
   // (17/11/2026) a tela inicial agora tem as guias e os documentos: o número dela soma os dois (no celular, as abas
@@ -169,8 +176,6 @@ export function useAreaCliente() {
 
   // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá. Desde 17/11/2026 (ficha
   // aviso-de-resposta do plano do Acessórias) o lido fica guardado neste aparelho e não volta a cada visita (sinoLido.ts)
-  const [lidas, setLidas] = useState<Set<string>>(() => lidasDoSino(token));
-  useEffect(() => { setLidas(lidasDoSino(token)); }, [token]);
   // cada notificação com o ícone e o tom pelo que é (12/11/2026: o sino refeito): a guia, os documentos, a resposta, o certificado
   const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo === 'DARF' && g.tributo ? 'DARF ' + g.tributo : g.tipo).map(n => ({
     ...n,
@@ -179,7 +184,18 @@ export function useAreaCliente() {
   }));
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
   /** marca como lidos e guarda (só os que ainda estão no sino, para a lista não crescer à toa) */
-  const guardar = (novas: Set<string>) => { setLidas(novas); guardarLidas(token, soAsQueAindaExistem(novas, avisos)); };
+  const guardar = (novas: Set<string>) => {
+    setLidas(novas);
+    // os documentos vistos ficam enquanto o documento ainda é novo (depois não precisam mais)
+    const vistos = docsNovos.map(d => 'dv-' + d.id).filter(id => novas.has(id));
+    guardarLidas(token, [...soAsQueAindaExistem(novas, avisos), ...vistos]);
+  };
+  // abriu a Central de documentos: os novos ficam vistos e o aviso dos documentos sai do sino
+  const chaveDosNaoVistos = docsNaoVistos.map(d => d.id).join(',');
+  useEffect(() => {
+    if (atual !== 'documentos' || !chaveDosNaoVistos || !area.carregado) return;
+    guardar(new Set([...lidas, ...docsNovos.map(d => 'dv-' + d.id), ...avisos.filter(n => n.id.startsWith('docs-')).map(n => n.id)]));
+  }, [atual, chaveDosNaoVistos, area.carregado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     token, area, hoje, logo: area.logo, aba: atual, abas,

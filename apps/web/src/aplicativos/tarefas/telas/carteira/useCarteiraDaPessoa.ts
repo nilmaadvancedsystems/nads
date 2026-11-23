@@ -147,7 +147,12 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const [nomeAvulso, setNomeAvulso] = useState(comissao && comissao.clienteCodigo == null ? comissao.cliente : '');
   const [porte, setPorte] = useState<carteira.Porte | null>(comissao?.porte ?? null);
   const [servico, setServico] = useState(comissao?.servico ?? '');
-  const [valorServico, setValorServico] = useState(valorNoCampo(comissao?.valorServico ?? 0));
+  // a quantidade e o valor do serviço que o Financeiro definiu (23/11/2026; a novidade 'comissao-quantidade'): o campo do valor passa
+  // a ser o de uma unidade, e o gravado é o total (unidade × quantidade)
+  const comQuantidade = useNovidade('comissao-quantidade');
+  const qtdInicial = comissao && comQuantidade ? carteira.quantidadeDaComissao(comissao) : 1;
+  const [quantidade, setQuantidade] = useState(String(qtdInicial));
+  const [valorServico, setValorServico] = useState(valorNoCampo((comissao?.valorServico ?? 0) / qtdInicial));
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // a escondida não muda depois de registrada (o valor do serviço sai do banco quando o robô calcula): só apaga, enquanto lançada
@@ -160,7 +165,11 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const [pctDoDiretor, setPctDoDiretor] = useState(comissao?.percentual != null && comissao.percentual !== carteira.percentualDoServico(servicos.lista, comissao.servico ?? '') ? String(comissao.percentual).replace('.', ',') : '');
   const pctDigitado = diretor && pctDoDiretor.trim() ? Number(pctDoDiretor.replace(',', '.')) : NaN;
   const percentual = travada ? comissao!.percentual ?? 0 : oculta ? 0 : Number.isFinite(pctDigitado) ? Math.min(100, Math.max(0, pctDigitado)) : carteira.percentualDoServico(servicos.lista, servico);
-  const vs = valorDigitado(valorServico);
+  const qtd = comQuantidade ? Math.min(carteira.QUANTIDADE_MAXIMA, Math.max(1, parseInt(quantidade, 10) || 1)) : 1;
+  // com o valor do Financeiro, a pessoa não digita (a já decidida fica com o que foi gravado)
+  const valorFixo = comQuantidade && !travada ? carteira.valorDoServico(servicos.lista, servico) : 0;
+  const unidade = valorFixo > 0 ? valorFixo : valorDigitado(valorServico);
+  const vs = Math.round(unidade * qtd * 100) / 100;
   const cliente = avulso ? nomeAvulso : clientes.find(c => c.codigo === clienteCodigo)?.nome ?? comissao?.cliente ?? '';
   const pessoas = equipe.lista.filter(u => u.ativo).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   return {
@@ -181,13 +190,17 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     /** apagar: a própria pessoa, enquanto está lançada (a escondida também) */
     podeApagar: !!comissao && (doFinanceiro ? carteira.podeEditar(comissao) : carteira.pessoaPodeMexer(comissao, agora)),
     valorServico, setValorServico,
+    /** a quantidade (23/11/2026): o texto do campo, o número que vale e o − e o + ; o valor que o Financeiro definiu (0 = a pessoa digita) e o total */
+    comQuantidade, quantidade, qtd, valorFixo, unidade, total: vs,
+    setQuantidade: (v: string) => setQuantidade(v.replace(/\D/g, '').slice(0, 3)),
+    mudarQuantidade: (d: number) => setQuantidade(String(Math.min(carteira.QUANTIDADE_MAXIMA, Math.max(1, qtd + d)))),
     /** a comissão que vai sair (valor do serviço × %) */
     valor: travada ? comissao!.valor : vs > 0 && percentual > 0 ? carteira.valorDaComissao(vs, percentual) : 0,
     async salvar() {
       if (travada) return;
       const c: carteira.ComissaoParaSalvar = {
         competencia, data: isoDaData(data), cliente: cliente.trim(), clienteCodigo: avulso ? null : clienteCodigo, porte: avulso ? porte : null,
-        servico, valorServico: vs, percentual, ...(oculta ? { oculta: true } : {}),
+        servico, valorServico: vs, percentual, ...(oculta ? { oculta: true } : {}), ...(qtd > 1 ? { quantidade: qtd } : {}),
       };
       const retroativa = doFinanceiro ? '' : carteira.conferirDataDaPessoa(c.data, new Date());
       const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...(retroativa ? [retroativa] : []), ...carteira.conferirComissao(c)];
@@ -216,21 +229,24 @@ export function useJanelaDosServicos(fechar: () => void) {
   const repo = useCarteira();
   const { toast } = useRetorno();
   const salvos = repo.servicos();
-  const [lista, setLista] = useState<{ id: string; nome: string; percentual: string }[] | null>(null);
+  const [lista, setLista] = useState<{ id: string; nome: string; percentual: string; valor: string }[] | null>(null);
   const [novo, setNovo] = useState('');
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
+  // o valor do serviço (23/11/2026, a novidade 'comissao-quantidade'): a coluna só aparece com a novidade, mas o valor gravado
+  // passa junto mesmo sem ela, para não se perder
+  const comValor = useNovidade('comissao-quantidade');
   // a lista que está na tela: a do banco até a pessoa mexer
-  const atual = lista ?? salvos.lista.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual ? valorNoCampo(s.percentual) : '' }));
-  const comoServicos = () => atual.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual.trim() ? valorDigitado(s.percentual) : 0 }));
+  const atual = lista ?? salvos.lista.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual ? valorNoCampo(s.percentual) : '', valor: s.valor ? valorNoCampo(s.valor) : '' }));
+  const comoServicos = () => atual.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual.trim() ? valorDigitado(s.percentual) : 0, ...(s.valor.trim() && valorDigitado(s.valor) > 0 ? { valor: valorDigitado(s.valor) } : {}) }));
   return {
-    carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando,
-    mudar: (id: string, campo: 'nome' | 'percentual', v: string) => setLista(atual.map(s => (s.id === id ? { ...s, [campo]: v } : s))),
+    carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando, comValor,
+    mudar: (id: string, campo: 'nome' | 'percentual' | 'valor', v: string) => setLista(atual.map(s => (s.id === id ? { ...s, [campo]: v } : s))),
     tirar: (id: string) => setLista(atual.filter(s => s.id !== id)),
     acrescentar() {
       if (!novo.trim()) return;
       const s = carteira.novoServico(comoServicos(), novo);
-      setLista([...atual, { id: s.id, nome: s.nome, percentual: '' }]);
+      setLista([...atual, { id: s.id, nome: s.nome, percentual: '', valor: '' }]);
       setNovo('');
     },
     async salvar() {

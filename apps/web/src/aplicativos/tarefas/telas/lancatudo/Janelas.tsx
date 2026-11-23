@@ -28,8 +28,10 @@ function Campo({ rotulo, para, className, children }: { rotulo: string; para?: s
   );
 }
 
-export function Janela({ titulo, caminho, selo, fechar, children, pe, className = '', classeDoFundo = '' }: {
+export function Janela({ titulo, caminho, selo, fechar, children, pe, className = '', classeDoFundo = '', app = 'Lançatudo' }: {
   titulo: string; caminho?: ReactNode; selo?: ReactNode; fechar: () => void; children: ReactNode; pe?: ReactNode; className?: string; classeDoFundo?: string;
+  /** o nome do aplicativo no começo do caminho (o ShadersCI usa a mesma janela) */
+  app?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useJanela(ref, fechar);
@@ -37,7 +39,7 @@ export function Janela({ titulo, caminho, selo, fechar, children, pe, className 
     <div className={'modal-overlay lt-fundo ' + classeDoFundo} onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={ref} className={'modal registro-novo lt-janela ' + className} role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="landmark" />Lançatudo<Icone nome="chevronRight" />{caminho || <b>{titulo}</b>}</span>
+          <span className="registro-caminho"><Icone nome="landmark" />{app}<Icone nome="chevronRight" />{caminho || <b>{titulo}</b>}</span>
           {selo}
           <BotaoFechar onClick={fechar} />
         </header>

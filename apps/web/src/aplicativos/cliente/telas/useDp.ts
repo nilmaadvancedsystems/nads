@@ -137,6 +137,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
     ],
     // as férias (13/11/2026: os avisos de férias)
     ferias, feriasParaTirar, feriasUrgentes,
+    // quem vem primeiro para programar (a lista já vem pela urgência): o link "com férias para tirar" abre o pedido dela
+    // (23/11/2026: "quando eu clicar aqui quero que abra a requisiçao de ferias")
+    primeiraParaTirar: ferias.find(x => x.podeProgramar)?.nome,
     feriasFonte,
     // (16/11/2026: "muita informação") a nota do pé das férias numa frase; os três cartões de número viram dois fatos
     // curtos embaixo do título
@@ -194,6 +197,12 @@ export function useDp({ token, area, hoje }: DaCasca) {
       // quem saiu, quando saiu) e um selo só quando pede atenção (afastado, férias vencidas ou vencendo); "Em dia" e
       // "Pode tirar" ficam na aba Férias
       linha: !f.ativo ? 'Saiu em ' + mesBr(f.ultimo) : f.cargo || (f.admissao || f.desde ? tempoDeEmpresa(f.admissao ?? f.desde + '-01', hoje).replace(/^há /, '') + ' na empresa' : ''),
+      // o cartão refeito (23/11/2026: "queria melhorar esse visual aqui"): embaixo do nome só o cargo; no pé, o salário e
+      // há quanto tempo está registrado (23/11/2026: "troca de na empresa para registrado há"; ou quando saiu), cada um com o seu rótulo
+      cargoOuFuncao: f.cargo || 'Funcionário',
+      pe: { salario: f.salarioBase != null ? formatos.reais(f.salarioBase) : formatos.reais(f.remuneracao),
+        rotuloDoTempo: f.ativo ? 'Registrado há' : 'Saiu em',
+        tempo: !f.ativo ? mesBr(f.ultimo) : f.admissao || f.desde ? tempoDeEmpresa(f.admissao ?? f.desde + '-01', hoje).replace(/^há /, '') : '—' },
       selo: f.ativo && f.afastadoDe ? { rotulo: 'Afastado', tom: 'neutro' }
         : f.ativo ? (() => { const x = feriasDe.get(f.id); return x && (x.situacao === 'vencida' || x.situacao === 'vence-logo') ? { rotulo: ROTULO_DAS_FERIAS[x.situacao], tom: TOM_DAS_FERIAS[x.situacao] } : null; })() : null,
       /** os documentos dele, o mais novo primeiro (a ficha) */

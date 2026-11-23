@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContaAPagar } from '../financeiro/contasPagar';
 import {
-  comValorParaAPessoa, conferirComissao, conferirDataDaPessoa, pessoaPodeMexer, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
+  comValorParaAPessoa, conferirComissao, descricaoDaComissao, quantidadeDaComissao, valorDoServico, conferirDataDaPessoa, pessoaPodeMexer, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
   resumoParaPagar, salarioDoMes, totaisDasComissoes, ultimosMeses, type Comissao, type DocumentoDaCarteira, type Lancamento,
 } from '.';
 
@@ -106,5 +106,31 @@ describe('a comissão escondida (16/11/2026)', () => {
     expect([pessoaPodeMexer(c, new Date(2026, 10, 30)), pessoaPodeMexer(c, new Date(2026, 11, 1))]).toEqual([true, false]);
     expect(conferirDataDaPessoa('2026-11-19', new Date(2026, 10, 19))).toBe('');
     expect(conferirDataDaPessoa('2026-10-31', new Date(2026, 10, 19))).not.toBe('');
+  });
+});
+
+describe('a quantidade e o valor do serviço definido pelo Financeiro (23/11/2026)', () => {
+  it('a quantidade vai na descrição e volta dela; sem quantidade, só o serviço', () => {
+    expect(descricaoDaComissao({ servico: 'Emissão de GTA', quantidade: 3 })).toBe('Emissão de GTA × 3');
+    expect(descricaoDaComissao({ servico: 'Emissão de GTA', quantidade: 1 })).toBe('Emissão de GTA');
+    expect(descricaoDaComissao({ servico: 'Emissão de GTA' })).toBe('Emissão de GTA');
+    expect(quantidadeDaComissao({ descricao: 'Emissão de GTA × 3', servico: 'Emissão de GTA' })).toBe(3);
+    expect(quantidadeDaComissao({ descricao: 'Emissão de GTA', servico: 'Emissão de GTA' })).toBe(1);
+    // a comissão de antes, sem o serviço, e um texto qualquer
+    expect(quantidadeDaComissao({ descricao: 'Venda', servico: undefined })).toBe(1);
+  });
+  it('o valor do serviço: o definido pelo Financeiro, 0 quando não tem (a pessoa digita)', () => {
+    const lista = [{ id: 'gta', nome: 'Emissão de GTA', percentual: 10, valor: 30 }, { id: 'nfe', nome: 'Emissão de NFE', percentual: 10 }];
+    expect(valorDoServico(lista, 'Emissão de GTA')).toBe(30);
+    expect(valorDoServico(lista, 'Emissão de NFE')).toBe(0);
+    expect(conferirServicos([{ id: 'a', nome: 'A', percentual: 10, valor: -1 }])).toContain('Confira o valor do serviço.');
+    expect(conferirServicos(lista)).toEqual([]);
+  });
+  it('a quantidade de 1 a 999; a comissão sobre o total', () => {
+    const base = { competencia: '2026-12', data: '2026-11-23', cliente: 'Cliente', clienteCodigo: 1, porte: null, servico: 'Emissão de GTA', valorServico: 90, percentual: 10 };
+    expect(conferirComissao({ ...base, quantidade: 3 })).toEqual([]);
+    expect(conferirComissao({ ...base, quantidade: 0 })).toContain('A quantidade vai de 1 a 999.');
+    expect(conferirComissao({ ...base, quantidade: 1000 })).toContain('A quantidade vai de 1 a 999.');
+    expect(valorDaComissao(3 * 30, 10)).toBe(9);
   });
 });

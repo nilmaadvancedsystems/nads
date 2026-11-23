@@ -55,6 +55,10 @@ function Entregas({ vm }: { vm: Vm }) {
           <select className="select-compact" aria-label="Situação" value={vm.filtro} onChange={e => vm.setFiltro(e.target.value as typeof vm.filtro)}>
             {vm.filtros.map(f => <option key={f.valor} value={f.valor}>{f.rotulo}</option>)}
           </select>
+          <select className="select-compact" aria-label="Colaborador do Fiscal" title="Quem cuida da empresa no Fiscal" value={vm.fiscal} onChange={e => vm.setFiscal(e.target.value)}>
+            <option value="">Todo o Fiscal</option>
+            {vm.colaboradoresDoFiscal.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
+          </select>
         </div>
         {vm.carregando ? <Esqueleto linhas={6} /> : !vm.linhas.length ? <Vazio texto="Nenhum cliente encontrado com esse filtro." /> : (
           <div className="table-wrap ent-painel-wrap" ref={lista}>

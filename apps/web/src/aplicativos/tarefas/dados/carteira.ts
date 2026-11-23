@@ -74,8 +74,10 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira, oculta = false): Repo
     id, uid, nome, competencia, data: competencia + '-08', cliente, descricao: 'Abertura de MEI', valor, situacao, criadoEm: competencia + '-08T10:00:00.000Z',
     clienteCodigo: null, porte: 'MEI', servico: 'Abertura de MEI', valorServico: valor * 10, percentual: 10,
   });
-  let servicos = carteira.servicosPadrao().map((s, i) => ({ ...s, percentual: i < 3 ? 10 : 0 }));
-  const comissaoDe = (x: carteira.ComissaoParaSalvar) => ({ ...x, descricao: x.servico, valor: carteira.valorDaComissao(x.valorServico, x.percentual) });
+  // dois com o valor do serviço definido (23/11/2026), para o ⚡ mostrar a quantidade com o valor pronto
+  const VALORES_DE_EXEMPLO: Record<string, number> = { 'Emissão de NFE': 50, 'Emissão de GTA': 30 };
+  let servicos = carteira.servicosPadrao().map((s, i) => ({ ...s, percentual: i < 4 ? 10 : 0, ...(VALORES_DE_EXEMPLO[s.nome] ? { valor: VALORES_DE_EXEMPLO[s.nome] } : {}) }));
+  const comissaoDe = (x: carteira.ComissaoParaSalvar) => ({ ...x, descricao: carteira.descricaoDaComissao(x), valor: carteira.valorDaComissao(x.valorServico, x.percentual) });
   // a escondida: sem o valor e sem a %; o "robô" calcula e tira o valor do serviço, como o da nuvem
   const escondida = (x: Omit<carteira.Comissao, 'valor'> & { valor?: number }, calculo: carteira.CalculoDaComissao): carteira.Comissao => {
     const { valorServico, ...resto } = x;
@@ -127,7 +129,7 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira, oculta = false): Repo
     minhasContas: () => lista(contas.filter(x => x.funcionario?.uid === eu().uid)),
     async salvarComissao(x, id) {
       if (x.oculta && !id) {
-        const nova = escondida({ ...x, descricao: x.servico, id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }, 'fila');
+        const nova = escondida({ ...x, descricao: carteira.descricaoDaComissao(x), id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }, 'fila');
         comissoes = [...comissoes, nova];
         mudou();
         calcular(nova.id);
@@ -137,7 +139,7 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira, oculta = false): Repo
     servicos: () => lista(servicos),
     minhaComissaoOculta: () => ({ carregada: true, ligada: oculta }),
     meuUid: () => eu().uid,
-    async salvarServicos(l) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); mudou(); },
+    async salvarServicos(l) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual), ...(s.valor ? { valor: r2(s.valor) } : {}) })); mudou(); },
     async registrarComissaoDe(para, x) {
       comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: para.uid, nome: para.nome, situacao: 'aprovada', criadoEm: agora(), decididoPor: eu().nome, decididoEm: agora() }];
       mudou();

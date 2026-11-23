@@ -17,7 +17,7 @@ import { Avatar } from '../partes/Avatar';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { ACEITA_FOTO, fotoQuadrada, urlDaFoto } from '../partes/foto';
 import { Vazio } from '../partes/Vazio';
-import { contaDaAdmissao, contaDasFerias, marcarNoCalendario, mesDasFerias, primeiraDataDasFerias, type PedidoDeAdmissao, type PedidoDeDemissao, type PedidoDeFerias } from '../dados/regras';
+import { AVISOS_DA_DEMISSAO, MOTIVOS_DA_DEMISSAO, avisosDoMotivo, contaDaAdmissao, contaDasFerias, marcarNoCalendario, mesDasFerias, primeiraDataDasFerias, type PedidoDeAdmissao, type PedidoDeDemissao, type PedidoDeFerias } from '../dados/regras';
 import { formatos } from '@nads/core';
 import { Colunas } from './Administrativo';
 import { useDp, type DadosDoPedido, type Pedido } from './useDp';
@@ -33,9 +33,7 @@ const ROTULO_DOS_DIAS: Record<string, { n: string; t: string }> = {
   '30 dias': { n: '30', t: 'dias corridos' }, '20 dias e vender 10': { n: '20', t: 'e vende 10' },
   '15 dias (primeira parte)': { n: '15', t: 'uma parte' }, '10 dias (uma parte)': { n: '10', t: 'uma parte' },
 };
-const MOTIVOS = ['O funcionário pediu demissão', 'Dispensa sem justa causa', 'Dispensa com justa causa', 'Fim do contrato de experiência', 'Acordo entre as partes'];
-const AVISOS = ['Trabalhado', 'Indenizado', 'Dispensado'];
-const TITULO: Record<Pedido, string> = { admissao: 'Solicitar admissão', ferias: 'Programar férias', demissao: 'Pedir desligamento' };
+const TITULO: Record<Pedido, string> = { admissao: 'Solicitar admissão', ferias: 'Programar férias', demissao: 'Demitir um funcionário' };
 
 /** o nome e o último sobrenome, para as fichas da janela de férias */
 const nomeCurto = (n: string) => { const p = n.split(' ').filter(Boolean); return p.length > 2 ? p[0] + ' ' + p[p.length - 1] : n; };
@@ -134,7 +132,7 @@ function CalendarioDasFerias({ pedido, hoje, aoMarcar }: { pedido: PedidoDeFeria
  *  (13/11/2026: "melhore visualmente esses dois, principalmente a parte de programar férias"): as férias escolhem a pessoa
  *  por cartões (com o selo das férias de cada um), os dias em botões e mostram a conta (o pagamento, de quando a quando e a
  *  volta); a admissão tem a foto no alto, os campos em dois blocos e o prazo do eSocial pela data. */
-function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar }: { pedido: Pedido; inicial: DadosDoPedido; erro: string; nomes: string[]; equipe: PessoaDasFerias[]; hoje: Date; aoMudar: (d: DadosDoPedido) => void }) {
+export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar }: { pedido: Pedido; inicial: DadosDoPedido; erro: string; nomes: string[]; equipe: PessoaDasFerias[]; hoje: Date; aoMudar: (d: DadosDoPedido) => void }) {
   const [d, setD] = useState(inicial);
   // pelo valor de antes (duas mudanças seguidas não se atropelam)
   const mudar = (m: Partial<PedidoDeAdmissao & PedidoDeFerias & PedidoDeDemissao>) => setD(antes => { const novo = { ...antes, ...m } as DadosDoPedido; aoMudar(novo); return novo; });
@@ -150,7 +148,7 @@ function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar }: {
   const contaF = pedido === 'ferias' ? contaDasFerias(f, hoje, escolhida?.limite) : null;
   const contaA = pedido === 'admissao' ? contaDaAdmissao(a, hoje) : null;
   return (
-    <div className={'cli-app cli-janela cli-pedido' + (pedido === 'ferias' ? ' cli-pf' : pedido === 'admissao' ? ' cli-pa' : '')}>
+    <div className={'cli-app cli-janela cli-pedido' + (pedido === 'ferias' ? ' cli-pf' : pedido === 'admissao' ? ' cli-pa' : ' cli-pd')}>
       {pedido === 'admissao' && (
         <>
           <TopoDaAdmissao nome={a.nome} foto={a.foto} aoMudar={foto => mudar({ foto })} />
@@ -242,16 +240,36 @@ function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar }: {
       )}
       {pedido === 'demissao' && (
         <>
+          {/* (23/11/2026: "se a pessoa nao entender, como ela vai preencher isso?") o motivo em cartões, cada um com a frase
+              do que é; o aviso prévio só quando cabe no motivo, com a explicação do escolhido; e o "Ainda não sei" */}
           {funcionario(x.empregado)}
-          <div className="field"><label htmlFor="cli-ud">Último dia de trabalho</label><CampoData id="cli-ud" rotulo="Último dia de trabalho" valor={x.ultimoDia} onMudar={v => mudar({ ultimoDia: v })} /></div>
-          <div className="field cli-pedido-motivo">
-            <label>Motivo</label>
-            <CampoEscolha rotulo="Motivo" valor={x.motivo} opcoes={MOTIVOS} onMudar={v => mudar({ motivo: v })} />
+          <div className="field cli-largo">
+            <span className="cli-sol-form-rotulo" id="cli-motivo">Por que a pessoa vai sair?</span>
+            <div className="cli-dm-motivos" role="radiogroup" aria-labelledby="cli-motivo">
+              {MOTIVOS_DA_DEMISSAO.map(m => (
+                <button key={m.valor} type="button" role="radio" aria-checked={x.motivo === m.valor} className={'cli-dm-motivo' + (x.motivo === m.valor ? ' sel' : '')}
+                  onClick={() => mudar({ motivo: m.valor, aviso: avisosDoMotivo(m.valor).includes(x.aviso) ? x.aviso : avisosDoMotivo(m.valor)[0] ?? '' })}>
+                  <span className="cli-dm-marca" aria-hidden="true" />
+                  <span className="cli-dm-txt"><b>{m.titulo}</b><span>{m.explica}</span></span>
+                </button>
+              ))}
+            </div>
           </div>
           <div className="field">
-            <label>Aviso prévio</label>
-            <CampoEscolha rotulo="Aviso prévio" valor={x.aviso} opcoes={AVISOS} onMudar={v => mudar({ aviso: v })} />
+            <label htmlFor="cli-ud">Último dia de trabalho</label>
+            <CampoData id="cli-ud" rotulo="Último dia de trabalho" valor={x.ultimoDia} onMudar={v => mudar({ ultimoDia: v })} />
+            <span className="hint cli-dm-dica">{x.aviso === 'Trabalhado' ? 'O último dia do aviso.' : 'O último dia em que a pessoa vai trabalhar.'} Não tem certeza? Ponha a data mais provável.</span>
           </div>
+          {avisosDoMotivo(x.motivo).length > 0 && (
+            <div className="field">
+              <span className="cli-sol-form-rotulo" id="cli-aviso">Aviso prévio</span>
+              <span className="cli-sol-prioridade cli-dm-avisos" role="radiogroup" aria-labelledby="cli-aviso">
+                {avisosDoMotivo(x.motivo).map(a => <button key={a} type="button" role="radio" aria-checked={x.aviso === a} className={x.aviso === a ? 'on' : ''} onClick={() => mudar({ aviso: a })}>{a}</button>)}
+              </span>
+              {AVISOS_DA_DEMISSAO[x.aviso] && <span className="hint cli-dm-dica">{AVISOS_DA_DEMISSAO[x.aviso]}</span>}
+            </div>
+          )}
+          <div className="field cli-largo"><label htmlFor="cli-dm-obs">Quer contar mais alguma coisa? <span className="cli-pf-opc">opcional</span></label><textarea id="cli-dm-obs" rows={2} value={x.observacoes} onChange={e => mudar({ observacoes: e.target.value })} placeholder="Ex.: ele vai tirar as férias vencidas antes; já conversamos com ele" /></div>
         </>
       )}
       {erro && <p className="cli-erro cli-largo" role="alert">{erro}</p>}
@@ -362,7 +380,7 @@ export function DepartamentoPessoal(props: DaCasca) {
         </div>
       ),
       botoes: f.ativo
-        ? [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }, { rotulo: 'Pedir desligamento', valor: 'demissao', variante: 'btn-danger', classe: 'cli-perigo' }, { rotulo: 'Programar férias', valor: 'ferias', variante: 'btn-primary' }]
+        ? [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }, { rotulo: 'Demitir', valor: 'demissao', variante: 'btn-danger', classe: 'cli-perigo' }, { rotulo: 'Programar férias', valor: 'ferias', variante: 'btn-primary' }]
         : [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
     });
     if (escolha === 'ferias') await abrirPedido('ferias', vm.novasFerias(f.nome));
@@ -390,7 +408,7 @@ export function DepartamentoPessoal(props: DaCasca) {
               férias, que levam à aba Férias */}
           <p className="cli-subtitulo cli-rg-resumo">
             {vm.resumo.map((t, i) => t.aba ? (
-              <button key={i} type="button" className={'cli-rg-trecho cli-rg-trecho-link' + (t.tom ? ' t-' + t.tom : '')} onClick={() => vm.escolherAba('ferias')}><b>{t.valor}</b> {t.depois}</button>
+              <button key={i} type="button" className={'cli-rg-trecho cli-rg-trecho-link' + (t.tom ? ' t-' + t.tom : '')} onClick={() => { vm.escolherAba('ferias'); void abrirPedido('ferias', vm.novasFerias(vm.primeiraParaTirar)); }}><b>{t.valor}</b> {t.depois}</button>
             ) : (
               <span key={i} className="cli-rg-trecho"><b>{t.valor}</b> {t.depois}</span>
             ))}
@@ -419,7 +437,7 @@ export function DepartamentoPessoal(props: DaCasca) {
             <div className="cli-reg-equipe-topo">
               <div className="cli-sol-filtros" role="tablist" aria-label="Equipe">
                 <button type="button" role="tab" aria-selected={!vm.mostrarSaidas} className={'cli-sol-filtro' + (!vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verAtivos}>Ativos<b>{vm.ativosN}</b></button>
-                <button type="button" role="tab" aria-selected={vm.mostrarSaidas} className={'cli-sol-filtro' + (vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verSaidas}>Saíram<b>{vm.saidas}</b></button>
+                <button type="button" role="tab" aria-selected={vm.mostrarSaidas} className={'cli-sol-filtro' + (vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verSaidas}>Inativos<b>{vm.saidas}</b></button>
               </div>
               <label className="cli-busca cli-reg-busca">
                 <Icone nome="search" width={16} height={16} />
@@ -432,19 +450,27 @@ export function DepartamentoPessoal(props: DaCasca) {
                   <li key={f.id}>
                     {/* (16/11/2026: "muita informação") o nome, uma frase, o salário e um selo só quando pede atenção; o resto
                         (a matrícula, os documentos, as férias em dia) está na ficha e na aba Férias */}
-                    <button type="button" className={'cli-eq-cartao cli-rg-cartao' + (f.ativo ? '' : ' saiu')} onClick={() => void ficha(f)}>
-                      <Avatar nome={f.nome} tamanho={40} />
-                      <span className="cli-rg-quem"><b>{f.nome}</b>{f.linha && <span className="hint">{f.linha}</span>}</span>
-                      <span className="cli-rg-lado">
-                        <b className="cli-valor">{f.salarioBase || f.remuneracao}</b>
-                        {f.selo && <span className={'cli-eq-ferias t-' + f.selo.tom} title={f.afastado || undefined}>{f.selo.rotulo}</span>}
+                    {/* (23/11/2026: "queria melhorar esse visual aqui") o cartão em dois andares: em cima a pessoa (a foto, o
+                        nome e o cargo) e o selo só quando pede atenção; embaixo, separados por um fio, o salário e o tempo na
+                        empresa com os rótulos. Inteiro clicável (abre a ficha) */}
+                    <button type="button" className={'cli-eq-cartao cli-rg2' + (f.ativo ? '' : ' saiu')} onClick={() => void ficha(f)}>
+                      <span className="cli-rg2-topo">
+                        <Avatar nome={f.nome} tamanho={44} />
+                        <span className="cli-rg2-quem"><b>{f.nome}</b><span className="hint">{f.cargoOuFuncao}</span></span>
+                        {f.selo
+                          ? <span className={'cli-eq-ferias t-' + f.selo.tom} title={f.afastado || undefined}>{f.selo.rotulo}</span>
+                          : <Icone nome="chevronRight" width={16} height={16} className="cli-rg2-seta" />}
+                      </span>
+                      <span className="cli-rg2-pe">
+                        <span className="cli-rg2-dado"><small>Salário</small><b>{f.pe.salario}</b></span>
+                        <span className="cli-rg2-dado"><small>{f.pe.rotuloDoTempo}</small><b>{f.pe.tempo}</b></span>
                       </span>
                     </button>
                   </li>
                 ))}
               </ul>
             ) : vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
-              : <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Ninguém saiu do registro.' : 'Nenhum funcionário ativo.'}</p>}
+              : <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Nenhum funcionário inativo.' : 'Nenhum funcionário ativo.'}</p>}
           </>
         ) : <Vazio icone="equipe" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
       </section>}

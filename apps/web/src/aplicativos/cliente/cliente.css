@@ -497,6 +497,9 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app.cli-recolhida .cli-menu .subnav-count{display:block;position:absolute;top:7px;right:9px;width:8px;height:8px;min-width:0;padding:0;border-radius:50%;
     background:var(--accent);font-size:0;box-shadow:0 0 0 2px var(--drawer-bg);}
   .cli-app.cli-recolhida .cli-menu .subnav-count.cli-conta-ruim{background:var(--danger);}
+  /* no item escolhido também (23/11/2026: "a bolinha fica branca"): a cor do aviso, com o contorno do fundo do menu */
+  .cli-app.cli-recolhida .cli-menu .subnav-item.active .subnav-count{background:var(--accent);color:transparent;box-shadow:0 0 0 2px var(--drawer-bg);}
+  .cli-app.cli-recolhida .cli-menu .subnav-item.active .subnav-count.cli-conta-ruim{background:var(--danger);}
   .cli-app.cli-recolhida .cli-lateral-pe{align-items:center;margin:10px;padding:10px 0;}
   .cli-app.cli-recolhida .cli-lateral-pe .cli-pessoa > div,.cli-app.cli-recolhida .cli-lateral-pe > p,.cli-app.cli-recolhida .cli-lateral-pe .btn{display:none;}
 }
@@ -1142,7 +1145,9 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 @media (max-width:560px){.cli-app .cli-biblioteca-mes-campo{flex:1 1 100%;}}
 /* o sino (refeito em 12/11/2026): cada notificação com o ícone no tom (vencida em vermelho, atenção em âmbar, resposta em
    verde) e a bolinha de não lida, o título e o texto um embaixo do outro, e a seta; a lida fica apagada */
-.cli-app .cli-avisos{width:min(380px,calc(100vw - 32px));}
+/* (23/11/2026: "2 scroll") a janela rola só para baixo: a largura é da janela, e a barra de rolagem não empurra o conteúdo */
+.cli-app .menu-pop:has(> .cli-avisos){width:min(396px,calc(100vw - 32px));overflow-x:hidden;overflow-y:auto;}
+.cli-app .cli-avisos{width:100%;min-width:0;}
 .cli-app .cli-avisos-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--cli-linha);font-size:13px;font-weight:600;}
 .cli-app .cli-aviso-item{appearance:none;display:grid;grid-template-columns:34px minmax(0,1fr) 16px;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .cli-app .cli-aviso-item + .cli-aviso-item{border-top:1px solid var(--cli-fio);}
@@ -2447,3 +2452,4 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-numeros.cli-imp-numeros .hint{grid-column:1;font-size:12px;}
   .cli-app .cli-impostos-topo .cli-botao-excel{padding:6px 10px;font-size:13px;}
 }
+

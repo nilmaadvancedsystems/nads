@@ -72,7 +72,7 @@ function guiaDoFgts(pedido, hoje, liberada = false) {
 const TIPOS_DE_CHAMADO = [
   { valor: 'admissao', rotulo: 'Contratar um funcionário', dica: 'Admissão' },
   { valor: 'ferias', rotulo: 'Férias', dica: 'Marcar ou tirar uma dúvida sobre férias' },
-  { valor: 'demissao', rotulo: 'Desligar um funcionário', dica: 'Demissão' },
+  { valor: 'demissao', rotulo: 'Demitir um funcionário', dica: 'Demissão' },
   { valor: 'duvida', rotulo: 'Tirar uma dúvida', dica: 'Qualquer pergunta para o escritório' },
   { valor: 'documento', rotulo: 'Pedir um documento', dica: 'Certidão, declaração, segunda via…' },
   { valor: 'outro', rotulo: 'Outro assunto', dica: 'O que não se encaixa nos outros' },

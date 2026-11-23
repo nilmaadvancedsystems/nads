@@ -19,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens', 'tabelas-reforma'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'shadersci' | 'controle-contabil' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -62,6 +62,18 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'Lançamentos do extrato' },
     // sem barra lateral, não aparece em lugar nenhum: só faz o link das Regras abrir a tela com a janela delas
     { id: 'regras', rotulo: 'Regras', icone: 'settings', titulo: 'Lançamentos do extrato' },
+  ] },
+  // o ShadersCI (23/11/2026: "Quero fazer uma aba de lançamento mais clean, a do meu sistema SCI é horrivel"): os lançamentos digitados
+  // para o SCI, pelos planos padrão 90113 e 90011, e a planilha do gerador do SCI; uma tela só, sem a barra lateral. O Contábil e o
+  // admin, no modo desenvolvedor até o Vitor aprovar (a novidade 'shadersci')
+  { id: 'shadersci', nome: 'ShadersCI', icone: 'list', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'ShadersCI' },
+  ] },
+  // o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando virou módulo): até que mês a contabilidade
+  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. O Contábil e o admin, no
+  // modo desenvolvedor (a novidade 'controle-contabil'); fora dele, só quem está em t.CONTROLE_CONTABIL_LIBERADO_PARA ("Fernando primeiro")
+  { id: 'controle-contabil', nome: 'Controle contábil', icone: 'checklist', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Controle contábil' },
   ] },
   // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
   // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
@@ -303,6 +315,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
+    (a.id !== 'shadersci' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
+    (a.id !== 'controle-contabil' || ((op.admin || op.departamento === 'contabil') && (novidadeLigada('controle-contabil') || t.controleContabilLiberadoPara(op.nome)))) &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&

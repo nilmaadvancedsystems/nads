@@ -12,12 +12,16 @@ import { useState } from 'react';
 import { useLocation } from 'react-router';
 import { guardarNota, notasDadas } from '../dados/avaliadas';
 import { repoAreaCliente } from '../dados/repo';
-import { partesDaSolicitacao, passoDaSolicitacao, textoDoChamado, textoDosAnexos, whatsappDaSolicitacao } from '../dados/regras';
+import { DOCUMENTOS_PARA_PEDIR, erroDoPedidoDeDocumento, partesDaSolicitacao, passoDaSolicitacao, textoDoChamado, textoDoPedidoDeDocumento, textoDosAnexos, whatsappDaSolicitacao } from '../dados/regras';
 import { resumoDasSolicitacoes } from '../dados/solicitacoes';
 import type { DaCasca, PedidoDaTela } from './useAreaCliente';
 import { comMime } from './useEnviar';
+import { useDp, type DadosDoPedido, type Pedido } from './useDp';
 
 export const PRIORIDADES = ['Normal', 'Alta', 'Urgente'];
+/** os pedidos do DP: a tela própria de cada um (a mesma do RH) */
+const DO_DP = new Set<string>(['admissao', 'ferias', 'demissao']);
+export const ehDoDp = (t: string): t is Pedido => DO_DP.has(t);
 export type FiltroDasSolicitacoes = 'abertas' | 'respondidas' | 'concluidas' | 'todas';
 
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -26,8 +30,11 @@ const DO_FILTRO: Record<FiltroDasSolicitacoes, (s: ac.SituacaoDoChamado) => bool
   abertas: s => s === 'aberto' || s === 'em andamento', respondidas: s => s === 'respondido', concluidas: s => s === 'concluido', todas: () => true,
 };
 
-export function useChamados({ token, area, marcarLida }: DaCasca) {
+export function useChamados(casca: DaCasca) {
+  const { token, area, marcarLida } = casca;
   const { toast } = useRetorno();
+  // os pedidos do DP (23/11/2026: "cada solicitacao tenha uma tela diferente"): o mesmo formulário e o mesmo envio do RH
+  const dp = useDp(casca);
   // o pedido que veio com a aba (só na abertura dela)
   const { state } = useLocation();
   const [pedido] = useState(() => (state ?? {}) as PedidoDaTela);
@@ -38,8 +45,16 @@ export function useChamados({ token, area, marcarLida }: DaCasca) {
   const [painelNoCelular, setPainelNoCelular] = useState(!!(pedido.chamado || pedido.novoChamado));
   const [tipo, setTipo] = useState<ac.TipoDeChamado | ''>(pedido.novoChamado?.tipo ?? '');
   const [prioridade, setPrioridade] = useState('Normal');
-  const [titulo, setTitulo] = useState(pedido.novoChamado?.titulo ?? '');
-  const [texto, setTexto] = useState('');
+  const [titulo, setTitulo] = useState(pedido.novoChamado?.tipo === 'documento' ? '' : pedido.novoChamado?.titulo ?? '');
+  const [texto, setTexto] = useState(pedido.novoChamado?.tipo === 'documento' ? pedido.novoChamado.titulo : '');
+  // o pedido de documento: qual, para quando e os detalhes (a guia nova da Visão geral já vem escolhida)
+  const [documento, setDocumento] = useState(pedido.novoChamado?.tipo === 'documento' && pedido.novoChamado.titulo ? 'Guia nova (segunda via)' : '');
+  const [prazo, setPrazo] = useState('');
+  // os dados do pedido do DP (o formulário avisa a cada mudança)
+  const [dadosDp, setDadosDp] = useState<DadosDoPedido | null>(() => {
+    const t = pedido.novoChamado?.tipo;
+    return t === 'admissao' ? dp.novaAdmissao() : t === 'ferias' ? dp.novasFerias() : t === 'demissao' ? dp.novaDemissao() : null;
+  });
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -78,6 +93,9 @@ export function useChamados({ token, area, marcarLida }: DaCasca) {
       // quem respondeu por último, na prévia da lista: o primeiro nome (ou "Escritório")
       quemRespondeu: resposta ? resposta.autor || 'Escritório' : '',
       pedido: partes.pedido, complementos: partes.complementos,
+      // a conversa em ordem, como num chat (23/11/2026: "e para ficar tipo um chat"): depois do pedido, cada mensagem no seu
+      // lugar (o arquivo que o cliente mandou depois da resposta fica depois dela)
+      conversa: c.mensagens.slice(1).map((m, i) => ({ chave: i + '-' + m.em, deVoce: m.de === 'cliente', texto: m.texto, quando: quando(m.em), autor: m.de === 'cliente' ? '' : m.autor && m.autor !== 'Escritório' ? m.autor : '' })),
       respostas: partes.respostas.map(r => ({ texto: r.texto, quando: quando(r.em), autor: r.autor })),
       escolhida: c.id === atualId,
       // o passo atual do pedido do DP (23/11/2026, ficha processos-visiveis)
@@ -93,16 +111,38 @@ export function useChamados({ token, area, marcarLida }: DaCasca) {
   };
   const atual = todas.find(c => c.id === atualId);
 
+  const limpar = () => { setTipo(''); setTitulo(''); setTexto(''); setDocumento(''); setPrazo(''); setDadosDp(null); setPrioridade('Normal'); setAnexo(null); };
+  /** o formulário novo do assunto: o pedido do DP começa com o padrão dele (o mesmo do RH) */
+  const escolherTipo = (v: ac.TipoDeChamado | '') => {
+    setTipo(v); setErro('');
+    setDadosDp(v === 'admissao' ? dp.novaAdmissao() : v === 'ferias' ? dp.novasFerias() : v === 'demissao' ? dp.novaDemissao() : null);
+  };
+
   async function criar() {
-    const problema = ac.erroDoNovoChamado(tipo, (titulo + ' ' + texto).trim()) || (anexo ? ac.erroDoEnvio({ nome: anexo.name, tamanho: anexo.size }) : '');
+    if (!tipo) return;
+    // o pedido do DP: o mesmo envio do RH (confere, manda e avisa)
+    if (ehDoDp(tipo)) {
+      if (!dadosDp) return;
+      setEnviando(true);
+      try {
+        const problema = await dp.pedir(tipo, dadosDp);
+        setErro(problema);
+        if (!problema) { limpar(); setFiltro('todas'); setEscolhida(''); setModo('ver'); }
+      } finally { setEnviando(false); }
+      return;
+    }
+    const doDocumento = tipo === 'documento';
+    const problema = (doDocumento ? erroDoPedidoDeDocumento(documento, texto) : !titulo.trim() ? (tipo === 'duvida' ? 'Diga sobre o que é a dúvida.' : 'Dê um assunto à solicitação.') : ac.erroDoNovoChamado(tipo, texto))
+      || (anexo ? ac.erroDoEnvio({ nome: anexo.name, tamanho: anexo.size }) : '');
     setErro(problema);
-    if (problema || !tipo) return;
+    if (problema) return;
     setEnviando(true);
     try {
       if (anexo) await repoAreaCliente.enviar(token, 'outro', [comMime(anexo)]);
-      const id = await repoAreaCliente.abrirChamado(token, { tipo, texto: textoDoChamado(titulo, texto, prioridade, anexo?.name ?? '') });
+      const corpo = doDocumento ? textoDoPedidoDeDocumento(documento, prazo, texto, prioridade, anexo?.name ?? '') : textoDoChamado(titulo, texto, prioridade, anexo?.name ?? '');
+      const id = await repoAreaCliente.abrirChamado(token, { tipo, texto: corpo });
       if (id) {
-        setTipo(''); setTitulo(''); setTexto(''); setPrioridade('Normal'); setAnexo(null);
+        limpar();
         setFiltro('todas'); setEscolhida(id); setModo('ver');
         toast('Solicitação enviada. A resposta do escritório aparece aqui.');
       }
@@ -167,12 +207,15 @@ export function useChamados({ token, area, marcarLida }: DaCasca) {
     voltar: () => setPainelNoCelular(false),
     // a nova: primeiro o assunto (os cartões), depois o formulário
     tipos: ac.TIPOS_DE_CHAMADO, tipo, rotuloDoTipo: ac.TIPOS_DE_CHAMADO.find(t => t.valor === tipo)?.rotulo ?? '',
-    escolherTipo: (v: ac.TipoDeChamado | '') => { setTipo(v); setErro(''); },
+    escolherTipo,
+    // o formulário de cada assunto (23/11/2026: "cada solicitacao tenha uma tela diferente")
+    doDp: tipo !== '' && ehDoDp(tipo), dadosDp, mudarDadosDp: setDadosDp, nomes: dp.nomes, equipe: dp.equipeDasFerias, hoje: dp.hoje,
+    documentos: DOCUMENTOS_PARA_PEDIR, documento, mudarDocumento: setDocumento, prazo, mudarPrazo: setPrazo,
     prioridades: PRIORIDADES, prioridade, mudarPrioridade: setPrioridade,
     titulo, mudarTitulo: setTitulo, texto, mudarTexto: setTexto, anexo, mudarAnexo: setAnexo,
     aceitar: ac.ACEITAR_NO_CAMPO, limite: ac.LIMITE_DO_ENVIO,
     criar: () => { void criar(); }, erro, enviando,
-    cancelarNova: () => { setModo('ver'); setTipo(''); setErro(''); setPainelNoCelular(false); },
+    cancelarNova: () => { setModo('ver'); limpar(); setErro(''); setPainelNoCelular(false); },
     anexar: (id: string, fs: File[]) => { void anexar(id, fs); },
     // a avaliação (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
     nota, escolherNota: setNota, comentario, mudarComentario: setComentario, avaliando, reavaliar,

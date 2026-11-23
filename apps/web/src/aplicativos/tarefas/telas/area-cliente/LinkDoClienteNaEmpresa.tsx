@@ -10,6 +10,8 @@ export function LinkDoClienteNaEmpresa({ codigo, nome }: { codigo: number; nome:
   // as pessoas com senha (18/11/2026: "a area de cliente vai ter senha de acesso", "Uma por pessoa")
   const pessoas = usePessoasComSenha(codigo, link?.token ?? '', acoes.pode);
   const e = { codigo, nome };
+  // só o admin vê e mexe no link e nas pessoas com senha (23/11/2026: "apenas adm pode ver e editar isso")
+  if (!acoes.pode) return null;
   return (
     <>
     <BlocoDoLink endereco={vm.endereco} data={vm.data} podeMexer={acoes.pode} carregando={vm.carregando} ocupado={acoes.ocupada === codigo}

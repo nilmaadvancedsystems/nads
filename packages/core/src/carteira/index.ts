@@ -88,12 +88,37 @@ export interface ComissaoParaSalvar {
   percentual: number;
   /** a escondida: vai sem a % (percentual 0) e o robô calcula */
   oculta?: boolean;
+  /** quantos do serviço (Vitor, 23/11/2026: "Adiciona quantidade tambem, que as vezes tem"): o valorServico é o total; 1 = sem */
+  quantidade?: number;
+}
+
+/** A maior quantidade de um serviço numa comissão. */
+export const QUANTIDADE_MAXIMA = 999;
+
+/**
+ * A descrição gravada: o nome do serviço e, com mais de um, a quantidade ("Emissão de GTA × 3"). A quantidade vai no texto, que a
+ * regra do banco já aceita, sem um campo novo; o valorServico gravado é o total.
+ */
+export const descricaoDaComissao = (c: { servico: string; quantidade?: number }) =>
+  c.servico + ((c.quantidade ?? 1) > 1 ? ' × ' + c.quantidade : '');
+
+/** A quantidade lida da descrição ("Emissão de GTA × 3" → 3); sem ela, 1. */
+export function quantidadeDaComissao(c: Pick<Comissao, 'descricao' | 'servico'>): number {
+  const m = /\s×\s(\d{1,3})$/.exec(c.descricao || '');
+  return m && (!c.servico || c.descricao.startsWith(c.servico)) ? Math.max(1, Number(m[1])) : 1;
 }
 
 // ── serviços comissionados ──────────────────────────────────────────────────
 
-/** Um serviço que dá comissão e a % dela, que o Financeiro define. */
-export interface ServicoComissionado { id: string; nome: string; percentual: number }
+/**
+ * Um serviço que dá comissão e a % dela, que o Financeiro define. O valor do serviço (23/11/2026: "O valor que nao foi inputado no
+ * financeiro, o usuario coloca manual, mas deixa configurado no financeiro"): com ele, a pessoa só escolhe a quantidade; sem ele
+ * (0 ou ausente), digita quanto o cliente pagou.
+ */
+export interface ServicoComissionado { id: string; nome: string; percentual: number; valor?: number }
+
+/** O valor de uma unidade do serviço que o Financeiro definiu (0 = não definiu: a pessoa digita). */
+export const valorDoServico = (servicos: readonly ServicoComissionado[], servico: string): number => servicos.find(s => s.nome === servico)?.valor ?? 0;
 
 /** Os serviços com que a lista começa (Vitor, 12/11/2026); o Financeiro acrescenta outros e define a % de cada um. */
 export const SERVICOS_PADRAO: readonly string[] = [
@@ -120,6 +145,7 @@ export function conferirServicos(lista: readonly ServicoComissionado[]): string[
   if (lista.some(s => !s.nome.trim())) erros.push('Todo serviço precisa de um nome.');
   if (lista.some(s => s.nome.length > 80)) erros.push('O nome do serviço está grande demais.');
   if (lista.some(s => !(s.percentual >= 0 && s.percentual <= 100))) erros.push('A % fica entre 0 e 100.');
+  if (lista.some(s => s.valor != null && !(s.valor >= 0 && s.valor < 10_000_000))) erros.push('Confira o valor do serviço.');
   const nomes = lista.map(s => semAcento(s.nome));
   if (new Set(nomes).size !== nomes.length) erros.push('Há serviço repetido.');
   if (lista.length > 100) erros.push('São serviços demais (até 100).');
@@ -157,6 +183,7 @@ export function conferirComissao(c: ComissaoParaSalvar): string[] {
   if (c.valorServico >= 10_000_000) erros.push('Confira o valor do serviço.');
   else if (!c.oculta && c.valorServico > 0 && c.percentual > 0 && !(valorDaComissao(c.valorServico, c.percentual) > 0)) erros.push('A comissão deu zero: confira o valor.');
   if (c.cliente.length > 150 || c.servico.length > 80) erros.push('O texto está grande demais.');
+  if (c.quantidade != null && !(Number.isInteger(c.quantidade) && c.quantidade >= 1 && c.quantidade <= QUANTIDADE_MAXIMA)) erros.push('A quantidade vai de 1 a ' + QUANTIDADE_MAXIMA + '.');
   return erros;
 }
 

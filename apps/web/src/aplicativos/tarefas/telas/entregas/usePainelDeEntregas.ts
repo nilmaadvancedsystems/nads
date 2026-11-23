@@ -8,6 +8,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useEntregasDeDocumentos } from '../../dados/repo';
+import { useEmpresasDoOperador } from '../empresas/andamento';
 import { useJanelasDasEntregas } from './contextoDasJanelas';
 
 type Linha = ReturnType<typeof entregas.linhasDoPainel>[number];
@@ -30,8 +31,16 @@ export function usePainelDeEntregas() {
   const doMes = repo.doMes(competencia);
   const avisar = (titulo: string, tom: 'ok' | 'erro' | 'info' = 'ok') => retorno.aviso({ tom, titulo });
 
-  const linhas = useMemo(() => entregas.linhasDoPainel({ clientes: clientes.lista, pendentes: naRota.lista, doMes: doMes.lista, busca, filtro }),
+  // o colaborador do Fiscal (23/11/2026: "coloca uma opcao para filtrar por colaborador do fiscal"): quem o Cadastro diz que
+  // cuida da empresa no Fiscal (sem escolha, o da planilha), pelo código do Entregas e pelo nome; '' = todos
+  const [fiscal, setFiscal] = useState('');
+  const doCadastro = useEmpresasDoOperador(operador);
+  const todasAsLinhas = useMemo(() => entregas.linhasDoPainel({ clientes: clientes.lista, pendentes: naRota.lista, doMes: doMes.lista, busca, filtro }),
     [clientes.lista, naRota.lista, doMes.lista, busca, filtro]);
+  const responsavelDe = doCadastro.responsavel;
+  const porFiscal = useMemo(() => entregas.porColaboradorDoFiscal(todasAsLinhas,
+    c => responsavelDe({ nome: c.nome, codigo: Number(c.codigoOrigem) || null }, 'fiscal'), fiscal), [todasAsLinhas, responsavelDe, fiscal]);
+  const linhas = porFiscal.linhas;
   const daConta = useMemo(() => entregas.clientesDeEntrega(clientes.lista, naRota.lista), [clientes.lista, naRota.lista]);
   const numeros = entregas.numerosDoMes(daConta, doMes.lista);
   const ranking = entregas.rankingDaEquipe(doMes.lista);
@@ -56,6 +65,8 @@ export function usePainelDeEntregas() {
     categoria, setCategoria,
     competencia, setCompetencia, busca, setBusca,
     filtros: entregas.FILTROS_DO_PAINEL, filtro, setFiltro,
+    /** o colaborador do Fiscal: as opções (quem aparece na lista e "Sem responsável") e o escolhido ('' = todos) */
+    colaboradoresDoFiscal: porFiscal.opcoes, fiscal, setFiscal,
     linhas: linhas.map(l => {
       const s = entregas.rotuloDaSituacao(l.situacao, l.entregas[0]);
       return { l, sub: entregas.subtituloDaLinhaDoPainel(l), rotulo: s.rotulo, tom: s.tom === 'bad' ? 'danger' : s.tom };

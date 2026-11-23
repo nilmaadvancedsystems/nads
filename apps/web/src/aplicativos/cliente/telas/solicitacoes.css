@@ -21,7 +21,14 @@
 .cli-sol-estrelas button { background: none; border: 0; padding: 2px; font-size: 28px; line-height: 1; cursor: pointer; color: var(--texto-fraco, #9a9a9a); opacity: .45; }
 .cli-sol-estrelas button.on { color: #e5a400; opacity: 1; }
 .cli-sol-estrelas button:focus-visible { outline: 2px solid currentColor; border-radius: 6px; }
-.cli-sol-avaliar textarea { width: 100%; resize: vertical; }
+/* o comentário da avaliação com o desenho dos outros campos (23/11/2026: "esse elemento ta errado") */
+.cli-sol-avaliar textarea.cli-sol-comentario { display: block; width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--input-bg); color: var(--ink); font: inherit; font-size: 14px; line-height: 20px; box-shadow: var(--shadow-inset); }
+.cli-sol-avaliar textarea.cli-sol-comentario::placeholder { color: var(--ink-muted); }
+.cli-sol-avaliar textarea.cli-sol-comentario:focus { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* o Trocar do assunto abre a lista (23/11/2026) */
+.cli-app .cli-sol-assunto-selo .popover-wrap { display: inline-flex; }
+/* o pedido do DP dentro do painel: o formulário do RH, sem a margem da janela */
+.cli-app .cli-sol-form-dp .cli-app.cli-janela.cli-pedido { margin-top: 0; }
 .cli-sol-avaliar-feito { margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .cli-sol-estrelas-fixas { color: #e5a400; letter-spacing: 2px; }
 .cli-sol-estrelas-fixas .apagada { opacity: .3; }
