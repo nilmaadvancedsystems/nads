@@ -8186,6 +8186,16 @@ tr.lt-fora td,tr.lt-fora .lt-entrada,tr.lt-fora .lt-saida{color:var(--ink-muted)
 .insumo-caixa-total b{font-size:18px;}
 /* a % da comissão embaixo do valor (19/11/2026): o destaque recebe o clique só no select */
 .comissao-destaque .popover-wrap{pointer-events:auto;margin-top:6px;}
+/* a quantidade, o valor que o Financeiro definiu e o total do serviço (23/11/2026) */
+.comissao-qtd{display:inline-flex;align-items:center;gap:6px;}
+.comissao-qtd .icon-btn{font-size:18px;line-height:1;color:var(--ink);}
+.comissao-qtd .icon-btn:disabled{opacity:.4;cursor:default;}
+.comissao-qtd input{width:64px;height:32px;text-align:center;font-weight:600;}
+.comissao-valor-fixo{display:inline-flex;align-items:baseline;gap:10px;}
+.comissao-valor-fixo .hint{display:inline-flex;align-items:center;gap:4px;}
+.comissao-valor-fixo .hint svg{width:12px;height:12px;}
+.comissao-total{display:inline-flex;align-items:baseline;gap:10px;}
+.comissao-total b{font-size:var(--fs-15, 15px);}
 .comissao-destaque .comissao-pct-menu{height:30px;padding:0 10px;font-size:var(--fs-13);}
 .comissao-destaque .comissao-pct-menu.vazio{color:var(--ink-muted);}
 .comissao-com-destaque .registro-props > .registro-prop:nth-child(-n+3){padding-right:190px;}
