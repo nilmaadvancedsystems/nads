@@ -1799,7 +1799,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-fat-aba.ativa{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font-weight:600;}
 .cli-app .cli-fat-aba.ativa svg{color:var(--accent-ink);}
 .cli-app .cli-painel-fat.so-um{grid-template-columns:minmax(0,1fr) !important;}
-@media (max-width:560px){.cli-app .cli-fat-abas{align-self:stretch;}.cli-app .cli-fat-aba{flex:1;justify-content:center;padding:0 8px;}}
+@media (max-width:560px){.cli-app .cli-fat-abas{align-self:stretch;gap:2px;}.cli-app .cli-fat-aba{flex:1 1 auto;min-width:0;justify-content:center;padding:0 6px;white-space:nowrap;}.cli-app .cli-fat-aba > svg{display:none;}}
 
 /* a escolha do banco na aba Banco do Faturamento (13/11/2026): todas as contas ou uma, com o logo */
 .cli-app .cli-fb-contas{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 18px;}
@@ -2397,3 +2397,53 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 
 /* o passo atual do pedido do DP (23/11/2026, ficha processos-visiveis) */
 .cli-sol-passo{margin:6px 0 0;font-size:13px;}
+
+/* a parte Impostos do Faturamento e impostos (23/11/2026; "consegue melhorar isso?") */
+.cli-impostos-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px;}
+.cli-imp-espaco{flex:1;}
+.cli-impostos{font-variant-numeric:tabular-nums;}
+.cli-impostos th,.cli-impostos td{white-space:nowrap;}
+.cli-impostos .cli-imp-divisa{border-right:1px solid var(--border);}
+.cli-impostos .cli-imp-total{background:rgba(127,127,127,.06);}
+.cli-imp-vazio{color:var(--ink-muted);opacity:.45;}
+.cli-imp-mes{font-weight:500;}
+.cli-imp-tag{margin-left:8px;font-size:10.5px;padding:1px 7px;border-radius:99px;background:rgba(47,122,216,.14);color:#2f7ad8;font-weight:600;vertical-align:1px;}
+.cli-imp-agora td{background:rgba(47,122,216,.05);}
+.cli-impostos th.num,.cli-impostos td.num{padding-left:16px;}
+.cli-impostos thead th:first-child,.cli-impostos td:first-child{padding-left:16px;}
+.cli-impostos thead th:last-child,.cli-impostos td:last-child{padding-right:16px;}
+.cli-impostos tbody td{padding-top:9px;padding-bottom:9px;}
+.cli-impostos tfoot td{padding:12px 12px;border-top:2px solid var(--border);font-weight:700;font-size:13px;background:rgba(127,127,127,.04);}
+.cli-impostos .cli-imp-agora td.cli-imp-total{background:rgba(47,122,216,.08);}
+.cli-impostos .cli-imp-pct{color:var(--ink-muted);font-weight:600;}
+.cli-app .cli-imp-numeros{overflow:visible;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.cli-imp-lista{display:none;list-style:none;margin:0;padding:0;}
+.cli-imp-lista > li{border-top:1px solid var(--border);}
+.cli-imp-lista > li:first-child{border-top:0;}
+.cli-imp-lista > li.cli-imp-agora{background:rgba(47,122,216,.06);border-radius:8px;}
+.cli-imp-lista-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 4px;}
+.cli-imp-lista summary{cursor:pointer;list-style:none;}
+.cli-imp-lista summary::-webkit-details-marker{display:none;}
+.cli-imp-lista summary::after{content:'';flex:none;width:7px;height:7px;margin-left:2px;border-right:1.5px solid var(--ink-muted);border-bottom:1.5px solid var(--ink-muted);transform:rotate(45deg) translateY(-2px);transition:transform .15s;}
+.cli-imp-lista details[open] summary::after{transform:rotate(225deg) translateY(-2px);}
+.cli-imp-lista-topo .cli-imp-mes{flex:1;min-width:0;}
+.cli-imp-lista-total{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-imp-lista-pct{margin-left:8px;font-size:12px;font-weight:600;color:var(--ink-muted);}
+.cli-imp-lista-detalhe{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:0;padding:0 4px 12px;font-size:13px;font-variant-numeric:tabular-nums;}
+.cli-imp-lista-detalhe .cli-imp-par{display:contents;}
+.cli-imp-lista-detalhe dt{color:var(--ink-muted);}
+.cli-imp-lista-detalhe dd{margin:0;text-align:right;font-weight:600;}
+.cli-imp-lista > li.cli-imp-lista-soma{border-top:2px solid var(--border);font-weight:700;}
+@media (max-width:760px){
+  .cli-imp-lista{display:block;}
+  .cli-app .cli-imp-tabela{display:none;}
+  .cli-app .cli-imp-aviso{display:block;font-size:12px;}
+  /* os três números viram um cartão só, um por linha (sem o carrossel) */
+  .cli-app .cli-numeros.cli-imp-numeros{display:block !important;overflow:visible;padding:4px 14px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio);background:var(--cli-cartao);box-shadow:var(--cli-sombra);}
+  .cli-app .cli-numeros.cli-imp-numeros > .cli-numero{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:0 10px;padding:10px 0;border:0;border-top:1px solid var(--border);border-radius:0;background:none;box-shadow:none;}
+  .cli-app .cli-numeros.cli-imp-numeros > .cli-numero:first-child{border-top:0;}
+  .cli-app .cli-numeros.cli-imp-numeros .cli-sobre{grid-column:1;font-size:11px;}
+  .cli-app .cli-numeros.cli-imp-numeros .cli-numero-valor{grid-column:2;grid-row:1 / span 2;font-size:17px;align-self:center;}
+  .cli-app .cli-numeros.cli-imp-numeros .hint{grid-column:1;font-size:12px;}
+  .cli-app .cli-impostos-topo .cli-botao-excel{padding:6px 10px;font-size:13px;}
+}

@@ -31,13 +31,14 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone; administrativo
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
   { id: 'dp', rotulo: 'RH', icone: 'equipe' }, // (16/11/2026: "muda isso para RH") era Registro
   { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
-  { id: 'faturamento', rotulo: 'Faturamento', icone: 'barChart', administrativo: true },
+  // com os impostos do ano dentro (23/11/2026: "impostos entram dentro do faturamento")
+  { id: 'faturamento', rotulo: 'Faturamento e impostos', icone: 'barChart', administrativo: true },
   { id: 'empresa', rotulo: 'Dados cadastrais', icone: 'predio', administrativo: true },
   { id: 'contato', rotulo: 'Fale com o escritório', icone: 'atendimento', administrativo: true },
 ];
 /** O que a aba aberta pelo irPara já faz ao abrir: abrir a conversa de um chamado, ou o formulário com o assunto e o título. */
 export interface PedidoDaTela { chamado?: string; novoChamado?: { tipo: ac.TipoDeChamado; titulo: string }; /** a busca já preenchida (a busca geral, 13/11/2026) */ busca?: string }
-const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias', enviar: 'documentos', falar: 'contato' };
+const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias', enviar: 'documentos', falar: 'contato', impostos: 'faturamento' };
 
 export function useAreaCliente() {
   const { token = '', aba } = useParams();
