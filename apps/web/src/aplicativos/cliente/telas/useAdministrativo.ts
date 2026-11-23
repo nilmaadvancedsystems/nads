@@ -138,7 +138,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   const [diaEmFoco, setDiaEmFoco] = useState<number | null>(null);
   const [anoAberto, setAnoAberto] = useState(false);
   // as abas do Faturamento (13/11/2026: "muita informação aqui"; a escolhida: abas dentro da tela)
-  const [secaoEscolhida, setSecao] = useState<'mes' | 'banco' | 'clientes'>('mes');
+  const [secaoEscolhida, setSecao] = useState<'mes' | 'banco' | 'clientes' | 'impostos'>('mes');
   // a escolha do banco na aba Banco (13/11/2026: "quero uma subseleção por banco"); '' = todas as contas
   const [bancoEscolhido, setBancoEscolhido] = useState('');
   // os lançamentos do mês (13/11/2026: "escolhendo um banco, os lançamentos do mês"): lidos ao abrir a aba Banco
@@ -292,6 +292,8 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     { id: 'mes' as const, rotulo: 'O mês', icone: 'barChart' as const },
     ...(banco ? [{ id: 'banco' as const, rotulo: 'Banco', icone: 'landmark' as const }] : []),
     ...(n ? [{ id: 'clientes' as const, rotulo: 'Clientes', icone: 'equipe' as const }] : []),
+    // os impostos do ano (23/11/2026: "impostos entram dentro do faturamento")
+    { id: 'impostos' as const, rotulo: 'Impostos', icone: 'recibo' as const },
   ];
   const secao = secoes.some(x => x.id === secaoEscolhida) ? secaoEscolhida : 'mes';
 
@@ -377,14 +379,6 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
       if (!e) return;
       baixarArquivo('faturamento-' + formatos.slug(e.nome) + '.xlsx', new Blob([ac.planilhaDoFaturamento(e, fonte)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       toast('Planilha baixada.');
-    },
-    /** os impostos das guias emitidas no ano (23/11/2026, ficha relatorio-de-impostos; o dono: "Faz agora") */
-    temImpostos: area.guias.some(g => g.competencia.startsWith(String(hoje.getFullYear()))),
-    baixarImpostosDoAno: () => {
-      const ano = hoje.getFullYear();
-      const nome = e?.nome || area.resumo?.empresas[0]?.nome || 'empresa';
-      baixarArquivo('impostos-' + ano + '-' + formatos.slug(nome) + '.xlsx', new Blob([ac.planilhaDosImpostos(nome, area.guias, ano)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-      toast('Planilha dos impostos das guias de ' + ano + ' baixada.');
     },
   };
 }

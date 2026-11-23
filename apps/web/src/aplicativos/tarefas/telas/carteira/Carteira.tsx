@@ -2,7 +2,7 @@
 // fique resumido para o financeiro fazer o pagamento"). Por enquanto só o Vitor (carteiraLiberada); os outros veem a tela
 // "em desenvolvimento". O lado do Financeiro (Comissões da equipe, Enviar holerites) fica no Financeiro, e a Visão geral e as
 // Finanças pessoais saíram (12/11/2026): ficam as Comissões e os Holerites e pagamentos.
-import { carteiraLiberada } from '../../casca/navegacao';
+import { ihulParaTodos } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { CarteiraEmBreve } from './CarteiraEmBreve';
 import { Insumos } from './Insumos';
@@ -18,7 +18,8 @@ export function Carteira({ pagina }: { pagina: string }) {
   const m = useMes();
   // os Insumos são de toda a equipe (12/11/2026)
   if (pagina === 'insumos') return <Insumos />;
-  if (!carteiraLiberada(operador)) return <CarteiraEmBreve />;
+  // para todo o escritório desde 23/11/2026 ("publica o ihul pra todo mundo")
+  if (!ihulParaTodos(operador)) return <CarteiraEmBreve />;
   // o Financeiro (19/11/2026): as comissões em cima e, embaixo, os holerites e pagamentos, numa tela só
   return (
     <div className="carteira-financeiro">

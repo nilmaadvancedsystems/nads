@@ -13,6 +13,7 @@ import { useVisualizar } from './useVisualizar';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
+import { ImpostosDoAno } from './Impostos';
 import './faturamento.css';
 
 /**
@@ -256,7 +257,7 @@ export function Faturamento(props: DaCasca) {
   return (
     <>
       <div className="cli-titulo cli-titulo-fat" ref={topo}>
-        <div><MarcaDaTela /><h1 className="page-title">Faturamento</h1><AjudaDaTela /></div>
+        <div><MarcaDaTela /><h1 className="page-title">Faturamento e impostos</h1><AjudaDaTela /></div>
         {vm.tem && (
           <span className="cli-acoes">
             {vm.empresas.length > 1 && (
@@ -266,7 +267,6 @@ export function Faturamento(props: DaCasca) {
             )}
             <SeletorMes valor={vm.mes} onMudar={vm.abrirMes} rotulo="Mês do painel" max={vm.maxMes} />
             <button type="button" className="btn cli-botao-excel" onClick={vm.baixarPlanilha}><LogoExcel />Baixar planilha</button>
-            {vm.temImpostos && <button type="button" className="btn cli-botao-excel" onClick={vm.baixarImpostosDoAno} title="O valor das guias que o escritório emitiu no ano, por imposto e mês"><LogoExcel />Impostos do ano</button>}
           </span>
         )}
       </div>
@@ -409,6 +409,9 @@ export function Faturamento(props: DaCasca) {
           {/* ---------- os clientes ----------
               (16/11/2026, "muita informação") como vendeu numa faixa só (a barra e os três valores lado a lado) e os
               maiores clientes sem a % e sem o "23 no mês" (o "Mais 18 clientes" já fecha a conta) */}
+          {/* os impostos do ano (23/11/2026: "impostos entram dentro do faturamento") */}
+          {vm.secao === 'impostos' && <ImpostosDoAno {...props} />}
+
           {vm.secao === 'clientes' && <>
             <section className="card cli-painel-como cli-fat-como">
               <div className="card-head"><h3>Como vendeu</h3></div>

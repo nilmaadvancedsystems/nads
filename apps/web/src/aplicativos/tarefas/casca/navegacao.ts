@@ -271,6 +271,9 @@ export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDire
 /** A Carteira por enquanto só para o Vitor (12/11/2026); os outros veem o botão e a tela "em desenvolvimento". */
 /** quem tem a Carteira inteira: a liberada (o Vitor) e, desde 19/11/2026, o Diretor e o Dono (o nível da conta) */
 export const carteiraLiberada = (op: Operador | null) => !!op && (carteira.liberadaPara(op.nome) || usuarios.nivelDeDiretor(op.nivel));
+/** o Ihul! (o Seu Financeiro de cada pessoa) para todo o escritório (Vitor, 23/11/2026: "publica o ihul pra todo mundo"); as páginas
+ *  da equipe no Financeiro continuam pela carteiraLiberada */
+export const ihulParaTodos = (op: Operador | null) => !!op;
 /** as páginas do Financeiro que eram da Carteira (12/11/2026); os endereços antigos da Carteira levam para elas */
 export const PAGINAS_DA_CARTEIRA_NO_FINANCEIRO = ['comissoes-equipe', 'holerites-equipe'];
 export const CARTEIRA_PARA_O_FINANCEIRO: Record<string, string> = { pagamentos: 'comissoes-equipe', enviar: 'holerites-equipe' };
@@ -318,8 +321,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'arquivo-fisico' || novidadeLigada('arquivo-fisico')) &&
     // a Carteira só no modo desenvolvedor (Vitor, 18/11/2026: "remove o carteira, e apenas no desenvolvedor!!"): some da gaveta e o
     // link direto não abre. Na versão final, só para o Diretor e o Dono, pelo nível da conta (Vitor, 19/11/2026: "divulga a versao
-    // final do carteira apenas para os diretores, quero testar, APENAS PARA DIRETORES NA VERSAO FINAL")
-    (a.id !== 'carteira' || modoDesenvolvedor() || usuarios.nivelDeDiretor(op.nivel)) &&
+    // final do carteira apenas para os diretores, quero testar, APENAS PARA DIRETORES NA VERSAO FINAL"); desde 23/11/2026, para todos
+    // ("publica o ihul pra todo mundo")
+    (a.id !== 'carteira' || ihulParaTodos(op)) &&
     // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
     (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
@@ -327,8 +331,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da
     // Carteira (Comissões da equipe e Enviar holerites) só para quem já tem a Carteira, como antes
     // quem tem a Carteira vê os Insumos na janela Impressões e materiais do Financeiro dela (19/11/2026): a aba some
-    .map(a => (a.id === 'carteira' && carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => p.id !== 'insumos') }
-      : a.id === 'carteira' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel' || p.id === 'insumos') }
+    .map(a => (a.id === 'carteira' && ihulParaTodos(op) ? { ...a, paginas: a.paginas.filter(p => p.id !== 'insumos') }
+      : a.id === 'carteira' && !ihulParaTodos(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel' || p.id === 'insumos') }
       : a.id === 'financeiro' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => !PAGINAS_DA_CARTEIRA_NO_FINANCEIRO.includes(p.id)) } : a))
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
