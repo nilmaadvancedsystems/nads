@@ -4661,6 +4661,10 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-barra .steps{flex:none;}
 /* o Segmentado numa barra do topo fica na mesma linha da busca e dos botões (a margem de baixo do .steps o subia; 22/10/2026) */
 .tarefas-barra-topo .steps{margin:0;}
+/* o mesmo na fileira do alto do Início (o Lista | Por pessoa da Delegadas por mim; 23/11/2026: "Tá desalinhado, alinhe os elementos"):
+   sem a margem de baixo e com os 32 px dos botões ao lado, como na barra do SIEG */
+.ini-topo .steps{margin:0;flex-wrap:nowrap;flex:none;}
+.ini-topo .step-pill{min-height:32px;}
 /* a lista das notas rola só com a página: sem altura máxima, a caixa não ganha a segunda barra (19/10/2026); no celular, ainda rola de lado */
 .table-wrap.nf-tabela-wrap{max-height:none;}
 .nf-lista td{vertical-align:middle;}
