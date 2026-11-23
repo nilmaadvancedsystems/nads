@@ -69,6 +69,9 @@ export const NOVIDADES = {
   /** a ferramenta nads → SCI (23/11/2026, docs/sci): as planilhas de importação do nads viram a planilha que o SCI importa,
    *  sem banco ("é só um intermediador entre o NADS e SCI"); nas Ferramentas, só no modo desenvolvedor até o teste no SCI */
   sci: { desde: '23/11/2026', aprovada: false },
+  /** o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando no nads): o mês feito de cada empresa no ano,
+   *  a situação e a pendência; o Contábil e o admin no modo desenvolvedor, e o Fernando também fora dele ("Fernando primeiro") */
+  'controle-contabil': { desde: '23/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
