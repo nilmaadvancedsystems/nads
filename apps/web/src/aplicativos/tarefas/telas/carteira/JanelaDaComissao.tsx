@@ -93,6 +93,8 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
           {destaque && (
             <div className="comissao-destaque">
               <span>Comissão</span><b className="num" aria-live="polite">{formatos.reais(vm.valor)}</b>
+              {/* a comissão muda enquanto preenche (Vitor, 23/11/2026: "valor que mude o 0,00"): sem o serviço não há a %, e diz o que falta */}
+              {!vm.servico && <span>Escolha o serviço para calcular</span>}
               {/* a % da comissão, só para o Diretor e o Dono, num select de 5 em 5 até 50% embaixo do valor (Vitor, 19/11/2026: "coloca so uma
                   box de select abaixo do valor comissao, que aumenta de 5 em 5 e chega ate 50%"); "A do serviço" volta para a % do serviço */}
               {vm.podeDefinirPercentual && (
@@ -174,11 +176,6 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                 ) : (
                   <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
                 )}
-              </Propriedade>
-            )}
-            {vm.comQuantidade && vm.qtd > 1 && !(vm.oculta && comissao) && (
-              <Propriedade icone="list" rotulo="Total do serviço">
-                <span className="comissao-total"><span className="hint num">{vm.qtd} × {formatos.reais(vm.unidade)}</span><b className="num">{formatos.reais(vm.total)}</b></span>
               </Propriedade>
             )}
             {/* só o valor, sem a porcentagem (Vitor, 13/11/2026: "oculte a porcentagem para o usuario"; "o valor da comissao aparece, menos a
