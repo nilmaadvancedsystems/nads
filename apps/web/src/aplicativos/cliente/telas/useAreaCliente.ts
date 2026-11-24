@@ -20,6 +20,7 @@ import { passosDaTela, passosDoTutorial } from '../dados/tutorial';
 import { lerPrimeirosPassos, marcarTelaVista, marcarTourConcluido, ocultarPrimeirosPassos, primeirosPassos } from '../dados/primeirosPassos';
 import { jaViuOTutorial, marcarTutorialVisto } from '../dados/tutorialVisto';
 import { useCopiar } from './useCopiar';
+import { usePolitica } from './usePolitica';
 
 export type IdAba = 'inicio' | 'documentos' | 'guias' | 'dp' | 'chamados' | 'faturamento' | 'empresa' | 'contato';
 /** As abas do menu; as do Administrativo (12/11/2026: o Faturamento, os Dados cadastrais e o Fale com o escritório, que
@@ -170,9 +171,14 @@ export function useAreaCliente() {
   const listaDosPrimeiros = area.carregado && area.valido
     ? primeirosPassos({ abas: idsDasAbas.split(','), guardado, temEnvio: area.envios.length > 0, temPedido: area.chamados.length > 0 })
     : null;
+  // o aceite da política de privacidade, uma vez por versão (22/11/2026, ficha aceite-lgpd); no exemplo, só com ?politica
+  // no endereço (24/11/2026: "quero ver como os termos da lgpd aparecem"; nada é gravado). O tutorial espera o "Concordo"
+  // (24/11/2026: "Corrigir os dois"; antes, ele abria por cima da política)
+  const verPolitica = area.exemplos && typeof location !== 'undefined' && new URLSearchParams(location.search).has('politica');
+  const politicaPendente = usePolitica(token, area.carregado && area.valido && !area.pedeLogin && (!area.exemplos || verPolitica));
   useEffect(() => {
-    if (area.carregado && area.valido && token && !jaViuOTutorial(token)) setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
-  }, [area.carregado, area.valido, token]);
+    if (area.carregado && area.valido && token && !politicaPendente && !jaViuOTutorial(token)) setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
+  }, [area.carregado, area.valido, token, politicaPendente]);
 
   // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá. Desde 17/11/2026 (ficha
   // aviso-de-resposta do plano do Acessórias) o lido fica guardado neste aparelho e não volta a cada visita (sinoLido.ts)

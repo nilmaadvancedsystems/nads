@@ -23,7 +23,6 @@ import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
 import { EntrarComSenha } from './EntrarComSenha';
-import { usePolitica } from './usePolitica';
 import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
 import { Contato, Empresa, Faturamento } from './Administrativo';
@@ -52,8 +51,7 @@ function Area() {
   // o aviso "Falta mandar" do sino abre o envio já no tipo (17/11/2026, ficha o-que-falta-mandar)
   const abrirEnvioDoTipo = useJanelaDeEnvioDoTipo(daCasca);
   const abrirPendencia = useJanelaDaPendencia(daCasca);
-  // o aceite da política de privacidade, uma vez por versão (22/11/2026, ficha aceite-lgpd; desligado até o escritório aprovar o texto)
-  usePolitica(vm.token, area.carregado && area.valido && !area.pedeLogin && !area.exemplos);
+  // o aceite da política de privacidade fica em useAreaCliente (24/11/2026: o tutorial espera o "Concordo")
   // a gaveta (celular): o foco vai para o ✕ quando abre e volta para o ☰ quando fecha
   const xDaGaveta = useRef<HTMLButtonElement>(null);
   const botaoDoMenu = useRef<HTMLButtonElement>(null);
