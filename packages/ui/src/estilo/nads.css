@@ -8430,6 +8430,8 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
    embaixo; na tabela de lançamentos, as partidas de um múltiplo com o filete à esquerda */
 .modal.lt-janela.sci-janela-multiplo{max-width:1080px;width:min(1080px,100%);}
 .sci-multiplo-topo{margin-bottom:4px;}
+/* a caixinha do múltiplo, sozinha na primeira linha do formulário */
+.sci-form .sci-marca-multiplo{grid-column:1/-1;margin:0 0 12px;}
 .sci-multiplo{max-height:46vh;overflow:auto;}
 .sci-multiplo table{width:100%;table-layout:fixed;}
 .sci-multiplo .steps{flex-wrap:nowrap;white-space:nowrap;}

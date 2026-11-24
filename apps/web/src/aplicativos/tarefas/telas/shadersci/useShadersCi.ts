@@ -224,9 +224,9 @@ export function useShadersCi() {
     // o formulário, na janela do lançamento
     form, editando, janela,
     /** o botão Novo lançamento: a janela com o formulário limpo */
-    novoLancamento: () => { setForm(FORMULARIO_VAZIO); setEditando(null); setJanela(true); },
+    novoLancamento: () => { setForm(FORMULARIO_VAZIO); setEditando(null); setMultiplo(null); setJanela(true); },
     /** fecha a janela (o Esc e o ×): o que não foi lançado some */
-    fecharJanela: () => { setJanela(false); setForm(FORMULARIO_VAZIO); setEditando(null); setPesquisa(null); },
+    fecharJanela: () => { setJanela(false); setForm(FORMULARIO_VAZIO); setEditando(null); setMultiplo(null); setPesquisa(null); setPesquisaDaPartida(null); },
     mudar: (campo: keyof Formulario, v: string) => setForm(f => ({ ...f, [campo]: v })),
     contaD: conta(contaD, 'debito'),
     contaC: conta(contaC, 'credito'),
@@ -262,14 +262,38 @@ export function useShadersCi() {
       const l = guardado.lancamentos.find(x => x.id === id);
       if (!l) return;
       // a partida de um múltiplo abre o múltiplo inteiro
-      if (l.multiplo) { abrirMultiplo(l.multiplo); return; }
+      if (l.multiplo) { abrirMultiplo(l.multiplo); setEditando(null); setJanela(true); return; }
       setEditando(id); setForm(doLancamento(l)); setJanela(true);
     },
     // ------------------------------------------------------------------------------------ o lançamento múltiplo
     multiplo,
     /** o botão Lançamento múltiplo: um débito e um crédito para começar */
-    novoMultiplo: () => setMultiplo({ id: idNovo(), editando: false, data: '', documento: '', partidas: [partidaVazia('debito'), partidaVazia('credito')] }),
-    fecharMultiplo: () => { setMultiplo(null); setPesquisa(null); setPesquisaDaPartida(null); },
+    /**
+     * A caixinha "Lançamento múltiplo" do Novo lançamento (24/11/2026: "coloca uma opção de marcar"): marcada, o que já foi
+     * digitado vira a primeira partida de débito e a primeira de crédito; desmarcada, a primeira de cada lado volta para o
+     * lançamento simples. Na edição ela não muda (o lançamento continua do tipo que era)
+     */
+    marcarMultiplo(sim: boolean) {
+      if (editando || multiplo?.editando) return;
+      if (sim) {
+        const doLado = (lado: sci.LadoDoLancamento): PartidaDoFormulario => ({
+          ...partidaVazia(lado), conta: lado === 'debito' ? form.debito : form.credito, participante: lado === 'debito' ? form.participanteD : form.participanteC,
+          valor: form.valor, historico: form.historico, complemento: form.complemento,
+        });
+        setMultiplo({ id: idNovo(), editando: false, data: form.data, documento: form.documento, partidas: [doLado('debito'), doLado('credito')] });
+        return;
+      }
+      if (multiplo) {
+        const d = multiplo.partidas.find(pt => pt.lado === 'debito');
+        const c = multiplo.partidas.find(pt => pt.lado === 'credito');
+        const base = d || c;
+        setForm({
+          ...FORMULARIO_VAZIO, data: multiplo.data, documento: multiplo.documento, debito: d?.conta || '', credito: c?.conta || '',
+          participanteD: d?.participante || '', participanteC: c?.participante || '', valor: base?.valor || '', historico: base?.historico || '', complemento: base?.complemento || '',
+        });
+      }
+      setMultiplo(null);
+    },
     mudarDoMultiplo: (campo: 'data' | 'documento', v: string) => mudarMultiplo(m => ({ ...m, [campo]: v })),
     mudarPartida: (chave: string, campo: CampoDaPartida, v: string) =>
       mudarMultiplo(m => ({ ...m, partidas: m.partidas.map(pt => (pt.chave === chave ? { ...pt, [campo]: v } : pt)) })),
@@ -307,7 +331,9 @@ export function useShadersCi() {
         const resto = ls.filter(l => l.multiplo !== multiplo.id);
         return [...resto.slice(0, i), ...novas, ...resto.slice(i)];
       });
-      setMultiplo(null);
+      // a edição fecha; o novo deixa a janela aberta, no múltiplo, para o próximo (na mesma data)
+      if (multiplo.editando) { setMultiplo(null); setJanela(false); }
+      else setMultiplo({ id: idNovo(), editando: false, data: multiplo.data, documento: '', partidas: [partidaVazia('debito'), partidaVazia('credito')] });
       toast(multiplo.editando ? 'Lançamento múltiplo alterado.' : 'Lançamento múltiplo lançado: ' + novas.length + ' partidas.');
     },
     // a pesquisa no plano (F2 ou a lupa)

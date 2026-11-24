@@ -17,8 +17,8 @@ export function ShadersCi() {
   return (
     <section className="sci">
       {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
-      {vm.janela && <JanelaDoLancamento vm={vm} />}
-      {vm.multiplo && <JanelaDoMultiplo vm={vm} />}
+      {/* a mesma janela: o lançamento simples ou, com a caixinha marcada, o múltiplo */}
+      {vm.janela && (vm.multiplo ? <JanelaDoMultiplo vm={vm} /> : <JanelaDoLancamento vm={vm} />)}
       {vm.pesquisa === 'historico' ? <JanelaDosHistoricos vm={vm} /> : vm.pesquisa && <JanelaDoPlano vm={vm} lado={vm.pesquisa} />}
       <div className="tarefas-barra-topo">
         {vm.empresa && <>
@@ -46,8 +46,6 @@ export function ShadersCi() {
         )}
         {/* o Novo lançamento ao lado da Planilha do SCI (24/11/2026: "vai abrir uma popup, ai vai aparecer os dados para fazer o lançamento") */}
         {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoLancamento}><Icone nome="plus" />Novo lançamento</button>}
-        {/* o lançamento múltiplo (24/11/2026: "uma funcao chamada lançamento multiplo, onde debito e credito tem que bater com partidas simples") */}
-        {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoMultiplo}><Icone nome="list" />Lançamento múltiplo</button>}
         {vm.empresa && <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.exportar} title="A planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)"><LogoExcel />Planilha do SCI</button>}
       </div>
       {!vm.empresa
@@ -171,6 +169,7 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
         <button type="submit" form="sci-form" className="btn btn-primary" disabled={vm.vazio}><Icone nome={vm.editando ? 'check' : 'plus'} />{vm.editando ? 'Salvar alteração' : 'Lançar'}</button>
       </>}>
       <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
+        <CaixinhaDoMultiplo vm={vm} />
         {/* a data menor, já no formato ao digitar, e o calendário (24/11/2026: "diminui o input de data, tá grande, ao preencher, ele já coloca no formato") */}
         <div className="field sci-meia sci-data">
           {/* o dia da semana ao lado do rótulo (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar") */}
@@ -193,6 +192,20 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
 
 // ------------------------------------------------------------------------------------------------- o lançamento múltiplo
 /**
+ * A caixinha no alto do Novo lançamento (24/11/2026: "coloca uma opção de marcar"; o Vitor escolheu: "No Novo lançamento do
+ * minimum, uma caixinha 'Lançamento múltiplo' que, marcada, abre vários débitos e créditos que têm de bater"). Na edição, só
+ * mostra o tipo.
+ */
+function CaixinhaDoMultiplo({ vm }: { vm: VmShadersCi }) {
+  const editando = !!vm.editando || !!vm.multiplo?.editando;
+  return (
+    <label className="tdl-ja-fazendo sci-marca-multiplo" title={editando ? 'Na edição o tipo do lançamento não muda' : undefined}>
+      <input type="checkbox" checked={!!vm.multiplo} disabled={editando} onChange={e => vm.marcarMultiplo(e.target.checked)} />Lançamento múltiplo
+    </label>
+  );
+}
+
+/**
  * A janela do lançamento múltiplo (24/11/2026: "aqui tem uma exportação de lançamentos multiplos do sci, tenta entender como
  * funciona e aplica no nads, uma funcao chamada lançamento multiplo, onde debito e credito tem que bater com partidas simples"):
  * como a transação do SCI, a data e o documento valem para todas as partidas; cada partida tem um lado só (débito ou crédito),
@@ -203,20 +216,22 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
 function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
   const m = vm.multiplo!;
   const t = vm.totaisDoMultiplo;
-  useEffect(() => { document.getElementById('sci-mp-data')?.focus(); }, []);
+  // abre na primeira conta (o que já foi digitado no simples vem junto)
+  useEffect(() => { document.querySelector<HTMLInputElement>('.sci-mp-conta input')?.focus(); }, []);
   const pronto = !vm.problemasDoMultiplo.length;
   return (
-    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Lançamento múltiplo'} fechar={vm.fecharMultiplo} className="sci-janela-multiplo"
+    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Novo lançamento'} fechar={vm.fecharJanela} className="sci-janela-multiplo"
       pe={<>
         {pronto
           ? <span className="hint">Débitos e créditos batem · F2 pesquisa · Esc fecha</span>
           : <p className="hint sci-falta" title={vm.problemasDoMultiplo.join('\n')}><Icone nome="alert" />{vm.problemasDoMultiplo.slice(0, 3).join(' · ') + (vm.problemasDoMultiplo.length > 3 ? ' …' : '')}</p>}
         <span className="tarefas-barra-espaco" />
-        <button type="button" className="btn btn-ghost" onClick={vm.fecharMultiplo}>{m.editando ? 'Cancelar' : 'Fechar'}</button>
+        <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{m.editando ? 'Cancelar' : 'Fechar'}</button>
         <button type="submit" form="sci-form-multiplo" className="btn btn-primary" disabled={!pronto}><Icone nome={m.editando ? 'check' : 'plus'} />{m.editando ? 'Salvar alteração' : 'Lançar múltiplo'}</button>
       </>}>
       <form id="sci-form-multiplo" className="registro-corpo" onSubmit={e => { e.preventDefault(); vm.gravarMultiplo(); }}>
         <div className="sci-form sci-multiplo-topo">
+          <CaixinhaDoMultiplo vm={vm} />
           <div className="field sci-terco sci-data">
             <label htmlFor="sci-mp-data">Data{vm.diaDaSemanaDoMultiplo && <span className="sci-dia-semana"> · {vm.diaDaSemanaDoMultiplo}</span>}</label>
             <CampoDataComCalendario id="sci-mp-data" rotulo="Data" valor={m.data} onMudar={v => vm.mudarDoMultiplo('data', v)} bloqueado={vm.diaSemLancamento} />
