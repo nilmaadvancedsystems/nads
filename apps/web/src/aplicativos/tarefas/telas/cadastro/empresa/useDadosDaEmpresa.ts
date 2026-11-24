@@ -194,9 +194,12 @@ export function useDadosDaEmpresa(rota: string) {
     /** a empresa está no SCI (24/11/2026): só as ligadas aparecem no minimum; o interruptor segue a novidade do minimum */
     comSci,
     noSci: c.cadastro.noSci === true,
-    definirNoSci(sim: boolean) {
+    /** o plano de contas do SCI (24/11/2026: "colocar o plano de contas, referenciar para nao ficar selecionando"); null = falta escolher */
+    planoSci: c.cadastro.planoSci ?? null,
+    planosDoSci: empresas.cadastro.PLANOS_DO_SCI,
+    definirNoSci(sim: boolean, plano?: empresas.cadastro.PlanoDoSci) {
       if (c.carregando) return;
-      const novo = empresas.cadastro.definirNoSci(c.cadastro, sim, c.por, new Date());
+      const novo = empresas.cadastro.definirNoSci(c.cadastro, sim, c.por, new Date(), plano);
       if (novo !== c.cadastro) c.salvar(novo);
     },
     /** o lembrete de vencimento desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'padrao' = como o escritório */

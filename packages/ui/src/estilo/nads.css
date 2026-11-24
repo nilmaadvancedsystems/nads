@@ -8400,17 +8400,22 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 0 64px;
   background:radial-gradient(ellipse 60% 45% at 50% 38%,var(--accent-soft),transparent 70%);}
 .sci-inicio > *{animation:sciChega .6s cubic-bezier(.23,1,.32,1) both !important;}
-.sci-inicio-selo{width:56px;height:56px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:18px;
-  color:var(--accent);background:var(--surface);border:1px solid var(--accent-border);box-shadow:0 8px 24px -12px var(--accent);}
-.sci-inicio > .sci-inicio-selo{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
+/* a logo (24/11/2026: no lugar da maletinha): a palavra "minımum" numa serifada bem pesada (a Bodoni MT Black do Office; sem
+   ela, a Georgia em negrito), na cor do texto */
+.sci-inicio-logo{display:block;margin-bottom:20px;font-family:"Bodoni MT Black","Bodoni 72","Bodoni MT",Didot,Georgia,"Times New Roman",serif;
+  font-weight:900;font-size:56px;line-height:1;letter-spacing:-.01em;color:var(--ink);user-select:none;}
+.sci-inicio > .sci-inicio-logo{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
 .sci-inicio-titulo{margin:0;font-size:32px;line-height:1.15;font-weight:700;letter-spacing:-.02em;color:var(--ink);}
 .sci-inicio > .sci-inicio-titulo{animation-delay:.08s !important;}
 .sci-inicio-sub{margin:8px 0 24px;font-size:var(--fs-14);color:var(--ink-muted);}
 .sci-inicio > .sci-inicio-sub{animation-delay:.14s !important;}
 .sci-inicio-busca{position:relative;z-index:2;}
 .sci-inicio > .sci-inicio-busca{animation-delay:.22s !important;}
-.sci-inicio-busca .busca-curta.empresa-da-barra{width:420px;height:40px;}
-.sci-inicio-busca .nf-achados{text-align:left;}
+/* a busca maior (24/11/2026: "aumenta o input da empresa"), e a lista de achados da largura dela */
+.sci-inicio-busca .busca-curta.empresa-da-barra{width:600px;}
+.sci-inicio-busca .busca-curta.empresa-da-barra input[type="text"]{min-height:52px;padding:12px 18px 12px 48px;font-size:var(--fs-16);border-radius:10px;}
+.sci-inicio-busca .busca-curta.empresa-da-barra > svg{left:17px;width:20px;height:20px;}
+.sci-inicio-busca .nf-achados{text-align:left;width:100%;}
 .sci-inicio-lista{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,240px));gap:8px;justify-content:center;max-width:100%;
   animation:none !important;}
 .sci-inicio-lista > li{min-width:0;animation:sciChega .5s cubic-bezier(.23,1,.32,1) both !important;}
@@ -8421,9 +8426,9 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-inicio > .sci-inicio-mais{animation-delay:.5s !important;}
 .sci-inicio > .sci-inicio-nenhuma{animation-delay:.22s !important;}
 @keyframes sciChega{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
-@keyframes sciSelo{from{opacity:0;transform:scale(.6) rotate(-8deg);}to{opacity:1;transform:none;}}
+@keyframes sciSelo{from{opacity:0;transform:scale(.85) translateY(10px);}to{opacity:1;transform:none;}}
 @media (max-width:820px){.sci-inicio-lista{grid-template-columns:repeat(2,minmax(0,1fr));width:100%;}.sci-inicio-busca .busca-curta.empresa-da-barra{width:100%;}.sci-inicio-busca{width:100%;}}
-@media (prefers-reduced-motion: reduce){.sci-inicio > *,.sci-inicio > .sci-inicio-selo,.sci-inicio-lista > li{animation:none !important;}}
+@media (prefers-reduced-motion: reduce){.sci-inicio > *,.sci-inicio > .sci-inicio-logo,.sci-inicio-lista > li{animation:none !important;}}
 .sci-cnpj{width:210px;}
 .sci-cnpj.sci-invalido{border-color:var(--danger);}
 .sci-busca-plano{width:100%;margin-bottom:6px;}

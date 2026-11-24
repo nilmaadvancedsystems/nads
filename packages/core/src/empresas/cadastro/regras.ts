@@ -9,7 +9,7 @@ import { receitaDoDocumento } from './receitaNoCadastro';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaDoRazao, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
-  type LembreteDaEmpresa, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
+  type LembreteDaEmpresa, type PlanoDoSci, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -299,7 +299,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
-    ...(doc.noSci === true ? { noSci: true } : {}),
+    ...(doc.noSci === true ? { noSci: true, ...(PLANOS_DO_SCI.includes(doc.planoSci as PlanoDoSci) ? { planoSci: doc.planoSci as PlanoDoSci } : {}) } : {}),
     ...lembreteDoDocumento(doc.lembreteVencimento),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
@@ -330,7 +330,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
-    ...(c.noSci ? { noSci: true } : {}),
+    ...(c.noSci ? { noSci: true, ...(c.planoSci ? { planoSci: c.planoSci } : {}) } : {}),
     ...(c.lembreteVencimento ? { lembreteVencimento: c.lembreteVencimento } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
@@ -1076,12 +1076,24 @@ export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null
   return registrar(novo, por, agora, 'Nota de honorário', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
 }
 
-/** Liga ou desliga "está no SCI" (desligado sai do documento). Registra no histórico. */
-export function definirNoSci(c: CadastroDaEmpresa, sim: boolean, por: string, agora: Date): CadastroDaEmpresa {
-  if (!!c.noSci === sim) return c;
-  const resto: CadastroDaEmpresa = { ...c };
-  delete resto.noSci;
-  return registrar(sim ? { ...resto, noSci: true } : resto, por, agora, 'Está no SCI', sim ? 'Sim' : 'Não');
+/** Os planos padrão do SCI que o cadastro aceita. */
+export const PLANOS_DO_SCI: readonly PlanoDoSci[] = ['90113', '90011'];
+
+/**
+ * Liga ou desliga "está no SCI", já com o plano de contas, se vier (desligado sai do documento com o plano). Registra no
+ * histórico.
+ */
+export function definirNoSci(c: CadastroDaEmpresa, sim: boolean, por: string, agora: Date, plano?: PlanoDoSci): CadastroDaEmpresa {
+  if (!sim) {
+    if (!c.noSci) return c;
+    const resto: CadastroDaEmpresa = { ...c };
+    delete resto.noSci;
+    delete resto.planoSci;
+    return registrar(resto, por, agora, 'Está no SCI', 'Não');
+  }
+  const p = plano && PLANOS_DO_SCI.includes(plano) ? plano : c.planoSci;
+  if (c.noSci && c.planoSci === p) return c;
+  return registrar({ ...c, noSci: true, ...(p ? { planoSci: p } : {}) }, por, agora, 'Está no SCI', p ? 'Sim, plano ' + p : 'Sim');
 }
 
 /** Guarda a conta do crédito e/ou o dia útil do pagamento do pró-labore (o vazio tira). Registra no histórico. */
