@@ -7367,6 +7367,9 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-reuniao-acoes{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
 .ini-reuniao-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
 .ini-reuniao-linha > input[type="text"],.ini-reuniao-linha > textarea{flex:1;min-width:200px;}
+/* o dia e a hora do Remarcar no tamanho do que cabem (Vitor, 24/11/2026: "Ajusta esses inputs estão muito grandes") */
+.ini-reuniao-linha > input.data-mask{flex:0 0 140px;width:140px;min-width:0;}
+.ini-reuniao-linha > input[type="time"]{flex:0 0 120px;width:120px;min-width:0;}
 .ini-reuniao-arquivo li{gap:8px;}
 .ini-reuniao-anexar{margin-left:auto;}
 .ini-reuniao-comentario{margin:4px 0;}
