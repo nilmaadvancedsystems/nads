@@ -51,6 +51,8 @@ export function useReunioesDoInicio() {
       faltaComentar: r.faltaComentar(x).map(p => p.nome), souResponsavel: r.responsavel(x, uid),
       /** a minha resposta (true vai, false não vai, null ainda não respondi) e quem não respondeu */
       minhaPresenca: x.presencas.find(p => p.uid === uid)?.vai ?? null, semResposta: r.semResposta(x).map(p => p.nome),
+      /** no dia, ainda não iniciada: o card fica vermelho e pisca (24/11/2026) */
+      pisca: r.piscaNoDia(x, agora),
     };
   };
   return {
@@ -75,6 +77,7 @@ export function useReunioesDoInicio() {
     decidir: (id: string, aprovar: boolean, obs: string) => fazer('Não deu para decidir', () => repo.decidir(id, aprovar, obs), aprovar ? 'Reunião aprovada.' : 'Reunião recusada.'),
     remarcar: (id: string, quando: string) => fazer('Não deu para remarcar', () => repo.remarcar(id, quando), 'Reunião remarcada.'),
     confirmar: (id: string, vai: boolean) => fazer('A resposta não foi gravada', () => repo.confirmar(id, vai), vai ? 'Presença confirmada.' : 'Avisado que você não vai.'),
+    iniciar: (id: string) => fazer('Não deu para iniciar', () => repo.iniciar(id), 'Reunião em andamento.'),
     anexar: (id: string, qual: QualArquivo, arquivo: File) => fazer('O arquivo não foi anexado', async () => repo.anexar(id, qual, await encolherAnexo(arquivo)), 'Arquivo anexado.'),
     async baixar(id: string, qual: QualArquivo) {
       const a = reunioes.find(x => x.id === id)?.[qual];
