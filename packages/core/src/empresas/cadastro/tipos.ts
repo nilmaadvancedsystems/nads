@@ -162,6 +162,9 @@ export interface RetratoDaReceita {
  */
 export type ReceitaNoCadastro = Partial<Omit<RetratoDaReceita, 'consultadoEm'>> & { conferidoEm: string; por: string };
 
+/** Os planos de contas padrão do SCI (os mesmos do minimum). */
+export type PlanoDoSci = '90113' | '90011';
+
 export interface CadastroDaEmpresa {
   /** o nome de sempre: é a CHAVE da empresa (nunca muda). Para mostrar, vale a razão social (razaoSocialDoCadastro) */
   nome: string;
@@ -207,6 +210,11 @@ export interface CadastroDaEmpresa {
    * aplicacoes apresentarem elas, ja que sairam do alterdata".) Só as ligadas aparecem no minimum. Sem = não está.
    */
   noSci?: boolean;
+  /**
+   * O plano de contas padrão do SCI da empresa (24/11/2026: "pede tambem ao marcar com que a empresa esteja no sci, colocar o
+   * plano de contas, referenciar para nao ficar selecionando"): o minimum abre a empresa nele. Só com o noSci.
+   */
+  planoSci?: PlanoDoSci;
   /**
    * O lembrete de vencimento ao cliente desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'sim' manda mesmo com o
    * lembrete geral desligado, 'nao' nunca manda; diasAntes troca os dias do escritório. Sem = como o escritório

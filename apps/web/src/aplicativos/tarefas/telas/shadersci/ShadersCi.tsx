@@ -20,7 +20,9 @@ export function ShadersCi() {
       <div className="tarefas-barra-topo">
         {vm.empresa && <>
           <EmpresaDaBarra vm={vm.entrada} id="sci-empresas" />
-          <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />
+          {vm.planoDoCadastro
+            ? <span className="badge" title="O plano de contas do SCI escolhido no Cadastro da empresa (Contábil › Parâmetros)">{vm.planos.find(p => p.id === vm.plano)?.rotulo || 'Plano ' + vm.plano}</span>
+            : <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
           <label className={'busca-curta sci-cnpj' + (vm.cnpj && !vm.cnpjOk ? ' sci-invalido' : '')} title="O CNPJ da empresa: vai em todas as linhas da planilha">
             <Icone nome="predio" />
             <input type="text" inputMode="numeric" placeholder="CNPJ da empresa" aria-label="CNPJ da empresa" value={vm.cnpj} onChange={e => vm.setCnpj(e.target.value)} />

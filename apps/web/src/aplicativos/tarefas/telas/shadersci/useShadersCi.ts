@@ -75,7 +75,15 @@ export function useShadersCi() {
   const [busca, setBusca] = useState('');
   const [pesquisa, setPesquisa] = useState<'debito' | 'credito' | null>(null);
 
-  const plano = sci.planoDoSci(guardado.plano);
+  // o plano do Cadastro (24/11/2026: "referenciar para nao ficar selecionando"): com ele, a empresa já abre nele e não se
+  // escolhe; sem, vale o escolhido aqui
+  const planoDoCadastro = useMemo(() => {
+    if (!entrada.empresa) return null;
+    for (const c of cadastros.porId.values()) if (c.codigo === entrada.empresa.codigo && c.noSci) return c.planoSci ?? null;
+    return null;
+  }, [cadastros.porId, entrada.empresa]);
+  const idDoPlano: sci.IdDoPlanoSci = planoDoCadastro ?? guardado.plano;
+  const plano = sci.planoDoSci(idDoPlano);
   const ano = new Date().getFullYear();
 
   const guardar = useCallback((muda: (g: Guardado) => Guardado) => {
@@ -145,7 +153,9 @@ export function useShadersCi() {
     dev,
     // o plano e o CNPJ da empresa (o que vai na coluna CNPJ da planilha)
     planos: sci.PLANOS_DO_SCI,
-    plano: guardado.plano,
+    plano: idDoPlano,
+    /** o plano veio do Cadastro: não se escolhe aqui */
+    planoDoCadastro: planoDoCadastro !== null,
     setPlano: (p: sci.IdDoPlanoSci) => guardar(g => ({ ...g, plano: p })),
     cnpj: guardado.cnpj,
     setCnpj: (v: string) => guardar(g => ({ ...g, cnpj: v })),
@@ -257,7 +267,7 @@ export function useShadersCi() {
       desmarcarSci() { setTesteSci([]); gravarTesteSci([]); },
       preencher() {
         const d = (dia: number) => ano + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
-        const exemplos: sci.CamposDoLancamento[] = guardado.plano === '90113' ? [
+        const exemplos: sci.CamposDoLancamento[] = idDoPlano === '90113' ? [
           { ...sci.LANCAMENTO_VAZIO, data: d(2), debito: '7', credito: '5', valor: 500000, historico: '1', complemento: 'Depósito do caixa no Banco do Brasil' },
           { ...sci.LANCAMENTO_VAZIO, data: d(5), debito: '16', credito: '5', valor: 123456, historico: '10', complemento: 'Venda a prazo NF 1001', documento: '1001', participanteD: '120' },
           { ...sci.LANCAMENTO_VAZIO, data: d(8), debito: '148', credito: '7', valor: 89000, historico: '20', complemento: 'Pagamento de fornecedor NF 555', documento: '555', participanteD: '45' },

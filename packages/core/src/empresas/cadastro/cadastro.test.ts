@@ -434,6 +434,17 @@ describe('está no SCI (24/11/2026)', () => {
     expect('noSci' in documentoDoCadastro(fora)).toBe(false);
     expect(fora.historico[0]).toMatchObject({ detalhe: 'Não' });
   });
+  it('o plano de contas do SCI vai junto, e sai ao desligar', () => {
+    const c = definirNoSci(vazio(), true, 'Vitor', AGORA, '90011');
+    expect(c).toMatchObject({ noSci: true, planoSci: '90011' });
+    expect(c.historico[0]).toMatchObject({ detalhe: 'Sim, plano 90011' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).planoSci).toBe('90011');
+    expect(definirNoSci(c, true, 'Vitor', AGORA, '90113').planoSci).toBe('90113');
+    expect(definirNoSci(c, true, 'Vitor', AGORA)).toBe(c);
+    const fora = definirNoSci(c, false, 'Vitor', AGORA);
+    expect('planoSci' in fora).toBe(false);
+    expect(cadastroDoDocumento('FITO', 292, { nome: 'FITO', historico: [], planoSci: '90011' }).planoSci).toBeUndefined();
+  });
 });
 
 describe('o contato da empresa para o Mandei (07/10/2026)', () => {
