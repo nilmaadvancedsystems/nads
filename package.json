@@ -18,12 +18,13 @@
     "robo:cartas": "node scripts/robo-cartas.mjs",
     "robo:financeiro": "node scripts/robo-financeiro.mjs",
     "robo:ibscbs": "node scripts/robo-ibscbs.mjs",
-    "verificar": "npm run tipos && npm run lint && npm run teste && npm run conexoes && npm run robo:danfse -- --conferir && npm run robo:cartas -- --conferir && npm run robo:financeiro -- --conferir && npm run robo:ibscbs -- --conferir",
+    "verificar": "npm run tipos && npm run lint && npm run teste && npm run conexoes && npm run robo:danfse -- --conferir && npm run robo:cartas -- --conferir && npm run robo:financeiro -- --conferir && npm run robo:ibscbs -- --conferir && npm run funcoes:sci -- --conferir",
     "versao": "node scripts/versao.mjs",
     "publicar": "node scripts/publicacao.mjs conferir && npm run build && npm run publicar -w @nads/web",
     "previa": "npm run build:exemplos -w @nads/web && npm run previa -w @nads/web",
     "sites": "node scripts/sites.mjs",
-    "faq": "node scripts/faq-para-ia.mjs"
+    "faq": "node scripts/faq-para-ia.mjs",
+    "funcoes:sci": "node scripts/funcoes-sci.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

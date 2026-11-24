@@ -58,6 +58,14 @@ function loginDoCliente(): Auth {
   return auth;
 }
 
+/**
+ * O idToken de quem entrou com senha, para a função do SCI Report conferir o link com "Exigir senha" (24/11/2026); '' sem
+ * login. Quem chama só pede depois que a função respondeu "precisa entrar": o link sem senha continua sem carregar o Auth.
+ */
+export async function idTokenDoCliente(): Promise<string> {
+  try { return (await loginDoCliente().currentUser?.getIdToken()) ?? ''; } catch { return ''; }
+}
+
 /** O erro do login em português (sem dizer se o e-mail existe: só "não deu") */
 function erroDoLogin(e: unknown): string {
   const c = String((e as { code?: string } | null)?.code ?? '');
