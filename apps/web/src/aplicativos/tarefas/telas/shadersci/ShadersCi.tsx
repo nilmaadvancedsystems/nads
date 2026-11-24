@@ -161,12 +161,10 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
   return (
     <Janela app="minimum" titulo={titulo} fechar={vm.fecharJanela} className="sci-janela-lancamento"
       pe={<>
-        {vm.problemasDoFormulario.length > 0
-          ? <p className="hint sci-falta"><Icone nome="alert" />{vm.problemasDoFormulario.join(' · ')}</p>
-          : <span className="hint">Enter lança · F2 pesquisa · Esc fecha</span>}
+        {/* sem a lista do que falta (24/11/2026: "Nao gostei desses avisos, as vezes e so bloquear"): o Lançar só fica bloqueado */}
+        <span className="hint">Enter lança · F2 pesquisa · Esc fecha</span>
         <span className="tarefas-barra-espaco" />
-        <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{vm.editando ? 'Cancelar' : 'Fechar'}</button>
-        <button type="submit" form="sci-form" className="btn btn-primary" disabled={vm.vazio}><Icone nome={vm.editando ? 'check' : 'plus'} />{vm.editando ? 'Salvar alteração' : 'Lançar'}</button>
+        <BotoesDoPe vm={vm} editando={!!vm.editando} form="sci-form" lancar="Lançar" podeLancar={vm.podeLancar} />
       </>}>
       <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
         <CaixinhaDoMultiplo vm={vm} />
@@ -187,6 +185,20 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
         <Campo id="sci-documento" rotulo="Documento" valor={vm.form.documento} mudar={campo('documento')} classe="sci-terco" />
       </form>
     </Janela>
+  );
+}
+
+/**
+ * Os botões do pé das duas janelas (24/11/2026: "deixa a opcao fechar, lancar e salvar"): no novo, Fechar, Salvar (guarda o
+ * preenchido sem lançar; o próximo Novo lançamento abre nele) e Lançar; na edição, Cancelar e Salvar alteração.
+ */
+function BotoesDoPe({ vm, editando, form, lancar, podeLancar }: { vm: VmShadersCi; editando: boolean; form: string; lancar: string; podeLancar: boolean }) {
+  return (
+    <>
+      <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{editando ? 'Cancelar' : 'Fechar'}</button>
+      {!editando && <button type="button" className="btn btn-outline" onClick={vm.salvarRascunho} disabled={!vm.podeSalvar}>Salvar</button>}
+      <button type="submit" form={form} className="btn btn-primary" disabled={!podeLancar}><Icone nome={editando ? 'check' : 'plus'} />{editando ? 'Salvar alteração' : lancar}</button>
+    </>
   );
 }
 
@@ -222,12 +234,9 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
   return (
     <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Novo lançamento'} fechar={vm.fecharJanela} className="sci-janela-multiplo"
       pe={<>
-        {pronto
-          ? <span className="hint">Débitos e créditos batem · F2 pesquisa · Esc fecha</span>
-          : <p className="hint sci-falta" title={vm.problemasDoMultiplo.join('\n')}><Icone nome="alert" />{vm.problemasDoMultiplo.slice(0, 3).join(' · ') + (vm.problemasDoMultiplo.length > 3 ? ' …' : '')}</p>}
+        <span className="hint">F2 pesquisa · Esc fecha</span>
         <span className="tarefas-barra-espaco" />
-        <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{m.editando ? 'Cancelar' : 'Fechar'}</button>
-        <button type="submit" form="sci-form-multiplo" className="btn btn-primary" disabled={!pronto}><Icone nome={m.editando ? 'check' : 'plus'} />{m.editando ? 'Salvar alteração' : 'Lançar múltiplo'}</button>
+        <BotoesDoPe vm={vm} editando={m.editando} form="sci-form-multiplo" lancar="Lançar múltiplo" podeLancar={pronto} />
       </>}>
       <form id="sci-form-multiplo" className="registro-corpo" onSubmit={e => { e.preventDefault(); vm.gravarMultiplo(); }}>
         <div className="sci-form sci-multiplo-topo">
@@ -310,6 +319,11 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
 function Tabela({ vm }: { vm: VmShadersCi }) {
   const [menu, setMenu] = useState<MenuAberto | null>(null);
   const caixa = useRef<HTMLDivElement>(null);
+  // a faixa do zebrado de cada linha: muda a cada lançamento; as partidas de um múltiplo ficam na mesma
+  const faixas = vm.linhas.reduce<number[]>((fs, l, i, ls) => {
+    fs.push(i === 0 ? 0 : fs[i - 1] + (l.multiplo && l.multiplo === ls[i - 1].multiplo ? 0 : 1));
+    return fs;
+  }, []);
   const opcoes = (id: string | null): LinhaDoMenu[] => {
     const n = id ? (vm.marcado(id) ? vm.marcados.size : 1) : vm.marcados.size;
     const alvo = id && !vm.marcado(id) ? [id] : undefined;
@@ -368,7 +382,9 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
   return (
     <section className="card ini-grupo">
       <div className="card-head">
-        <h3>Lançamentos</h3>
+        {/* quantos, no contador ao lado do título (24/11/2026: "essa apresentacao 3 lancamentos tambem nao gostei, apresenta de outra maneira") */}
+        <h3>Lançamentos {r.quantos > 0 && <span className="gh-counter" title={r.quantos === 1 ? '1 lançamento' : r.quantos + ' lançamentos'}>{r.quantos}</span>}
+          {r.comProblema > 0 && <span className="badge badge-warn sci-com-problema" title="Vão para a aba Conferir da planilha">{r.comProblema} com problema</span>}</h3>
         <span className="card-head-ctl">
           <label className="busca-curta">
             <Icone nome="search" />
@@ -391,8 +407,11 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
               </tr>
             </thead>
             <tbody>
-              {vm.linhas.map(l => (
-                <tr key={l.id} className={'ini-tr' + (vm.marcado(l.id) ? ' sci-marcada' : '') + (vm.editando === l.id ? ' linha-atual' : '') + (l.multiplo ? ' sci-do-multiplo' : '')}
+              {/* o zebrado leve por lançamento (24/11/2026: "um leve zebrado, para saber quais lancamentos sao quais"): as partidas
+                  de um múltiplo ficam no mesmo tom */}
+              {vm.linhas.map((l, i) => {
+                return (
+                <tr key={l.id} className={'ini-tr' + (faixas[i] % 2 ? ' sci-zebra' : '') + (vm.marcado(l.id) ? ' sci-marcada' : '') + (vm.editando === l.id ? ' linha-atual' : '') + (l.multiplo ? ' sci-do-multiplo' : '')}
                   onClick={e => vm.marcar(l.id, e.ctrlKey || e.metaKey || e.shiftKey)} onDoubleClick={() => vm.editar(l.id)} onContextMenu={ev => aoMenu(ev, l.id)}>
                   <td className="sci-marca" onClick={e => { e.stopPropagation(); vm.marcar(l.id, true); }}><input type="checkbox" checked={vm.marcado(l.id)} readOnly tabIndex={-1} aria-label={'Selecionar o lançamento de ' + l.dataTexto} /></td>
                   <td className="ini-delegadas-curta">{l.dataTexto || '—'}</td>
@@ -410,11 +429,12 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
                       : <span className="hint" title="Pronto para o SCI"><Icone nome="check" /></span>}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={4}>{r.quantos} {r.quantos === 1 ? 'lançamento' : 'lançamentos'}{r.comProblema > 0 && <span className="hint"> · {r.comProblema} com problema (vão para a aba Conferir)</span>}</td>
+                <td colSpan={4} className="hint">Total</td>
                 <td className="num">{r.totalTexto}</td>
                 <td colSpan={6} className="hint">{vm.marcados.size > 0 ? vm.marcados.size + ' selecionado' + (vm.marcados.size > 1 ? 's' : '') + ' · botão direito para as opções' : 'Botão direito para editar, copiar, colar e excluir'}</td>
               </tr>

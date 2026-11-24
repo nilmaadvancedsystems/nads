@@ -11,8 +11,14 @@ import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
 
+/**
+ * O Salvar do Novo lançamento (24/11/2026: "as vezes ela nao quer lancar e so salva, mas nao e pra colocar na tabela, e pra deixar
+ * prenchido quando ela coloca novo lancamento"): o formulário como estava, simples ou múltiplo; não entra na lista.
+ */
+interface Rascunho { form: Formulario; multiplo: MultiploDoFormulario | null }
+
 /** O que fica guardado por empresa neste navegador. */
-interface Guardado { plano: sci.IdDoPlanoSci; cnpj: string; lancamentos: Lancamento[] }
+interface Guardado { plano: sci.IdDoPlanoSci; cnpj: string; lancamentos: Lancamento[]; rascunho?: Rascunho | null }
 const VAZIO: Guardado = { plano: '90113', cnpj: '', lancamentos: [] };
 const PREFIXO = 'nads-shadersci-v1|';
 
@@ -152,6 +158,9 @@ export function useShadersCi() {
     ? { codigo: c.codigo, nome: c.nome, analitica: c.analitica, foraDoLado: sci.contaForaDoLado(c, lado), participante: sci.participanteDoLado(c, lado) }
     : null;
   const vazio = Object.values(form).every(v => !v.trim());
+  const problemasDoFormulario = vazio ? [] : sci.problemasDoLancamento(lido, plano);
+  /** fecha a janela: o que não foi lançado nem salvo some */
+  const fechar = () => { setJanela(false); setForm(FORMULARIO_VAZIO); setEditando(null); setMultiplo(null); setPesquisa(null); setPesquisaDaPartida(null); };
 
   // o múltiplo lido: as partidas como vão para a lista, os problemas de cada uma e os totais
   const partidasLidas: sci.LancamentoDoShader[] = multiplo ? multiplo.partidas.map(pt => {
@@ -223,10 +232,22 @@ export function useShadersCi() {
     cnpjOk,
     // o formulário, na janela do lançamento
     form, editando, janela,
-    /** o botão Novo lançamento: a janela com o formulário limpo */
-    novoLancamento: () => { setForm(FORMULARIO_VAZIO); setEditando(null); setMultiplo(null); setJanela(true); },
-    /** fecha a janela (o Esc e o ×): o que não foi lançado some */
-    fecharJanela: () => { setJanela(false); setForm(FORMULARIO_VAZIO); setEditando(null); setMultiplo(null); setPesquisa(null); setPesquisaDaPartida(null); },
+    /** o botão Novo lançamento: a janela com o que foi salvo (o Salvar); sem nada salvo, limpa */
+    novoLancamento: () => {
+      const r = guardado.rascunho;
+      setForm(r?.form ? { ...FORMULARIO_VAZIO, ...r.form } : FORMULARIO_VAZIO); setEditando(null);
+      setMultiplo(r?.multiplo ? { ...r.multiplo, editando: false } : null); setJanela(true);
+    },
+    /** fecha a janela (o Fechar, o Esc e o ×): o que não foi lançado nem salvo some */
+    fecharJanela: fechar,
+    /** o Salvar do Novo lançamento: guarda o formulário (não entra na lista) e fecha; o próximo Novo lançamento abre nele */
+    podeSalvar: !editando && !multiplo?.editando && (!vazio || !!multiplo),
+    salvarRascunho() {
+      if (editando || multiplo?.editando) return;
+      guardar(g => ({ ...g, rascunho: vazio && !multiplo ? null : { form, multiplo } }));
+      fechar();
+      toast('Salvo: o Novo lançamento abre preenchido.');
+    },
     mudar: (campo: keyof Formulario, v: string) => setForm(f => ({ ...f, [campo]: v })),
     contaD: conta(contaD, 'debito'),
     contaC: conta(contaC, 'credito'),
@@ -236,14 +257,14 @@ export function useShadersCi() {
     diaSemLancamento: sci.diaSemLancamento,
     /** o dia da semana da data digitada (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar"); '' sem data válida */
     diaDaSemana: lido.data ? DIAS_DA_SEMANA[new Date(Date.UTC(+lido.data.slice(0, 4), +lido.data.slice(5, 7) - 1, +lido.data.slice(8, 10))).getUTCDay()] : '',
-    problemasDoFormulario: vazio ? [] : sci.problemasDoLancamento(lido, plano),
-    vazio,
+    /** o Lançar: só com tudo certo (24/11/2026: "Nao gostei desses avisos, as vezes e so bloquear": sem a lista do que falta) */
+    podeLancar: !vazio && !problemasDoFormulario.length,
     /**
      * Enter no formulário: grava. A edição fecha a janela; o novo fica com ela aberta para o próximo, na mesma data (o SCI
-     * repete a data); o resto limpa
+     * repete a data); o resto limpa. O novo lançado tira o que estava salvo
      */
     gravar() {
-      if (vazio) return;
+      if (vazio || problemasDoFormulario.length) return;
       if (editando) {
         mudarLista(ls => ls.map(l => (l.id === editando ? { ...lido, id: editando } : l)));
         setEditando(null);
@@ -254,6 +275,7 @@ export function useShadersCi() {
       }
       const novo = { ...lido, id: idNovo() };
       mudarLista(ls => [...ls, novo]);
+      if (guardado.rascunho) guardar(g => ({ ...g, rascunho: null }));
       setForm({ ...FORMULARIO_VAZIO, data: form.data });
       toast('Lançado.');
     },
@@ -331,6 +353,7 @@ export function useShadersCi() {
         const resto = ls.filter(l => l.multiplo !== multiplo.id);
         return [...resto.slice(0, i), ...novas, ...resto.slice(i)];
       });
+      if (!multiplo.editando && guardado.rascunho) guardar(g => ({ ...g, rascunho: null }));
       // a edição fecha; o novo deixa a janela aberta, no múltiplo, para o próximo (na mesma data)
       if (multiplo.editando) { setMultiplo(null); setJanela(false); }
       else setMultiplo({ id: idNovo(), editando: false, data: multiplo.data, documento: '', partidas: [partidaVazia('debito'), partidaVazia('credito')] });
