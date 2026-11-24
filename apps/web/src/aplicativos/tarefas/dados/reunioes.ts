@@ -20,6 +20,8 @@ export interface RepoReunioes {
   remarcar(id: string, quando: string): Promise<void>;
   /** não vai acontecer (24/11/2026): fica Cancelada, 24 h no Painel */
   cancelar(id: string): Promise<void>;
+  /** o Diretor ou o Dono fixa (ou tira) no Painel a reunião que terminou ou foi cancelada (24/11/2026) */
+  fixar(id: string, sim: boolean): Promise<void>;
   /** o convidado responde se vai */
   confirmar(id: string, vai: boolean): Promise<void>;
   /** quem criou inicia a reunião (24/11/2026): fica Em andamento e o card para de piscar */
@@ -58,8 +60,8 @@ function exemplos(eu: Pessoa): Reuniao[] {
     r.anexar(r.iniciar(r.decidir(base('rn-4', 'Fechamento de outubro', 'O que ficou pendente e quem fecha cada empresa.', dia(0, '00:01'), eu, [clara, felipe], 50), true, '', nilma.nome, ha(40)), eu.nome, ha(3)), 'problema', arquivo('rn-4-p', 'problemas-outubro.pdf', eu.nome), eu.nome, ha(2)),
     // finalizada, esperando o meu comentário
     r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-5', 'Padronizar os históricos', 'Os históricos do Contábil que cada um escreve de um jeito.', dia(-2, '14:00'), fernando, [clara, eu], 80), true, '', nilma.nome, ha(70)), 'problema', arquivo('rn-5-p', 'problema.docx', 'Fernando'), 'Fernando', ha(30)), 'solucao', arquivo('rn-5-s', 'solucao.xlsx', 'Fernando'), 'Fernando', ha(30)), 'Fernando', ha(29)), clara, 'Ficou claro; vou usar a planilha nova.', ha(20)),
-    // concluída, esperando o Diretor encerrar
-    r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-6', 'Prazo das guias do DAS', 'Por que as guias atrasaram em setembro.', dia(-5, '11:00'), eu, [felipe], 140), true, 'Tragam os números.', nilma.nome, ha(130)), 'problema', arquivo('rn-6-p', 'atrasos.pdf', eu.nome), eu.nome, ha(60)), 'solucao', arquivo('rn-6-s', 'novo-fluxo.pdf', eu.nome), eu.nome, ha(60)), eu.nome, ha(59)), felipe, 'Concordo com o fluxo novo.', ha(50)),
+    // concluída, esperando o Diretor encerrar; fixada no Painel (24/11/2026), com os dois arquivos para quem foi
+    r.fixar(r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-6', 'Prazo das guias do DAS', 'Por que as guias atrasaram em setembro.', dia(-5, '11:00'), eu, [felipe], 140), true, 'Tragam os números.', nilma.nome, ha(130)), 'problema', arquivo('rn-6-p', 'atrasos.pdf', eu.nome), eu.nome, ha(60)), 'solucao', arquivo('rn-6-s', 'novo-fluxo.pdf', eu.nome), eu.nome, ha(60)), eu.nome, ha(59)), felipe, 'Concordo com o fluxo novo.', ha(50)), true, nilma.nome, ha(40)),
     // recusada, com a observação
     r.decidir(base('rn-7', 'Folga coletiva de dezembro', 'Combinar os dias de folga do fim do ano.', dia(6, '17:00'), eu, [], 60), false, 'Vamos tratar na reunião geral do dia 18.', nilma.nome, ha(48)),
     // cancelada há pouco e remarcada há pouco: os cards de 24 h no Painel (24/11/2026)
@@ -101,6 +103,7 @@ export function criarReunioesMemoria(quem: () => Pessoa | null, paraQuemUsa = fa
     async decidir(id, aprovar, observacao) { trocar(id, x => r.decidir(x, aprovar, observacao, eu().nome, agora())); },
     async remarcar(id, quando) { trocar(id, x => r.remarcar(x, quando, eu().nome, agora())); },
     async cancelar(id) { trocar(id, x => r.cancelar(x, eu().nome, agora())); },
+    async fixar(id, sim) { trocar(id, x => r.fixar(x, sim, eu().nome, agora())); },
     async confirmar(id, vai) { trocar(id, x => r.confirmarPresenca(x, eu(), vai, agora())); },
     async iniciar(id) { trocar(id, x => r.iniciar(x, eu().nome, agora())); },
     async anexar(id, qual, arquivo) {

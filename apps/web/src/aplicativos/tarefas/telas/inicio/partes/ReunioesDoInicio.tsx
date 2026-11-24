@@ -285,6 +285,12 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
             <button type="button" className="btn btn-outline" disabled={!dataDoCampo(nova.data, nova.hora)} onClick={() => void vm.remarcar(x.id, dataDoCampo(nova.data, nova.hora))}><Icone nome="repeat" />Remarcar</button>
           </div>
         )}
+        {pode('fixar') && (
+          <div className="ini-reuniao-linha">
+            <span>{x.fixada ? 'Fixada no Painel: quem foi convidado vê o card e baixa os arquivos.' : 'Fixar no Painel, para quem foi convidado ter os arquivos à mão.'}</span>
+            <button type="button" className={'btn ' + (x.fixada ? 'btn-outline' : 'btn-primary')} onClick={() => void vm.fixar(x.id, !x.fixada)}><Icone nome="mapaPin" />{x.fixada ? 'Tirar do Painel' : 'Fixar no Painel'}</button>
+          </div>
+        )}
         {pode('cancelar') && (
           <div className="ini-reuniao-linha">
             <span>Não vai acontecer? Todos veem "Cancelada" no Painel por 24 h.</span>

@@ -7190,6 +7190,10 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro-item.mudou .ini-quadro-dia svg{width:16px;height:16px;}
 .ini-quadro-item.mudou .ini-quadro-dia small{font-size:10px;}
 .ini-quadro-item.cancelada .ini-quadro-texto b{text-decoration:line-through;}
+/* a reunião fixada pelo Diretor ou pelo Dono (24/11/2026): o alfinete no lugar da data */
+.ini-quadro-dia.ini-quadro-fixada{gap:2px;}
+.ini-quadro-dia.ini-quadro-fixada svg{width:16px;height:16px;}
+.ini-quadro-dia.ini-quadro-fixada small{font-size:10px;}
 .ini-quadro-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .15s;}
 @media (hover:hover){
   .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-conteudo,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-conteudo{filter:blur(3px);opacity:.45;}

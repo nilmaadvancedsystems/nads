@@ -74,6 +74,11 @@ export interface Reuniao {
   remarcadaEm?: string;
   /** quando foi cancelada ("se só cancelar so aparece cancelada durante 24h") */
   canceladaEm?: string;
+  /**
+   * Fixada no Painel pelo Diretor ou pelo Dono, depois de finalizada ou cancelada (Vitor, 24/11/2026: "fixar a reuniao, apos ser
+   * finalizada ou cancelada, para que todos os convidados tenha acesso a esse arquivo"): o card fica até alguém tirar.
+   */
+  fixada?: true;
   historico: Nota[];
   em: string;
 }
@@ -120,7 +125,7 @@ export const faltaComentar = (r: Pick<Reuniao, 'participantes' | 'comentarios'>)
 /** Quem foi convidado e ainda não respondeu se vai. */
 export const semResposta = (r: Pick<Reuniao, 'participantes' | 'presencas'>): Pessoa[] => r.participantes.filter(p => !r.presencas.some(x => x.uid === p.uid));
 
-export type AcaoDaReuniao = 'revisar' | 'aprovar' | 'recusar' | 'remarcar' | 'cancelar' | 'confirmar' | 'iniciar' | 'anexar' | 'finalizar' | 'comentar' | 'encerrar';
+export type AcaoDaReuniao = 'revisar' | 'aprovar' | 'recusar' | 'remarcar' | 'cancelar' | 'fixar' | 'confirmar' | 'iniciar' | 'anexar' | 'finalizar' | 'comentar' | 'encerrar';
 
 /** O que a pessoa pode fazer na reunião agora. */
 export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora: string): AcaoDaReuniao[] {
@@ -138,6 +143,8 @@ export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora:
   if (dono && s === 'em-andamento') a.push('anexar', ...(r.problema && r.solucao ? ['finalizar' as const] : []));
   if (s === 'finalizada' && r.participantes.some(p => p.uid === quem.uid) && !r.comentarios.some(c => c.uid === quem.uid)) a.push('comentar');
   if (quem.aprova && s === 'concluida') a.push('encerrar');
+  // o Diretor e o Dono fixam (e tiram) no Painel a que já terminou
+  if (quem.aprova && podeFixar(s)) a.push('fixar');
   return a;
 }
 
@@ -231,6 +238,18 @@ export function cancelar(r: Reuniao, por: string, em: string): Reuniao {
   const s = statusDaReuniao(r);
   if (s !== 'aprovada' && s !== 'remarcada') throw new Error('Só a reunião marcada e ainda não iniciada pode ser cancelada.');
   return { ...r, status: 'cancelada', canceladaEm: em, historico: [...r.historico, nota(por, em, 'Cancelou a reunião')] };
+}
+
+/** Só a reunião que já terminou (finalizada, concluída, encerrada) ou foi cancelada fica fixada. */
+export const podeFixar = (s: StatusDaReuniao) => s === 'finalizada' || s === 'concluida' || s === 'encerrada' || s === 'cancelada';
+
+/** Fixa (ou tira) a reunião no Painel, para quem foi convidado ver o card e baixar os arquivos. */
+export function fixar(r: Reuniao, sim: boolean, por: string, em: string): Reuniao {
+  if (sim && !podeFixar(statusDaReuniao(r))) throw new Error('Só a reunião finalizada ou cancelada pode ser fixada.');
+  if (!!r.fixada === sim) return r;
+  const resto: Reuniao = { ...r };
+  delete resto.fixada;
+  return { ...resto, ...(sim ? { fixada: true as const } : {}), historico: [...r.historico, nota(por, em, sim ? 'Fixou a reunião no Painel' : 'Tirou a reunião do Painel')] };
 }
 
 /** Quanto tempo o card da cancelada e o do dia de antes da remarcada ficam no Painel. */
