@@ -16,6 +16,8 @@ export function ShadersCi() {
   if (!vm.carregada) return null;
   return (
     <section className="sci">
+      {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
+      {vm.janela && <JanelaDoLancamento vm={vm} />}
       {vm.pesquisa && <JanelaDoPlano vm={vm} />}
       <div className="tarefas-barra-topo">
         {vm.empresa && <>
@@ -41,14 +43,13 @@ export function ShadersCi() {
               { rotulo: 'Desmarcar as de teste', icone: 'x', desabilitado: !vm.teste.temSciDeTeste, onClick: vm.teste.desmarcarSci },
             ]} />
         )}
+        {/* o Novo lançamento ao lado da Planilha do SCI (24/11/2026: "vai abrir uma popup, ai vai aparecer os dados para fazer o lançamento") */}
+        {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoLancamento}><Icone nome="plus" />Novo lançamento</button>}
         {vm.empresa && <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.exportar} title="A planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)"><LogoExcel />Planilha do SCI</button>}
       </div>
       {!vm.empresa
         ? <TelaInicial vm={vm} />
-        : <>
-          <FormularioDoLancamento vm={vm} />
-          <Tabela vm={vm} />
-        </>}
+        : <Tabela vm={vm} />}
     </section>
   );
 }
@@ -89,11 +90,11 @@ function TelaInicial({ vm }: { vm: VmShadersCi }) {
 }
 
 // ------------------------------------------------------------------------------------------------- o formulário
-function Campo({ id, rotulo, valor, mudar, placeholder, numerico, largo, autoFocus }: {
-  id: string; rotulo: string; valor: string; mudar: (v: string) => void; placeholder?: string; numerico?: boolean; largo?: boolean; autoFocus?: boolean;
+function Campo({ id, rotulo, valor, mudar, placeholder, numerico, classe, autoFocus }: {
+  id: string; rotulo: string; valor: string; mudar: (v: string) => void; placeholder?: string; numerico?: boolean; classe?: string; autoFocus?: boolean;
 }) {
   return (
-    <div className={'field' + (largo ? ' sci-largo' : '')}>
+    <div className={'field' + (classe ? ' ' + classe : '')}>
       <label htmlFor={id}>{rotulo}</label>
       <input id={id} type="text" inputMode={numerico ? 'decimal' : undefined} autoComplete="off" placeholder={placeholder} value={valor} autoFocus={autoFocus} onChange={e => mudar(e.target.value)} />
     </div>
@@ -119,35 +120,39 @@ function CampoDeConta({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credito
   );
 }
 
-function FormularioDoLancamento({ vm }: { vm: VmShadersCi }) {
+/**
+ * A janela do lançamento (24/11/2026: "um botão do lado de planilha do sci, chamado novo lançamento, vai abrir uma popup, ai
+ * vai aparecer os dados para fazer o lançamento, data, debito, credito, valor..."): a data e o valor, o débito e o crédito
+ * com a lupa (F2), o histórico e o complemento, o documento e os participantes. Enter lança e a janela fica aberta para o
+ * próximo, na mesma data; a edição (Editar ou dois cliques na linha) grava e fecha; Esc fecha.
+ */
+function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
   const campo = (c: keyof Formulario) => (v: string) => vm.mudar(c, v);
   const quem = (conta: VmShadersCi['contaD']) => (conta?.participante === 'cliente' ? 'o cliente' : conta?.participante === 'fornecedor' ? 'o fornecedor' : '');
+  const titulo = vm.editando ? 'Editar lançamento' : 'Novo lançamento';
   return (
-    <section className="card sci-form-card">
-      <div className="card-head">
-        <h3>{vm.editando ? 'Editando o lançamento' : 'Novo lançamento'}</h3>
-        <span className="hint">Enter lança · F2 pesquisa a conta · Esc limpa</span>
-      </div>
-      {/* Enter em qualquer campo lança (ou grava a edição); Esc limpa */}
-      <form className="sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); vm.limparFormulario(); } }}>
-        <Campo id="sci-data" rotulo="Data" valor={vm.form.data} mudar={campo('data')} placeholder="dd/mm/aaaa" autoFocus />
+    <Janela app="minimum" titulo={titulo} fechar={vm.fecharJanela} className="sci-janela-lancamento"
+      pe={<>
+        {vm.problemasDoFormulario.length > 0
+          ? <p className="hint sci-falta"><Icone nome="alert" />{vm.problemasDoFormulario.join(' · ')}</p>
+          : <span className="hint">Enter lança · F2 pesquisa a conta · Esc fecha</span>}
+        <span className="tarefas-barra-espaco" />
+        <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{vm.editando ? 'Cancelar' : 'Fechar'}</button>
+        <button type="submit" form="sci-form" className="btn btn-primary" disabled={vm.vazio}><Icone nome={vm.editando ? 'check' : 'plus'} />{vm.editando ? 'Salvar alteração' : 'Lançar'}</button>
+      </>}>
+      <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
+        <Campo id="sci-data" rotulo="Data" valor={vm.form.data} mudar={campo('data')} placeholder="dd/mm/aaaa" classe="sci-meia" autoFocus />
+        <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico classe="sci-meia" />
         <CampoDeConta vm={vm} lado="debito" />
         <CampoDeConta vm={vm} lado="credito" />
-        <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico />
-        <Campo id="sci-historico" rotulo="Histórico" valor={vm.form.historico} mudar={campo('historico')} placeholder="Nº" numerico />
-        <Campo id="sci-complemento" rotulo="Complemento" valor={vm.form.complemento} mudar={campo('complemento')} placeholder="A descrição do histórico" largo />
-        <Campo id="sci-documento" rotulo="Documento" valor={vm.form.documento} mudar={campo('documento')} />
+        <Campo id="sci-historico" rotulo="Histórico" valor={vm.form.historico} mudar={campo('historico')} placeholder="Nº" numerico classe="sci-terco" />
+        <Campo id="sci-complemento" rotulo="Complemento" valor={vm.form.complemento} mudar={campo('complemento')} placeholder="A descrição do histórico" classe="sci-dois-tercos" />
+        <Campo id="sci-documento" rotulo="Documento" valor={vm.form.documento} mudar={campo('documento')} classe="sci-terco" />
         {/* o participante (o código dele no SCI): o fornecedor no débito e o cliente no crédito, nas contas que pedem */}
-        <Campo id="sci-part-d" rotulo={'Participante a débito' + (quem(vm.contaD) ? ' (' + quem(vm.contaD) + ')' : '')} valor={vm.form.participanteD} mudar={campo('participanteD')} placeholder="Código no SCI" />
-        <Campo id="sci-part-c" rotulo={'Participante a crédito' + (quem(vm.contaC) ? ' (' + quem(vm.contaC) + ')' : '')} valor={vm.form.participanteC} mudar={campo('participanteC')} placeholder="Código no SCI" />
-        <div className="sci-form-acoes">
-          {vm.problemasDoFormulario.length > 0 && <p className="hint sci-falta"><Icone nome="alert" />{vm.problemasDoFormulario.join(' · ')}</p>}
-          <span className="tarefas-barra-espaco" />
-          {(vm.editando || !vm.vazio) && <button type="button" className="btn btn-ghost" onClick={vm.limparFormulario}>{vm.editando ? 'Cancelar' : 'Limpar'}</button>}
-          <button type="submit" className="btn btn-primary" disabled={vm.vazio}><Icone nome={vm.editando ? 'check' : 'plus'} />{vm.editando ? 'Salvar alteração' : 'Lançar'}</button>
-        </div>
+        <Campo id="sci-part-d" rotulo={'Participante a débito' + (quem(vm.contaD) ? ' (' + quem(vm.contaD) + ')' : '')} valor={vm.form.participanteD} mudar={campo('participanteD')} placeholder="Código no SCI" classe="sci-terco" />
+        <Campo id="sci-part-c" rotulo={'Participante a crédito' + (quem(vm.contaC) ? ' (' + quem(vm.contaC) + ')' : '')} valor={vm.form.participanteC} mudar={campo('participanteC')} placeholder="Código no SCI" classe="sci-terco" />
       </form>
-    </section>
+    </Janela>
   );
 }
 
@@ -223,7 +228,7 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
       </div>
       {!vm.total ? (
         <div className="sci-tabela-caixa" tabIndex={0} onPaste={colar} onContextMenu={ev => aoMenu(ev, null)} ref={caixa}>
-          <Vazio compacto icone="list" titulo="Nenhum lançamento ainda" texto="Lance pelo formulário acima, ou copie linhas do Excel e cole aqui (Ctrl+V ou o botão direito)." />
+          <Vazio compacto icone="list" titulo="Nenhum lançamento ainda" texto="Clique em Novo lançamento, ou copie linhas do Excel e cole aqui (Ctrl+V ou o botão direito)." />
         </div>
       ) : (
         <div ref={caixa} className="table-wrap sci-tabela-caixa" tabIndex={0} onKeyDown={teclas} onPaste={colar} onContextMenu={ev => aoMenu(ev, null)} aria-label="Lançamentos: botão direito para as opções">

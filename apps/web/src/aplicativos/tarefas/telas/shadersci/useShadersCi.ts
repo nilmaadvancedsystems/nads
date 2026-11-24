@@ -71,6 +71,8 @@ export function useShadersCi() {
   const [anterior, setAnterior] = useState<Lancamento[] | null>(null);
   const [form, setForm] = useState<Formulario>(FORMULARIO_VAZIO);
   const [editando, setEditando] = useState<string | null>(null);
+  // o formulário numa janela (24/11/2026: "um botão do lado de planilha do sci, chamado novo lançamento, vai abrir uma popup")
+  const [janela, setJanela] = useState(false);
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
   const [busca, setBusca] = useState('');
   const [pesquisa, setPesquisa] = useState<'debito' | 'credito' | null>(null);
@@ -160,30 +162,38 @@ export function useShadersCi() {
     cnpj: guardado.cnpj,
     setCnpj: (v: string) => guardar(g => ({ ...g, cnpj: v })),
     cnpjOk,
-    // o formulário
-    form, editando,
+    // o formulário, na janela do lançamento
+    form, editando, janela,
+    /** o botão Novo lançamento: a janela com o formulário limpo */
+    novoLancamento: () => { setForm(FORMULARIO_VAZIO); setEditando(null); setJanela(true); },
+    /** fecha a janela (o Esc e o ×): o que não foi lançado some */
+    fecharJanela: () => { setJanela(false); setForm(FORMULARIO_VAZIO); setEditando(null); setPesquisa(null); },
     mudar: (campo: keyof Formulario, v: string) => setForm(f => ({ ...f, [campo]: v })),
     contaD: contaD ? { codigo: contaD.codigo, nome: contaD.nome, participante: contaD.participante, analitica: contaD.analitica } : null,
     contaC: contaC ? { codigo: contaC.codigo, nome: contaC.nome, participante: contaC.participante, analitica: contaC.analitica } : null,
     problemasDoFormulario: vazio ? [] : sci.problemasDoLancamento(lido, plano),
     vazio,
-    /** Enter no formulário: grava (novo ou a edição) e deixa a data e as contas para o próximo, como no SCI */
+    /**
+     * Enter no formulário: grava. A edição fecha a janela; o novo fica com ela aberta para o próximo, na mesma data (o SCI
+     * repete a data); o resto limpa
+     */
     gravar() {
       if (vazio) return;
       if (editando) {
         mudarLista(ls => ls.map(l => (l.id === editando ? { ...lido, id: editando } : l)));
         setEditando(null);
         setForm(FORMULARIO_VAZIO);
+        setJanela(false);
         toast('Lançamento alterado.');
         return;
       }
       const novo = { ...lido, id: idNovo() };
       mudarLista(ls => [...ls, novo]);
-      // o próximo começa na mesma data (o SCI repete a data); o resto limpa
       setForm({ ...FORMULARIO_VAZIO, data: form.data });
+      toast('Lançado.');
     },
     limparFormulario: () => { setForm(FORMULARIO_VAZIO); setEditando(null); },
-    editar: (id: string) => { const l = guardado.lancamentos.find(x => x.id === id); if (!l) return; setEditando(id); setForm(doLancamento(l)); },
+    editar: (id: string) => { const l = guardado.lancamentos.find(x => x.id === id); if (!l) return; setEditando(id); setForm(doLancamento(l)); setJanela(true); },
     // a pesquisa no plano (F2 ou a lupa)
     pesquisa, abrirPesquisa: (lado: 'debito' | 'credito') => setPesquisa(lado), fecharPesquisa: () => setPesquisa(null),
     buscarNoPlano: (texto: string) => sci.buscarNoPlano(plano, texto, 80),

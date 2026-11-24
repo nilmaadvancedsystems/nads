@@ -8389,11 +8389,17 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 /* ShadersCI (23/11/2026: "uma abinha de lançamentos onde o usuario lance, adicione, remova, edite"): só a disposição. O formulário em
    grade (Data, Débito, Crédito, Valor e Histórico em cima; Complemento, Documento e os participantes embaixo), a tabela que recebe o
    foco para os atalhos (Ctrl+C, Ctrl+V, Del), a linha selecionada e a janela do plano com rolagem */
-.sci-form{display:grid;grid-template-columns:130px minmax(200px,1fr) minmax(200px,1fr) 130px 100px;gap:0 12px;align-items:end;}
-.sci-form .field{margin-bottom:12px;min-width:0;}
+/* a janela do lançamento (24/11/2026: o formulário saiu da página e virou janela): a data e o valor lado a lado, o débito
+   e o crédito na largura toda, o histórico e o complemento, o documento e os participantes em três */
+.modal.lt-janela.sci-janela-lancamento{max-width:680px;width:min(680px,100%);}
+.sci-form{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0 12px;align-items:end;}
+.sci-form .field{margin-bottom:12px;min-width:0;grid-column:1/-1;}
 .sci-form .field input{width:100%;}
-.sci-form .sci-largo{grid-column:span 2;}
-.sci-form-acoes{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:32px;}
+.sci-form .sci-meia{grid-column:span 3;}
+.sci-form .sci-terco{grid-column:span 2;}
+/* a conta: o código curto, a lupa e o nome no resto (o campo do LCDPR) */
+.sci-form .sci-conta input.lcdpr-cod{flex:0 0 140px;width:140px;border-top-right-radius:0;border-bottom-right-radius:0;font-variant-numeric:tabular-nums;}
+.sci-form .sci-dois-tercos{grid-column:span 4;}
 .sci-falta{margin:0;display:inline-flex;align-items:center;gap:6px;}
 .sci-falta svg{width:14px;height:14px;flex:none;color:var(--warn);}
 .sci-tabela-caixa:focus{outline:none;}
@@ -8412,9 +8418,10 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-inicio-logo{display:block;margin-bottom:20px;font-family:"Bodoni MT Black","Bodoni 72","Bodoni MT",Didot,Georgia,"Times New Roman",serif;
   font-weight:900;font-size:56px;line-height:1;letter-spacing:-.01em;color:var(--ink);user-select:none;}
 .sci-inicio > .sci-inicio-logo{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
-.sci-inicio-titulo{margin:0;font-size:32px;line-height:1.15;font-weight:700;letter-spacing:-.02em;color:var(--ink);}
+/* menor (24/11/2026: "Diminua o escolha sua empresa") */
+.sci-inicio-titulo{margin:0;font-size:var(--fs-20);line-height:1.2;font-weight:600;letter-spacing:-.01em;color:var(--ink);}
 .sci-inicio > .sci-inicio-titulo{animation-delay:.08s !important;}
-.sci-inicio-sub{margin:8px 0 24px;font-size:var(--fs-14);color:var(--ink-muted);}
+.sci-inicio-sub{margin:4px 0 20px;font-size:var(--fs-13);color:var(--ink-muted);}
 .sci-inicio > .sci-inicio-sub{animation-delay:.14s !important;}
 .sci-inicio-busca{position:relative;z-index:2;}
 .sci-inicio > .sci-inicio-busca{animation-delay:.22s !important;}
