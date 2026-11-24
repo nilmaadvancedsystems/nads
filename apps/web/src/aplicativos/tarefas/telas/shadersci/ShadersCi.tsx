@@ -64,7 +64,9 @@ function TelaInicial({ vm }: { vm: VmShadersCi }) {
   const lista = vm.empresasDoSci;
   return (
     <div className="sci-inicio">
-      <span className="sci-inicio-selo" aria-hidden="true"><Icone nome="briefcase" width={26} height={26} /></span>
+      {/* a logo do minimum no lugar da maletinha (24/11/2026: "Coloca a logo da sci no lugar dessa maletinha"): a palavra numa
+          serifada bem pesada, com o i sem ponto, na cor do texto (preta no claro, branca no escuro) */}
+      <span className="sci-inicio-logo" role="img" aria-label="minimum">min{'ı'}mum</span>
       <h1 className="sci-inicio-titulo">Escolha sua empresa</h1>
       <p className="sci-inicio-sub">Apenas empresas que estão no SCI</p>
       {lista.length > 0 ? <>
