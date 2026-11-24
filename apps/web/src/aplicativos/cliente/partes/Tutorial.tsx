@@ -5,6 +5,7 @@
 // tela dele (o irPara). Teclado: → e Enter avançam, ← volta, Esc fecha. Os passos vêm de dados/tutorial.ts.
 import { Icone, MarcaN } from '@nads/ui';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { abertura, entradaDoPasso, festaDoFim, saidaDoCartao, temCinema } from './cinemaDoTutorial';
 import { createPortal } from 'react-dom';
 import { capitulosDoTutorial, ICONE_DO_CAPITULO, type PassoDoTutorial } from '../dados/tutorial';
 
@@ -22,6 +23,12 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   const [procurando, setProcurando] = useState(false);
   const [tamanho, setTamanho] = useState({ w: 360, h: 220 });
   const balao = useRef<HTMLDivElement>(null);
+  const raiz = useRef<HTMLDivElement>(null);
+  const moldura = useRef<SVGRectElement>(null);
+  // o cinema do PC (24/11/2026: "caso a pessoa esteja num pc quero que seja bem cinematico"): decidido uma vez ao abrir
+  const [cinema] = useState(temCinema);
+  const [saindo, setSaindo] = useState(false);
+
   const principal = useRef<HTMLButtonElement>(null);
   const passo = passos[i];
   const ultimo = i === passos.length - 1;
@@ -113,6 +120,17 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   const temAlvo = alvo !== null;
   useEffect(() => { principal.current?.focus({ preventScroll: true }); }, [i, temAlvo]);
 
+  // a página atrás não rola com o tutorial aberto (24/11/2026: "quando eu estou com o tutorial aberto da para escrollar"):
+  // a roda, o toque e as teclas de rolar param aqui; a rolagem do próprio tutorial (scrollIntoView) continua
+  useEffect(() => {
+    const parar = (e: Event) => e.preventDefault();
+    const teclas = (e: KeyboardEvent) => { if ([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown'].includes(e.key) && !(e.target instanceof HTMLButtonElement && e.key === ' ')) e.preventDefault(); };
+    window.addEventListener('wheel', parar, { passive: false });
+    window.addEventListener('touchmove', parar, { passive: false });
+    window.addEventListener('keydown', teclas);
+    return () => { window.removeEventListener('wheel', parar); window.removeEventListener('touchmove', parar); window.removeEventListener('keydown', teclas); };
+  }, []);
+
   // o teclado
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
@@ -124,18 +142,31 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
     return () => window.removeEventListener('keydown', tecla);
   }, [onFechar, proximo, ir, i]);
 
-  if (!passo) return null;
-  const pronto = !!alvo && alvo.id === passo.id;
-  const noMeio = !passo.alvo || (!procurando && !pronto);
+  const pronto = !!alvo && !!passo && alvo.id === passo.id;
+  const noMeio = !passo?.alvo || (!procurando && !pronto);
   const escondido = !noMeio && (!pronto || !assentou);
   const lugar = alvo && !noMeio ? ondeFicaOBalao(alvo, tamanho) : null;
   const n = passos.length;
   // o cartão do começo e o do fim (o tutorial de uma tela só, pelo "?", não tem nenhum dos dois)
   const comCartoes = !passos[0]?.alvo;
   const primeiro = i === 0 && comCartoes;
-  const fim = ultimo && !passo.alvo;
+  const fim = ultimo && !passo?.alvo;
   const totalDePassos = comCartoes ? n - 2 : n;
   const nDoPasso = comCartoes ? i : i + 1;
+  // o cinema de cada passo (só no PC): a abertura no cartão do começo, a festa no do fim, a entrada nos passos
+  const idDoPasso = passo?.id;
+  useLayoutEffect(() => {
+    if (!cinema || !idDoPasso || !raiz.current || !balao.current) return;
+    if (primeiro && noMeio) { const a = abertura(raiz.current, balao.current); return () => { a.revert(); }; }
+    if (fim) { const a = festaDoFim(balao.current); return () => { a.revert(); }; }
+    if (!noMeio && !escondido) { const a = entradaDoPasso(balao.current, moldura.current); return () => { a.revert(); }; }
+  }, [cinema, idDoPasso, primeiro, fim, noMeio, escondido]);
+  // Começar, no PC: o cartão sai para a frente e as faixas se recolhem antes do primeiro passo
+  const comecar = () => {
+    if (!cinema || !raiz.current || !balao.current || saindo) { proximo(); return; }
+    setSaindo(true);
+    saidaDoCartao(raiz.current, balao.current, () => { setSaindo(false); proximo(); });
+  };
   // os capítulos: o roteiro do cartão do começo e o resumo do fim
   const capitulos = capitulosDoTutorial(passos);
   // a setinha do balão aponta para o meio da parte (no lado em que o balão está)
@@ -143,12 +174,22 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
     ? Math.max(20, Math.min(alvo.x + alvo.w / 2 - lugar.x, tamanho.w - 20))
     : Math.max(20, Math.min(alvo.y + alvo.h / 2 - lugar.y, tamanho.h - 20))) : 0;
 
+  if (!passo) return null;
   return createPortal(
-    <div className={'cli-app cli-tut' + (noMeio ? ' no-meio' : '')} data-sem-animacao="" role="dialog" aria-modal="true" aria-labelledby="cli-tut-titulo">
+    <div ref={raiz} className={'cli-app cli-tut' + (noMeio ? ' no-meio' : '') + (cinema ? ' cinema' : '')} data-sem-animacao="" role="dialog" aria-modal="true" aria-labelledby="cli-tut-titulo">
       {/* o fundo escuro com a janela clara no lugar da parte explicada */}
       {alvo && !noMeio
         ? <div className={'cli-tut-destaque' + (andando ? ' anda' : '')} style={{ transform: `translate(${alvo.x}px, ${alvo.y}px)`, width: alvo.w, height: alvo.h }} aria-hidden="true" />
         : <div className="cli-tut-fundo" aria-hidden="true" />}
+      {/* o PC (24/11/2026): a grade de pontinhos na entrada e a linha que percorre a volta da parte em cada passo */}
+      {/* a entrada do PC (24/11/2026, "Do N para o cartão"): o holofote fraco atrás e o N grande que voa até o cartão */}
+      {cinema && primeiro && <div className="cli-tut-luz" aria-hidden="true" />}
+      {cinema && primeiro && <div className="cli-tut-voo" aria-hidden="true"><span><MarcaN /></span></div>}
+      {cinema && alvo && !noMeio && (
+        <svg key={'m-' + passo.id} className="cli-tut-moldura" style={{ transform: `translate(${alvo.x - 3}px, ${alvo.y - 3}px)` }} width={alvo.w + 6} height={alvo.h + 6} aria-hidden="true">
+          <rect ref={moldura} x={1.5} y={1.5} width={alvo.w + 3} height={alvo.h + 3} rx={16} />
+        </svg>
+      )}
       <div className="cli-tut-trava" aria-hidden="true" />
 
       <div ref={balao} key={passo.id} className={'cli-tut-balao' + (noMeio ? ' cartao' : '') + (lugar ? ' lado-' + lugar.lado : '') + (escondido ? ' escondido' : '')}
@@ -192,7 +233,7 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
           {primeiro ? (
             <>
               <button type="button" className="btn btn-ghost" onClick={() => onFechar(false)}>Agora não</button>
-              <button type="button" ref={principal} className="btn btn-primary" onClick={proximo}>Começar<Icone nome="chevronRight" width={16} height={16} /></button>
+              <button type="button" ref={principal} className="btn btn-primary" onClick={comecar} disabled={saindo}>Começar<Icone nome="chevronRight" width={16} height={16} /></button>
             </>
           ) : fim ? (
             <>
