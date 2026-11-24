@@ -73,6 +73,8 @@ export function Casca(p: {
   titulo: string;
   /** a cápsula antes do título (o código da empresa no minimum, 24/11/2026: "Nao gosto desse pontinho, coloca outra coisa, usa capsula") */
   seloDoTitulo?: string;
+  /** o botão de setas logo depois do título (o trocar a empresa do minimum, 24/11/2026: "um botao de setas para mudar do lado do nome da empresa") */
+  trocarDoTitulo?: { titulo: string; onClick: () => void };
   /** o título é a saudação do Início novo (13/11/2026): maior, digitado letra a letra e na mesma linha da fileira de ações */
   saudacao?: boolean;
   /** uma linha embaixo do título (cinza) */
@@ -221,8 +223,12 @@ export function Casca(p: {
       {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
       <header className={'topbar' + (p.saudacao ? ' topbar-saudacao' : '')} hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
-          {p.seloDoTitulo
-            ? <div className="page-title-linha"><span className="page-title-selo">{p.seloDoTitulo}</span><h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2></div>
+          {p.seloDoTitulo || p.trocarDoTitulo
+            ? <div className="page-title-linha">
+                {p.seloDoTitulo && <span className="page-title-selo">{p.seloDoTitulo}</span>}
+                <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
+                {p.trocarDoTitulo && <button type="button" className="icon-btn page-title-trocar" title={p.trocarDoTitulo.titulo} aria-label={p.trocarDoTitulo.titulo} onClick={p.trocarDoTitulo.onClick}><Icone nome="trocar" /></button>}
+              </div>
             : <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>}
           {p.descricao && <p className="page-desc">{p.descricao}</p>}
         </div>

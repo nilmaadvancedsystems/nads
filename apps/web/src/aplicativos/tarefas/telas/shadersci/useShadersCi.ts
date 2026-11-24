@@ -67,7 +67,7 @@ const doLancamento = (l: sci.CamposDoLancamento): Formulario => ({
 });
 
 export function useShadersCi() {
-  const { toast, aviso } = useRetorno();
+  const { toast, aviso, modal } = useRetorno();
   const [dev] = useModoDesenvolvedor();
   // só as empresas que estão no SCI (24/11/2026: "Apenas empresas que estão na sci"): o "Está no SCI" do Cadastro e, no
   // modo desenvolvedor, as marcadas pelo ⚡ Dados de teste
@@ -229,6 +229,25 @@ export function useShadersCi() {
   return {
     entrada,
     empresa: entrada.empresa,
+    /**
+     * As setas ao lado do nome (24/11/2026: "deixe o aviso, que ao trocar de empresa, os lancamentos serao perdidos"; o dono
+     * escolheu que trocar apaga): com lançamentos, pergunta antes; confirmado, apaga os desta empresa (e o salvo) e volta à escolha
+     */
+    async trocarEmpresa() {
+      const n = guardado.lancamentos.length;
+      if (n) {
+        const sim = await modal<boolean>({
+          icone: 'alert', titulo: 'Trocar de empresa?',
+          texto: (n === 1 ? 'O lançamento desta empresa será perdido.' : 'Os ' + n + ' lançamentos desta empresa serão perdidos.') + ' Baixe a Planilha do SCI antes, se precisar deles.',
+          botoes: [{ rotulo: 'Trocar e apagar', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false }],
+        });
+        if (!sim) return;
+        guardar(g => ({ ...g, lancamentos: [], rascunho: null }));
+        setAnterior(null);
+        setMarcados(new Set());
+      }
+      entrada.trocarEmpresa();
+    },
     dev,
     // o plano e o CNPJ da empresa (o que vai na coluna CNPJ da planilha)
     planos: sci.PLANOS_DO_SCI,
@@ -400,6 +419,14 @@ export function useShadersCi() {
     }),
     /** clicou com o botão direito numa linha fora da seleção: ela vira a seleção */
     garantirMarcado: (id: string) => setMarcados(m => (m.has(id) ? m : new Set([id]))),
+    /** o múltiplo numa linha só (24/11/2026: "como se fosse um lancamento so"): marca ou desmarca as partidas dele juntas */
+    marcarGrupo: (ids: readonly string[], junto: boolean) => setMarcados(m => {
+      const todas = ids.every(id => m.has(id));
+      if (!junto) return todas && m.size === ids.length ? new Set() : new Set(ids);
+      const n = new Set(m); for (const id of ids) { if (todas) n.delete(id); else n.add(id); } return n;
+    }),
+    /** o botão direito no múltiplo fora da seleção: as partidas dele viram a seleção */
+    garantirGrupo: (ids: readonly string[]) => setMarcados(m => (ids.every(id => m.has(id)) ? m : new Set(ids))),
     todasMarcadas: visiveis.length > 0 && visiveis.every(l => marcados.has(l.id)),
     marcarTodas: (sim: boolean) => setMarcados(sim ? new Set(visiveis.map(l => l.id)) : new Set()),
     // as ações (botão direito, teclado)

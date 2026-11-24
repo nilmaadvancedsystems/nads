@@ -18,13 +18,14 @@ export function ShadersCi() {
   return (
     <section className="sci">
       {/* o título da página é a empresa aberta, no lugar de "minimum" (24/11/2026: "troque o titulo minimum pelo nome da empresa numero e nome") */}
-      <TituloDoTopo titulo={vm.empresa?.nome || ''} selo={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : undefined} />
+      <TituloDoTopo titulo={vm.empresa?.nome || ''} selo={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : undefined}
+        aoTrocar={vm.empresa ? () => { void vm.trocarEmpresa(); } : undefined} dicaDoTrocar="Trocar a empresa" />
       {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
       {/* a mesma janela: o lançamento simples ou, com a caixinha marcada, o múltiplo */}
       {vm.janela && (vm.multiplo ? <JanelaDoMultiplo vm={vm} /> : <JanelaDoLancamento vm={vm} />)}
       {vm.pesquisa === 'historico' ? <JanelaDosHistoricos vm={vm} /> : vm.pesquisa && <JanelaDoPlano vm={vm} lado={vm.pesquisa} />}
       {/* os botões na linha do título, sem a barra da empresa (24/11/2026: "remove isso e deixa alinhado com os botoes novo
-          lancamento e planilha do sci"); trocar de empresa fica no ícone da maleta */}
+          lancamento e planilha do sci"); trocar de empresa fica nas setas ao lado do nome, no título */}
       <AcoesDoTopo>
         {/* sem o selo do plano e sem o campo do CNPJ (24/11/2026: "remove isso"): o plano e o CNPJ vêm do Cadastro da empresa;
             só a empresa sem plano no Cadastro ainda escolhe aqui */}
@@ -41,7 +42,6 @@ export function ShadersCi() {
               { rotulo: 'Desmarcar as de teste', icone: 'x', desabilitado: !vm.teste.temSciDeTeste, onClick: vm.teste.desmarcarSci },
             ]} />
         )}
-        {vm.empresa && <BotaoIcone icone="briefcase" titulo="Trocar a empresa" onClick={vm.entrada.trocarEmpresa} />}
         {/* o Novo lançamento ao lado da Planilha do SCI (24/11/2026: "vai abrir uma popup, ai vai aparecer os dados para fazer o lançamento") */}
         {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoLancamento}><Icone nome="plus" />Novo lançamento</button>}
         {vm.empresa && <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.exportar} title="A planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)"><LogoExcel />Planilha do SCI</button>}
@@ -318,21 +318,38 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
 }
 
 // ------------------------------------------------------------------------------------------------- a tabela
+/** o selo dos problemas da linha (ou do múltiplo inteiro); sem nenhum, o ✓ */
+function Situacao({ problemas }: { problemas: readonly string[] }) {
+  return problemas.length
+    ? <span className="badge badge-warn" title={problemas.join('\n')}><Icone nome="alert" />{problemas.length === 1 ? '1 problema' : problemas.length + ' problemas'}</span>
+    : <span className="hint" title="Pronto para o SCI"><Icone nome="check" /></span>;
+}
+
 function Tabela({ vm }: { vm: VmShadersCi }) {
   const [menu, setMenu] = useState<MenuAberto | null>(null);
   const caixa = useRef<HTMLDivElement>(null);
-  // a faixa do zebrado de cada linha: muda a cada lançamento; as partidas de um múltiplo ficam na mesma
-  const faixas = vm.linhas.reduce<number[]>((fs, l, i, ls) => {
-    fs.push(i === 0 ? 0 : fs[i - 1] + (l.multiplo && l.multiplo === ls[i - 1].multiplo ? 0 : 1));
-    return fs;
+  // o múltiplo numa linha só, que a setinha abre nas partidas (24/11/2026: "Eu colocaria como se fosse um lancamento so, e quando
+  // clicava na setinha de drop ele destrinchasse"): os blocos da tabela, um por lançamento (o zebrado muda a cada um)
+  const [abertos, setAbertos] = useState<ReadonlySet<string>>(new Set());
+  const abrirOuFechar = (id: string) => setAbertos(a => { const n = new Set(a); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  type Linha = VmShadersCi['linhas'][number];
+  const blocos = vm.linhas.reduce<{ id: string; multiplo: boolean; linhas: Linha[] }[]>((bs, l) => {
+    const ultimo = bs[bs.length - 1];
+    if (l.multiplo && ultimo?.multiplo && ultimo.id === l.multiplo) ultimo.linhas.push(l);
+    else bs.push({ id: l.multiplo || l.id, multiplo: !!l.multiplo, linhas: [l] });
+    return bs;
   }, []);
-  const opcoes = (id: string | null): LinhaDoMenu[] => {
-    const n = id ? (vm.marcado(id) ? vm.marcados.size : 1) : vm.marcados.size;
-    const alvo = id && !vm.marcado(id) ? [id] : undefined;
+  /** grupo: as partidas do múltiplo (o menu vale para ele inteiro, nunca para uma partida só) */
+  const opcoes = (id: string | null, grupo?: readonly string[]): LinhaDoMenu[] => {
+    const ids = grupo ?? (id ? [id] : []);
+    const ja = !!id && ids.every(x => vm.marcado(x));
+    const n = id ? (ja ? vm.marcados.size : ids.length) : vm.marcados.size;
+    const alvo = id && !ja ? ids : undefined;
     const varias = n > 1 ? ' (' + n + ')' : '';
+    const umSo = grupo ? !ja || vm.marcados.size === grupo.length : n === 1;
     return [
       ...(id ? [
-        { rotulo: 'Editar', icone: 'lapis' as const, atalho: 'Enter', desabilitado: n !== 1, onClick: () => vm.editar(id) },
+        { rotulo: 'Editar', icone: 'lapis' as const, atalho: 'Enter', desabilitado: !umSo, onClick: () => vm.editar(id) },
         { rotulo: 'Duplicar' + varias, icone: 'plus' as const, atalho: 'Ctrl+D', onClick: () => vm.duplicar(alvo) },
         { rotulo: 'Inverter débito e crédito' + varias, icone: 'repeat' as const, onClick: () => vm.inverter(alvo) },
         'separador' as const,
@@ -345,11 +362,12 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
       ...(id ? ['separador' as const, { rotulo: 'Excluir' + varias, icone: 'lixeira' as const, atalho: 'Del', onClick: () => vm.excluir(alvo) }] : []),
     ];
   };
-  const aoMenu = (ev: MouseEvent, id: string | null) => {
+  const aoMenu = (ev: MouseEvent, id: string | null, grupo?: readonly string[]) => {
     ev.preventDefault();
     ev.stopPropagation();
-    if (id) vm.garantirMarcado(id);
-    setMenu({ x: ev.clientX, y: ev.clientY, linhas: opcoes(id) });
+    if (grupo) vm.garantirGrupo(grupo);
+    else if (id) vm.garantirMarcado(id);
+    setMenu({ x: ev.clientX, y: ev.clientY, linhas: opcoes(id, grupo) });
     caixa.current?.focus({ preventScroll: true });
   };
   // os atalhos do Excel com a tabela em foco (o Ctrl+V vem pelo evento de colar, que traz o texto sem pedir licença)
@@ -362,7 +380,11 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
     else if (ctrl && k === 'd') { e.preventDefault(); vm.duplicar(); }
     else if (ctrl && k === 'z') { e.preventDefault(); vm.desfazer(); }
     else if (e.key === 'Delete') { e.preventDefault(); vm.excluir(); }
-    else if (e.key === 'Enter' && vm.marcados.size === 1) { e.preventDefault(); vm.editar([...vm.marcados][0]); }
+    else if (e.key === 'Enter' && vm.marcados.size > 0) {
+      // um lançamento só: uma linha, ou as partidas de um mesmo múltiplo
+      const ms = vm.linhas.filter(l => vm.marcado(l.id));
+      if (ms.length === 1 || (ms[0]?.multiplo && ms.every(l => l.multiplo === ms[0].multiplo))) { e.preventDefault(); vm.editar(ms[0].id); }
+    }
     else if (e.key === 'Escape') vm.marcarTodas(false);
   };
   const colar = (e: ClipboardEvent) => {
@@ -381,11 +403,14 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
     return () => document.removeEventListener('keydown', tecla);
   }, [desfazer]);
   const r = vm.resumo;
+  // por lançamento, não por partida: o múltiplo conta 1 e entra com o total dos débitos (as partidas somadas davam o dobro)
+  const quantos = blocos.length;
+  const totalTexto = sci.valorParaTexto(blocos.reduce((t, b) => t + (b.multiplo ? b.linhas.filter(l => l.debito).reduce((s, l) => s + l.valor, 0) : b.linhas[0].valor), 0));
   return (
     <section className="card ini-grupo">
       <div className="card-head">
         {/* quantos, no contador ao lado do título (24/11/2026: "essa apresentacao 3 lancamentos tambem nao gostei, apresenta de outra maneira") */}
-        <h3>Lançamentos {r.quantos > 0 && <span className="gh-counter" title={r.quantos === 1 ? '1 lançamento' : r.quantos + ' lançamentos'}>{r.quantos}</span>}
+        <h3>Lançamentos {quantos > 0 && <span className="gh-counter" title={quantos === 1 ? '1 lançamento' : quantos + ' lançamentos'}>{quantos}</span>}
           {r.comProblema > 0 && <span className="badge badge-warn sci-com-problema" title="Vão para a aba Conferir da planilha">{r.comProblema} com problema</span>}</h3>
         <span className="card-head-ctl">
           <label className="busca-curta">
@@ -409,36 +434,70 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
               </tr>
             </thead>
             <tbody>
-              {/* o zebrado leve por lançamento (24/11/2026: "um leve zebrado, para saber quais lancamentos sao quais"): as partidas
-                  de um múltiplo ficam no mesmo tom */}
-              {vm.linhas.map((l, i) => {
-                return (
-                <tr key={l.id} className={'ini-tr' + (faixas[i] % 2 ? ' sci-zebra' : '') + (vm.marcado(l.id) ? ' sci-marcada' : '') + (vm.editando === l.id ? ' linha-atual' : '') + (l.multiplo ? ' sci-do-multiplo' : '')}
-                  onClick={e => vm.marcar(l.id, e.ctrlKey || e.metaKey || e.shiftKey)} onDoubleClick={() => vm.editar(l.id)} onContextMenu={ev => aoMenu(ev, l.id)}>
-                  <td className="sci-marca" onClick={e => { e.stopPropagation(); vm.marcar(l.id, true); }}><input type="checkbox" checked={vm.marcado(l.id)} readOnly tabIndex={-1} aria-label={'Selecionar o lançamento de ' + l.dataTexto} /></td>
-                  <td className="ini-delegadas-curta">{l.dataTexto || '—'}</td>
-                  <td><span className="ini-empresa">{l.debito || '—'}</span>{l.nomeD && <><br /><span className="hint">{l.nomeD}</span></>}</td>
-                  <td><span className="ini-empresa">{l.credito || '—'}</span>{l.nomeC && <><br /><span className="hint">{l.nomeC}</span></>}</td>
-                  <td className="num">{l.valorTexto || '—'}</td>
-                  <td className="num">{l.historico || '—'}</td>
-                  <td>{l.complemento}</td>
-                  <td className="ini-delegadas-curta">{l.documento}</td>
-                  <td className="ini-delegadas-curta">{l.participanteD}</td>
-                  <td className="ini-delegadas-curta">{l.participanteC}</td>
-                  <td className="ini-delegadas-curta">
-                    {l.problemas.length
-                      ? <span className="badge badge-warn" title={l.problemas.join('\n')}><Icone nome="alert" />{l.problemas.length === 1 ? '1 problema' : l.problemas.length + ' problemas'}</span>
-                      : <span className="hint" title="Pronto para o SCI"><Icone nome="check" /></span>}
-                  </td>
-                </tr>
+              {/* o zebrado leve por lançamento (24/11/2026: "um leve zebrado, para saber quais lancamentos sao quais"); o múltiplo
+                  numa linha só, com a setinha que abre as partidas embaixo */}
+              {blocos.flatMap((b, faixa) => {
+                const zebra = faixa % 2 ? ' sci-zebra' : '';
+                const linha = (l: Linha, partida: boolean) => (
+                  <tr key={l.id} className={'ini-tr' + zebra + (vm.marcado(l.id) ? ' sci-marcada' : '') + (vm.editando === l.id ? ' linha-atual' : '') + (partida ? ' sci-do-multiplo sci-partida' : '')}
+                    onClick={e => vm.marcar(l.id, e.ctrlKey || e.metaKey || e.shiftKey)} onDoubleClick={() => vm.editar(l.id)} onContextMenu={ev => aoMenu(ev, l.id)}>
+                    <td className="sci-marca" onClick={e => { e.stopPropagation(); vm.marcar(l.id, true); }}><input type="checkbox" checked={vm.marcado(l.id)} readOnly tabIndex={-1} aria-label={'Selecionar o lançamento de ' + l.dataTexto} /></td>
+                    <td className="ini-delegadas-curta">{partida ? '' : l.dataTexto || '—'}</td>
+                    <td><span className="ini-empresa">{l.debito || '—'}</span>{l.nomeD && <><br /><span className="hint">{l.nomeD}</span></>}</td>
+                    <td><span className="ini-empresa">{l.credito || '—'}</span>{l.nomeC && <><br /><span className="hint">{l.nomeC}</span></>}</td>
+                    <td className="num">{l.valorTexto || '—'}</td>
+                    <td className="num">{l.historico || '—'}</td>
+                    <td>{l.complemento}</td>
+                    <td className="ini-delegadas-curta">{partida ? '' : l.documento}</td>
+                    <td className="ini-delegadas-curta">{l.participanteD}</td>
+                    <td className="ini-delegadas-curta">{l.participanteC}</td>
+                    <td className="ini-delegadas-curta"><Situacao problemas={l.problemas} /></td>
+                  </tr>
                 );
+                if (!b.multiplo) return [linha(b.linhas[0], false)];
+                const ps = b.linhas;
+                const ids = ps.map(l => l.id);
+                const aberto = abertos.has(b.id);
+                const todas = ids.every(id => vm.marcado(id));
+                const debitos = ps.filter(l => l.debito);
+                const creditos = ps.filter(l => l.credito);
+                const total = debitos.reduce((t, l) => t + l.valor, 0);
+                const igual = (v: (l: Linha) => string) => (ps.every(l => v(l) === v(ps[0])) ? v(ps[0]) : '');
+                const historico = igual(l => l.historico);
+                const complemento = igual(l => l.complemento);
+                const problemas = [...new Set(ps.flatMap(l => l.problemas))];
+                return [
+                  <tr key={b.id} className={'ini-tr sci-multiplo-linha' + zebra + (todas ? ' sci-marcada' : '')}
+                    onClick={e => vm.marcarGrupo(ids, e.ctrlKey || e.metaKey || e.shiftKey)} onDoubleClick={() => vm.editar(ids[0])} onContextMenu={ev => aoMenu(ev, ids[0], ids)}>
+                    <td className="sci-marca" onClick={e => { e.stopPropagation(); vm.marcarGrupo(ids, true); }}><input type="checkbox" checked={todas} readOnly tabIndex={-1} aria-label={'Selecionar o lançamento múltiplo de ' + ps[0].dataTexto} /></td>
+                    <td className="ini-delegadas-curta">{ps[0].dataTexto || '—'}</td>
+                    <td colSpan={2}>
+                      <button type="button" className="sci-abrir-multiplo" aria-expanded={aberto} title={aberto ? 'Fechar as partidas' : 'Ver as partidas'}
+                        onClick={e => { e.stopPropagation(); abrirOuFechar(b.id); }} onDoubleClick={e => e.stopPropagation()}>
+                        <Icone nome="chevronRight" className={'sci-abrir-seta' + (aberto ? ' aberta' : '')} />
+                        <span className="ini-empresa">Lançamento múltiplo</span>
+                        <span className="hint">{ps.length} partidas · {debitos.length === 1 ? '1 débito' : debitos.length + ' débitos'} · {creditos.length === 1 ? '1 crédito' : creditos.length + ' créditos'}</span>
+                      </button>
+                    </td>
+                    <td className="num">{sci.valorParaTexto(total)}</td>
+                    <td className="num">{historico || <span className="hint">vários</span>}</td>
+                    <td>{complemento || <span className="hint">vários</span>}</td>
+                    <td className="ini-delegadas-curta">{ps[0].documento}</td>
+                    <td className="ini-delegadas-curta" />
+                    <td className="ini-delegadas-curta" />
+                    <td className="ini-delegadas-curta"><Situacao problemas={problemas} /></td>
+                  </tr>,
+                  ...(aberto ? ps.map(l => linha(l, true)) : []),
+                ];
               })}
             </tbody>
+            {/* o total numa linha própria, alinhado com o Valor (24/11/2026: "melhora isso, apresenta melhor"); os selecionados só
+                quando há; sem a dica do botão direito */}
             <tfoot>
-              <tr>
-                <td colSpan={4} className="hint">Total</td>
-                <td className="num">{r.totalTexto}</td>
-                <td colSpan={6} className="hint">{vm.marcados.size > 0 ? vm.marcados.size + ' selecionado' + (vm.marcados.size > 1 ? 's' : '') + ' · botão direito para as opções' : 'Botão direito para editar, copiar, colar e excluir'}</td>
+              <tr className="sci-total">
+                <td colSpan={4} className="sci-total-rotulo">Total</td>
+                <td className="num sci-total-valor">{totalTexto}</td>
+                <td colSpan={6} className="sci-total-marcados">{vm.marcados.size > 0 && <span className="badge badge-neutral">{vm.marcados.size + (vm.marcados.size > 1 ? ' selecionados' : ' selecionado')}</span>}</td>
               </tr>
             </tfoot>
           </table>

@@ -640,6 +640,7 @@ main.main{padding:0 24px;}
 .page-title{font-size:var(--fs-20);font-weight:600;}
 /* a cápsula antes do título (o código da empresa no minimum, 24/11/2026: "Nao gosto desse pontinho, coloca outra coisa, usa capsula") */
 .page-title-linha{display:flex;align-items:center;gap:10px;min-width:0;}
+.page-title-trocar{flex:none;}
 .page-title-selo{flex:none;display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:var(--fs-14);font-weight:600;font-variant-numeric:tabular-nums;line-height:1;}
 .content{max-width:none;}
 @media (max-width:768px){
@@ -8428,6 +8429,10 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-marca{width:36px;}
 .sci-tabela tr.sci-marcada{background:var(--accent-soft);}
 /* o zebrado leve, um tom por lançamento (24/11/2026: "um leve zebrado, para saber quais lancamentos sao quais") */
+/* o total da tabela (24/11/2026: "melhora isso, apresenta melhor"): uma linha própria, com o rótulo junto do valor */
+.sci-tabela tfoot tr.sci-total td{padding:12px;border-top:1px solid var(--border);background:color-mix(in srgb,var(--ink) 3%,transparent);vertical-align:middle;}
+.sci-tabela tfoot .sci-total-rotulo{text-align:right;font-size:var(--fs-12);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-muted);}
+.sci-tabela tfoot .sci-total-valor{font-size:var(--fs-14);font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
 .card-head h3 .sci-com-problema{margin-left:8px;vertical-align:middle;font-weight:500;}
 .sci-tabela tbody tr.sci-zebra:not(.sci-marcada){background:color-mix(in srgb,var(--ink) 4%,transparent);}
 .sci-tabela .badge svg{width:12px;height:12px;}
@@ -8475,6 +8480,15 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-multiplo-totais .sci-bate{display:inline-flex;align-items:center;gap:4px;color:var(--success);font-weight:600;}
 .sci-multiplo-totais svg{width:14px;height:14px;}
 .sci-tabela tr.sci-do-multiplo > td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
+/* o múltiplo numa linha só, a setinha abre as partidas (24/11/2026: "como se fosse um lancamento so, e quando clicava na setinha
+   de drop ele destrinchasse"); as partidas abertas ficam recuadas embaixo dele */
+.sci-tabela tr.sci-multiplo-linha > td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
+.sci-abrir-multiplo{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;text-align:left;}
+.sci-abrir-multiplo:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.sci-abrir-seta{width:16px;height:16px;flex:none;color:var(--ink-muted);transition:transform .15s ease;}
+.sci-abrir-seta.aberta{transform:rotate(90deg);}
+.sci-tabela tr.sci-partida td{font-size:var(--fs-13, 13px);}
+.sci-tabela tr.sci-partida td:nth-child(3){padding-left:36px;}
 /* a tela inicial do minimum (24/11/2026: "Faz uma tela inicial bem bonita, com animações"): no centro, o selo, o título, a
    busca e as empresas do SCI; tudo chega uma vez, de baixo para cima, um atrás do outro (exceção pedida à regra de não
    animar, como a gaveta; nada infinito). Sem movimento pedido pelo sistema, aparece parado */

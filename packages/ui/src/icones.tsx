@@ -88,6 +88,8 @@ const ICONS = {
   predio: '<rect x="4.5" y="3" width="15" height="18" rx="1.5"/><path d="M9 7.5h.01"/><path d="M15 7.5h.01"/><path d="M9 11.5h.01"/><path d="M15 11.5h.01"/><path d="M10 21v-4h4v4"/>',
   escudo: '<path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/>',
   seta: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  // as setas de trocar, uma para cada lado (o trocar a empresa do minimum, 24/11/2026: "coloca um botao de setas para mudar")
+  trocar: '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
   // o clipe de anexar (Área do Cliente, 16/10/2026)
   clipe: '<path d="m20.5 11.5-8.4 8.4a5.3 5.3 0 0 1-7.5-7.5l8.4-8.4a3.5 3.5 0 0 1 5 5l-8.4 8.4a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/>',
   aviao: '<path d="M21.5 2.5 14.8 21l-3.6-8.2L3 9.2Z"/><path d="m21.5 2.5-10.3 10.3"/>',
