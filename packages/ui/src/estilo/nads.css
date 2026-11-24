@@ -6496,6 +6496,8 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .fc-valor > b{font-size:var(--fs-16);font-weight:600;line-height:34px;}
 .fc-valor .fin-valor-edita{width:150px;margin-left:-8px;font-size:var(--fs-16);font-weight:600;text-align:left;}
 .fc-valor-acao{border-right:0;}
+.fc-aliquota{white-space:nowrap;}
+.fc-aliquota .fin-valor-edita{width:64px;min-width:64px;}
 .fc-digitadas td .fin-valor-edita{width:100%;min-width:90px;}
 .fc-digitadas td:first-child .fin-valor-edita{text-align:left;}
 /* tela média: o resultado em cima da conta, os números lado a lado; no celular, dois a dois e a busca larga */
