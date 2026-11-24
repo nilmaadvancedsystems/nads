@@ -136,6 +136,8 @@ igual('honorários: de outra empresa não sai neste link', R.honorariosDoLink([O
 igual('honorários: sem contrato não sai', R.honorariosDoLink([Object.assign({}, boletoHon, { contratoId: 'zz' })], contratosHon, [58], HOJE), []);
 igual('honorários: com mais de 6 meses não sai', R.honorariosDoLink([Object.assign({}, boletoHon, { competencia: '2026-03' })], contratosHon, [58], HOJE), []);
 igual('honorários: refeito, vale o enviado mais recente', R.honorariosDoLink([boletoHon, Object.assign({}, boletoHon, { id: 'b2', valor: 900, envio: { status: 'enviado', enviadoEm: '2026-10-12T10:00:00Z' } })], contratosHon, [58], HOJE).map(h => [h.boletoId, h.guia.valor]), [['b2', 900]]);
+const PIX = '00020101021226830014BR.GOV.BCB.PIX2561qrpix.exemplo.com.br/v2/cobv/abc5204000053039865406850.005802BR6304ABCD';
+igual('honorários: o Pix do contrato e mês vai junto; o torto não', [R.honorariosDoLink([boletoHon], contratosHon, [58], HOJE, 6, new Map([['h1|2026-10', PIX]]))[0].guia.pix, 'pix' in R.honorariosDoLink([boletoHon], contratosHon, [58], HOJE, 6, new Map([['h1|2026-10', 'pix torto']]))[0].guia, 'pix' in R.honorariosDoLink([boletoHon], contratosHon, [58], HOJE, 6, new Map([['h1|2026-09', PIX]]))[0].guia], [PIX, false, false]);
 igual('honorários: sem PDF (no Drive), temPdf false', R.honorariosDoLink([Object.assign({}, boletoHon, { partes: undefined, driveId: 'd1' })], contratosHon, [58], HOJE).map(h => h.guia.temPdf), [false]);
 
 const resumo = R.resumoDoCliente([{ codigo: 58, nome: 'TORNEARIA', cnpj: '11.222.333/0001-81', regime: 'Simples', dp: { obrigacoes: [] }, execucoes: {} }], { whatsapp: '(38) 9138-3638', email: 'x@y.com', senha: 'nunca' }, '2026-10-16T10:00:00Z');
@@ -269,7 +271,8 @@ if (C) {
   const pedidos = [pedidoCompleto, Object.assign({}, pedidoCompleto, { aviso: '' }), Object.assign({}, pedidoCompleto, { valor: 'x' }), Object.assign({}, pedidoCompleto, { vencimento: '31/02/2026', aviso: '' }), Object.assign({}, pedidoCompleto, { numeroGuia: ' ', pdfNome: '', aviso: '' })];
   igual('a guia do FGTS é a do core', pedidos.map(p => [R.guiaDoFgts(p, HOJE), R.guiaDoFgts(p, HOJE, true)]), pedidos.map(p => [C.g.guiaDoFgts(p, HOJE), C.g.guiaDoFgts(p, HOJE, true)]));
   const boletos = [boletoHon, Object.assign({}, boletoHon, { valor: 0 }), Object.assign({}, boletoHon, { vencimento: '2026-02-31' }), Object.assign({}, boletoHon, { linha: 'abc', partes: 0 }), Object.assign({}, boletoHon, { envio: { status: 'fila' } }), Object.assign({}, boletoHon, { valor: 850.555 })];
-  igual('o boleto dos honorários é o do core', boletos.map(b => R.guiaDoHonorario(b, 58, HOJE)), boletos.map(b => C.g.guiaDoHonorario(b, 58, HOJE)));
+  igual('o boleto dos honorários é o do core', boletos.map(b => R.guiaDoHonorario(b, 58, HOJE, PIX)), boletos.map(b => C.g.guiaDoHonorario(b, 58, HOJE, PIX)));
+  igual('o Pix que vale é o do core', [PIX, 'x', '', '000201' + 'é'.repeat(30), PIX + ' '].map(R.pixValido), [PIX, 'x', '', '000201' + 'é'.repeat(30), PIX + ' '].map(C.g.pixValido));
   igual('a situação da guia é a do core', ['15/10/2026', '16/10/2026', '17/10/2026', 'x'].map(v => R.situacaoDaGuia(v, HOJE)), ['15/10/2026', '16/10/2026', '17/10/2026', 'x'].map(v => C.g.situacaoDaGuia(v, HOJE)));
   igual('o chamado do cliente é o do core', R.chamadoDoCliente(R.chamadoInterno('c1', interno)), C.c.chamadoDoCliente(R.chamadoInterno('c1', interno)));
   igual('os tipos de chamado são os do core', R.TIPOS_DE_CHAMADO, C.c.TIPOS_DE_CHAMADO);

@@ -335,6 +335,8 @@ export function lerGuia(id: string, x: unknown): ac.GuiaDoCliente | null {
     ...(ac.dataDoVencimento(texto(g.pagoEm)) ? { pagoEm: texto(g.pagoEm) } : {}),
     // a linha digitável do boleto dos honorários: só dígitos, ponto e espaço
     ...(/^[\d. ]{20,60}$/.test(texto(g.linha).trim()) ? { linha: texto(g.linha).trim() } : {}),
+    // o Pix copia e cola do boleto dos honorários (24/11/2026)
+    ...(ac.pixValido(g.pix) ? { pix: ac.pixValido(g.pix) } : {}),
   };
 }
 
@@ -480,6 +482,7 @@ export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [
     // a paga sai de "a pagar" e vai para Pagas (o comprovante para baixar ainda não tem fonte)
     guias: impostos.filter(g => !g.pagoEm),
     pagas: impostos.filter(g => g.pagoEm).map(guiaPaga),
+    emitidas: impostos,
     honorarios,
     agenda: [...p.agenda].sort((a, b) => a.mes.localeCompare(b.mes)),
     envios: [...p.envios].sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm)),

@@ -52,6 +52,14 @@ export interface GuiaDoCliente {
   pagoEm?: string;
   /** a linha digitável do boleto (só no HON), para copiar */
   linha?: string;
+  /** o Pix copia e cola do boleto (só no HON emitido pelo Efí, o "bolix") (24/11/2026: "se possivel poder gerar um codigo pix") */
+  pix?: string;
+}
+
+/** O Pix copia e cola que vale: o payload EMV (começa com 000201), só caracteres comuns, até 512. */
+export function pixValido(t: unknown): string {
+  const s = String(t ?? '').trim();
+  return /^000201[\x20-\x7E]{20,506}$/.test(s) ? s : '';
 }
 
 /**
@@ -79,12 +87,14 @@ export interface BoletoDeHonorarioInterno {
  * que deu erro não saem). Sem 'pago' (o dono, 24/11/2026: o recebimento é marcado à mão; um atraso faria o cliente se
  * sentir cobrado depois de pagar). Lista branca: só os campos da GuiaDoCliente.
  */
-export function guiaDoHonorario(b: BoletoDeHonorarioInterno, codigo: number | string, hoje: Date): GuiaDoCliente | null {
+export function guiaDoHonorario(b: BoletoDeHonorarioInterno, codigo: number | string, hoje: Date, pixDoContrato?: string): GuiaDoCliente | null {
   if (!b || b.fora === true || b.envio?.status !== 'enviado') return null;
   const v = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(b.vencimento ?? ''));
   const vencimento = v ? v[3] + '/' + v[2] + '/' + v[1] : '';
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(b.competencia ?? '')) || !dataDoVencimento(vencimento) || typeof b.valor !== 'number' || !Number.isFinite(b.valor) || b.valor <= 0) return null;
   const linha = String(b.linha ?? '').replace(/[^\d. ]/g, '').trim().slice(0, 60);
+  // o Pix do contrato (financeiroHonorarios.boletosEfi.{AAAA-MM}.pix), quando o boleto saiu pelo Efí
+  const pix = pixValido(pixDoContrato);
   return {
     id: 'hon-' + b.competencia + '-' + codigo,
     tipo: 'HON',
@@ -92,6 +102,7 @@ export function guiaDoHonorario(b: BoletoDeHonorarioInterno, codigo: number | st
     vencimento,
     valor: Math.round(b.valor * 100) / 100,
     ...(linha ? { linha } : {}),
+    ...(pix ? { pix } : {}),
     situacao: situacaoDaGuia(vencimento, hoje),
     temPdf: typeof b.partes === 'number' && b.partes > 0,
   };

@@ -69,12 +69,20 @@ function guiaDoFgts(pedido, hoje, liberada = false) {
  * O boleto de honorários que o cliente vê (24/11/2026, ficha 50; o dono: "Só o boleto, sem 'pago'"): só depois de
  * ENVIADO por e-mail ao cliente; nunca pagoEm. Lista branca: só os campos da guia.
  */
-function guiaDoHonorario(b, codigo, hoje) {
+/** O Pix copia e cola que vale: o payload EMV (começa com 000201), só caracteres comuns, até 512. */
+function pixValido(t) {
+  const s = String(t ?? '').trim();
+  return /^000201[ -~]{20,506}$/.test(s) ? s : '';
+}
+
+function guiaDoHonorario(b, codigo, hoje, pixDoContrato) {
   if (!b || b.fora === true || !b.envio || b.envio.status !== 'enviado') return null;
   const v = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(b.vencimento ?? ''));
   const vencimento = v ? v[3] + '/' + v[2] + '/' + v[1] : '';
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(b.competencia ?? '')) || !dataDoVencimento(vencimento) || typeof b.valor !== 'number' || !Number.isFinite(b.valor) || b.valor <= 0) return null;
   const linha = String(b.linha ?? '').replace(/[^\d. ]/g, '').trim().slice(0, 60);
+  // o Pix do contrato (financeiroHonorarios.boletosEfi.{AAAA-MM}.pix), quando o boleto saiu pelo Efí
+  const pix = pixValido(pixDoContrato);
   return {
     id: 'hon-' + b.competencia + '-' + codigo,
     tipo: 'HON',
@@ -82,6 +90,7 @@ function guiaDoHonorario(b, codigo, hoje) {
     vencimento,
     valor: Math.round(b.valor * 100) / 100,
     ...(linha ? { linha } : {}),
+    ...(pix ? { pix } : {}),
     situacao: situacaoDaGuia(vencimento, hoje),
     temPdf: typeof b.partes === 'number' && b.partes > 0,
   };
@@ -461,7 +470,7 @@ function guiasDoFgtsDoLink(pedidos, codigos, hoje, meses = 12) {
  * últimos `meses` meses; por empresa e competência vale o enviado mais recente (um boleto refeito substitui o velho).
  * contratos: Map(contratoId -> código da empresa, texto). Devolve [{ guia, boletoId }].
  */
-function honorariosDoLink(boletos, contratos, codigos, hoje, meses = 6) {
+function honorariosDoLink(boletos, contratos, codigos, hoje, meses = 6, pixes = new Map()) {
   const doLink = new Set(codigos.map(c => String(c)));
   const desde = mesesDepois(competenciaDe(hoje), -meses);
   const quando = b => String((b.envio && b.envio.enviadoEm) || '');
@@ -476,7 +485,8 @@ function honorariosDoLink(boletos, contratos, codigos, hoje, meses = 6) {
   }
   const out = [];
   for (const { b, codigo } of ultimo.values()) {
-    const guia = guiaDoHonorario(b, codigo, hoje);
+    // o Pix do mesmo contrato e mês (pixes: 'contratoId|AAAA-MM' -> o copia e cola) (24/11/2026)
+    const guia = guiaDoHonorario(b, codigo, hoje, pixes.get(String(b.contratoId) + '|' + b.competencia));
     if (guia) out.push({ guia, boletoId: b.id });
   }
   return out.sort((a, b) => a.guia.id.localeCompare(b.guia.id));
@@ -699,7 +709,7 @@ const CAMPOS_DO_ESPELHO = {
   empresa: ['codigo', 'nome', 'cnpj'],
   escritorio: ['telefone', 'email', 'whatsapp'],
   // o tributo da DARF (17/11/2026, ficha todas-as-guias: as guias dos lotes do Fiscal e do DP)
-  guia: ['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm', 'linha'], // pagoEm: (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir")
+  guia: ['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm', 'linha', 'pix'], // pagoEm: (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir")
   pdf: ['base64', 'n', 'total'],
   agenda: ['mes', 'itens', 'atualizadoEm'],
   item: ['id', 'nome', 'vence', 'situacao', 'feitoEm'],
@@ -803,7 +813,7 @@ function hashDoEspelho(doc) {
 
 module.exports = {
   // core: guias
-  valorEmReais, dataDoVencimento, situacaoDaGuia, guiaPrecisaLiberar, guiaDoFgts, guiaDoHonorario, honorariosDoLink,
+  valorEmReais, dataDoVencimento, situacaoDaGuia, guiaPrecisaLiberar, guiaDoFgts, guiaDoHonorario, honorariosDoLink, pixValido,
   // core: chamados
   TIPOS_DE_CHAMADO, MAIOR_TEXTO_DO_CHAMADO, autorDoEscritorio, chamadoDoCliente, erroDoNovoChamado, tituloDoChamado, chamadoAceitaResposta,
   // core: envios

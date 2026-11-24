@@ -324,6 +324,7 @@ function iniciarAreaDoCliente(db, log) {
   // guias/{id}/pdf/{n} como as do FGTS; o site os separa das guias de imposto. Nunca pagoEm (marcarGuiasPagas pula).
   const boletosHon = new Map();   // id -> o boleto
   const contratosHon = new Map(); // contratoId -> código da empresa (texto)
+  const pixHon = new Map();       // 'contratoId|AAAA-MM' -> o Pix copia e cola do boleto do Efí (24/11/2026)
   const honNoEspelho = new Map(); // token -> Set(ids das guias HON no espelho)
 
   async function espelharHonorario(token, guia, boletoId) {
@@ -697,7 +698,7 @@ function iniciarAreaDoCliente(db, log) {
 
     // os boletos dos honorários já enviados (24/11/2026, ficha 50): um erro aqui não para o resto do espelho
     try {
-      const hon = R.honorariosDoLink([...boletosHon.values()], contratosHon, link.codigos, hoje, MESES_DE_HONORARIOS);
+      const hon = R.honorariosDoLink([...boletosHon.values()], contratosHon, link.codigos, hoje, MESES_DE_HONORARIOS, pixHon);
       for (const h of hon) if (await espelharHonorario(token, h.guia, h.boletoId)) gravados++;
       await limparHonorarios(token, new Set(hon.map(h => h.guia.id)));
     } catch (e) { log('Honorários: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
@@ -923,7 +924,14 @@ function iniciarAreaDoCliente(db, log) {
   ouvir('Área do Cliente: contratos dos honorários', () => db.collection('financeiroHonorarios'), snap => {
     const antes = new Map(contratosHon);
     contratosHon.clear();
-    for (const d of snap.docs) { const c = String(d.get('codigo') ?? '').trim(); if (/^\d+$/.test(c)) contratosHon.set(d.id, String(Number(c))); }
+    pixHon.clear();
+    for (const d of snap.docs) {
+      const c = String(d.get('codigo') ?? '').trim();
+      if (/^\d+$/.test(c)) contratosHon.set(d.id, String(Number(c)));
+      // o Pix de cada boleto do Efí emitido (só o copia e cola; o resto do contrato fica no Financeiro)
+      const efi = d.get('boletosEfi') || {};
+      for (const [comp, x] of Object.entries(efi)) { const pix = R.pixValido(x && x.status === 'emitido' ? x.pix : ''); if (pix) pixHon.set(d.id + '|' + comp, pix); }
+    }
     // um contrato que trocou de empresa: as duas empresas refazem
     if (!primeiroDosHon.contratos) for (const ch of snap.docChanges()) { const a = antes.get(ch.doc.id); if (a !== contratosHon.get(ch.doc.id)) { if (a) tokensDaEmpresa(a).forEach(t => fila.add(t)); filaDoContrato(ch.doc.id); } }
     primeiroDosHon.contratos = false;

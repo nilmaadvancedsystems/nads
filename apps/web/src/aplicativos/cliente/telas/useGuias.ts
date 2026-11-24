@@ -104,15 +104,19 @@ export function useGuias(props: DaCasca) {
     comprovanteEm: (g: ac.GuiaDoCliente) => { const r = ac.comprovanteDaGuia(g, area.envios); const d = r ? formatos.diaEmBrasilia(r.recebidoEm) : ''; return d ? d.slice(8, 10) + '/' + d.slice(5, 7) : ''; },
     mes, mudarMes: setMes, ultimo,
     // os parcelamentos ativos, numa linha cada (só se houver; nunca "atrasada") (plano do Acessórias, 18/11/2026, ficha parcelamentos; frase do dono: "Serve, seguir")
+    // (24/11/2026: "esse aqui ta muito estranho", "essas 2") o parcelamento e os honorários num cartão só, "Outros
+    // pagamentos", com as linhas no desenho das guias: o nome, a frase curta, o valor à direita e o botão na mesma casa
     parcelamentos: area.parcelamentos.map(x => ({
-      id: x.id, nome: 'Parcelamento ' + x.orgao + (x.modalidade ? ' (' + x.modalidade + ')' : ''),
-      texto: 'parcela ' + x.parcela + ' de ' + x.parcelas + ' · ' + formatos.reais(x.valorParcela) + ' · vence ' + x.vencimento.slice(0, 5),
+      id: x.id, nome: 'Parcelamento ' + x.orgao,
+      sub: (x.modalidade ? x.modalidade + ' · ' : '') + 'parcela ' + x.parcela + ' de ' + x.parcelas + ' · vence ' + x.vencimento.slice(0, 5),
+      valor: formatos.reais(x.valorParcela),
     })),
     // os boletos dos honorários do escritório (24/11/2026, ficha 50; o dono: "Só o boleto, sem 'pago'"): os três mais
-    // novos, num quadro próprio, com o vencimento e sem situação (nem "vencida", nem "pago")
+    // novos, com o vencimento e sem situação (nem "vencida", nem "pago")
     honorarios: area.honorarios.slice(0, 3).map(h => ({
-      id: h.id, nome: 'Honorários de ' + formatos.rot(h.competencia).toLowerCase(),
-      texto: formatos.reais(h.valor) + ' · vencimento ' + h.vencimento.slice(0, 5), linha: h.linha ?? '', temPdf: h.temPdf,
+      id: h.id, nome: 'Honorários do escritório',
+      sub: formatos.rot(h.competencia).replace(/^./, c => c.toUpperCase()) + ' · vence ' + h.vencimento.slice(0, 5),
+      valor: formatos.reais(h.valor), linha: h.linha ?? '', pix: h.pix ?? '', temPdf: h.temPdf,
     })),
     // a linha embaixo do título (16/11/2026, "muita informação": no máximo dois fatos)
     resumo: resumoCurtoDasGuias({
@@ -138,6 +142,8 @@ export function useGuias(props: DaCasca) {
     },
     pedirGuiaNova: (g: ac.GuiaDoCliente) => irPara('chamados', { novoChamado: { tipo: 'documento', titulo: tituloDaGuiaNova(g) } }),
     vista, verGuia, baixando, baixar, comprovante, copiarCodigo: (c: string) => copiar(c, 'Código'),
+    // o Pix copia e cola do boleto dos honorários (24/11/2026: "se possivel poder gerar um codigo pix")
+    copiarPix: (c: string) => copiar(c, 'Pix copia e cola'),
     // o mesmo padrão da Central (13/11/2026): as setas da janela andam pelas guias a pagar; todas num .zip
     setas: vista.setas(comPdf.map(g => g.id), id => repoAreaCliente.baixarGuia(token, id)),
     comPdf: comPdf.length, juntando: zip.juntando,

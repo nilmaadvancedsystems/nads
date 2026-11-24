@@ -45,6 +45,8 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
     expect(e.guias.map(g => g.id)).toEqual(['p1']);
     expect(e.pagas).toEqual([]);
     expect(e.secoes.pagas).toBe(false);
+    // a tabela de Impostos conta o emitido, sem os honorários (24/11/2026: "o darf tem que aparecer aqui tambem")
+    expect(e.emitidas.map(g => g.id)).toEqual(['p1']);
     expect(e.honorarios.map(g => [g.id, g.tipo, g.vencimento, 'pagoEm' in g])).toEqual([['hon-2026-10-58', 'HON', '15/10/2026', false]]);
   });
   it('a guia do FGTS (area-cliente.js) e a de DAS (envios-do-nads.js, sem número)', () => {
@@ -100,7 +102,7 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
   it('os campos lidos são exatamente os que o robô pode gravar (lista branca)', () => {
     const C = R.CAMPOS_DO_ESPELHO;
     expect(C.resumo).toEqual(['empresas', 'escritorio', 'atualizadoEm']);
-    expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm', 'linha']); // o tributo da DARF (17/11/2026, ficha todas-as-guias); pagoEm (18/11/2026, ficha guia-paga-confirmada); a linha do boleto dos honorários (24/11/2026, ficha 50)
+    expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm', 'linha', 'pix']); // o tributo da DARF (17/11/2026, ficha todas-as-guias); pagoEm (18/11/2026, ficha guia-paga-confirmada); a linha do boleto dos honorários (24/11/2026, ficha 50)
     expect(C.agenda).toEqual(['mes', 'itens', 'atualizadoEm']);
     expect(C.item).toEqual(['id', 'nome', 'vence', 'situacao', 'feitoEm']);
     expect(C.chamado).toEqual(['id', 'tipo', 'titulo', 'situacao', 'mensagens', 'passo']); // o passo atual do pedido (23/11/2026)

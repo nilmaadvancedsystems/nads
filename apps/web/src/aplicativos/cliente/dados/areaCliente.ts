@@ -112,6 +112,11 @@ export interface EstadoDaArea {
   codigos: Record<string, string>;
   pagas: GuiaPaga[];
   /**
+   * Todas as guias de imposto que o escritório emitiu, a pagar e pagas (24/11/2026: "o darf tem que aparecer aqui
+   * tambem"): a tabela de Impostos conta o emitido, não o que falta pagar (a guia paga pelo extrato saía da conta).
+   */
+  emitidas: ac.GuiaDoCliente[];
+  /**
    * Os boletos dos honorários do escritório já enviados por e-mail (24/11/2026, ficha 50; tipo HON): fora das guias de
    * imposto (não entram em total, vencida, sino nem Pagas); a tela mostra num quadro próprio, sem situação.
    */
@@ -148,7 +153,7 @@ export interface EstadoDaArea {
 }
 
 export const AREA_VAZIA: EstadoDaArea = {
-  carregado: false, valido: false, pedeLogin: null, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], honorarios: [], agenda: [], envios: [], chamados: [],
+  carregado: false, valido: false, pedeLogin: null, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], emitidas: [], honorarios: [], agenda: [], envios: [], chamados: [],
   documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], comunicados: [], tickets: [], entregas: [], parcelamentos: [],
 };
 

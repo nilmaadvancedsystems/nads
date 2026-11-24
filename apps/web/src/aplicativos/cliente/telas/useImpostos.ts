@@ -16,7 +16,7 @@ export function useImpostos({ area, hoje }: DaCasca) {
   const { toast } = useRetorno();
   const anos = [hoje.getFullYear(), hoje.getFullYear() - 1];
   const [ano, setAno] = useState(anos[0]);
-  const q = ac.quadroDosImpostos({ ano, hoje, faturamento: area.faturamento?.empresas ?? [], folha: area.pessoal?.historico ?? [], guias: area.guias });
+  const q = ac.quadroDosImpostos({ ano, hoje, faturamento: area.faturamento?.empresas ?? [], folha: area.pessoal?.historico ?? [], guias: area.emitidas });
   const nome = area.resumo?.empresas.map(e => e.nome).join(' · ') || 'Empresa';
   const mesDeHoje = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
   return {

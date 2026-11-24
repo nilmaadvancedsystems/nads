@@ -9,10 +9,11 @@
 // geral); o resumo ficou com dois fatos; cada guia com a data curta, o valor e um botão (o resto no "⋯"). Ficam a lista
 // (com as abas A pagar e Pagas) e, ao lado, o calendário.
 import './guias.css';
-import { Icone, SeletorMes } from '@nads/ui';
+import { Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useRef } from 'react';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { LinhaGuiaDoMes, LinhaPagaDoMes } from '../partes/LinhaGuiaDoMes';
+import { SiglaDaGuia } from '../partes/SiglaDaGuia';
 import { useGuias } from './useGuias';
 import type { DaCasca } from './useAreaCliente';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
@@ -81,28 +82,45 @@ export function Guias(props: DaCasca) {
               </ul>
             ) : <p className="cli-gu-vazio"><Icone nome="checkCircle" width={18} height={18} />{vm.vazio}</p>}
           </section>
-          {/* os parcelamentos ativos, discretos (ficha parcelamentos, 18/11/2026): só aparece se houver */}
-          {vm.parcelamentos.length > 0 && (
-            <section className="card cli-gu-parcelamentos" aria-label="Parcelamentos">
-              <ul>
-                {vm.parcelamentos.map(p => (
-                  <li key={p.id}><Icone nome="calendar" width={16} height={16} /><span><b>{p.nome}</b><span className="hint">{p.texto}</span></span></li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {/* o boleto dos honorários do escritório (24/11/2026, ficha 50): só os já enviados por e-mail, sem "pago" */}
-          {vm.honorarios.length > 0 && (
-            <section className="card cli-gu-parcelamentos cli-gu-honorarios" aria-label="Honorários do escritório">
-              <ul>
+          {/* (24/11/2026: "essas 2") os parcelamentos ativos (ficha parcelamentos, 18/11/2026) e o boleto dos honorários do
+              escritório (ficha 50; só os já enviados, sem "pago") num cartão só, com as linhas no desenho das guias */}
+          {(vm.parcelamentos.length > 0 || vm.honorarios.length > 0) && (
+            <section className="card cli-gu-lista cli-gu-outros" aria-label="Outros pagamentos">
+              <div className="cli-gu-cabeca"><h3>Outros pagamentos</h3></div>
+              <ul className="cli-gu-itens">
                 {vm.honorarios.map(h => (
-                  <li key={h.id}>
-                    <Icone nome="recibo" width={16} height={16} />
-                    <span><b>{h.nome}</b><span className="hint">{h.texto}</span></span>
-                    <span className="cli-gu-hon-acoes">
-                      {h.linha && <button type="button" className="btn btn-sm btn-ghost" onClick={() => vm.copiarCodigo(h.linha)}><Icone nome="copiar"width={14} height={14} />Copiar código</button>}
-                      {h.temPdf && <button type="button" className="btn btn-sm" disabled={vm.baixando === h.id} onClick={() => void vm.baixar(h.id)}><Icone nome="download" width={14} height={14} />Boleto</button>}
+                  <li key={h.id} className="cli-gu-linha">
+                    <span className="cli-gu-logo"><SiglaDaGuia tipo="HON" tamanho={34} /></span>
+                    <span className="cli-gu-txt"><b className="cli-gu-nome">{h.nome}</b><span className="cli-gu-sub"><span className="cli-gu-junto">{h.sub}</span></span></span>
+                    <span className="cli-gu-valor">{h.valor}</span>
+                    {/* (24/11/2026: "ela tem que poder ver o boleto por aqui"; "se possivel poder gerar um codigo pix") o Ver
+                        boleto abre a pré-visualização; no "⋯", baixar, o código de barras e o Pix copia e cola */}
+                    <span className="cli-gu-acoes cli-g-acoes">
+                      {h.temPdf ? (
+                        <button type="button" className="btn cli-gu-principal" disabled={vm.baixando === h.id || vm.vista.abrindo === h.id} onClick={() => vm.verGuia(h.id)}><Icone nome="olho" width={15} height={15} />Ver boleto</button>
+                      ) : h.pix ? (
+                        <button type="button" className="btn cli-gu-principal" onClick={() => vm.copiarPix(h.pix)}><Icone nome="copiar" width={15} height={15} />Copiar Pix</button>
+                      ) : h.linha ? (
+                        <button type="button" className="btn cli-gu-principal" onClick={() => vm.copiarCodigo(h.linha)}><Icone nome="copiar" width={15} height={15} />Copiar código</button>
+                      ) : <span className="cli-gu-vaga" aria-hidden="true" />}
+                      {h.temPdf || h.pix || h.linha ? (
+                        <span className="cli-gu-mais">
+                          <MenuSuspenso rotulo="" icone="mais" className="icon-btn" semSeta direita flutuante compacto dica="Mais ações" titulo="Mais ações: honorários do escritório" itens={[
+                            ...(h.temPdf ? [{ rotulo: 'Baixar o boleto', icone: 'download' as const, desabilitado: vm.baixando === h.id, onClick: () => void vm.baixar(h.id) }] : []),
+                            ...(h.pix ? [{ rotulo: 'Copiar o Pix copia e cola', icone: 'copiar' as const, onClick: () => vm.copiarPix(h.pix) }] : []),
+                            ...(h.linha ? [{ rotulo: 'Copiar o código de barras', icone: 'copiar' as const, onClick: () => vm.copiarCodigo(h.linha) }] : []),
+                          ]} />
+                        </span>
+                      ) : <span className="cli-gu-vaga" aria-hidden="true" />}
                     </span>
+                  </li>
+                ))}
+                {vm.parcelamentos.map(p => (
+                  <li key={p.id} className="cli-gu-linha">
+                    <span className="cli-gu-logo"><span className="cli-sigla cli-gu-sigla-icone" style={{ width: 34, height: 34 }} aria-hidden="true"><Icone nome="calendar" width={18} height={18} /></span></span>
+                    <span className="cli-gu-txt"><b className="cli-gu-nome">{p.nome}</b><span className="cli-gu-sub"><span className="cli-gu-junto">{p.sub}</span></span></span>
+                    <span className="cli-gu-valor">{p.valor}</span>
+                    <span className="cli-gu-acoes cli-g-acoes cli-gu-sem-acao"><span className="cli-gu-vaga" aria-hidden="true" /><span className="cli-gu-vaga" aria-hidden="true" /></span>
                   </li>
                 ))}
               </ul>

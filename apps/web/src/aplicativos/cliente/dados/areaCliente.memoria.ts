@@ -118,10 +118,12 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       atualizadoEm: comHora(hoje, 7, 30),
     },
     guias, agenda: meses, envios, chamados,
+    // o emitido (a tabela de Impostos): as guias do exemplo (24/11/2026)
+    emitidas: guias,
     // a linha digitável das guias que têm (de mentira)
     codigos: { [guias[0].id]: '07190.00009 26277.123456 78901.234567 8 00000128437', [guias[1].id]: '85800000009-1 17420385001-2 26090012345-6 00000091742-0' },
     // o boleto dos honorários já enviado (24/11/2026, ficha 50): quadro próprio, sem "pago" (por isso saiu das Pagas)
-    honorarios: [{ id: 'hon-' + mesDe(hoje) + '-9999', tipo: 'HON', competencia: mesDe(hoje), vencimento: br(emDias(hoje, 8)), valor: 1250, linha: '75691.31324 01000.000102 00000.012345 6 00000000125000', situacao: 'a vencer', temPdf: false }],
+    honorarios: [{ id: 'hon-' + mesDe(hoje) + '-9999', tipo: 'HON', competencia: mesDe(hoje), vencimento: br(emDias(hoje, 8)), valor: 1250, linha: '75691.31324 01000.000102 00000.012345 6 00000000125000', pix: '00020101021226830014BR.GOV.BCB.PIX2561qrpix.exemplo.com.br/v2/cobv/exemplo0000000000000000005204000053039865406' + '1250.005802BR5920NILMA CONTABILIDADE6014BELO HORIZONTE62070503***6304ABCD', situacao: 'a vencer', temPdf: true }],
     pagas: [
       { id: 'p2', tipo: 'DCTFWeb', nome: 'INSS da folha (DCTFWeb)', competencia: ac.competenciaDoMesDeVencimento(mesDe(emDias(hoje, -28))), valor: 1980.3, pagoEm: br(emDias(hoje, -28)), temComprovante: true },
     ],
@@ -518,7 +520,8 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
       };
     },
     async baixarGuia(token, id) {
-      const g = de(token)?.guias.find(x => x.id === id);
+      // os honorários também (24/11/2026: "ela tem que poder ver o boleto por aqui")
+      const g = de(token)?.guias.find(x => x.id === id) ?? de(token)?.honorarios.find(x => x.id === id);
       if (!g || !g.temPdf) return null;
       return {
         nome: `guia-${g.tipo.toLowerCase()}-${g.competencia}.pdf`,
