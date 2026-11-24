@@ -237,7 +237,7 @@ function JanelaDoPlano({ vm }: { vm: VmShadersCi }) {
   const achadas = vm.buscarNoPlano(q);
   const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById('sci-' + vm.pesquisa)?.focus(), 0); };
   return (
-    <Janela app="ShadersCI" titulo={'Plano de contas ' + vm.plano} fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo"
+    <Janela app="minimum" titulo={'Plano de contas ' + vm.plano} fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo"
       selo={<span className="badge badge-neutral">{vm.pesquisa === 'debito' ? 'Débito' : 'Crédito'}</span>}>
       <div className="registro-corpo">
         <label className="busca-curta sci-busca-plano">

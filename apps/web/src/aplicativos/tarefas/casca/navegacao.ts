@@ -65,9 +65,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // o ShadersCI (23/11/2026: "Quero fazer uma aba de lançamento mais clean, a do meu sistema SCI é horrivel"): os lançamentos digitados
   // para o SCI, pelos planos padrão 90113 e 90011, e a planilha do gerador do SCI; uma tela só, sem a barra lateral. O Contábil e o
-  // admin, no modo desenvolvedor até o Vitor aprovar (a novidade 'shadersci')
-  { id: 'shadersci', nome: 'ShadersCI', icone: 'list', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'ShadersCI' },
+  // admin, no modo desenvolvedor até o Vitor aprovar (a novidade 'shadersci'); 24/11/2026: "ShadersCI troca para minimum, o nome"
+  { id: 'shadersci', nome: 'minimum', icone: 'list', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'minimum' },
   ] },
   // o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando virou módulo): até que mês a contabilidade
   // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. O Contábil e o admin, no

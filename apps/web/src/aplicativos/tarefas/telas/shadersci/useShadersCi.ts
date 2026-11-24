@@ -215,7 +215,7 @@ export function useShadersCi() {
       if (!cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa.' }); return; }
       const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, guardado.cnpj);
       const mes = sci.mesPrincipal(guardado.lancamentos);
-      baixarBytes(sci.planilhaDoSci(lsci), sci.nomeDaPlanilhaSci(guardado.cnpj, mes, 'shadersci'), sci.TIPO_XLSX_SCI);
+      baixarBytes(sci.planilhaDoSci(lsci), sci.nomeDaPlanilhaSci(guardado.cnpj, mes, 'minimum'), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
       if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
       else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento.' : ' lançamentos.'));

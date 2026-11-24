@@ -109,7 +109,7 @@ describe('a planilha do SCI', () => {
   it('os prontos em Importar (sem lote), os outros em Conferir, com o CNPJ e o nome das contas', () => {
     const lsci = lancamentosDoShaderParaOSci([base, { ...base, debito: '16', credito: '5', participanteD: '120' }, { ...base, valor: 0 }], p113, CNPJ);
     expect(lsci.map(l => l.problemas)).toEqual([[], [], ['sem valor']]);
-    expect(lsci[1]).toMatchObject({ lote: '', cnpjEmpresa: '11.222.333/0001-81', participanteD: '120', nomeD: 'Clientes nacionais', origem: 'ShadersCI' });
+    expect(lsci[1]).toMatchObject({ lote: '', cnpjEmpresa: '11.222.333/0001-81', participanteD: '120', nomeD: 'Clientes nacionais', origem: 'minimum' });
     const wb = XLSX.read(planilhaDoSci(lsci), { type: 'array' });
     expect(wb.SheetNames).toEqual(['Importar', 'Conferir']);
     const importar = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Importar, { header: 1, raw: true, defval: '' });

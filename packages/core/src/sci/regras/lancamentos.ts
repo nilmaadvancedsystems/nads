@@ -121,7 +121,7 @@ export function lancamentosDoShaderParaOSci(ls: readonly CamposDoLancamento[], p
     return {
       data: l.data, debito: l.debito, credito: l.credito, valor: l.valor, historico: l.historico, complemento: limparComplemento(l.complemento),
       documento: l.documento, lote: '', cnpjEmpresa: documentoComMascara(cnpjEmpresa), participanteD: l.participanteD, participanteC: l.participanteC,
-      nomeD: contaDoPlano(plano, l.debito)?.nome || '', nomeC: contaDoPlano(plano, l.credito)?.nome || '', origem: 'ShadersCI', problemas,
+      nomeD: contaDoPlano(plano, l.debito)?.nome || '', nomeC: contaDoPlano(plano, l.credito)?.nome || '', origem: 'minimum', problemas,
     };
   });
 }
