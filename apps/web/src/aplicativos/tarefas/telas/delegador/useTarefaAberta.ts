@@ -196,6 +196,14 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     try { await repo.responderCobranca(tarefa.id, resposta); setResposta(''); toast('Resposta enviada para ' + tarefa.criadaPor.nome + '.'); } catch (e) { toast('Não respondi: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
   }
 
+  /** quem cobrou dá o ok na resposta (a novidade 'ok-na-resposta'; 24/11/2026): quem respondeu fica sabendo */
+  const okNaResposta = useNovidade('ok-na-resposta');
+  async function darOk() {
+    if (!tarefa) return;
+    setOcupado('cobranca');
+    try { await repo.darOk(tarefa.id); toast(tarefa.responsavel.nome + ' vai ver que você deu ok.'); } catch (e) { toast('Não dei o ok: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
+  }
+
   /** pergunta antes de largar o que mudou (e o parecer escrito); sem mudança, segue direto */
   async function largar(depois: () => void) {
     if (parecerEscrito && !mudou) {
@@ -384,12 +392,17 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
         responder: d.deveResponderCobranca(tarefa, uid),
         aberta: aberta ? { por: aberta.por, quando: quando(aberta.em), texto: aberta.texto } : null,
         resposta: respondida && tarefa.criadaPor.uid === uid ? { por: respondida.por, quando: quando(respondida.em), texto: respondida.texto } : null,
+        /** o ok de quem cobrou na última resposta (24/11/2026); quem respondeu vê */
+        ok: okNaResposta && respondida && d.okDaResposta(tarefa) ? { por: d.okDaResposta(tarefa)!.por, quando: quando(d.okDaResposta(tarefa)!.em) } : null,
+        podeDarOk: okNaResposta && d.podeDarOk(tarefa, uid),
+        /** quem respondeu: a resposta dela, para mostrar junto do ok */
+        minhaResposta: respondida && tarefa.responsavel.uid === uid ? { quando: quando(respondida.em), texto: respondida.texto } : null,
         ocupado: ocupado === 'cobranca',
         /** o andamento da última cobrança: a cobrança, os pedidos de mais tempo e a resposta (16/11/2026) */
         andamento: d.andamentoDaCobranca(tarefa).map(n => ({ tipo: n.tipo, texto: d.textoDoPassoDaCobranca(n), quando: quando(n.em) })),
       };
     })() : null,
-    cobrar, resposta, setResposta, responderCobranca,
+    cobrar, resposta, setResposta, responderCobranca, darOk,
     datas: tarefa ? [
       { rotulo: 'Criada em', valor: quando(tarefa.criadaEm) + ' por ' + tarefa.criadaPor.nome },
       { rotulo: 'Concluída em', valor: tarefa.concluidaEm ? quando(tarefa.concluidaEm) : '—' },

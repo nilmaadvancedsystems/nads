@@ -22,7 +22,7 @@ export interface Nota {
    * o parecer que é a cobrança de quem delegou ou a resposta de quem faz (13/11/2026: "um icone de sino, nas tarefas delegadas,
    * para meio que 'Cobrar' a tarefa"); sem o campo, é um parecer comum
    */
-  tipo?: 'cobranca' | 'resposta' | 'adiamento';
+  tipo?: 'cobranca' | 'resposta' | 'adiamento' | 'ciente';
   /** o adiamento (16/11/2026: "Mais 5 minutos, + 10minutos… mas que tenha uma justificativa escrita"): quantos minutos; o texto é a justificativa */
   minutos?: number;
 }
@@ -938,7 +938,7 @@ export const historicoDoAdiamento = (por: string, em: string, minutos: number): 
  */
 export function andamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota[] {
   for (let i = t.pareceres.length - 1; i >= 0; i--) {
-    if (t.pareceres[i].tipo === 'cobranca') return t.pareceres.slice(i).filter(p => p.tipo === 'cobranca' || p.tipo === 'adiamento' || p.tipo === 'resposta');
+    if (t.pareceres[i].tipo === 'cobranca') return t.pareceres.slice(i).filter(p => p.tipo === 'cobranca' || p.tipo === 'adiamento' || p.tipo === 'resposta' || p.tipo === 'ciente');
   }
   return [];
 }
@@ -947,6 +947,7 @@ export function andamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota[
 export function textoDoPassoDaCobranca(n: Nota): string {
   if (n.tipo === 'adiamento') return n.por + ' pediu mais ' + (n.minutos || 0) + ' minutos: ' + n.texto;
   if (n.tipo === 'resposta') return n.por + ' respondeu: ' + n.texto;
+  if (n.tipo === 'ciente') return n.por + ' viu a resposta e deu ok';
   return n.por + ' cobrou uma atualização: ' + n.texto;
 }
 
@@ -958,6 +959,35 @@ export function retornosDasCobrancas(lista: readonly TarefaDelegada[], uid: stri
   if (!uid) return [];
   return lista.filter(t => t.criadaPor.uid === uid && t.responsavel.uid !== uid)
     .flatMap(t => t.pareceres.filter(p => p.tipo === 'adiamento' || p.tipo === 'resposta').map(nota => ({ tarefa: t, nota })))
+    .sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
+// o ok na resposta (Vitor, 24/11/2026: "Coloca alguma coisa para [quem respondeu] saber que eu vi e dei um ok na resposta da cobrança e que
+// ela fique informada disso"): quem cobrou dá o ok depois da resposta; vai nos pareceres (tipo 'ciente'), sem mudar a regra.
+
+/** O ok de quem cobrou na última resposta, ou null (sem resposta, sem ok, ou com cobrança nova depois). */
+export function okDaResposta(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'ciente') return p;
+    if (p.tipo === 'resposta' || p.tipo === 'cobranca') return null;
+  }
+  return null;
+}
+
+/** Quem cobrou dá o ok: a tarefa que delegou, com a resposta ainda sem ok. */
+export function podeDarOk(t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel' | 'pareceres'>, uid: string): boolean {
+  return !!uid && t.criadaPor.uid === uid && t.responsavel.uid !== uid && !!ultimaResposta(t) && !okDaResposta(t) && t.pareceres.length < MAIS_PARECERES;
+}
+
+export const notaDoOk = (por: string, em: string): Nota => ({ por, em, texto: 'Viu a resposta e deu ok', tipo: 'ciente' });
+export const historicoDoOk = (por: string, em: string): Nota => ({ por, em, texto: 'Deu ok na resposta da cobrança' });
+
+/** Os oks que a pessoa recebeu nas respostas dela (as Notificações do Início), o mais novo primeiro. */
+export function oksRecebidos(lista: readonly TarefaDelegada[], uid: string): { tarefa: TarefaDelegada; nota: Nota }[] {
+  if (!uid) return [];
+  return lista.filter(t => t.responsavel.uid === uid && t.criadaPor.uid !== uid)
+    .flatMap(t => t.pareceres.filter(p => p.tipo === 'ciente').map(nota => ({ tarefa: t, nota })))
     .sort((a, b) => b.nota.em.localeCompare(a.nota.em));
 }
 
@@ -1169,7 +1199,7 @@ const lerPessoa = (v: unknown): Pessoa => { const p = obj(v); return { uid: text
 // tipo fora, a cobrança gravava no banco e voltava como parecer comum, sem o Cobrada nem o Responder cobrança)
 const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x)
   .map(x => ({
-    por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' || x.tipo === 'adiamento' ? { tipo: x.tipo } : {}),
+    por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' || x.tipo === 'adiamento' || x.tipo === 'ciente' ? { tipo: x.tipo } : {}),
     ...(x.tipo === 'adiamento' && Number.isInteger(x.minutos) && Number(x.minutos) > 0 && Number(x.minutos) <= 60 ? { minutos: Number(x.minutos) } : {}),
   })) : []);
 

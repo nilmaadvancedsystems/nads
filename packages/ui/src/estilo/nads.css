@@ -7254,6 +7254,9 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-escrever textarea{flex:1;}
 /* as colunas iguais em todos os grupos (cada grupo é uma tabela) */
 .ini-tabela{table-layout:fixed;width:100%;}
+/* o ok de quem cobrou na resposta (24/11/2026) */
+.tdl-cobranca-ok{display:flex;align-items:center;gap:6px;margin:8px 0 0;color:var(--ok,var(--ink-muted));font-size:var(--fs-13,13px);}
+.tdl-cobranca-ok svg{width:14px;height:14px;flex:none;}
 /* Outros colaboradores (24/11/2026): só para ver; a linha aberta mostra a descrição e o histórico */
 .ini-colab-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .ini-colab-topo h3{margin:0;}

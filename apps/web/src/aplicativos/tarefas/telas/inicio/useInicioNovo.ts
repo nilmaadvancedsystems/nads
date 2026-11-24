@@ -175,6 +175,8 @@ export function useInicioNovo() {
   // e, para quem cobrou, o que voltou: o mais tempo pedido (com a justificativa) e a resposta (16/11/2026: "para quem cobrou
   // aparece que o usuario pediu + 5 +10 minutos")
   const retornos = cobrancaNotificada ? d.retornosDasCobrancas(todas, uid) : [];
+  // e o ok de quem cobrou na resposta (a novidade 'ok-na-resposta'; 24/11/2026: "que ela fique informada disso")
+  const oks = useNovidade('ok-na-resposta') ? d.oksRecebidos(todas, uid) : [];
   const cobrancas = [
     ...recebidas.map(c => ({ tarefa: c.tarefa, nota: c.nota, aberta: c.aberta, icone: 'sino' as const, texto: c.nota.por + ' cobrou atualização da tarefa ' + c.tarefa.titulo })),
     ...retornos.map(c => ({
@@ -182,6 +184,7 @@ export function useInicioNovo() {
       texto: c.nota.tipo === 'adiamento' ? c.nota.por + ' pediu mais ' + (c.nota.minutos || 0) + ' minutos na tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto
         : c.nota.por + ' respondeu à cobrança da tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto,
     })),
+    ...oks.map(c => ({ tarefa: c.tarefa, nota: c.nota, aberta: false, icone: 'check' as const, texto: c.nota.por + ' viu a sua resposta na tarefa ' + c.tarefa.titulo + ' e deu ok' })),
   ].sort((a, b) => b.nota.em.localeCompare(a.nota.em))
     .filter(c => aba !== 'notificacoes' || (!filtros.length && (!q || (c.texto + ' ' + c.nota.por).toLowerCase().includes(q))))
     .map(c => ({

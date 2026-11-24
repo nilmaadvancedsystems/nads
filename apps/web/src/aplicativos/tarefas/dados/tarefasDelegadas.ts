@@ -45,6 +45,8 @@ export interface RepoTarefasDelegadas {
   cobrar(id: string, texto: string): Promise<void>;
   /** quem faz responde à cobrança aberta */
   responderCobranca(id: string, texto: string): Promise<void>;
+  /** quem cobrou viu a resposta e dá o ok (24/11/2026): quem respondeu fica sabendo */
+  darOk(id: string): Promise<void>;
   /** quem faz pede mais 5 ou 10 minutos para responder, com a justificativa (a janela da cobrança; 16/11/2026) */
   adiarCobranca(id: string, minutos: number, justificativa: string): Promise<void>;
   /** quem recebeu abriu a tarefa: grava a hora (o Visualizado de quem delegou; 12/11/2026) */
@@ -345,6 +347,12 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       if (problema) throw new Error(problema);
       const em = new Date().toISOString();
       trocar(d.comCobranca(t, d.notaDaResposta(texto, eu().nome, em), d.historicoDaRespostaDaCobranca(eu().nome, em)));
+    },
+    async darOk(id) {
+      const t = daTarefa(id);
+      if (!d.podeDarOk(t, eu().uid)) throw new Error('Não tem resposta esperando o seu ok.');
+      const em = new Date().toISOString();
+      trocar(d.comCobranca(t, d.notaDoOk(eu().nome, em), d.historicoDoOk(eu().nome, em)));
     },
     async adiarCobranca(id, minutos, justificativa) {
       const t = daTarefa(id);

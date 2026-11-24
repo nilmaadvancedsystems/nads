@@ -73,6 +73,9 @@ export const NOVIDADES = {
   /** Outros colaboradores nas Tarefas (24/11/2026: "os seniores, diretores e donos, conseguem ver as tarefas dos juniores e plenos …
    *  apenas visualizar"): as tarefas delegadas para os Juniores e Plenos, por pessoa, só para ver */
   'outros-colaboradores': { desde: '24/11/2026', aprovada: false },
+  /** o ok na resposta da cobrança (24/11/2026: "Coloca alguma coisa para [quem respondeu] saber que eu vi e dei um ok na resposta da cobrança e
+   *  que ela fique informada disso"): quem cobrou dá o ok; quem respondeu vê na tarefa e nas Notificações */
+  'ok-na-resposta': { desde: '24/11/2026', aprovada: false },
   /** a ferramenta nads → SCI (23/11/2026, docs/sci): as planilhas de importação do nads viram a planilha que o SCI importa,
    *  sem banco ("é só um intermediador entre o NADS e SCI"); nas Ferramentas, só no modo desenvolvedor até o teste no SCI */
   sci: { desde: '23/11/2026', aprovada: false },

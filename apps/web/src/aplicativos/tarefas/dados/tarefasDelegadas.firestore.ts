@@ -215,6 +215,15 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       });
       await reler();
     },
+    // o ok na resposta (24/11/2026) também vai nos pareceres (tipo 'ciente'): a regra não muda
+    async darOk(id) {
+      const por = eu();
+      const t = await noBanco(id);
+      if (!d.podeDarOk(t, por.uid)) throw new Error('Não tem resposta esperando o seu ok.');
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), { pareceres: arrayUnion(d.notaDoOk(por.nome, em)), historico: historicoNovo(t, [d.historicoDoOk(por.nome, em)]), atualizadaEm: em });
+      await reler();
+    },
     // o pedido de mais tempo (16/11/2026) também vai nos pareceres: a regra não muda
     async adiarCobranca(id, minutos, justificativa) {
       const por = eu();
