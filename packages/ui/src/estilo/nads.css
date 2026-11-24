@@ -3777,6 +3777,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* o lote do DP (28/10/2026): subir, revisar por cliente e disparar */
 .dp-lote-texto{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
 .dp-lote-subir{padding:0 16px 16px;}
+/* as guias escolhidas esperando o Subir (24/11/2026) */
+.dp-lote-subir .dp-lote-lista{margin-top:10px;}
+.dp-lote-subir-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
 .dp-lote-topo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-right:16px;}
 .dp-lote-topo h3{margin-right:4px;}
 .tarefas-barra.fgts-barra.dp-lote-barra{margin:0 16px 10px;width:calc(100% - 32px);}

@@ -230,12 +230,33 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
   // os já enviados saem daqui: ficam só em "Enviados"
   const prontos = vm.grupos.filter(g => g.resultado?.status !== 'enviado');
   const fora = vm.tirados.length + vm.comErro.length;
-  const soltar = (fs: File[]) => { void vm.subir(fs.filter(f => /\.pdf$/i.test(f.name)), noLote); };
+  // escolher ou arrastar só junta à lista; o botão Subir manda ao robô (24/11/2026: "quero um botao para subir ao inves de
+  // subir automatico")
+  const soltar = (fs: File[]) => vm.escolherParaSubir(fs);
+  const quantas = vm.aSubir.length;
   const subir = (
     <div className="dp-lote-subir" onDragOver={ev => ev.preventDefault()} onDrop={ev => { ev.preventDefault(); if (!vm.subindo) soltar(Array.from(ev.dataTransfer.files)); }}>
       {vm.subindo
         ? <p className="hint">Subindo {vm.subindo.feitos} de {vm.subindo.total}…</p>
-        : <CampoArquivos id="fiscal-guias-arquivos" aceitar=".pdf" rotulo="Arraste as guias (PDF) para cá ou escolha" onEscolher={soltar} />}
+        : <CampoArquivos id="fiscal-guias-arquivos" aceitar=".pdf" rotulo={quantas ? 'Escolher mais guias (PDF)' : 'Arraste as guias (PDF) para cá ou escolha'} onEscolher={soltar} />}
+      {quantas > 0 && !vm.subindo && (
+        <>
+          <ul className="dp-lote-lista">
+            {vm.aSubir.map(a => (
+              <li key={a.i + a.nome} className="dp-lote-arquivo">
+                <span className="dp-lote-nome" title={a.nome}>{a.nome}</span>
+                <BotaoIcone icone="x" pequeno titulo={'Tirar ' + a.nome + ' da lista'} onClick={() => vm.tirarDaSubida(a.i)} />
+              </li>
+            ))}
+          </ul>
+          <div className="dp-lote-subir-acoes">
+            <button type="button" className="btn btn-ghost" onClick={vm.limparSubida}>Limpar</button>
+            <button type="button" className="btn btn-primary" onClick={() => void vm.subirEscolhidas(noLote)}>
+              <Icone nome="upload" width={16} height={16} />Subir {quantas + (quantas === 1 ? ' guia' : ' guias')}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
   const andamento = !lote ? '' : andando
@@ -331,12 +352,14 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                       <li key={a.id} className="dp-lote-arquivo">
                         <span className="dp-lote-nome" title={a.nome}>{a.nome}</span>
                         {mexe && <button type="button" className="link-btn" onClick={() => void vm.tirar(a, false)}>Pôr de volta</button>}
+                        <BotaoIcone icone="lixeira" pequeno titulo={'Excluir ' + a.nome + ' da lista'} onClick={() => vm.excluirDeFora(a)} />
                       </li>
                     ))}
                     {vm.comErro.map(a => (
                       <li key={a.id} className="dp-lote-arquivo">
                         <span className="dp-lote-nome" title={a.nome}>{a.nome}</span>
                         <span className="fgts-pedido-erro">{a.erro || 'não deu para ler'}</span>
+                        <BotaoIcone icone="lixeira" pequeno titulo={'Excluir ' + a.nome + ' da lista'} onClick={() => vm.excluirDeFora(a)} />
                       </li>
                     ))}
                   </ul>
