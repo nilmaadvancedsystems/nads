@@ -75,6 +75,8 @@ export function useReunioesDoInicio() {
       if ((x.status === 'remarcada' || x.status === 'aprovada') && x.remarcadaDe && r.recente(x.remarcadaEm, agoraMs)) return [{ ...item(x), mudanca: 'remarcada' as 'cancelada' | 'remarcada', diaDoCard: x.remarcadaDe, quandoNovo: quandoTexto(x.quando) }];
       return [];
     }),
+    /** as fixadas no Painel pelo Diretor ou pelo Dono (24/11/2026): quem vê a reunião vê o card e baixa os arquivos */
+    fixadas: visiveis.filter(x => x.fixada).map(item),
     /** quem pode ir (a equipe ativa, sem a própria pessoa) */
     equipe: ativos.filter(u => u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
     aceita: ACEITA_NA_REUNIAO,
@@ -88,6 +90,7 @@ export function useReunioesDoInicio() {
     revisar: (id: string, prazo: string) => fazer('Não deu para revisar', () => repo.revisar(id, prazo), 'Em revisão, com o prazo de resposta.'),
     decidir: (id: string, aprovar: boolean, obs: string) => fazer('Não deu para decidir', () => repo.decidir(id, aprovar, obs), aprovar ? 'Reunião aprovada.' : 'Reunião recusada.'),
     remarcar: (id: string, quando: string) => fazer('Não deu para remarcar', () => repo.remarcar(id, quando), 'Reunião remarcada.'),
+    fixar: (id: string, sim: boolean) => fazer(sim ? 'Não deu para fixar' : 'Não deu para tirar do Painel', () => repo.fixar(id, sim), sim ? 'Reunião fixada no Painel.' : 'Reunião tirada do Painel.'),
     cancelar: (id: string) => fazer('Não deu para cancelar', () => repo.cancelar(id), 'Reunião cancelada.'),
     confirmar: (id: string, vai: boolean) => fazer('A resposta não foi gravada', () => repo.confirmar(id, vai), vai ? 'Presença confirmada.' : 'Avisado que você não vai.'),
     iniciar: (id: string) => fazer('Não deu para iniciar', () => repo.iniciar(id), 'Reunião em andamento.'),

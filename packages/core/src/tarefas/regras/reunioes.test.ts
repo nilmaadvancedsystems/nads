@@ -89,7 +89,7 @@ describe('reuniões', () => {
     expect(r.faltaComentar(x).map(p => p.nome)).toEqual(['Felipe']);
     x = r.comentar(x, FELIPE, 'Ajudou', EM);
     expect(x.status).toBe('concluida');
-    expect(r.acoes(x, { uid: DIRETOR.uid, aprova: true }, DEPOIS)).toEqual(['encerrar']);
+    expect(r.acoes(x, { uid: DIRETOR.uid, aprova: true }, DEPOIS)).toEqual(['encerrar', 'fixar']);
     expect(r.encerrar(x, DIRETOR.nome, EM).status).toBe('encerrada');
   });
 
@@ -130,6 +130,19 @@ describe('reuniões', () => {
     const rem = r.remarcar(x, '2026-11-15T09:00', SENIOR.nome, EM);
     expect(rem).toMatchObject({ remarcadaDe: '2026-11-14T09:00', remarcadaEm: EM, quando: '2026-11-15T09:00' });
     expect('remarcadaDe' in r.remarcar(x, x.quando, SENIOR.nome, EM)).toBe(false);
+  });
+
+  it('o Diretor fixa a que terminou ou foi cancelada (24/11/2026)', () => {
+    const x = r.decidir(r.nova(pedido(), { id: '6', por: SENIOR, em: EM, direta: false }), true, '', DIRETOR.nome, EM);
+    expect(() => r.fixar(x, true, DIRETOR.nome, EM)).toThrow(/finalizada ou cancelada/);
+    expect(r.acoes(x, { uid: DIRETOR.uid, aprova: true }, ANTES)).not.toContain('fixar');
+    const c = r.cancelar(x, SENIOR.nome, EM);
+    expect(r.acoes(c, { uid: DIRETOR.uid, aprova: true }, ANTES)).toEqual(['fixar']);
+    expect(r.acoes(c, { uid: SENIOR.uid, aprova: false }, ANTES)).toEqual([]);
+    const f = r.fixar(c, true, DIRETOR.nome, EM);
+    expect(f.fixada).toBe(true);
+    expect(r.fixar(f, true, DIRETOR.nome, EM)).toBe(f);
+    expect('fixada' in r.fixar(f, false, DIRETOR.nome, EM)).toBe(false);
   });
 
   it('só a aprovada é iniciada', () => {

@@ -190,7 +190,8 @@ function ListaDeNotificacoes({ vm, mural, podeMexer, lugarDosFiltros }: { vm: Re
   const [filtro, setFiltro] = useState<FiltroDaLista>('todos');
   // o "Só pendentes" saiu (Vitor, 18/11/2026: "remove esse so pendentes")
   const soPendentes = false;
-  const [aberta, setAberta] = useState<string | null>(null);
+  // quem chegou por um card do Painel (a reunião fixada, 24/11/2026) já encontra a linha aberta, com os arquivos
+  const [aberta, setAberta] = useState<string | null>(() => (vm.reuniao ? 'r' + vm.reuniao.id : vm.comunicado ? 'a' + vm.comunicado.id : null));
   const linhas: LinhaDaLista[] = [
     ...vm.cobrancas.map(x => ({ chave: 'c' + x.id, id: x.id, tipo: 'cobrancas' as const, icone: x.icone, titulo: x.texto, rotulo: 'Cobrança', quem: '', quando: x.quando, pendente: !!x.aberta,
       selo: x.aberta ? <span className="badge badge-suave badge-warn">Responder</span> : null, abrir: () => vm.abrir(x.tarefa) })),

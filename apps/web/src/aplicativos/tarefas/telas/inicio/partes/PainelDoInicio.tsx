@@ -4,7 +4,7 @@
 // do aviso) fica por cima do calendário, com ele embaçado, até a pessoa responder. À direita, as
 // próximas tarefas (a caixinha conclui) e as delegadas por mim (no lugar do acompanhamento de tempo). O "Por cliente" e os
 // "Comentários novos" saíram (Vitor, 13/11/2026: "Pode deletar essas duas sessoes").
-import { BotaoIcone, CalendarioDoMes, Icone, Vazio } from '@nads/ui';
+import { BotaoIcone, CalendarioDoMes, Icone, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNovidade } from '../../../../../comum/novidades';
 import { SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
@@ -115,8 +115,15 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
       <div className="ini-coluna">
         {/* o Quadro de avisos sem a caixa: só os cards, das reuniões e dos avisos (Vitor, 18/11/2026: "tira essa box e deixa so os
             cards, tanto de aviso quanto de reuniao"; publicado para todos em 18/11/2026) */}
-        {(vm.reunioes.length + vm.avisosNoQuadro.length > 0) && (
+        {(vm.reunioes.length + vm.avisosNoQuadro.length + vm.reunioesVm.fixadas.length > 0) && (
           <div className="ini-quadro-lista ini-quadro-solto" aria-label="Quadro de avisos">
+            {/* as reuniões fixadas pelo Diretor ou pelo Dono (24/11/2026): o alfinete no lugar da data, abre com os arquivos */}
+            {vm.reunioesVm.fixadas.map(x => (
+              <CardDoQuadro key={'f' + x.id} abrir={() => abrir(x.id)} acao={null}
+                extra={x.acoes.includes('fixar') ? { rotulo: 'Tirar', icone: 'x', fazer: () => void vm.reunioesVm.fixar(x.id, false) } : null}
+                marca={<span className="ini-quadro-dia ini-quadro-fixada" aria-hidden="true"><Icone nome="mapaPin" /><small>{x.quando.slice(8, 10)} {x.quando ? MESES[Number(x.quando.slice(5, 7)) - 1] : ''}</small></span>}
+                titulo={x.titulo} detalhe={'Reunião ' + x.rotulo.toLowerCase() + (x.problema || x.solucao ? ' · com os arquivos' : '')} pendente={false} />
+            ))}
             {/* ao passar o mouse, o card embaça e aparece o botão (Vitor, 18/11/2026): a presença, o Recebido ou o Abrir */}
             {vm.reunioes.map(r => r.mudanca ? (
               // a cancelada e o dia de antes da remarcada, por 24 h (24/11/2026): o ícone no lugar da data
@@ -192,8 +199,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
 function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, noDia, mudou, acao, extra, abrir }: {
   marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; noDia?: boolean; mudou?: 'cancelada' | 'remarcada';
   acao: { rotulo: string; fazer: () => void } | null;
-  /** o segundo botão ao passar o mouse (o Remarcar, 24/11/2026) */
-  extra?: { rotulo: string; fazer: () => void } | null;
+  /** o segundo botão ao passar o mouse (o Remarcar e o Tirar da fixada, 24/11/2026) */
+  extra?: { rotulo: string; icone?: NomeIcone; fazer: () => void } | null;
   abrir: () => void;
 }) {
   return (
@@ -206,7 +213,7 @@ function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, noDia, mudou, a
         <Icone nome="chevronRight" />
       </span>
       <span className="ini-quadro-hover">
-        {extra && <button type="button" className="btn btn-outline" onClick={e => { e.stopPropagation(); extra.fazer(); }}><Icone nome="repeat" />{extra.rotulo}</button>}
+        {extra && <button type="button" className="btn btn-outline" onClick={e => { e.stopPropagation(); extra.fazer(); }}><Icone nome={extra.icone || 'repeat'} />{extra.rotulo}</button>}
         {acao
           ? <button type="button" className="btn btn-primary" onClick={e => { e.stopPropagation(); acao.fazer(); }}><Icone nome="check" />{acao.rotulo}</button>
           : <button type="button" className="btn btn-outline" onClick={e => { e.stopPropagation(); abrir(); }}>Abrir<Icone nome="chevronRight" /></button>}
