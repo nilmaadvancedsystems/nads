@@ -292,12 +292,19 @@ export function useInicioNovo() {
     })),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
     reunioes: [
-      // o que o card espera da pessoa (18/11/2026, o botão ao passar o mouse): a presença na reunião ou o Recebido do comunicado
-      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo, pisca: x.pisca, podeIniciar: x.acoes.includes('iniciar'),
-        espera: (x.acoes.includes('confirmar') && x.minhaPresenca === null ? 'presenca' : '') as '' | 'presenca' | 'recebido' })),
-      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '', pisca: false, podeIniciar: false,
-        espera: (c.precisaReceber ? 'recebido' : '') as '' | 'presenca' | 'recebido' })),
-    ].sort((a, b) => a.quando.localeCompare(b.quando)).slice(0, 4),
+      ...[
+        // o que o card espera da pessoa (18/11/2026, o botão ao passar o mouse): a presença na reunião ou o Recebido do comunicado
+        ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo, pisca: x.pisca, podeIniciar: x.acoes.includes('iniciar'),
+          podeRemarcar: x.acoes.includes('remarcar'), mudanca: '' as '' | 'cancelada' | 'remarcada', quandoNovo: '', remarcadaAgora: x.remarcadaAgora,
+          espera: (x.acoes.includes('confirmar') && x.minhaPresenca === null ? 'presenca' : '') as '' | 'presenca' | 'recebido' })),
+        ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '', pisca: false, podeIniciar: false,
+          podeRemarcar: false, mudanca: '' as '' | 'cancelada' | 'remarcada', quandoNovo: '', remarcadaAgora: false,
+          espera: (c.precisaReceber ? 'recebido' : '') as '' | 'presenca' | 'recebido' })),
+      ].sort((a, b) => a.quando.localeCompare(b.quando)).filter((x, i) => i < 4 || x.remarcadaAgora),
+      // a cancelada e o dia de antes da remarcada, por 24 h (24/11/2026), fora do limite de 4
+      ...reunioes.mudancas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.mudanca === 'cancelada' ? x.quandoTexto : x.quandoNovo, quando: x.diaDoCard, rotulo: x.rotulo,
+        pisca: false, podeIniciar: false, podeRemarcar: false, mudanca: x.mudanca, quandoNovo: x.quandoNovo, remarcadaAgora: false, espera: '' as '' | 'presenca' | 'recebido' })),
+    ].sort((a, b) => a.quando.localeCompare(b.quando)),
     /**
      * o que espera a confirmação da pessoa, por cima do calendário do Painel (Vitor, 13/11/2026: "Se for algo que precisa de
      * confirmação faça aquele esquema de colocar sobrepondo o calendário"): a reunião sem a resposta de presença e o aviso

@@ -69,8 +69,8 @@ describe('reuniões', () => {
     // passou da hora sem Iniciar: continua aprovada, piscando no dia (24/11/2026)
     expect(r.statusDaReuniao(x, DEPOIS)).toBe('aprovada');
     expect(r.piscaNoDia(x, DEPOIS)).toBe(true);
-    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, '2026-11-13T18:00')).toEqual(['remarcar']);
-    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, ANTES)).toEqual(['remarcar', 'iniciar']);
+    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, '2026-11-13T18:00')).toEqual(['remarcar', 'cancelar']);
+    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, ANTES)).toEqual(['remarcar', 'cancelar', 'iniciar']);
     expect(r.acoes(x, { uid: CLARA.uid, aprova: false }, ANTES)).toEqual(['confirmar']);
     x = r.iniciar(x, SENIOR.nome, EM);
     expect(x.iniciadaEm).toBe(EM);
@@ -114,6 +114,22 @@ describe('reuniões', () => {
     expect('iniciadaEm' in deNovo).toBe(false);
     expect(r.piscaNoDia(deNovo, '2026-11-21T07:00')).toBe(true);
     expect(r.piscaNoDia(deNovo, '2026-11-20T23:00')).toBe(false);
+  });
+
+  it('cancela antes de começar; remarcar guarda o dia de antes (24/11/2026)', () => {
+    const x = r.decidir(r.nova(pedido(), { id: '5', por: SENIOR, em: EM, direta: false }), true, '', DIRETOR.nome, EM);
+    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, ANTES)).toEqual(['remarcar', 'cancelar', 'iniciar']);
+    expect(r.acoes(x, { uid: CLARA.uid, aprova: false }, ANTES)).toEqual(['confirmar']);
+    const c = r.cancelar(x, SENIOR.nome, '2026-11-14T10:00:00.000Z');
+    expect(c).toMatchObject({ status: 'cancelada', canceladaEm: '2026-11-14T10:00:00.000Z' });
+    expect(r.acoes(c, { uid: SENIOR.uid, aprova: false }, ANTES)).toEqual([]);
+    expect(() => r.cancelar(r.iniciar(x, SENIOR.nome, EM), SENIOR.nome, EM)).toThrow(/não iniciada/);
+    const agora = Date.parse('2026-11-14T10:00:00.000Z');
+    expect(r.recente(c.canceladaEm, agora + 23 * 3600_000)).toBe(true);
+    expect(r.recente(c.canceladaEm, agora + 25 * 3600_000)).toBe(false);
+    const rem = r.remarcar(x, '2026-11-15T09:00', SENIOR.nome, EM);
+    expect(rem).toMatchObject({ remarcadaDe: '2026-11-14T09:00', remarcadaEm: EM, quando: '2026-11-15T09:00' });
+    expect('remarcadaDe' in r.remarcar(x, x.quando, SENIOR.nome, EM)).toBe(false);
   });
 
   it('só a aprovada é iniciada', () => {

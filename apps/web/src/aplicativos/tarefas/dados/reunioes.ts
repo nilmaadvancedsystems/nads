@@ -18,6 +18,8 @@ export interface RepoReunioes {
   revisar(id: string, prazo: string): Promise<void>;
   decidir(id: string, aprovar: boolean, observacao: string): Promise<void>;
   remarcar(id: string, quando: string): Promise<void>;
+  /** não vai acontecer (24/11/2026): fica Cancelada, 24 h no Painel */
+  cancelar(id: string): Promise<void>;
   /** o convidado responde se vai */
   confirmar(id: string, vai: boolean): Promise<void>;
   /** quem criou inicia a reunião (24/11/2026): fica Em andamento e o card para de piscar */
@@ -60,6 +62,9 @@ function exemplos(eu: Pessoa): Reuniao[] {
     r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-6', 'Prazo das guias do DAS', 'Por que as guias atrasaram em setembro.', dia(-5, '11:00'), eu, [felipe], 140), true, 'Tragam os números.', nilma.nome, ha(130)), 'problema', arquivo('rn-6-p', 'atrasos.pdf', eu.nome), eu.nome, ha(60)), 'solucao', arquivo('rn-6-s', 'novo-fluxo.pdf', eu.nome), eu.nome, ha(60)), eu.nome, ha(59)), felipe, 'Concordo com o fluxo novo.', ha(50)),
     // recusada, com a observação
     r.decidir(base('rn-7', 'Folga coletiva de dezembro', 'Combinar os dias de folga do fim do ano.', dia(6, '17:00'), eu, [], 60), false, 'Vamos tratar na reunião geral do dia 18.', nilma.nome, ha(48)),
+    // cancelada há pouco e remarcada há pouco: os cards de 24 h no Painel (24/11/2026)
+    r.cancelar(r.decidir(base('rn-11', 'Visita ao cliente de Linhares', 'Levar os balancetes do trimestre.', dia(1, '14:00'), eu, [felipe], 30), true, '', nilma.nome, ha(29)), eu.nome, ha(1)),
+    r.remarcar(r.decidir(base('rn-12', 'Revisão das férias de dezembro', 'Quem tira férias e quem cobre.', dia(0, '16:00'), fernando, [eu, clara], 30), true, '', nilma.nome, ha(28)), dia(2, '16:00'), 'Fernando', ha(2)),
     // marcada direto pelo Diretor (todos veem)
     r.nova({ titulo: 'Reunião geral do escritório', pauta: 'Metas de dezembro e a confraternização.', quando: dia(3, '08:30'), link: 'https://meet.google.com/', participantes: [], comDiretor: true, tipo: 'live', duracao: 90 }, { id: 'rn-8', por: nilma, em: ha(10), direta: true }),
   ];
@@ -95,6 +100,7 @@ export function criarReunioesMemoria(quem: () => Pessoa | null, paraQuemUsa = fa
     async revisar(id, prazo) { trocar(id, x => r.revisar(x, prazo, eu().nome, agora())); },
     async decidir(id, aprovar, observacao) { trocar(id, x => r.decidir(x, aprovar, observacao, eu().nome, agora())); },
     async remarcar(id, quando) { trocar(id, x => r.remarcar(x, quando, eu().nome, agora())); },
+    async cancelar(id) { trocar(id, x => r.cancelar(x, eu().nome, agora())); },
     async confirmar(id, vai) { trocar(id, x => r.confirmarPresenca(x, eu(), vai, agora())); },
     async iniciar(id) { trocar(id, x => r.iniciar(x, eu().nome, agora())); },
     async anexar(id, qual, arquivo) {

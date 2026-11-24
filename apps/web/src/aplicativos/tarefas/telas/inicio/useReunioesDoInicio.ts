@@ -53,6 +53,8 @@ export function useReunioesDoInicio() {
       minhaPresenca: x.presencas.find(p => p.uid === uid)?.vai ?? null, semResposta: r.semResposta(x).map(p => p.nome),
       /** no dia, ainda não iniciada: o card fica vermelho e pisca (24/11/2026) */
       pisca: r.piscaNoDia(x, agora),
+      /** remarcada nas últimas 24 h: o card do dia novo aparece mesmo além das 4 primeiras */
+      remarcadaAgora: !!x.remarcadaDe && r.recente(x.remarcadaEm, Date.now()),
     };
   };
   return {
@@ -63,6 +65,16 @@ export function useReunioesDoInicio() {
     pendentes: aprova ? visiveis.filter(x => x.origem === 'pedido' && (x.status === 'em-analise' || x.status === 'revisando')).length : 0,
     /** as próximas, para o Painel e o calendário (aprovadas ou remarcadas, de hoje em diante) */
     proximas: visiveis.filter(x => (x.status === 'aprovada' || x.status === 'remarcada') && x.quando >= agora.slice(0, 10)).map(item),
+    /**
+     * as mudanças das últimas 24 h, para o Painel (Vitor, 24/11/2026): a cancelada fica com o card "Cancelada"; a remarcada
+     * deixa o card do dia de antes (com o ícone trocado) além do card do dia novo
+     */
+    mudancas: visiveis.flatMap(x => {
+      const agoraMs = Date.now();
+      if (x.status === 'cancelada' && r.recente(x.canceladaEm, agoraMs)) return [{ ...item(x), mudanca: 'cancelada' as 'cancelada' | 'remarcada', diaDoCard: x.quando, quandoNovo: '' }];
+      if ((x.status === 'remarcada' || x.status === 'aprovada') && x.remarcadaDe && r.recente(x.remarcadaEm, agoraMs)) return [{ ...item(x), mudanca: 'remarcada' as 'cancelada' | 'remarcada', diaDoCard: x.remarcadaDe, quandoNovo: quandoTexto(x.quando) }];
+      return [];
+    }),
     /** quem pode ir (a equipe ativa, sem a própria pessoa) */
     equipe: ativos.filter(u => u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
     aceita: ACEITA_NA_REUNIAO,
@@ -76,6 +88,7 @@ export function useReunioesDoInicio() {
     revisar: (id: string, prazo: string) => fazer('Não deu para revisar', () => repo.revisar(id, prazo), 'Em revisão, com o prazo de resposta.'),
     decidir: (id: string, aprovar: boolean, obs: string) => fazer('Não deu para decidir', () => repo.decidir(id, aprovar, obs), aprovar ? 'Reunião aprovada.' : 'Reunião recusada.'),
     remarcar: (id: string, quando: string) => fazer('Não deu para remarcar', () => repo.remarcar(id, quando), 'Reunião remarcada.'),
+    cancelar: (id: string) => fazer('Não deu para cancelar', () => repo.cancelar(id), 'Reunião cancelada.'),
     confirmar: (id: string, vai: boolean) => fazer('A resposta não foi gravada', () => repo.confirmar(id, vai), vai ? 'Presença confirmada.' : 'Avisado que você não vai.'),
     iniciar: (id: string) => fazer('Não deu para iniciar', () => repo.iniciar(id), 'Reunião em andamento.'),
     anexar: (id: string, qual: QualArquivo, arquivo: File) => fazer('O arquivo não foi anexado', async () => repo.anexar(id, qual, await encolherAnexo(arquivo)), 'Arquivo anexado.'),

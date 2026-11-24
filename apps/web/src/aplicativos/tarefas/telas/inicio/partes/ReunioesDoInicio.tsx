@@ -37,6 +37,37 @@ function Janela({ titulo, fechar, children, pe }: { titulo: string; fechar: () =
   );
 }
 
+/**
+ * Remarcar ou cancelar pelo card do Painel (Vitor, 24/11/2026: "Coloca a opção de remarcar tbm… quando a pessoa não consegue"):
+ * o dia e a hora novos, ou cancelar (pede a confirmação). A cancelada e o dia de antes da remarcada ficam 24 h no Painel.
+ */
+export function JanelaDeRemarcar({ id, titulo, quando, podeCancelar, vm, fechar }: { id: string; titulo: string; quando: string; podeCancelar: boolean; vm: Vm; fechar: () => void }) {
+  const [nova, setNova] = useState({ data: '', hora: '' });
+  const [cancelando, setCancelando] = useState(false);
+  const novaData = dataDoCampo(nova.data, nova.hora);
+  return (
+    <Janela titulo="Não vai dar?" fechar={fechar}
+      pe={cancelando ? <>
+        <span className="fraco">Cancelar de vez? Todos veem "Cancelada" por 24 h.</span>
+        <button type="button" className="btn btn-outline" onClick={() => setCancelando(false)}>Voltar</button>
+        <button type="button" className="btn btn-primary" onClick={() => { void vm.cancelar(id); fechar(); }}><Icone nome="x" />Cancelar a reunião</button>
+      </> : <>
+        {podeCancelar && <button type="button" className="btn btn-outline" onClick={() => setCancelando(true)}><Icone nome="x" />Cancelar a reunião</button>}
+        <button type="button" className="btn btn-primary" disabled={!novaData} onClick={() => { void vm.remarcar(id, novaData); fechar(); }}><Icone nome="repeat" />Remarcar</button>
+      </>}>
+      <div className="registro-props">
+        <Propriedade icone="calendar" rotulo="Reunião"><span><b>{titulo}</b><span className="fraco"> · {quando}</span></span></Propriedade>
+        <Propriedade icone="repeat" rotulo="Novo dia">
+          <span className="ini-reuniao-linha">
+            <CampoData rotulo="Novo dia" valor={nova.data} onMudar={v => setNova(n => ({ ...n, data: v }))} />
+            <input type="time" value={nova.hora} aria-label="Nova hora" onChange={e => setNova(n => ({ ...n, hora: e.target.value }))} />
+          </span>
+        </Propriedade>
+      </div>
+    </Janela>
+  );
+}
+
 /** escolher várias pessoas da equipe (o menu fica aberto; cada clique marca ou desmarca) */
 export function EscolherPessoas({ equipe, escolhidas, alternar, vazio = 'Escolher as pessoas' }: { equipe: readonly Pessoa[]; escolhidas: readonly Pessoa[]; alternar: (p: Pessoa) => void; vazio?: string }) {
   const rotulo = escolhidas.length ? (escolhidas.length <= 2 ? escolhidas.map(p => p.nome).join(' e ') : escolhidas.length + ' pessoas') : vazio;
@@ -252,6 +283,12 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
             <CampoData rotulo="Novo dia" valor={nova.data} onMudar={v => setNova(n => ({ ...n, data: v }))} />
             <input type="time" value={nova.hora} aria-label="Nova hora" onChange={e => setNova(n => ({ ...n, hora: e.target.value }))} />
             <button type="button" className="btn btn-outline" disabled={!dataDoCampo(nova.data, nova.hora)} onClick={() => void vm.remarcar(x.id, dataDoCampo(nova.data, nova.hora))}><Icone nome="repeat" />Remarcar</button>
+          </div>
+        )}
+        {pode('cancelar') && (
+          <div className="ini-reuniao-linha">
+            <span>Não vai acontecer? Todos veem "Cancelada" no Painel por 24 h.</span>
+            <button type="button" className="btn btn-outline" onClick={() => { if (window.confirm('Cancelar a reunião "' + x.titulo + '"?')) void vm.cancelar(x.id); }}><Icone nome="x" />Cancelar a reunião</button>
           </div>
         )}
         {pode('finalizar') && (

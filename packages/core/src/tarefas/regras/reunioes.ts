@@ -2,7 +2,7 @@
 // Diretor ou o Dono abriu e deu um prazo de resposta) → Aprovada (aparece para quem vai) ou Recusada → Em andamento (quem
 // criou clica em Iniciar reunião, a partir do dia; Vitor, 24/11/2026) → Finalizada (o Sênior anexou o Problema identificado e a Solução proposta e pede o comentário de quem
 // participou) → Concluída (os dois arquivos e o comentário de cada participante) → Encerrada (o Diretor ou o Dono fecha).
-// Remarcada quando precisa trocar o dia. Marcada pelo Diretor ou pelo Dono: já aparece para todos, passa por Em andamento e,
+// Remarcada quando precisa trocar o dia; Cancelada quando não vai acontecer (24/11/2026: as duas ficam 24 h no Painel). Marcada pelo Diretor ou pelo Dono: já aparece para todos, passa por Em andamento e,
 // com o Problema e a Solução anexados, cai direto em Encerrada ("como eles sao tomadores de decisao final resolve").
 // Só as regras: quem guarda é o repositório (dados/reunioes).
 import { nivelDeDiretor } from '../../usuarios/regras/papeis';
@@ -11,16 +11,16 @@ import type { Anexo, Nota, Pessoa } from './delegadas';
 import { limparAviso, linkValido, MAIOR_AVISO, MAIOR_TITULO_DO_COMUNICADO } from './inicio';
 
 /** O que fica guardado; Em andamento não é guardado: é a aprovada (ou remarcada) que quem criou iniciou (iniciadaEm). */
-export type StatusGuardado = 'em-analise' | 'revisando' | 'aprovada' | 'remarcada' | 'recusada' | 'finalizada' | 'concluida' | 'encerrada';
+export type StatusGuardado = 'em-analise' | 'revisando' | 'aprovada' | 'remarcada' | 'recusada' | 'cancelada' | 'finalizada' | 'concluida' | 'encerrada';
 export type StatusDaReuniao = StatusGuardado | 'em-andamento';
 
 export const ROTULO_DO_STATUS: Record<StatusDaReuniao, string> = {
-  'em-analise': 'Em análise', revisando: 'Revisando', aprovada: 'Aprovada', remarcada: 'Remarcada', recusada: 'Recusada',
+  'em-analise': 'Em análise', revisando: 'Revisando', aprovada: 'Aprovada', remarcada: 'Remarcada', recusada: 'Recusada', cancelada: 'Cancelada',
   'em-andamento': 'Em andamento', finalizada: 'Finalizada', concluida: 'Concluída', encerrada: 'Encerrada',
 };
 /** a cor do selo de cada status (os tons dos selos do nads) */
 export const TOM_DO_STATUS: Record<StatusDaReuniao, 'warn' | 'info' | 'ok' | 'neutral' | 'bad'> = {
-  'em-analise': 'warn', revisando: 'warn', aprovada: 'info', remarcada: 'info', recusada: 'neutral',
+  'em-analise': 'warn', revisando: 'warn', aprovada: 'info', remarcada: 'info', recusada: 'neutral', cancelada: 'neutral',
   'em-andamento': 'info', finalizada: 'warn', concluida: 'ok', encerrada: 'ok',
 };
 
@@ -66,6 +66,14 @@ export interface Reuniao {
    * data para preto, e deixe piscando, enquanto o criador da reunião não mudar o status para em andamento"). Sem = não iniciou.
    */
   iniciadaEm?: string;
+  /**
+   * A última remarcação (Vitor, 24/11/2026: "muda o icone da data e aparece um novo card com a data nova"): o dia de antes e
+   * quando remarcou. O Painel mostra o card do dia de antes por 24 h.
+   */
+  remarcadaDe?: string;
+  remarcadaEm?: string;
+  /** quando foi cancelada ("se só cancelar so aparece cancelada durante 24h") */
+  canceladaEm?: string;
   historico: Nota[];
   em: string;
 }
@@ -112,7 +120,7 @@ export const faltaComentar = (r: Pick<Reuniao, 'participantes' | 'comentarios'>)
 /** Quem foi convidado e ainda não respondeu se vai. */
 export const semResposta = (r: Pick<Reuniao, 'participantes' | 'presencas'>): Pessoa[] => r.participantes.filter(p => !r.presencas.some(x => x.uid === p.uid));
 
-export type AcaoDaReuniao = 'revisar' | 'aprovar' | 'recusar' | 'remarcar' | 'confirmar' | 'iniciar' | 'anexar' | 'finalizar' | 'comentar' | 'encerrar';
+export type AcaoDaReuniao = 'revisar' | 'aprovar' | 'recusar' | 'remarcar' | 'cancelar' | 'confirmar' | 'iniciar' | 'anexar' | 'finalizar' | 'comentar' | 'encerrar';
 
 /** O que a pessoa pode fazer na reunião agora. */
 export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora: string): AcaoDaReuniao[] {
@@ -121,6 +129,8 @@ export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora:
   const a: AcaoDaReuniao[] = [];
   if (quem.aprova && r.origem === 'pedido' && (s === 'em-analise' || s === 'revisando')) a.push(...(s === 'em-analise' ? ['revisar' as const] : []), 'aprovar', 'recusar');
   if ((dono || quem.aprova) && (s === 'aprovada' || s === 'remarcada' || s === 'em-andamento')) a.push('remarcar');
+  // cancela quem pode remarcar, antes de começar (24/11/2026: "quando a pessoa não consegue")
+  if ((dono || quem.aprova) && (s === 'aprovada' || s === 'remarcada')) a.push('cancelar');
   // o convidado responde se vai até a reunião começar (e pode mudar a resposta)
   if ((s === 'aprovada' || s === 'remarcada') && r.participantes.some(p => p.uid === quem.uid)) a.push('confirmar');
   // quem criou inicia a partir do dia (a marcada direto, também o Diretor e o Dono)
@@ -210,11 +220,26 @@ export function decidir(r: Reuniao, aprovar: boolean, observacao: string, por: s
 }
 
 export function remarcar(r: Reuniao, quando: string, por: string, em: string): Reuniao {
-  // remarcada, volta a esperar o Iniciar reunião no dia novo
+  // remarcada, volta a esperar o Iniciar reunião no dia novo; guarda o dia de antes (o card dele fica 24 h no Painel)
   const resto: Reuniao = { ...r };
   delete resto.iniciadaEm;
-  return { ...resto, quando, status: 'remarcada', historico: [...r.historico, nota(por, em, 'Remarcou para ' + quando.slice(0, 10).split('-').reverse().join('/') + ' ' + quando.slice(11))] };
+  return { ...resto, quando, status: 'remarcada', ...(r.quando && r.quando !== quando ? { remarcadaDe: r.quando, remarcadaEm: em } : {}), historico: [...r.historico, nota(por, em, 'Remarcou para ' + quando.slice(0, 10).split('-').reverse().join('/') + ' ' + quando.slice(11))] };
 }
+
+/** Cancela a reunião que ainda não começou: fica Cancelada e o Painel mostra por 24 h. */
+export function cancelar(r: Reuniao, por: string, em: string): Reuniao {
+  const s = statusDaReuniao(r);
+  if (s !== 'aprovada' && s !== 'remarcada') throw new Error('Só a reunião marcada e ainda não iniciada pode ser cancelada.');
+  return { ...r, status: 'cancelada', canceladaEm: em, historico: [...r.historico, nota(por, em, 'Cancelou a reunião')] };
+}
+
+/** Quanto tempo o card da cancelada e o do dia de antes da remarcada ficam no Painel. */
+export const HORAS_NO_PAINEL = 24;
+/** em (ISO) foi há menos de 24 h? agora em milissegundos */
+export const recente = (em: string | undefined, agora: number) => {
+  const t = em ? Date.parse(em) : NaN;
+  return Number.isFinite(t) && agora - t < HORAS_NO_PAINEL * 3600_000;
+};
 
 /** Quem criou inicia a reunião: fica Em andamento e o card para de piscar. */
 export function iniciar(r: Reuniao, por: string, em: string): Reuniao {
@@ -258,6 +283,6 @@ export function encerrar(r: Reuniao, por: string, em: string): Reuniao {
 
 /** A ordem da lista: as que pedem algo primeiro (em análise, revisando, finalizada, concluída), depois pelo dia. */
 export function ordenar<T extends Pick<Reuniao, 'status' | 'quando' | 'iniciadaEm'>>(lista: readonly T[], agora: string): T[] {
-  const peso: Record<StatusDaReuniao, number> = { 'em-analise': 0, revisando: 0, finalizada: 1, concluida: 1, 'em-andamento': 2, aprovada: 3, remarcada: 3, recusada: 5, encerrada: 6 };
+  const peso: Record<StatusDaReuniao, number> = { 'em-analise': 0, revisando: 0, finalizada: 1, concluida: 1, 'em-andamento': 2, aprovada: 3, remarcada: 3, recusada: 5, cancelada: 5, encerrada: 6 };
   return [...lista].sort((a, b) => peso[statusDaReuniao(a, agora)] - peso[statusDaReuniao(b, agora)] || a.quando.localeCompare(b.quando));
 }

@@ -7184,7 +7184,13 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro-item.no-dia .hint,.ini-quadro-item.no-dia .ini-quadro-conteudo > svg{color:rgba(255,255,255,.85);}
 .ini-quadro-item.no-dia:hover,.ini-quadro-item.no-dia:focus-within{animation:none !important;}
 @media (prefers-reduced-motion: reduce){.ini-quadro-item.no-dia{animation:none !important;}}
-.ini-quadro-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .15s;}
+/* a cancelada e o dia de antes da remarcada ficam 24 h (Vitor, 24/11/2026): apagadas, com o ícone no lugar da data */
+.ini-quadro-item.mudou{opacity:.75;}
+.ini-quadro-item.mudou .ini-quadro-dia{background:var(--surface-3);color:var(--ink-muted);gap:2px;}
+.ini-quadro-item.mudou .ini-quadro-dia svg{width:16px;height:16px;}
+.ini-quadro-item.mudou .ini-quadro-dia small{font-size:10px;}
+.ini-quadro-item.cancelada .ini-quadro-texto b{text-decoration:line-through;}
+.ini-quadro-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .15s;}
 @media (hover:hover){
   .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-conteudo,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-conteudo{filter:blur(3px);opacity:.45;}
   .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-hover,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-hover{opacity:1;pointer-events:auto;}
