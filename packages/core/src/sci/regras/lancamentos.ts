@@ -62,6 +62,17 @@ export function dataDoTexto(texto: string, anoPadrao: number): string {
   return a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
 }
 
+/**
+ * A data digitada na competência 'aaaa-mm' (24/11/2026: "completar automatico com a competência"): só o dia ("5", "05") cai no mês
+ * da competência; o dia e o mês ("05/11"), no ano dela; o resto, como em dataDoTexto. '' se não for data válida.
+ */
+export function dataNaCompetencia(texto: string, competencia: string): string {
+  const t = texto.trim().replace(/\/$/, '');
+  const ano = +competencia.slice(0, 4) || new Date().getFullYear();
+  if (/^\d{1,2}$/.test(t)) return dataDoTexto(t + '/' + competencia.slice(5, 7) + '/' + ano, ano);
+  return dataDoTexto(t, ano);
+}
+
 /** aaaa-mm-dd → dd/mm/aaaa. */
 export const dataParaTexto = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : iso);
 
