@@ -13,16 +13,18 @@ export function mesPassado(hoje = new Date()): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 
-export function useLancatudo() {
+/** soAs: só essas empresas (pelo código) aparecem e podem ser escolhidas (o minimum: as que estão no SCI); sem, todas */
+export function useLancatudo(soAs?: ReadonlySet<number> | null) {
   const [params, setParams] = useSearchParams();
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
   // as empresas do escritório e as do Extrator (a empresa de teste e, nos exemplos, as de exemplo), uma vez cada código
-  const lista = useMemo(() => {
+  const todas = useMemo(() => {
     const porCodigo = new Map<number, EmpresaDoLancatudo & { regime: string }>();
     for (const e of [...empresas.EMPRESAS, ...repoDoExtrator().listarEmpresas()]) if (e.codigo != null && !porCodigo.has(e.codigo)) porCodigo.set(e.codigo, { codigo: e.codigo, nome: e.nome, regime: e.regime || '' });
     return [...porCodigo.values()].sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
   }, []);
+  const lista = useMemo(() => (soAs ? todas.filter(e => soAs.has(e.codigo)) : todas), [todas, soAs]);
   const q = busca.trim();
   const achadas = useMemo(() => (q ? empresas.buscarEmpresas(lista, q).slice(0, 8) : []), [lista, q]);
 
@@ -40,6 +42,8 @@ export function useLancatudo() {
 
   return {
     empresa, competencia, banco,
+    /** as que podem ser escolhidas (com o soAs, só elas) e todas, sem o filtro */
+    lista, todas,
     // a empresa na barra (EmpresaDaBarra)
     busca, setBusca: (v: string) => { setBusca(v); setAtivo(0); }, achadas, ativo, setAtivo,
     mover: (d: number) => setAtivo(i => Math.max(0, Math.min(achadas.length - 1, i + d))),

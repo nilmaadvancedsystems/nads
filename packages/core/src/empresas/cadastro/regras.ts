@@ -299,6 +299,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
+    ...(doc.noSci === true ? { noSci: true } : {}),
     ...lembreteDoDocumento(doc.lembreteVencimento),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
@@ -329,6 +330,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
+    ...(c.noSci ? { noSci: true } : {}),
     ...(c.lembreteVencimento ? { lembreteVencimento: c.lembreteVencimento } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
@@ -1072,6 +1074,14 @@ export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null
   delete resto.emiteNotaHonorario;
   const novo = sim == null ? resto : { ...resto, emiteNotaHonorario: sim };
   return registrar(novo, por, agora, 'Nota de honorário', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
+/** Liga ou desliga "está no SCI" (desligado sai do documento). Registra no histórico. */
+export function definirNoSci(c: CadastroDaEmpresa, sim: boolean, por: string, agora: Date): CadastroDaEmpresa {
+  if (!!c.noSci === sim) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.noSci;
+  return registrar(sim ? { ...resto, noSci: true } : resto, por, agora, 'Está no SCI', sim ? 'Sim' : 'Não');
 }
 
 /** Guarda a conta do crédito e/ou o dia útil do pagamento do pró-labore (o vazio tira). Registra no histórico. */

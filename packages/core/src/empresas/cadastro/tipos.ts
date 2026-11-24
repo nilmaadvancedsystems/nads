@@ -203,6 +203,11 @@ export interface CadastroDaEmpresa {
    */
   emiteNotaHonorario?: boolean;
   /**
+   * A empresa está no SCI? (Vitor, 24/11/2026: "coloca uma opção de ligar na empresa se ela está no SCI para esses tipos de
+   * aplicacoes apresentarem elas, ja que sairam do alterdata".) Só as ligadas aparecem no minimum. Sem = não está.
+   */
+  noSci?: boolean;
+  /**
    * O lembrete de vencimento ao cliente desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'sim' manda mesmo com o
    * lembrete geral desligado, 'nao' nunca manda; diasAntes troca os dias do escritório. Sem = como o escritório
    * (Robôs › Ajustes).

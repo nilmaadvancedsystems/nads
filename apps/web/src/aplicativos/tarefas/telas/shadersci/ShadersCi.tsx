@@ -13,12 +13,13 @@ import { useShadersCi, type Formulario, type VmShadersCi } from './useShadersCi'
 
 export function ShadersCi() {
   const vm = useShadersCi();
+  if (!vm.carregada) return null;
   return (
     <section className="sci">
       {vm.pesquisa && <JanelaDoPlano vm={vm} />}
       <div className="tarefas-barra-topo">
-        <EmpresaDaBarra vm={vm.entrada} id="sci-empresas" />
         {vm.empresa && <>
+          <EmpresaDaBarra vm={vm.entrada} id="sci-empresas" />
           <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />
           <label className={'busca-curta sci-cnpj' + (vm.cnpj && !vm.cnpjOk ? ' sci-invalido' : '')} title="O CNPJ da empresa: vai em todas as linhas da planilha">
             <Icone nome="predio" />
@@ -26,23 +27,60 @@ export function ShadersCi() {
           </label>
         </>}
         <span className="tarefas-barra-espaco" />
-        {vm.empresa && vm.dev && (
-          <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={280} titulo="Modo desenvolvedor · fica só neste navegador"
-            itens={[
+        {vm.dev && (
+          <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · fica só neste navegador"
+            itens={vm.empresa ? [
               { rotulo: 'Lançamentos de exemplo (' + vm.plano + ')', icone: 'zap', onClick: vm.teste.preencher },
               'separador',
               { rotulo: 'Apagar os lançamentos', icone: 'x', desabilitado: !vm.total, onClick: vm.teste.apagar },
+            ] : [
+              { rotulo: 'Marcar 4 empresas no SCI', icone: 'zap', onClick: vm.teste.marcarSci },
+              'separador',
+              { rotulo: 'Desmarcar as de teste', icone: 'x', desabilitado: !vm.teste.temSciDeTeste, onClick: vm.teste.desmarcarSci },
             ]} />
         )}
         {vm.empresa && <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.exportar} title="A planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)"><LogoExcel />Planilha do SCI</button>}
       </div>
       {!vm.empresa
-        ? <section className="card"><Vazio icone="briefcase" titulo="Escolha a empresa" texto="Os lançamentos ficam guardados neste navegador, por empresa, até você baixar a planilha do SCI." /></section>
+        ? <TelaInicial vm={vm} />
         : <>
           <FormularioDoLancamento vm={vm} />
           <Tabela vm={vm} />
         </>}
     </section>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------- a tela inicial
+/**
+ * Sem empresa (24/11/2026: "Faz uma tela inicial bem bonita, com animações. Coloca no centro da tela: Escolha sua empresa
+ * subtitle [Apenas empresas que estão na sci]"): no centro, o título, a busca e as empresas do SCI, que chegam uma atrás
+ * da outra. Só as ligadas em Configurações › Dados da empresa › Está no SCI.
+ */
+function TelaInicial({ vm }: { vm: VmShadersCi }) {
+  const MAX = 12;
+  const lista = vm.empresasDoSci;
+  return (
+    <div className="sci-inicio">
+      <span className="sci-inicio-selo" aria-hidden="true"><Icone nome="briefcase" width={26} height={26} /></span>
+      <h1 className="sci-inicio-titulo">Escolha sua empresa</h1>
+      <p className="sci-inicio-sub">Apenas empresas que estão no SCI</p>
+      {lista.length > 0 ? <>
+        <div className="sci-inicio-busca"><EmpresaDaBarra vm={vm.entrada} id="sci-empresas" /></div>
+        <ul className="sci-inicio-lista" aria-label="Empresas no SCI">
+          {lista.slice(0, MAX).map((e, i) => (
+            <li key={e.codigo} style={{ animationDelay: (0.32 + i * 0.04).toFixed(2) + 's' }}>
+              <button type="button" className="btn btn-outline sci-inicio-empresa" title={e.nome} onClick={() => vm.entrada.escolher(e)}>
+                <b>{e.codigo}</b><span>{e.nome}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {lista.length > MAX && <p className="sci-inicio-mais">e mais {lista.length - MAX}: busque pelo código ou pelo nome</p>}
+      </> : (
+        <p className="sci-inicio-nenhuma">Nenhuma empresa ligada no SCI ainda. Ligue em Configurações › Empresas › Dados da empresa › <b>Está no SCI</b>.</p>
+      )}
+    </div>
   );
 }
 
