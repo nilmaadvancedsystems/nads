@@ -95,18 +95,16 @@ const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + Str
  * a atual e deixa o select do calendario tambem, se a pessoa querer"): o 📅 abre o calendário do mês da data (ou de hoje) e o
  * clique no dia preenche o campo.
  */
-export function CampoDataComCalendario({ valor, onMudar, rotulo, id, onEnter, bloqueado, mesSemData }: {
+export function CampoDataComCalendario({ valor, onMudar, rotulo, id, onEnter, bloqueado }: {
   valor: string; onMudar: (v: string) => void; rotulo: string; id?: string; onEnter?: () => void;
   /** os dias que o calendário não deixa escolher (o CalendarioDoMes) */
   bloqueado?: (dia: string) => string | null;
-  /** o mês em que o calendário abre sem data no campo, 'aaaa-mm' (sem: o de hoje) */
-  mesSemData?: string;
 }) {
   const hoje = hojeIso();
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
   const escolhido = m ? m[3] + '-' + m[2] + '-' + m[1] : null;
-  const [mes, setMes] = useState((escolhido || mesSemData || hoje).slice(0, 7));
-  useEffect(() => { if (escolhido) setMes(escolhido.slice(0, 7)); else if (mesSemData) setMes(mesSemData); }, [escolhido, mesSemData]);
+  const [mes, setMes] = useState((escolhido || hoje).slice(0, 7));
+  useEffect(() => { if (escolhido) setMes(escolhido.slice(0, 7)); }, [escolhido]);
   return (
     <span className="campo-data-cal">
       <CampoData valor={valor} onMudar={onMudar} rotulo={rotulo} id={id} onEnter={onEnter} />

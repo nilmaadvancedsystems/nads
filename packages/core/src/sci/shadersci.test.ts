@@ -3,7 +3,7 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import {
-  buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, dataNaCompetencia, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
+  buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
   participanteDoLado, pascoa, planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
 } from './index';
 import { FERIADOS } from '../tarefas/regras/feriados';
@@ -138,15 +138,6 @@ describe('o que se digita', () => {
     expect(dataDoTexto('5/11/26', 2025)).toBe('2026-11-05');
     expect(dataDoTexto('05112026', 2025)).toBe('2026-11-05');
     expect(dataDoTexto('31/02/2026', 2026)).toBe('');
-  });
-
-  // 24/11/2026: "completar automatico com a competência"
-  it('a data na competência: só o dia cai no mês dela', () => {
-    expect(dataNaCompetencia('5', '2025-12')).toBe('2025-12-05');
-    expect(dataNaCompetencia('05/', '2025-12')).toBe('2025-12-05');
-    expect(dataNaCompetencia('05/11', '2025-12')).toBe('2025-11-05');
-    expect(dataNaCompetencia('05/11/2026', '2025-12')).toBe('2026-11-05');
-    expect(dataNaCompetencia('31', '2026-02')).toBe('');
   });
 });
 

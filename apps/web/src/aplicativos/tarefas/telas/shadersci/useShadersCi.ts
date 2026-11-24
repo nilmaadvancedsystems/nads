@@ -12,7 +12,7 @@ import { useLancatudo } from '../lancatudo/useLancatudo';
 type Lancamento = sci.LancamentoDoShader;
 
 /** O que fica guardado por empresa neste navegador. */
-interface Guardado { plano: sci.IdDoPlanoSci; cnpj: string; lancamentos: Lancamento[]; /** a competência dos lançamentos, 'aaaa-mm' */ competencia?: string }
+interface Guardado { plano: sci.IdDoPlanoSci; cnpj: string; lancamentos: Lancamento[] }
 const VAZIO: Guardado = { plano: '90113', cnpj: '', lancamentos: [] };
 const PREFIXO = 'nads-shadersci-v1|';
 
@@ -126,14 +126,9 @@ export function useShadersCi() {
   const pedeD = sci.participanteDoLado(contaD, 'debito');
   const pedeC = sci.participanteDoLado(contaC, 'credito');
   const historico = sci.historicoDoSci(form.historico);
-  // a competência (24/11/2026: "completar automatico com a competência, ou ter alguma funcao do tipo que fique intutivo"): a
-  // escolhida na janela; sem ela, o mês do último lançamento, senão o de hoje. Só o dia na data cai no mês dela
-  const ultimo = guardado.lancamentos.length ? guardado.lancamentos[guardado.lancamentos.length - 1].data : '';
-  const competencia = guardado.competencia || (ultimo ? ultimo.slice(0, 7) : new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
-  const competenciaTexto = competencia.slice(5, 7) + '/' + competencia.slice(0, 4);
   const valorLido = sci.valorDoTexto(form.valor);
   const lido = sci.lancamentoLimpo({
-    data: sci.dataNaCompetencia(form.data, competencia), debito: form.debito, credito: form.credito, valor: isNaN(valorLido) ? 0 : Math.abs(valorLido), historico: form.historico,
+    data: sci.dataDoTexto(form.data, ano), debito: form.debito, credito: form.credito, valor: isNaN(valorLido) ? 0 : Math.abs(valorLido), historico: form.historico,
     complemento: form.complemento, documento: form.documento, participanteD: pedeD ? form.participanteD : '', participanteC: pedeC ? form.participanteC : '',
   }, plano);
   const conta = (c: sci.ContaDoPlanoSci | null, lado: sci.LadoDoLancamento) => c
@@ -189,18 +184,6 @@ export function useShadersCi() {
     diaSemLancamento: sci.diaSemLancamento,
     /** o dia da semana da data digitada (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar"); '' sem data válida */
     diaDaSemana: lido.data ? DIAS_DA_SEMANA[new Date(Date.UTC(+lido.data.slice(0, 4), +lido.data.slice(5, 7) - 1, +lido.data.slice(8, 10))).getUTCDay()] : '',
-    competencia,
-    setCompetencia: (c: string) => guardar(g => ({ ...g, competencia: c })),
-    /** a data com só o dia (ou dia e mês), ao sair do campo: completa com a competência */
-    completarData: () => { if (lido.data && sci.dataParaTexto(lido.data) !== form.data) setForm(f => ({ ...f, data: sci.dataParaTexto(lido.data) })); },
-    /**
-     * A competência no complemento, quando o histórico pede a referência ("ref.:", "ref. mês:", "*M"): o botão que acrescenta
-     * "11/2026"; null quando não cabe ou já está lá
-     */
-    competenciaNoComplemento: historico && /\bref\.|\*M|\bm[eê]s\b/i.test(historico.nome) && !form.complemento.includes(competenciaTexto) ? competenciaTexto : null,
-    usarCompetenciaNoComplemento: () => setForm(f => ({ ...f, complemento: (f.complemento.trim() ? f.complemento.trim() + ' ' : '') + competenciaTexto })),
-    /** o que vai aparecer no SCI, ao vivo (24/11/2026: "o preview do historico + Complemento em tempo real") */
-    textoNoSci: [historico?.nome || '', sci.limparComplemento(form.complemento)].filter(Boolean).join(' '),
     problemasDoFormulario: vazio ? [] : sci.problemasDoLancamento(lido, plano),
     vazio,
     /**
@@ -219,7 +202,7 @@ export function useShadersCi() {
       }
       const novo = { ...lido, id: idNovo() };
       mudarLista(ls => [...ls, novo]);
-      setForm({ ...FORMULARIO_VAZIO, data: lido.data ? sci.dataParaTexto(lido.data) : form.data });
+      setForm({ ...FORMULARIO_VAZIO, data: form.data });
       toast('Lançado.');
     },
     limparFormulario: () => { setForm(FORMULARIO_VAZIO); setEditando(null); },

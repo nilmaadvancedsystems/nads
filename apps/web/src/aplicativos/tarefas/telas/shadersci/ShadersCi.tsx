@@ -4,7 +4,7 @@
 // valor, o histórico do plano de históricos, o complemento, o documento e o participante na frente da conta que pede); embaixo, a tabela, com o botão
 // direito (editar, duplicar, inverter, copiar, colar, excluir) e os atalhos do Excel. Sai na planilha do gerador do SCI.
 import { sci } from '@nads/core';
-import { CampoDataComCalendario, Icone, LogoExcel, MenuSuspenso, Segmentado, SeletorMes, Vazio } from '@nads/ui';
+import { CampoDataComCalendario, Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from '../drive/MenuDeContexto';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
@@ -168,43 +168,21 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
         <button type="submit" form="sci-form" className="btn btn-primary" disabled={vm.vazio}><Icone nome={vm.editando ? 'check' : 'plus'} />{vm.editando ? 'Salvar alteração' : 'Lançar'}</button>
       </>}>
       <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
-        {/* a competência (24/11/2026: "completar automatico com a competência"): só o dia na data cai no mês dela, e o calendário
-            abre nele */}
-        <div className="field sci-terco">
-          <label htmlFor="sci-competencia">Competência</label>
-          <SeletorMes id="sci-competencia" rotulo="Competência" valor={vm.competencia} onMudar={vm.setCompetencia} />
-        </div>
         {/* a data menor, já no formato ao digitar, e o calendário (24/11/2026: "diminui o input de data, tá grande, ao preencher, ele já coloca no formato") */}
-        <div className="field sci-terco sci-data" onBlur={vm.completarData}>
+        <div className="field sci-meia sci-data">
           {/* o dia da semana ao lado do rótulo (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar") */}
           <label htmlFor="sci-data">Data{vm.diaDaSemana && <span className="sci-dia-semana"> · {vm.diaDaSemana}</span>}</label>
-          <CampoDataComCalendario id="sci-data" rotulo="Data" valor={vm.form.data} onMudar={campo('data')} bloqueado={vm.diaSemLancamento} mesSemData={vm.competencia} />
+          <CampoDataComCalendario id="sci-data" rotulo="Data" valor={vm.form.data} onMudar={campo('data')} bloqueado={vm.diaSemLancamento} />
         </div>
-        <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico classe="sci-terco" />
+        <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico classe="sci-meia" />
         <ContaComParticipante vm={vm} lado="debito" />
         <ContaComParticipante vm={vm} lado="credito" />
         <CodigoComLupa id="sci-historico" rotulo="Histórico" valor={vm.form.historico} mudar={campo('historico')} lupa={() => vm.abrirPesquisa('historico')}
           dicaDaLupa="Pesquisar no plano de históricos" nome={h ? h.nome : vm.form.historico ? 'Não está no plano de históricos' : 'Pesquise pela lupa (F2)'} achou={!!h} placeholder="Número ou apelido" />
-        <div className="field sci-complemento">
-          <label htmlFor="sci-complemento">{'Complemento' + (h?.pulaComplemento ? ' (opcional neste histórico)' : '')}</label>
-          <span className="sci-com-botao">
-            <input id="sci-complemento" type="text" autoComplete="off" value={vm.form.complemento} onChange={e => vm.mudar('complemento', e.target.value)}
-              placeholder={h?.pulaComplemento ? 'O histórico já diz tudo' : 'O que completa o histórico'} />
-            {/* o histórico pede a referência: um clique põe a competência */}
-            {vm.competenciaNoComplemento && (
-              <button type="button" className="btn btn-outline" title="Acrescentar a competência no complemento" onClick={() => { vm.usarCompetenciaNoComplemento(); document.getElementById('sci-complemento')?.focus(); }}>
-                <Icone nome="plus" />{vm.competenciaNoComplemento}
-              </button>
-            )}
-          </span>
-        </div>
-        {/* o documento por último e, na mesma linha, o que vai aparecer no SCI, ao vivo (24/11/2026: "Documento deixa por ultimo, e na
-            mesma linha, deixa o preview do historico + Complemento em tempo real") */}
+        <Campo id="sci-complemento" rotulo={'Complemento' + (h?.pulaComplemento ? ' (opcional neste histórico)' : '')} valor={vm.form.complemento} mudar={campo('complemento')}
+          placeholder={h?.pulaComplemento ? 'O histórico já diz tudo' : 'O que completa o histórico'} />
+        {/* o documento por último (24/11/2026: "Documento deixa por ultimo") */}
         <Campo id="sci-documento" rotulo="Documento" valor={vm.form.documento} mudar={campo('documento')} classe="sci-terco" />
-        <div className="field sci-dois-tercos">
-          <span className="sci-previa-rotulo">Como fica no SCI</span>
-          <p className={'sci-previa' + (vm.textoNoSci ? '' : ' vazio')} aria-live="polite" title={vm.textoNoSci}>{vm.textoNoSci || 'O histórico e o complemento aparecem aqui'}</p>
-        </div>
       </form>
     </Janela>
   );
