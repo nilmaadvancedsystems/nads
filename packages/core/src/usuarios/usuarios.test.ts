@@ -129,6 +129,10 @@ describe('liberação do login do nads', () => {
     expect(l.idDaSessao('u1', '1727710000')).toBe('u1_1727710000');
     expect(l.codigoNovo(() => 0.0123)).toBe('012300');
     expect(l.codigoNovo(() => 0.999999)).toBe('999999');
+    // sem sorteio de fora: o gerador criptográfico, sempre 6 dígitos
+    for (let i = 0; i < 50; i++) expect(l.codigoNovo()).toMatch(/^[0-9]{6}$/);
+    expect(l.sorteioSeguro()).toBeGreaterThanOrEqual(0);
+    expect(l.sorteioSeguro()).toBeLessThan(1);
     expect(l.computadorDoNavegador('Mozilla/5.0 (Windows NT 10.0) Chrome/130 Safari/537')).toBe('Chrome · Windows');
     expect(l.computadorDoNavegador('Mozilla/5.0 (Windows NT 10.0) Chrome/130 Edg/130')).toBe('Edge · Windows');
     expect(l.codigoDigitado(' 48-29 13x')).toBe('482913');

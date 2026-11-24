@@ -224,10 +224,14 @@ const ROTEIRO_GUIA = `await (async () => {
   return comAviso({ numero, valor, vencimento });
 })()`;
 
+// o nome da empresa vem do pedido (pedidosFgts, gravado pelo navegador): entra no texto do Claude só como nome, numa linha,
+// curto e sem caractere de comando (auditoria de segurança, 24/11/2026: sem isso, o pedido levava instrução ao Claude)
+const nomeNoTexto = s => String(s || '').replace(/[\r\n\t]+/g, ' ').replace(/[^\p{L}\p{N} .,&()/'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+
 function instrucoesDoLote(itens) {
   const lista = itens.map((p, i) => {
     const [ano, mes] = p.competencia.split('-');
-    return (i + 1) + '. ' + (p.empresa || '') + ' — ' + (p.cnpj.length === 11 ? 'CPF ' : 'CNPJ ') + p.cnpj + ' — competência ' + mes + '/' + ano + ' — ' + (p.modo === 'emitir' ? 'EMITIR' : 'ENSAIO (não emitir)');
+    return (i + 1) + '. ' + nomeNoTexto(p.empresa) + ' — ' + (String(p.cnpj).length === 11 ? 'CPF ' : 'CNPJ ') + String(p.cnpj).replace(/\D/g, '').slice(0, 14) + ' — competência ' + mes + '/' + ano + ' — ' + (p.modo === 'emitir' ? 'EMITIR' : 'ENSAIO (não emitir)');
   });
   return [
     'Você vai emitir guias mensais do FGTS no portal FGTS Digital, usando as ferramentas do Claude in Chrome, para estes clientes,',
@@ -695,7 +699,8 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   let processoAtual = null;
 
   function abrirSessao() {
-    const filho = spawn(CLAUDE, ['-p', '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
+    const filho = spawn(CLAUDE, ['-p', '--chrome', '--model', MODELO, // sem o bypassPermissions (auditoria de segurança, 24/11/2026): só as ferramentas do Chrome, nada de shell nem arquivo
+      '--permission-mode', 'dontAsk', '--tools', '', '--allowedTools', 'mcp__claude-in-chrome__*',
       '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--no-session-persistence'],
     { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['pipe', 'pipe', 'pipe'] });
     const s = { filho, lotes: 0, vez: null, erros: '', viva: true, ociosa: null };
@@ -794,4 +799,4 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   }
 }
 
-module.exports = { iniciarFgtsPeloClaude, ordenarNaFrente, ROTEIRO_PERFIL, ROTEIRO_GUIA };
+module.exports = { iniciarFgtsPeloClaude, ordenarNaFrente, ROTEIRO_PERFIL, ROTEIRO_GUIA, nomeNoTexto };

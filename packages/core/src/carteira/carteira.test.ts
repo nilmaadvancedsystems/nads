@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContaAPagar } from '../financeiro/contasPagar';
 import {
-  comValorParaAPessoa, conferirComissao, descricaoDaComissao, quantidadeDaComissao, valorDoServico, conferirDataDaPessoa, pessoaPodeMexer, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
+  avisosDaComissao, comValorParaAPessoa, conferirComissao, descricaoDaComissao, quantidadeDaComissao, valorDoServico, conferirDataDaPessoa, pessoaPodeMexer, conferirLancamento, conferirServicos, esperandoCalculo, percentualDoServico, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
   resumoParaPagar, salarioDoMes, totaisDasComissoes, ultimosMeses, type Comissao, type DocumentoDaCarteira, type Lancamento,
 } from '.';
 
@@ -132,5 +132,28 @@ describe('a quantidade e o valor do serviço definido pelo Financeiro (23/11/202
     expect(conferirComissao({ ...base, quantidade: 0 })).toContain('A quantidade vai de 1 a 999.');
     expect(conferirComissao({ ...base, quantidade: 1000 })).toContain('A quantidade vai de 1 a 999.');
     expect(valorDaComissao(3 * 30, 10)).toBe(9);
+  });
+});
+
+describe('os avisos da comissão a pagar (auditoria de segurança, 24/11/2026)', () => {
+  const servicos = [{ id: 'nfe', nome: 'Emissão de NFE', percentual: 10 }, { id: 'gta', nome: 'Emissão de GTA', percentual: 5, valor: 30 }];
+  const base = (extra: Partial<Comissao>): Comissao => ({ ...comissao('1', 'c', 20, 'lancada'), servico: 'Emissão de NFE', valorServico: 200, percentual: 10, ...extra });
+
+  it('a comissão certa não tem aviso', () => {
+    expect(avisosDaComissao(base({}), servicos)).toEqual([]);
+    expect(avisosDaComissao(base({ servico: 'Emissão de GTA', descricao: 'Emissão de GTA × 3', valorServico: 90, percentual: 5, valor: 4.5 }), servicos)).toEqual([]);
+  });
+
+  it('pega o valor que não é serviço × %, a % fora da tabela e o valor do serviço trocado', () => {
+    expect(avisosDaComissao(base({ valor: 999999 }), servicos)).toEqual(['O valor não é o do serviço × a %.']);
+    expect(avisosDaComissao(base({ percentual: 100, valor: 200 }), servicos)).toEqual(['A % (100%) não é a da tabela (10%).']);
+    expect(avisosDaComissao(base({ servico: 'Emissão de GTA', descricao: 'Emissão de GTA', valorServico: 5000, percentual: 5, valor: 250 }), servicos))
+      .toEqual(['O valor do serviço não é o definido pelo Financeiro.']);
+    expect(avisosDaComissao(base({ servico: 'Inventado' }), servicos)).toEqual(['O serviço não está na tabela.']);
+  });
+
+  it('a escondida e a já decidida não entram', () => {
+    expect(avisosDaComissao(base({ valor: 999999, oculta: true }), servicos)).toEqual([]);
+    expect(avisosDaComissao(base({ valor: 999999, situacao: 'paga' }), servicos)).toEqual([]);
   });
 });

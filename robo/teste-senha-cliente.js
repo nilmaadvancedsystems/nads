@@ -16,6 +16,7 @@ const db = {
 };
 const contas = {
   'maria@padaria.com': { uid: 'uid-maria', customClaims: { cliente: true, a: [T] } },
+  'ana@padaria.com': { uid: 'uid-ana', customClaims: { cliente: true, a: [T] } },
   'vitor@nilma.com': { uid: 'uid-equipe', customClaims: { cliente: true, a: [T] } },
 };
 const auth = {
@@ -45,5 +46,8 @@ const pedido = (id, x) => ({ id, data: () => x, ref: { delete: async () => { apa
   // o limite de 3 por e-mail por dia (o p2 já contou um)
   assert.strictEqual(await r.tratar(pedido('p6', { token: T, email: 'maria@padaria.com' })), 'enviado');
   assert.strictEqual(await r.tratar(pedido('p7', { token: T, email: 'maria@padaria.com' })), 'limite');
+  // e-mails inventados não gastam o total do dia (auditoria de segurança, 24/11/2026): 150 pedidos sem acesso e a Ana ainda recebe
+  for (let i = 0; i < 150; i++) assert.strictEqual(await r.tratar(pedido('x' + i, { token: T, email: 'inventado' + i + '@x.com' })), 'sem acesso');
+  assert.strictEqual(await r.tratar(pedido('p8', { token: T, email: 'ana@padaria.com' })), 'enviado');
   console.log('teste-senha-cliente: ok');
 })().catch(e => { console.error(e); process.exit(1); });
