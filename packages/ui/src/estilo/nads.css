@@ -7185,7 +7185,10 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro-item.no-dia:hover,.ini-quadro-item.no-dia:focus-within{animation:none !important;}
 @media (prefers-reduced-motion: reduce){.ini-quadro-item.no-dia{animation:none !important;}}
 /* a cancelada e o dia de antes da remarcada ficam 24 h (Vitor, 24/11/2026): apagadas, com o ícone no lugar da data */
-.ini-quadro-item.mudou{opacity:.75;}
+.ini-quadro-item.cancelada,.ini-quadro-item.remarcada{opacity:.75;}
+/* com os arquivos da reunião, o download no lugar da data (24/11/2026) */
+.ini-quadro-item .ini-quadro-dia.ini-quadro-baixar,.ini-quadro-item.mudou .ini-quadro-dia.ini-quadro-baixar{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);}
+.ini-quadro-dia.ini-quadro-baixar svg{width:20px;height:20px;}
 .ini-quadro-item.mudou .ini-quadro-dia{background:var(--surface-3);color:var(--ink-muted);gap:2px;}
 .ini-quadro-item.mudou .ini-quadro-dia svg{width:16px;height:16px;}
 .ini-quadro-item.mudou .ini-quadro-dia small{font-size:10px;}

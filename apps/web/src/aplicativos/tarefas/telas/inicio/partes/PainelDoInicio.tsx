@@ -118,18 +118,28 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
         {(vm.reunioes.length + vm.avisosNoQuadro.length + vm.reunioesVm.fixadas.length > 0) && (
           <div className="ini-quadro-lista ini-quadro-solto" aria-label="Quadro de avisos">
             {/* as reuniões fixadas pelo Diretor ou pelo Dono (24/11/2026): o alfinete no lugar da data, abre com os arquivos */}
-            {vm.reunioesVm.fixadas.map(x => (
-              <CardDoQuadro key={'f' + x.id} abrir={() => abrir(x.id)} acao={null}
-                extra={x.acoes.includes('fixar') ? { rotulo: 'Tirar', icone: 'x', fazer: () => void vm.reunioesVm.fixar(x.id, false) } : null}
-                marca={<span className="ini-quadro-dia ini-quadro-fixada" aria-hidden="true"><Icone nome="mapaPin" /><small>{x.quando.slice(8, 10)} {x.quando ? MESES[Number(x.quando.slice(5, 7)) - 1] : ''}</small></span>}
-                titulo={x.titulo} detalhe={'Reunião ' + x.rotulo.toLowerCase() + (x.problema || x.solucao ? ' · com os arquivos' : '')} pendente={false} />
-            ))}
+            {vm.reunioesVm.fixadas.map(x => {
+              const arquivos = !!(x.problema || x.solucao);
+              return (
+                // com os arquivos, o download no lugar da data e o Baixar ao passar o mouse (24/11/2026); no texto, Cancelada ou Finalizada
+                <CardDoQuadro key={'f' + x.id} abrir={() => abrir(x.id)}
+                  acao={arquivos ? { rotulo: 'Baixar', fazer: () => void vm.reunioesVm.baixarArquivos(x.id) } : null}
+                  extra={x.acoes.includes('fixar') ? { rotulo: 'Tirar', icone: 'x', fazer: () => void vm.reunioesVm.fixar(x.id, false) } : null}
+                  marca={<span className={'ini-quadro-dia ini-quadro-fixada' + (arquivos ? ' ini-quadro-baixar' : '')} aria-hidden="true"><Icone nome={arquivos ? 'download' : 'mapaPin'} /></span>}
+                  titulo={x.titulo} detalhe={(x.status === 'cancelada' ? 'Cancelada' : 'Finalizada') + ' · fixada'} pendente={false} />
+              );
+            })}
             {/* ao passar o mouse, o card embaça e aparece o botão (Vitor, 18/11/2026): a presença, o Recebido ou o Abrir */}
             {vm.reunioes.map(r => r.mudanca ? (
               // a cancelada e o dia de antes da remarcada, por 24 h (24/11/2026): o ícone no lugar da data
-              <CardDoQuadro key={'m' + r.id + r.mudanca} abrir={() => abrir(r.id)} mudou={r.mudanca} acao={null}
-                marca={<span className="ini-quadro-dia" aria-hidden="true"><Icone nome={r.mudanca === 'cancelada' ? 'x' : 'repeat'} /><small>{r.quando.slice(8, 10)} {r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small></span>}
-                titulo={r.tituloNaLista} detalhe={r.mudanca === 'cancelada' ? 'Cancelada · era ' + r.reuniao : 'Remarcada para ' + r.quandoNovo} pendente={false} />
+              // a cancelada e a finalizada (24/11/2026: "um botão de download, no lugar da data e ao inves de ter. 24/11, 7:30, fica
+              // cancelada ou finalizada"): com os arquivos, o download no lugar da data e o Baixar ao passar o mouse
+              <CardDoQuadro key={'m' + r.id + r.mudanca} abrir={() => abrir(r.id)} mudou={r.mudanca}
+                acao={r.mudanca !== 'remarcada' && r.temArquivos ? { rotulo: 'Baixar', fazer: () => void vm.reunioesVm.baixarArquivos(r.id) } : null}
+                marca={r.mudanca === 'remarcada'
+                  ? <span className="ini-quadro-dia" aria-hidden="true"><Icone nome="repeat" /><small>{r.quando.slice(8, 10)} {r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small></span>
+                  : <span className={'ini-quadro-dia' + (r.temArquivos ? ' ini-quadro-baixar' : '')} aria-hidden="true"><Icone nome={r.temArquivos ? 'download' : r.mudanca === 'cancelada' ? 'x' : 'check'} /></span>}
+                titulo={r.tituloNaLista} detalhe={r.mudanca === 'cancelada' ? 'Cancelada' : r.mudanca === 'finalizada' ? 'Finalizada' : 'Remarcada para ' + r.quandoNovo} pendente={false} />
             ) : (
               <CardDoQuadro key={'r' + r.id} abrir={() => abrir(r.id)}
                 extra={r.podeRemarcar ? { rotulo: 'Remarcar', fazer: () => setRemarcando(r.id) } : null}
@@ -197,7 +207,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
  * meio — o Recebido (no aviso; na reunião, vale como "vou") ou, sem pendência, Abrir. No toque, o card só abre.
  */
 function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, noDia, mudou, acao, extra, abrir }: {
-  marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; noDia?: boolean; mudou?: 'cancelada' | 'remarcada';
+  marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; noDia?: boolean; mudou?: 'cancelada' | 'remarcada' | 'finalizada';
   acao: { rotulo: string; fazer: () => void } | null;
   /** o segundo botão ao passar o mouse (o Remarcar e o Tirar da fixada, 24/11/2026) */
   extra?: { rotulo: string; icone?: NomeIcone; fazer: () => void } | null;

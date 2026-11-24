@@ -69,10 +69,14 @@ export function useReunioesDoInicio() {
      * as mudanças das últimas 24 h, para o Painel (Vitor, 24/11/2026): a cancelada fica com o card "Cancelada"; a remarcada
      * deixa o card do dia de antes (com o ícone trocado) além do card do dia novo
      */
+    // a finalizada também fica 24 h (24/11/2026: "fica cancelada ou finalizada"); a fixada aparece só como fixada
     mudancas: visiveis.flatMap(x => {
+      type Mudanca = 'cancelada' | 'remarcada' | 'finalizada';
       const agoraMs = Date.now();
-      if (x.status === 'cancelada' && r.recente(x.canceladaEm, agoraMs)) return [{ ...item(x), mudanca: 'cancelada' as 'cancelada' | 'remarcada', diaDoCard: x.quando, quandoNovo: '' }];
-      if ((x.status === 'remarcada' || x.status === 'aprovada') && x.remarcadaDe && r.recente(x.remarcadaEm, agoraMs)) return [{ ...item(x), mudanca: 'remarcada' as 'cancelada' | 'remarcada', diaDoCard: x.remarcadaDe, quandoNovo: quandoTexto(x.quando) }];
+      if (x.fixada) return [];
+      if (x.status === 'cancelada' && r.recente(x.canceladaEm, agoraMs)) return [{ ...item(x), mudanca: 'cancelada' as Mudanca, diaDoCard: x.quando, quandoNovo: '' }];
+      if ((x.status === 'finalizada' || x.status === 'concluida' || x.status === 'encerrada') && r.recente(r.finalizadaEm(x), agoraMs)) return [{ ...item(x), mudanca: 'finalizada' as Mudanca, diaDoCard: x.quando, quandoNovo: '' }];
+      if ((x.status === 'remarcada' || x.status === 'aprovada') && x.remarcadaDe && r.recente(x.remarcadaEm, agoraMs)) return [{ ...item(x), mudanca: 'remarcada' as Mudanca, diaDoCard: x.remarcadaDe, quandoNovo: quandoTexto(x.quando) }];
       return [];
     }),
     /** as fixadas no Painel pelo Diretor ou pelo Dono (24/11/2026): quem vê a reunião vê o card e baixa os arquivos */
@@ -95,6 +99,11 @@ export function useReunioesDoInicio() {
     confirmar: (id: string, vai: boolean) => fazer('A resposta não foi gravada', () => repo.confirmar(id, vai), vai ? 'Presença confirmada.' : 'Avisado que você não vai.'),
     iniciar: (id: string) => fazer('Não deu para iniciar', () => repo.iniciar(id), 'Reunião em andamento.'),
     anexar: (id: string, qual: QualArquivo, arquivo: File) => fazer('O arquivo não foi anexado', async () => repo.anexar(id, qual, await encolherAnexo(arquivo)), 'Arquivo anexado.'),
+    /** o botão de download do card (24/11/2026): baixa o Problema e a Solução que tiver */
+    async baixarArquivos(id: string) {
+      const x = reunioes.find(y => y.id === id);
+      for (const qual of ['problema', 'solucao'] as const) if (x?.[qual]) await this.baixar(id, qual);
+    },
     async baixar(id: string, qual: QualArquivo) {
       const a = reunioes.find(x => x.id === id)?.[qual];
       const bytes = await repo.baixar(id, qual).catch(() => null);

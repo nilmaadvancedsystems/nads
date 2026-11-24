@@ -77,8 +77,10 @@ describe('reuniões', () => {
     expect(r.statusDaReuniao(x, ANTES)).toBe('em-andamento');
     expect(r.piscaNoDia(x, DEPOIS)).toBe(false);
     expect(r.iniciar(x, SENIOR.nome, 'outra')).toBe(x);
-    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, DEPOIS)).toEqual(['remarcar', 'anexar']);
-    expect(() => r.finalizar(x, SENIOR.nome, EM)).toThrow(/Problema/);
+    expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, DEPOIS)).toEqual(['remarcar', 'anexar', 'finalizar']);
+    // finaliza sem os arquivos também (24/11/2026); a janela pergunta se quer anexar
+    expect(r.finalizar(x, SENIOR.nome, EM).status).toBe('finalizada');
+    expect(r.finalizadaEm(r.finalizar(x, SENIOR.nome, '2026-11-14T11:00:00.000Z'))).toBe('2026-11-14T11:00:00.000Z');
     x = r.anexar(r.anexar(x, 'problema', arquivo('p.pdf'), SENIOR.nome, EM), 'solucao', arquivo('s.pdf'), SENIOR.nome, EM);
     expect(r.acoes(x, { uid: SENIOR.uid, aprova: false }, DEPOIS)).toContain('finalizar');
     x = r.finalizar(x, SENIOR.nome, EM);

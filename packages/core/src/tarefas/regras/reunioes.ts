@@ -140,7 +140,8 @@ export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora:
   if ((s === 'aprovada' || s === 'remarcada') && r.participantes.some(p => p.uid === quem.uid)) a.push('confirmar');
   // quem criou inicia a partir do dia (a marcada direto, também o Diretor e o Dono)
   if (dono && (s === 'aprovada' || s === 'remarcada') && diaChegou(r, agora)) a.push('iniciar');
-  if (dono && s === 'em-andamento') a.push('anexar', ...(r.problema && r.solucao ? ['finalizar' as const] : []));
+  // finalizar sem os arquivos também (24/11/2026: a janela do Finalizar pergunta se quer anexar)
+  if (dono && s === 'em-andamento') a.push('anexar', 'finalizar');
   if (s === 'finalizada' && r.participantes.some(p => p.uid === quem.uid) && !r.comentarios.some(c => c.uid === quem.uid)) a.push('comentar');
   if (quem.aprova && s === 'concluida') a.push('encerrar');
   // o Diretor e o Dono fixam (e tiram) no Painel a que já terminou
@@ -240,6 +241,11 @@ export function cancelar(r: Reuniao, por: string, em: string): Reuniao {
   return { ...r, status: 'cancelada', canceladaEm: em, historico: [...r.historico, nota(por, em, 'Cancelou a reunião')] };
 }
 
+/** Quando foi finalizada (a nota do histórico; sem ela, ''): o card "Finalizada" fica 24 h no Painel. */
+export function finalizadaEm(r: Pick<Reuniao, 'historico'>): string {
+  return [...r.historico].reverse().find(n => n.texto.startsWith('Finalizou'))?.em || '';
+}
+
 /** Só a reunião que já terminou (finalizada, concluída, encerrada) ou foi cancelada fica fixada. */
 export const podeFixar = (s: StatusDaReuniao) => s === 'finalizada' || s === 'concluida' || s === 'encerrada' || s === 'cancelada';
 
@@ -276,7 +282,8 @@ export function anexar(r: Reuniao, qual: 'problema' | 'solucao', a: Anexo, por: 
  * de quem participou (sem participante, já fica Concluída).
  */
 export function finalizar(r: Reuniao, por: string, em: string): Reuniao {
-  if (!r.problema || !r.solucao) throw new Error('Anexe o Problema identificado e a Solução proposta.');
+  // os arquivos deixaram de ser obrigatórios (Vitor, 24/11/2026: "Ao cancelar ou clicar em finalizar, aí voce abre uma popup
+  // perguntando se deseja anexar uma arquivo")
   const status: StatusGuardado = r.origem === 'direta' ? 'encerrada' : faltaComentar(r).length ? 'finalizada' : 'concluida';
   return { ...r, status, historico: [...r.historico, nota(por, em, r.origem === 'direta' ? 'Finalizou e encerrou a reunião' : 'Finalizou a reunião e pediu os comentários')] };
 }

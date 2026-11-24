@@ -45,13 +45,12 @@ export function JanelaDeRemarcar({ id, titulo, quando, podeCancelar, vm, fechar 
   const [nova, setNova] = useState({ data: '', hora: '' });
   const [cancelando, setCancelando] = useState(false);
   const novaData = dataDoCampo(nova.data, nova.hora);
+  // cancelar pergunta se quer anexar um arquivo (24/11/2026): a mesma janela do Finalizar
+  const x = vm.lista.find(y => y.id === id);
+  if (cancelando && x) return <JanelaDeEncerrar x={x} modo="cancelar" vm={vm} fechar={fechar} />;
   return (
     <Janela titulo="Não vai dar?" fechar={fechar}
-      pe={cancelando ? <>
-        <span className="fraco">Cancelar de vez? Todos veem "Cancelada" por 24 h.</span>
-        <button type="button" className="btn btn-outline" onClick={() => setCancelando(false)}>Voltar</button>
-        <button type="button" className="btn btn-primary" onClick={() => { void vm.cancelar(id); fechar(); }}><Icone nome="x" />Cancelar a reunião</button>
-      </> : <>
+      pe={<>
         {podeCancelar && <button type="button" className="btn btn-outline" onClick={() => setCancelando(true)}><Icone nome="x" />Cancelar a reunião</button>}
         <button type="button" className="btn btn-primary" disabled={!novaData} onClick={() => { void vm.remarcar(id, novaData); fechar(); }}><Icone nome="repeat" />Remarcar</button>
       </>}>
@@ -63,6 +62,55 @@ export function JanelaDeRemarcar({ id, titulo, quando, podeCancelar, vm, fechar 
             <input type="time" value={nova.hora} aria-label="Nova hora" onChange={e => setNova(n => ({ ...n, hora: e.target.value }))} />
           </span>
         </Propriedade>
+      </div>
+    </Janela>
+  );
+}
+
+/**
+ * Finalizar ou cancelar pergunta se quer anexar um arquivo (Vitor, 24/11/2026: "Ao cancelar ou clicar em finalizar, aí voce
+ * abre uma popup perguntando se deseja anexar uma arquivo"): o Problema identificado e a Solução proposta, os dois opcionais.
+ * Quem foi convidado baixa pelo card do Painel.
+ */
+export function JanelaDeEncerrar({ x, modo, vm, fechar }: { x: Item; modo: 'finalizar' | 'cancelar'; vm: Vm; fechar: () => void }) {
+  const [arquivos, setArquivos] = useState<{ problema?: File; solucao?: File }>({});
+  const [indo, setIndo] = useState(false);
+  const cancelar = modo === 'cancelar';
+  async function confirmar() {
+    setIndo(true);
+    for (const qual of ['problema', 'solucao'] as const) { const f = arquivos[qual]; if (f) await vm.anexar(x.id, qual, f); }
+    await (cancelar ? vm.cancelar(x.id) : vm.finalizar(x.id));
+    fechar();
+  }
+  const escolher = (qual: 'problema' | 'solucao', rotulo: string) => {
+    const novo = arquivos[qual];
+    const ja = x[qual];
+    return (
+      <Propriedade icone="clipe" rotulo={rotulo}>
+        <span className="ini-destino">
+          {novo ? <span>{novo.name}</span> : ja ? <span className="fraco">{ja.nome}</span> : <span className="fraco">nenhum</span>}
+          <label className="btn btn-outline">
+            <Icone nome="upload" />{novo || ja ? 'Trocar' : 'Anexar'}
+            <input type="file" accept={vm.aceita} className="sr-only" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setArquivos(a => ({ ...a, [qual]: f })); }} />
+          </label>
+          {novo && <button type="button" className="btn btn-ghost" onClick={() => setArquivos(a => ({ ...a, [qual]: undefined }))}><Icone nome="x" />Tirar</button>}
+        </span>
+      </Propriedade>
+    );
+  };
+  return (
+    <Janela titulo={cancelar ? 'Cancelar a reunião' : 'Finalizar a reunião'} fechar={fechar}
+      pe={<>
+        <button type="button" className="btn btn-outline" onClick={fechar}>Voltar</button>
+        <button type="button" className="btn btn-primary" disabled={indo} onClick={() => void confirmar()}>
+          <Icone nome={cancelar ? 'x' : 'check'} />{indo ? (cancelar ? 'Cancelando…' : 'Finalizando…') : cancelar ? 'Cancelar a reunião' : 'Finalizar'}
+        </button>
+      </>}>
+      <p className="ini-detalhe-texto"><b>{x.titulo}</b> · {x.quandoTexto}</p>
+      <p className="hint">Deseja anexar um arquivo? Quem foi convidado baixa pelo card do Painel. Os dois são opcionais.</p>
+      <div className="registro-props">
+        {escolher('problema', 'Problema identificado')}
+        {escolher('solucao', 'Solução proposta')}
       </div>
     </Janela>
   );
@@ -207,6 +255,8 @@ function Arquivo({ x, vm, qual, rotulo }: { x: Item; vm: Vm; qual: 'problema' | 
 
 /** o detalhe da reunião escolhida, com as ações de quem está vendo */
 export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
+  // o Finalizar e o Cancelar abrem a janela que pergunta pelos arquivos (24/11/2026)
+  const [encerrando, setEncerrando] = useState<'finalizar' | 'cancelar' | null>(null);
   const [obs, setObs] = useState('');
   const [prazo, setPrazo] = useState('');
   const [nova, setNova] = useState({ data: '', hora: '' });
@@ -216,6 +266,7 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
   const presenca = (p: Pessoa) => { const r = x.presencas.find(y => y.uid === p.uid); return r ? (r.vai ? ' · vai' : ' · não vai') : ' · sem resposta'; };
   return (
     <section className="card ini-detalhe ini-reuniao">
+      {encerrando && <JanelaDeEncerrar x={x} modo={encerrando} vm={vm} fechar={() => setEncerrando(null)} />}
       <div className="ini-detalhe-topo">
         <h2>{x.titulo}</h2>
         <SeloDaReuniao x={x} />
@@ -294,13 +345,13 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
         {pode('cancelar') && (
           <div className="ini-reuniao-linha">
             <span>Não vai acontecer? Todos veem "Cancelada" no Painel por 24 h.</span>
-            <button type="button" className="btn btn-outline" onClick={() => { if (window.confirm('Cancelar a reunião "' + x.titulo + '"?')) void vm.cancelar(x.id); }}><Icone nome="x" />Cancelar a reunião</button>
+            <button type="button" className="btn btn-outline" onClick={() => setEncerrando('cancelar')}><Icone nome="x" />Cancelar a reunião</button>
           </div>
         )}
         {pode('finalizar') && (
           <div className="ini-reuniao-linha">
-            <span>{x.origem === 'direta' ? 'Com os dois arquivos, a reunião fica Encerrada.' : 'Com os dois arquivos, quem participou comenta o que achou.'}</span>
-            <button type="button" className="btn btn-primary" onClick={() => void vm.finalizar(x.id)}><Icone nome="check" />Finalizar</button>
+            <span>{x.origem === 'direta' ? 'Finalizada, a reunião fica Encerrada.' : 'Finalizada, quem participou comenta o que achou.'}</span>
+            <button type="button" className="btn btn-primary" onClick={() => setEncerrando('finalizar')}><Icone nome="check" />Finalizar</button>
           </div>
         )}
         {pode('comentar') && (
