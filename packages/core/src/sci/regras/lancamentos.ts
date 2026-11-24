@@ -6,7 +6,9 @@
 import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci } from '../tipos';
 import { documentoComMascara, limparComplemento } from './planilha';
-import { contaDoPlano, type ContaDoPlanoSci, type PlanoSci } from './plano';
+import { diaSemLancamento } from './dias';
+import { historicoDoSci } from './historicos';
+import { contaDoPlano, type ContaDoPlanoSci, type PlanoSci, type TipoDeParticipante } from './plano';
 
 export interface LancamentoDoShader {
   id: string;
@@ -63,37 +65,79 @@ export function dataDoTexto(texto: string, anoPadrao: number): string {
 /** aaaa-mm-dd → dd/mm/aaaa. */
 export const dataParaTexto = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : iso);
 
-const QUEM: Record<'cliente' | 'fornecedor', string> = { cliente: 'o cliente', fornecedor: 'o fornecedor' };
+const QUEM: Record<TipoDeParticipante, string> = { cliente: 'o cliente', fornecedor: 'o fornecedor' };
 
-function problemasDaConta(lado: 'débito' | 'crédito', codigo: string, conta: ContaDoPlanoSci | null, participante: string): string[] {
-  if (!codigo) return ['sem conta de ' + lado];
+export type LadoDoLancamento = 'debito' | 'credito';
+const NOME_DO_LADO: Record<LadoDoLancamento, string> = { debito: 'débito', credito: 'crédito' };
+const apelidoDe = (conta: ContaDoPlanoSci) => conta.apelido.trim().toUpperCase();
+
+/**
+ * A conta não entra naquele lado (24/11/2026: "CD apenas em crédito e FD apenas em débito, para segurança, nem deixa aparecer para
+ * o usuario essas contas dependendo do input que ele está"): os Clientes nacionais (apelido CD, nos dois planos) só a crédito e os
+ * Fornecedores (FD) só a débito.
+ */
+export function contaForaDoLado(conta: ContaDoPlanoSci, lado: LadoDoLancamento): boolean {
+  const a = apelidoDe(conta);
+  return (a === 'CD' && lado === 'debito') || (a === 'FD' && lado === 'credito');
+}
+
+/**
+ * O participante que a conta pede naquele lado (24/11/2026: "Participante a credito, só fica disponivel se tiver a conta 'Clientes
+ * Nacionais' selecionado apelido (CD em todos os planos)"; o mesmo com os Fornecedores, FD, no débito): o cliente no crédito da CD e o
+ * fornecedor no débito da FD. As outras contas não levam participante.
+ */
+export function participanteDoLado(conta: ContaDoPlanoSci | null, lado: LadoDoLancamento): TipoDeParticipante | null {
+  if (!conta) return null;
+  const a = apelidoDe(conta);
+  if (a === 'CD' && lado === 'credito') return 'cliente';
+  if (a === 'FD' && lado === 'debito') return 'fornecedor';
+  return null;
+}
+
+function problemasDaConta(lado: LadoDoLancamento, codigo: string, conta: ContaDoPlanoSci | null, participante: string): string[] {
+  const nome = NOME_DO_LADO[lado];
+  if (!codigo) return ['sem conta de ' + nome];
   if (!conta) return ['a conta ' + codigo + ' não está no plano'];
   const p: string[] = [];
   if (!conta.analitica) p.push('a conta ' + codigo + ' é sintética (só a analítica recebe lançamento)');
-  if (conta.participante && !participante.trim()) p.push('falta ' + QUEM[conta.participante] + ' (participante) no ' + lado);
-  if (!conta.participante && participante.trim()) p.push('a conta ' + codigo + ' não leva participante');
+  if (contaForaDoLado(conta, lado)) p.push('a conta ' + codigo + ' (' + conta.nome + ') só entra a ' + NOME_DO_LADO[lado === 'debito' ? 'credito' : 'debito']);
+  const pede = participanteDoLado(conta, lado);
+  if (pede && !participante.trim()) p.push('falta ' + QUEM[pede] + ' (participante) no ' + nome);
+  if (!pede && participante.trim()) p.push('a conta ' + codigo + ' não leva participante no ' + nome);
   return p;
 }
 
-/** O que impede o lançamento de ir para o SCI (vazio = pronto). */
+/**
+ * O que impede o lançamento de ir para o SCI (vazio = pronto). Obrigatórios (24/11/2026: "Data, Valor, debito, crédito, numero do
+ * historico, complemento, documento e participantes se caso a pessoa selecionar"): o complemento só fica de fora no histórico que
+ * pula o complemento. Nem sábado nem feriado nacional.
+ */
 export function problemasDoLancamento(l: CamposDoLancamento, plano: PlanoSci): string[] {
   const p: string[] = [];
   if (!l.data) p.push('sem data');
-  p.push(...problemasDaConta('débito', l.debito, contaDoPlano(plano, l.debito), l.participanteD));
-  p.push(...problemasDaConta('crédito', l.credito, contaDoPlano(plano, l.credito), l.participanteC));
+  else { const fora = diaSemLancamento(l.data); if (fora) p.push(dataParaTexto(l.data) + ' é ' + fora + ': não se lança'); }
+  p.push(...problemasDaConta('debito', l.debito, contaDoPlano(plano, l.debito), l.participanteD));
+  p.push(...problemasDaConta('credito', l.credito, contaDoPlano(plano, l.credito), l.participanteC));
   if (l.debito && l.debito === l.credito) p.push('débito e crédito na mesma conta');
   if (!(l.valor > 0)) p.push('sem valor');
+  const historico = l.historico ? historicoDoSci(l.historico) : null;
   if (!l.historico) p.push('sem histórico');
   else if (!/^\d+$/.test(l.historico)) p.push('o histórico é só o número do histórico padrão');
+  else if (!historico) p.push('o histórico ' + l.historico + ' não está no plano de históricos');
+  if (!l.complemento.trim() && !historico?.pulaComplemento) p.push('sem complemento');
+  if (!l.documento.trim()) p.push('sem documento');
   if (l.participanteD.trim() && l.participanteD.trim() === l.participanteC.trim()) p.push('o participante do débito e o do crédito são o mesmo');
   return p;
 }
 
-/** O lançamento digitado do jeito que vai: a conta pelo código reduzido (o apelido vira código), sem espaço sobrando. */
+/**
+ * O lançamento digitado do jeito que vai: a conta pelo código reduzido e o histórico pelo número (o apelido vira código), sem
+ * espaço sobrando.
+ */
 export function lancamentoLimpo<T extends CamposDoLancamento>(l: T, plano: PlanoSci): T {
   const codigo = (c: string) => contaDoPlano(plano, c)?.codigo || c.trim();
   return {
-    ...l, debito: codigo(l.debito), credito: codigo(l.credito), historico: l.historico.trim(), complemento: limparComplemento(l.complemento),
+    ...l, debito: codigo(l.debito), credito: codigo(l.credito), historico: historicoDoSci(l.historico)?.codigo || l.historico.trim(), complemento: limparComplemento(l.complemento),
     documento: l.documento.trim(), participanteD: l.participanteD.trim(), participanteC: l.participanteC.trim(),
   };
 }

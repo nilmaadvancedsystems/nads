@@ -3,15 +3,16 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import {
-  buscarNoPlano, contaDoPlano, dataDoTexto, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
-  planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
+  buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
+  participanteDoLado, pascoa, planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
 } from './index';
+import { FERIADOS } from '../tarefas/regras/feriados';
 
 const CNPJ = '11222333000181';
 const p113 = planoDoSci('90113');
 const p011 = planoDoSci('90011');
 
-const base: CamposDoLancamento = { ...LANCAMENTO_VAZIO, data: '2026-11-05', debito: '5', credito: '7', valor: 15000, historico: '1', complemento: 'Depósito' };
+const base: CamposDoLancamento = { ...LANCAMENTO_VAZIO, data: '2026-11-05', debito: '5', credito: '7', valor: 15000, historico: '1', complemento: 'Depósito', documento: '10' };
 
 describe('os planos', () => {
   it('lê os dois planos e marca as analíticas (sem filhas)', () => {
@@ -48,27 +49,76 @@ describe('o lançamento', () => {
   });
 
   it('aponta o que falta', () => {
-    expect(problemasDoLancamento(LANCAMENTO_VAZIO, p113)).toEqual(['sem data', 'sem conta de débito', 'sem conta de crédito', 'sem valor', 'sem histórico']);
+    expect(problemasDoLancamento(LANCAMENTO_VAZIO, p113)).toEqual(['sem data', 'sem conta de débito', 'sem conta de crédito', 'sem valor', 'sem histórico', 'sem complemento', 'sem documento']);
     expect(problemasDoLancamento({ ...base, debito: '15' }, p113)).toContain('a conta 15 é sintética (só a analítica recebe lançamento)');
     expect(problemasDoLancamento({ ...base, debito: '99999' }, p113)).toContain('a conta 99999 não está no plano');
     expect(problemasDoLancamento({ ...base, credito: '5' }, p113)).toContain('débito e crédito na mesma conta');
     expect(problemasDoLancamento({ ...base, historico: 'Depósito' }, p113)).toContain('o histórico é só o número do histórico padrão');
+    expect(problemasDoLancamento({ ...base, historico: '3' }, p113)).toContain('o histórico 3 não está no plano de históricos');
   });
 
-  it('pede o participante nas contas de clientes e fornecedores, e só nelas', () => {
-    const venda = { ...base, debito: '16', credito: '5' };
-    expect(problemasDoLancamento(venda, p113)).toEqual(['falta o cliente (participante) no débito']);
-    expect(problemasDoLancamento({ ...venda, participanteD: '120' }, p113)).toEqual([]);
-    expect(problemasDoLancamento({ ...base, participanteC: '7' }, p113)).toContain('a conta 7 não leva participante');
+  // 24/11/2026: "Campos obrigatorios para o lançamento do documento: Data, Valor, debito, crédito, numero do historico, complemento, documento"
+  it('pede o complemento e o documento, menos o complemento do histórico que pula', () => {
+    expect(problemasDoLancamento({ ...base, complemento: '', documento: '' }, p113)).toEqual(['sem complemento', 'sem documento']);
+    // o 159 (Débito tarifa bancária cfe. extrato) pula o complemento
+    expect(problemasDoLancamento({ ...base, historico: '159', complemento: '' }, p113)).toEqual([]);
+  });
+
+  // 24/11/2026: "nao deixa lançar nos sábados e feriados nacionais"
+  it('não lança no sábado nem no feriado nacional', () => {
+    expect(problemasDoLancamento({ ...base, data: '2026-11-07' }, p113)).toEqual(['07/11/2026 é sábado: não se lança']);
+    expect(problemasDoLancamento({ ...base, data: '2026-11-02' }, p113)).toEqual(['02/11/2026 é feriado nacional (Finados): não se lança']);
+    // o domingo e o ponto facultativo entram
+    expect(problemasDoLancamento({ ...base, data: '2026-11-08' }, p113)).toEqual([]);
+    expect(problemasDoLancamento({ ...base, data: '2026-02-17' }, p113)).toEqual([]);
+  });
+
+  // 24/11/2026: "CD apenas em crédito e FD apenas em débito"; o participante só no crédito da CD e no débito da FD
+  it('a CD só a crédito, com o cliente; a FD só a débito, com o fornecedor', () => {
+    const recebimento = { ...base, debito: '7', credito: '16' };
+    expect(problemasDoLancamento(recebimento, p113)).toEqual(['falta o cliente (participante) no crédito']);
+    expect(problemasDoLancamento({ ...recebimento, participanteC: '120' }, p113)).toEqual([]);
+    const pagamento = { ...base, debito: '148', credito: '7' };
+    expect(problemasDoLancamento(pagamento, p113)).toEqual(['falta o fornecedor (participante) no débito']);
+    expect(problemasDoLancamento({ ...pagamento, participanteD: '45' }, p113)).toEqual([]);
+    expect(problemasDoLancamento({ ...base, debito: '16', credito: '7', participanteD: '120' }, p113)).toEqual(['a conta 16 (Clientes nacionais) só entra a crédito', 'a conta 16 não leva participante no débito']);
+    expect(problemasDoLancamento({ ...base, debito: '159', credito: '100005' }, p011)).toContain('a conta 100005 (Fornecedores) só entra a débito');
+    // os outros clientes (CDV) não levam participante
+    expect(problemasDoLancamento({ ...base, credito: '18', participanteC: '120' }, p113)).toContain('a conta 18 não leva participante no crédito');
+    expect(problemasDoLancamento({ ...base, participanteC: '7' }, p113)).toContain('a conta 7 não leva participante no crédito');
+    expect(participanteDoLado(contaDoPlano(p011, 'CD'), 'credito')).toBe('cliente');
+    expect(contaForaDoLado(contaDoPlano(p011, 'FD')!, 'credito')).toBe(true);
   });
 
   it('o apelido vira o código e o inverter troca as contas e os participantes', () => {
     expect(lancamentoLimpo({ ...base, debito: 'cx', credito: ' fd ' }, p113)).toMatchObject({ debito: '5', credito: '148' });
+    expect(lancamentoLimpo({ ...base, historico: ' pgto ' }, p113).historico).toBe('1000');
     expect(invertido({ ...base, participanteD: 'A', participanteC: 'B' })).toMatchObject({ debito: '7', credito: '5', participanteD: 'B', participanteC: 'A' });
   });
 
   it('o resumo soma os prontos à parte', () => {
     expect(resumoDosLancamentos([base, { ...base, valor: 500, data: '' }], p113)).toEqual({ quantos: 2, prontos: 1, comProblema: 1, total: 15500, totalPronto: 15000 });
+  });
+});
+
+describe('os históricos e os dias', () => {
+  it('acha o histórico pelo número e pelo apelido, e busca pelo nome', () => {
+    expect(historicoDoSci('1000')).toMatchObject({ apelido: 'PGTO', pulaComplemento: false });
+    expect(historicoDoSci('receb')?.codigo).toBe('2000');
+    expect(historicoDoSci('159')?.pulaComplemento).toBe(true);
+    expect(historicoDoSci('3')).toBeNull();
+    expect(buscarHistoricos('tarifa').map(h => h.codigo)).toContain('159');
+  });
+
+  it('os feriados nacionais batem com os do calendário do Início', () => {
+    expect(pascoa(2026)).toBe('2026-04-05');
+    for (const f of FERIADOS.filter(x => x.tipo === 'feriado')) {
+      // os municipais (São Sebastião, Nossa Senhora de Fátima, São João Batista, a Emancipação) ficam de fora
+      const municipal = /Sebasti|Fátima|João Batista|Emancipa/.test(f.nome);
+      expect(feriadoNacional(f.data) !== null, f.nome).toBe(!municipal);
+    }
+    expect(feriadoNacional('2025-04-18')).toBe('Paixão de Cristo');
+    expect(diaSemLancamento('2026-11-24')).toBeNull();
   });
 });
 
@@ -100,22 +150,22 @@ describe('copiar e colar', () => {
   });
 
   it('cola do Excel sem os títulos, ou separado por ponto e vírgula', () => {
-    expect(lancamentosDoTexto('05/11/2026\t5\t7\t150,00\t1\tDepósito\n\n', 2026)).toEqual([base]);
-    expect(lancamentosDoTexto('5/11;5;7;150;1;Depósito', 2026)).toEqual([base]);
+    expect(lancamentosDoTexto('05/11/2026\t5\t7\t150,00\t1\tDepósito\t10\n\n', 2026)).toEqual([base]);
+    expect(lancamentosDoTexto('5/11;5;7;150;1;Depósito;10', 2026)).toEqual([base]);
   });
 });
 
 describe('a planilha do SCI', () => {
   it('os prontos em Importar (sem lote), os outros em Conferir, com o CNPJ e o nome das contas', () => {
-    const lsci = lancamentosDoShaderParaOSci([base, { ...base, debito: '16', credito: '5', participanteD: '120' }, { ...base, valor: 0 }], p113, CNPJ);
+    const lsci = lancamentosDoShaderParaOSci([base, { ...base, debito: '7', credito: '16', participanteC: '120' }, { ...base, valor: 0 }], p113, CNPJ);
     expect(lsci.map(l => l.problemas)).toEqual([[], [], ['sem valor']]);
-    expect(lsci[1]).toMatchObject({ lote: '', cnpjEmpresa: '11.222.333/0001-81', participanteD: '120', nomeD: 'Clientes nacionais', origem: 'minimum' });
+    expect(lsci[1]).toMatchObject({ lote: '', cnpjEmpresa: '11.222.333/0001-81', participanteC: '120', nomeC: 'Clientes nacionais', origem: 'minimum' });
     const wb = XLSX.read(planilhaDoSci(lsci), { type: 'array' });
     expect(wb.SheetNames).toEqual(['Importar', 'Conferir']);
     const importar = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Importar, { header: 1, raw: true, defval: '' });
     // títulos, 2 lançamentos e a linha do total (o gerador lê da linha 2 e descarta 1 no fim)
     expect(importar.length).toBe(4);
-    expect(importar[2].slice(1, 11)).toEqual([16, 5, 150, 1, 'Depósito', '', '', '11.222.333/0001-81', '120', '']);
+    expect(importar[2].slice(1, 11)).toEqual([7, 16, 150, 1, 'Depósito', '10', '', '11.222.333/0001-81', '', '120']);
   });
 
   it('sem CNPJ válido, nada fica pronto', () => {

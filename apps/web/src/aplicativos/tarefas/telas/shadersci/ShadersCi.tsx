@@ -1,10 +1,10 @@
 // O ShadersCI (23/11/2026: "Vamos buildar um aplicativo chamado ShadersCI … uma abinha de lançamentos onde o usuario lance,
 // adicione, remova, edite … copie e cole com o botao direito"): a aba de lançamentos do SCI, limpa. Em cima, a empresa, o plano
 // padrão (90113 ou 90011) e o CNPJ; o formulário do lançamento (a data, o débito e o crédito pelo código do plano com a lupa, o
-// valor, o histórico em número, o complemento, o documento e o participante de cada lado); embaixo, a tabela, com o botão
+// valor, o histórico do plano de históricos, o complemento, o documento e o participante na frente da conta que pede); embaixo, a tabela, com o botão
 // direito (editar, duplicar, inverter, copiar, colar, excluir) e os atalhos do Excel. Sai na planilha do gerador do SCI.
 import { sci } from '@nads/core';
-import { Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
+import { CampoDataComCalendario, Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from '../drive/MenuDeContexto';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
@@ -18,7 +18,7 @@ export function ShadersCi() {
     <section className="sci">
       {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
       {vm.janela && <JanelaDoLancamento vm={vm} />}
-      {vm.pesquisa && <JanelaDoPlano vm={vm} />}
+      {vm.pesquisa === 'historico' ? <JanelaDosHistoricos vm={vm} /> : vm.pesquisa && <JanelaDoPlano vm={vm} lado={vm.pesquisa} />}
       <div className="tarefas-barra-topo">
         {vm.empresa && <>
           <EmpresaDaBarra vm={vm.entrada} id="sci-empresas" />
@@ -101,56 +101,86 @@ function Campo({ id, rotulo, valor, mudar, placeholder, numerico, classe, autoFo
   );
 }
 
-/** O código da conta, a lupa (F2) e o nome: o campo de conta do Alterdata (o mesmo do LCDPR e do Lançatudo). */
-function CampoDeConta({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credito' }) {
-  const conta = lado === 'debito' ? vm.contaD : vm.contaC;
-  const valor = vm.form[lado];
-  const rotulo = lado === 'debito' ? 'Débito' : 'Crédito';
-  const nome = conta ? conta.nome + (conta.analitica ? '' : ' (sintética)') : valor ? 'Não está no plano' : 'Pesquise pela lupa (F2)';
+/** O código, a lupa (F2) e o nome ao lado: o campo de conta do Alterdata (o mesmo do LCDPR e do Lançatudo), e o do histórico. */
+function CodigoComLupa({ id, rotulo, valor, mudar, lupa, dicaDaLupa, nome, achou, classeDoNome, placeholder, classe }: {
+  id: string; rotulo: string; valor: string; mudar: (v: string) => void; lupa: () => void; dicaDaLupa: string; nome: string; achou: boolean;
+  classeDoNome?: string; placeholder: string; classe?: string;
+}) {
   return (
-    <div className="field sci-conta">
-      <label htmlFor={'sci-' + lado}>{rotulo}</label>
+    <div className={'field sci-conta' + (classe ? ' ' + classe : '')}>
+      <label htmlFor={id}>{rotulo}</label>
       <span className="lcdpr-codigo">
-        <input id={'sci-' + lado} type="text" className="lcdpr-cod" value={valor} autoComplete="off" placeholder="Código ou apelido"
-          onChange={e => vm.mudar(lado, e.target.value)} onKeyDown={e => { if (e.key === 'F2') { e.preventDefault(); vm.abrirPesquisa(lado); } }} />
-        <button type="button" className="lcdpr-lupa" title="Pesquisar no plano de contas (F2)" aria-label={'Pesquisar a conta de ' + rotulo.toLowerCase()} onClick={() => vm.abrirPesquisa(lado)}><Icone nome="search" /></button>
-        <span className={'lcdpr-cod-nome lt-cod-nome-' + (lado === 'debito' ? 'd' : 'c') + (conta ? '' : ' vazio')} title={nome}>{nome}</span>
+        <input id={id} type="text" className="lcdpr-cod" value={valor} autoComplete="off" placeholder={placeholder}
+          onChange={e => mudar(e.target.value)} onKeyDown={e => { if (e.key === 'F2') { e.preventDefault(); lupa(); } }} />
+        <button type="button" className="lcdpr-lupa" title={dicaDaLupa + ' (F2)'} aria-label={dicaDaLupa} onClick={lupa}><Icone nome="search" /></button>
+        <span className={'lcdpr-cod-nome' + (classeDoNome ? ' ' + classeDoNome : '') + (achou ? '' : ' vazio')} title={nome}>{nome}</span>
       </span>
     </div>
   );
 }
 
 /**
+ * A conta de um lado e, na frente dela, o participante, só quando a conta pede (24/11/2026: "O participante, gostaria de colocar
+ * ele na frente, nao deixar no canto inferior"): o cliente no crédito da Clientes nacionais (CD) e o fornecedor no débito da
+ * Fornecedores (FD).
+ */
+function ContaComParticipante({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credito' }) {
+  const conta = lado === 'debito' ? vm.contaD : vm.contaC;
+  const valor = vm.form[lado];
+  const rotulo = lado === 'debito' ? 'Débito' : 'Crédito';
+  const nome = !conta ? (valor ? 'Não está no plano' : 'Pesquise pela lupa (F2)')
+    : conta.foraDoLado ? conta.nome + ' (só a ' + (lado === 'debito' ? 'crédito' : 'débito') + ')'
+    : conta.nome + (conta.analitica ? '' : ' (sintética)');
+  const campoDoPart = lado === 'debito' ? 'participanteD' : 'participanteC';
+  return <>
+    <CodigoComLupa id={'sci-' + lado} rotulo={rotulo} valor={valor} mudar={v => vm.mudar(lado, v)} lupa={() => vm.abrirPesquisa(lado)}
+      dicaDaLupa={'Pesquisar a conta de ' + rotulo.toLowerCase()} nome={nome} achou={!!conta && !conta.foraDoLado} classeDoNome={'lt-cod-nome-' + (lado === 'debito' ? 'd' : 'c')}
+      placeholder="Código ou apelido" classe={conta?.participante ? 'sci-dois-tercos' : undefined} />
+    {conta?.participante && (
+      <Campo id={'sci-part-' + lado} rotulo={conta.participante === 'cliente' ? 'Cliente (participante)' : 'Fornecedor (participante)'} valor={vm.form[campoDoPart]}
+        mudar={v => vm.mudar(campoDoPart, v)} placeholder="Código no SCI" classe="sci-terco" />
+    )}
+  </>;
+}
+
+/**
  * A janela do lançamento (24/11/2026: "um botão do lado de planilha do sci, chamado novo lançamento, vai abrir uma popup, ai
- * vai aparecer os dados para fazer o lançamento, data, debito, credito, valor..."): a data e o valor, o débito e o crédito
- * com a lupa (F2), o histórico e o complemento, o documento e os participantes. Enter lança e a janela fica aberta para o
- * próximo, na mesma data; a edição (Editar ou dois cliques na linha) grava e fecha; Esc fecha.
+ * vai aparecer os dados para fazer o lançamento, data, debito, credito, valor..."): a data (com a máscara e o calendário, sem
+ * sábado nem feriado nacional), o valor e o documento; o débito e o crédito com a lupa (F2), cada um com o participante na
+ * frente quando a conta pede; o histórico do plano de históricos (com a lupa) e o complemento. Tudo obrigatório (o complemento
+ * não, no histórico que pula). Enter lança e a janela fica aberta para o próximo, na mesma data; a edição (Editar ou dois
+ * cliques na linha) grava e fecha; Esc fecha.
  */
 function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
   const campo = (c: keyof Formulario) => (v: string) => vm.mudar(c, v);
-  const quem = (conta: VmShadersCi['contaD']) => (conta?.participante === 'cliente' ? 'o cliente' : conta?.participante === 'fornecedor' ? 'o fornecedor' : '');
   const titulo = vm.editando ? 'Editar lançamento' : 'Novo lançamento';
+  // a janela abre na data
+  useEffect(() => { document.getElementById('sci-data')?.focus(); }, []);
+  const h = vm.historico;
   return (
     <Janela app="minimum" titulo={titulo} fechar={vm.fecharJanela} className="sci-janela-lancamento"
       pe={<>
         {vm.problemasDoFormulario.length > 0
           ? <p className="hint sci-falta"><Icone nome="alert" />{vm.problemasDoFormulario.join(' · ')}</p>
-          : <span className="hint">Enter lança · F2 pesquisa a conta · Esc fecha</span>}
+          : <span className="hint">Enter lança · F2 pesquisa · Esc fecha</span>}
         <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{vm.editando ? 'Cancelar' : 'Fechar'}</button>
         <button type="submit" form="sci-form" className="btn btn-primary" disabled={vm.vazio}><Icone nome={vm.editando ? 'check' : 'plus'} />{vm.editando ? 'Salvar alteração' : 'Lançar'}</button>
       </>}>
       <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
-        <Campo id="sci-data" rotulo="Data" valor={vm.form.data} mudar={campo('data')} placeholder="dd/mm/aaaa" classe="sci-meia" autoFocus />
-        <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico classe="sci-meia" />
-        <CampoDeConta vm={vm} lado="debito" />
-        <CampoDeConta vm={vm} lado="credito" />
-        <Campo id="sci-historico" rotulo="Histórico" valor={vm.form.historico} mudar={campo('historico')} placeholder="Nº" numerico classe="sci-terco" />
-        <Campo id="sci-complemento" rotulo="Complemento" valor={vm.form.complemento} mudar={campo('complemento')} placeholder="A descrição do histórico" classe="sci-dois-tercos" />
+        {/* a data menor, já no formato ao digitar, e o calendário (24/11/2026: "diminui o input de data, tá grande, ao preencher, ele já coloca no formato") */}
+        <div className="field sci-terco sci-data">
+          <label htmlFor="sci-data">Data</label>
+          <CampoDataComCalendario id="sci-data" rotulo="Data" valor={vm.form.data} onMudar={campo('data')} bloqueado={vm.diaSemLancamento} />
+        </div>
+        <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico classe="sci-terco" />
         <Campo id="sci-documento" rotulo="Documento" valor={vm.form.documento} mudar={campo('documento')} classe="sci-terco" />
-        {/* o participante (o código dele no SCI): o fornecedor no débito e o cliente no crédito, nas contas que pedem */}
-        <Campo id="sci-part-d" rotulo={'Participante a débito' + (quem(vm.contaD) ? ' (' + quem(vm.contaD) + ')' : '')} valor={vm.form.participanteD} mudar={campo('participanteD')} placeholder="Código no SCI" classe="sci-terco" />
-        <Campo id="sci-part-c" rotulo={'Participante a crédito' + (quem(vm.contaC) ? ' (' + quem(vm.contaC) + ')' : '')} valor={vm.form.participanteC} mudar={campo('participanteC')} placeholder="Código no SCI" classe="sci-terco" />
+        <ContaComParticipante vm={vm} lado="debito" />
+        <ContaComParticipante vm={vm} lado="credito" />
+        <CodigoComLupa id="sci-historico" rotulo="Histórico" valor={vm.form.historico} mudar={campo('historico')} lupa={() => vm.abrirPesquisa('historico')}
+          dicaDaLupa="Pesquisar no plano de históricos" nome={h ? h.nome : vm.form.historico ? 'Não está no plano de históricos' : 'Pesquise pela lupa (F2)'} achou={!!h} placeholder="Número ou apelido" />
+        <Campo id="sci-complemento" rotulo={'Complemento' + (h?.pulaComplemento ? ' (opcional neste histórico)' : '')} valor={vm.form.complemento} mudar={campo('complemento')}
+          placeholder={h?.pulaComplemento ? 'O histórico já diz tudo' : 'O que completa o histórico'} />
       </form>
     </Janela>
   );
@@ -278,14 +308,14 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
 }
 
 // ------------------------------------------------------------------------------------------------- o plano de contas
-function JanelaDoPlano({ vm }: { vm: VmShadersCi }) {
-  const [q, setQ] = useState(vm.pesquisa ? vm.form[vm.pesquisa] : '');
+function JanelaDoPlano({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credito' }) {
+  const [q, setQ] = useState(vm.form[lado]);
   const [ativo, setAtivo] = useState(0);
-  const achadas = vm.buscarNoPlano(q);
-  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById('sci-' + vm.pesquisa)?.focus(), 0); };
+  const achadas = vm.buscarNoPlano(q, lado);
+  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById('sci-' + lado)?.focus(), 0); };
   return (
     <Janela app="minimum" titulo={'Plano de contas ' + vm.plano} fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo"
-      selo={<span className="badge badge-neutral">{vm.pesquisa === 'debito' ? 'Débito' : 'Crédito'}</span>}>
+      selo={<span className="badge badge-neutral">{lado === 'debito' ? 'Débito' : 'Crédito'}</span>}>
       <div className="registro-corpo">
         <label className="busca-curta sci-busca-plano">
           <Icone nome="search" />
@@ -308,10 +338,52 @@ function JanelaDoPlano({ vm }: { vm: VmShadersCi }) {
                   <td className="ini-delegadas-curta fraco">{c.classificacao}</td>
                   <td>{c.nome}</td>
                   <td className="ini-delegadas-curta fraco">{c.apelido}</td>
-                  <td className="ini-delegadas-curta hint">{c.participante === 'cliente' ? 'pede o cliente' : c.participante === 'fornecedor' ? 'pede o fornecedor' : ''}</td>
+                  <td className="ini-delegadas-curta hint">{sci.participanteDoLado(c, lado) === 'cliente' ? 'pede o cliente' : sci.participanteDoLado(c, lado) === 'fornecedor' ? 'pede o fornecedor' : ''}</td>
                 </tr>
               ))}
               {!achadas.length && <tr><td colSpan={5} className="hint">Nenhuma conta analítica com isso.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Janela>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------- o plano de históricos
+/** A lupa do histórico (24/11/2026: "Te mandei o plano de historicos que eu queria que voce colocasse tambem"): o número, o apelido e o nome. */
+function JanelaDosHistoricos({ vm }: { vm: VmShadersCi }) {
+  const [q, setQ] = useState(vm.form.historico);
+  const [ativo, setAtivo] = useState(0);
+  const achados = vm.buscarHistoricos(q);
+  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById('sci-complemento')?.focus(), 0); };
+  return (
+    <Janela app="minimum" titulo="Plano de históricos" fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo">
+      <div className="registro-corpo">
+        <label className="busca-curta sci-busca-plano">
+          <Icone nome="search" />
+          <input type="text" autoFocus placeholder="Número, nome ou apelido" aria-label="Buscar no plano de históricos" value={q}
+            onChange={e => { setQ(e.target.value); setAtivo(0); }}
+            onKeyDown={e => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setAtivo(i => Math.min(achados.length - 1, i + 1)); }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setAtivo(i => Math.max(0, i - 1)); }
+              else if (e.key === 'Enter' && achados[ativo]) { e.preventDefault(); escolher(achados[ativo].codigo); }
+            }} />
+        </label>
+        <p className="hint">↑ ↓ e Enter escolhem.</p>
+        <div className="table-wrap sci-plano">
+          <table className="table-compact ini-delegadas">
+            <thead><tr><th className="num">Número</th><th>Nome</th><th>Apelido</th><th aria-label="Complemento" /></tr></thead>
+            <tbody>
+              {achados.map((h, i) => (
+                <tr key={h.codigo} className={'ini-tr' + (i === ativo ? ' linha-atual' : '')} onMouseEnter={() => setAtivo(i)} onClick={() => escolher(h.codigo)}>
+                  <td className="num"><span className="ini-empresa">{h.codigo}</span></td>
+                  <td>{h.nome}</td>
+                  <td className="ini-delegadas-curta fraco">{h.apelido}</td>
+                  <td className="ini-delegadas-curta hint">{h.pulaComplemento ? 'sem complemento' : ''}</td>
+                </tr>
+              ))}
+              {!achados.length && <tr><td colSpan={4} className="hint">Nenhum histórico com isso.</td></tr>}
             </tbody>
           </table>
         </div>

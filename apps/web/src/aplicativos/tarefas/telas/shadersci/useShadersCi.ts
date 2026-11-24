@@ -75,7 +75,8 @@ export function useShadersCi() {
   const [janela, setJanela] = useState(false);
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
   const [busca, setBusca] = useState('');
-  const [pesquisa, setPesquisa] = useState<'debito' | 'credito' | null>(null);
+  // a lupa (F2): a conta de um dos lados ou o histórico
+  const [pesquisa, setPesquisa] = useState<'debito' | 'credito' | 'historico' | null>(null);
 
   // o plano do Cadastro (24/11/2026: "referenciar para nao ficar selecionando"): com ele, a empresa já abre nele e não se
   // escolhe; sem, vale o escolhido aqui
@@ -116,17 +117,21 @@ export function useShadersCi() {
   const resumo = sci.resumoDosLancamentos(guardado.lancamentos, plano);
   const cnpjOk = (() => { const d = guardado.cnpj.replace(/\D/g, ''); return d.length === 14 || d.length === 11; })();
 
-  // o formulário lido: o lançamento e o que falta nele
-  const doFormulario = (f: Formulario): sci.CamposDoLancamento => {
-    const valor = sci.valorDoTexto(f.valor);
-    return sci.lancamentoLimpo({
-      data: sci.dataDoTexto(f.data, ano), debito: f.debito, credito: f.credito, valor: isNaN(valor) ? 0 : Math.abs(valor), historico: f.historico,
-      complemento: f.complemento, documento: f.documento, participanteD: f.participanteD, participanteC: f.participanteC,
-    }, plano);
-  };
-  const lido = doFormulario(form);
+  // o formulário lido: o lançamento e o que falta nele. O participante só vale onde a conta pede (24/11/2026: "Voce disponibiliza
+  // os inputs de acordo com o que a pessoa selecionar"): o que ficou escondido não vai
   const contaD = sci.contaDoPlano(plano, form.debito);
   const contaC = sci.contaDoPlano(plano, form.credito);
+  const pedeD = sci.participanteDoLado(contaD, 'debito');
+  const pedeC = sci.participanteDoLado(contaC, 'credito');
+  const historico = sci.historicoDoSci(form.historico);
+  const valorLido = sci.valorDoTexto(form.valor);
+  const lido = sci.lancamentoLimpo({
+    data: sci.dataDoTexto(form.data, ano), debito: form.debito, credito: form.credito, valor: isNaN(valorLido) ? 0 : Math.abs(valorLido), historico: form.historico,
+    complemento: form.complemento, documento: form.documento, participanteD: pedeD ? form.participanteD : '', participanteC: pedeC ? form.participanteC : '',
+  }, plano);
+  const conta = (c: sci.ContaDoPlanoSci | null, lado: sci.LadoDoLancamento) => c
+    ? { codigo: c.codigo, nome: c.nome, analitica: c.analitica, foraDoLado: sci.contaForaDoLado(c, lado), participante: sci.participanteDoLado(c, lado) }
+    : null;
   const vazio = Object.values(form).every(v => !v.trim());
 
   const ids = (alvo?: readonly string[]) => (alvo && alvo.length ? alvo : [...marcados]);
@@ -169,8 +174,12 @@ export function useShadersCi() {
     /** fecha a janela (o Esc e o ×): o que não foi lançado some */
     fecharJanela: () => { setJanela(false); setForm(FORMULARIO_VAZIO); setEditando(null); setPesquisa(null); },
     mudar: (campo: keyof Formulario, v: string) => setForm(f => ({ ...f, [campo]: v })),
-    contaD: contaD ? { codigo: contaD.codigo, nome: contaD.nome, participante: contaD.participante, analitica: contaD.analitica } : null,
-    contaC: contaC ? { codigo: contaC.codigo, nome: contaC.nome, participante: contaC.participante, analitica: contaC.analitica } : null,
+    contaD: conta(contaD, 'debito'),
+    contaC: conta(contaC, 'credito'),
+    /** o histórico digitado, no plano de históricos (o nome ao lado do número) */
+    historico: historico ? { codigo: historico.codigo, nome: historico.nome, pulaComplemento: historico.pulaComplemento } : null,
+    /** o sábado e o feriado nacional, travados no calendário (24/11/2026: "nao deixa lançar nos sábados e feriados nacionais") */
+    diaSemLancamento: sci.diaSemLancamento,
     problemasDoFormulario: vazio ? [] : sci.problemasDoLancamento(lido, plano),
     vazio,
     /**
@@ -195,8 +204,10 @@ export function useShadersCi() {
     limparFormulario: () => { setForm(FORMULARIO_VAZIO); setEditando(null); },
     editar: (id: string) => { const l = guardado.lancamentos.find(x => x.id === id); if (!l) return; setEditando(id); setForm(doLancamento(l)); setJanela(true); },
     // a pesquisa no plano (F2 ou a lupa)
-    pesquisa, abrirPesquisa: (lado: 'debito' | 'credito') => setPesquisa(lado), fecharPesquisa: () => setPesquisa(null),
-    buscarNoPlano: (texto: string) => sci.buscarNoPlano(plano, texto, 80),
+    pesquisa, abrirPesquisa: (lado: 'debito' | 'credito' | 'historico') => setPesquisa(lado), fecharPesquisa: () => setPesquisa(null),
+    /** a CD não aparece na lupa do débito, nem a FD na do crédito (24/11/2026: "nem deixa aparecer para o usuario essas contas dependendo do input que ele está") */
+    buscarNoPlano: (texto: string, lado: sci.LadoDoLancamento) => sci.buscarNoPlano(plano, texto, 120).filter(c => !sci.contaForaDoLado(c, lado)).slice(0, 80),
+    buscarHistoricos: (texto: string) => sci.buscarHistoricos(texto, 80),
     escolherNoPlano: (codigo: string) => { if (pesquisa) setForm(f => ({ ...f, [pesquisa]: codigo })); setPesquisa(null); },
     // a tabela
     busca, setBusca,
@@ -276,18 +287,15 @@ export function useShadersCi() {
       },
       desmarcarSci() { setTesteSci([]); gravarTesteSci([]); },
       preencher() {
-        const d = (dia: number) => ano + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
-        const exemplos: sci.CamposDoLancamento[] = idDoPlano === '90113' ? [
-          { ...sci.LANCAMENTO_VAZIO, data: d(2), debito: '7', credito: '5', valor: 500000, historico: '1', complemento: 'Depósito do caixa no Banco do Brasil' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(5), debito: '16', credito: '5', valor: 123456, historico: '10', complemento: 'Venda a prazo NF 1001', documento: '1001', participanteD: '120' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(8), debito: '148', credito: '7', valor: 89000, historico: '20', complemento: 'Pagamento de fornecedor NF 555', documento: '555', participanteD: '45' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(10), debito: '7', credito: '16', valor: 123456, historico: '30', complemento: 'Recebimento de cliente NF 1001', documento: '1001', participanteC: '120' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(12), debito: '15', credito: '5', valor: 1000, historico: 'Tarifa', complemento: 'Lançamento com problema, para testar' },
-        ] : [
-          { ...sci.LANCAMENTO_VAZIO, data: d(2), debito: '78', credito: '51', valor: 500000, historico: '1', complemento: 'Depósito do caixa no Banco do Brasil' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(5), debito: '159', credito: '51', valor: 123456, historico: '10', complemento: 'Venda a prazo NF 1001', documento: '1001', participanteD: '120' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(8), debito: '100005', credito: '78', valor: 89000, historico: '20', complemento: 'Pagamento de fornecedor NF 555', documento: '555', participanteD: '45' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(12), debito: '140', credito: '51', valor: 1000, historico: 'Tarifa', complemento: 'Lançamento com problema, para testar' },
+        // os dias de exemplo caem num dia em que se lança (nem sábado nem feriado nacional)
+        const mes = ano + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+        const d = (dia: number) => { let n = dia; while (sci.diaSemLancamento(mes + '-' + String(n).padStart(2, '0'))) n++; return mes + '-' + String(n).padStart(2, '0'); };
+        const [banco, caixa, clientes, fornecedores] = idDoPlano === '90113' ? ['7', '5', '16', '148'] : ['78', '51', '159', '100005'];
+        const exemplos: sci.CamposDoLancamento[] = [
+          { ...sci.LANCAMENTO_VAZIO, data: d(2), debito: banco, credito: caixa, valor: 500000, historico: '367', complemento: 'dinheiro do caixa', documento: '1' },
+          { ...sci.LANCAMENTO_VAZIO, data: d(5), debito: banco, credito: clientes, valor: 123456, historico: '2000', complemento: 'NF 1001', documento: '1001', participanteC: '120' },
+          { ...sci.LANCAMENTO_VAZIO, data: d(8), debito: fornecedores, credito: banco, valor: 89000, historico: '1000', complemento: 'NF 555', documento: '555', participanteD: '45' },
+          { ...sci.LANCAMENTO_VAZIO, data: d(10), debito: clientes, credito: caixa, valor: 1000, historico: 'Tarifa', complemento: 'Lançamento com problema, para testar' },
         ];
         mudarLista(ls => [...ls, ...exemplos.map(l => ({ ...l, id: idNovo() }))]);
         if (!guardado.cnpj) guardar(g => ({ ...g, cnpj: '11.222.333/0001-81' }));
