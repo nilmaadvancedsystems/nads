@@ -45,6 +45,8 @@ export interface RepoTarefasDelegadas {
   cobrar(id: string, texto: string): Promise<void>;
   /** quem faz responde à cobrança aberta */
   responderCobranca(id: string, texto: string): Promise<void>;
+  /** quem cobrou viu a resposta e dá o ok (24/11/2026): quem respondeu fica sabendo */
+  darOk(id: string): Promise<void>;
   /** quem faz pede mais 5 ou 10 minutos para responder, com a justificativa (a janela da cobrança; 16/11/2026) */
   adiarCobranca(id: string, minutos: number, justificativa: string): Promise<void>;
   /** quem recebeu abriu a tarefa: grava a hora (o Visualizado de quem delegou; 12/11/2026) */
@@ -58,6 +60,11 @@ export interface RepoTarefasDelegadas {
    */
   fixarLink(id: string, url: string): Promise<void>;
   tirarLink(id: string, url: string): Promise<void>;
+  /**
+   * Outros colaboradores (24/11/2026): as tarefas delegadas para estas pessoas (os Juniores e Plenos), ao vivo, só para ver.
+   * Pedir já começa a ouvir; sem leitura por 15 min, a escuta se encerra. Nos exemplos, as de quem não é a pessoa usando.
+   */
+  daEquipe(uids: readonly string[]): { carregadas: boolean; tarefas: TarefaDelegada[]; erro?: string };
   tirarAnexo(id: string, anexoId: string): Promise<void>;
   /** os bytes do anexo, para baixar (null = não achou) */
   baixarAnexo(id: string, anexoId: string): Promise<Uint8Array | null>;
@@ -341,6 +348,12 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       const em = new Date().toISOString();
       trocar(d.comCobranca(t, d.notaDaResposta(texto, eu().nome, em), d.historicoDaRespostaDaCobranca(eu().nome, em)));
     },
+    async darOk(id) {
+      const t = daTarefa(id);
+      if (!d.podeDarOk(t, eu().uid)) throw new Error('Não tem resposta esperando o seu ok.');
+      const em = new Date().toISOString();
+      trocar(d.comCobranca(t, d.notaDoOk(eu().nome, em), d.historicoDoOk(eu().nome, em)));
+    },
     async adiarCobranca(id, minutos, justificativa) {
       const t = daTarefa(id);
       const problema = d.problemaDoAdiamento(t, eu().uid, minutos, justificativa);
@@ -373,6 +386,10 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       for (const a of daTarefa(id).anexos) bytes.delete(a.id);
       lista = lista.filter(t => t.id !== id);
       mudou();
+    },
+    daEquipe: () => {
+      const uid = quem()?.uid || '';
+      return { carregadas: true, tarefas: lista.filter(t => t.responsavel.uid !== uid && t.criadaPor.uid !== t.responsavel.uid) };
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

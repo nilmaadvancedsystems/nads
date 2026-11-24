@@ -4,6 +4,7 @@
 import { empresas, tarefas } from '@nads/core';
 import { useMemo } from 'react';
 import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
+import { useNovidade } from '../../../../../comum/novidades';
 import { useOperador } from '../../../casca/operador';
 import { empresasNovas, regimeNoEntregas } from '../../../dados/fonte';
 import { useAcesso, useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
@@ -13,6 +14,7 @@ import { useConsultaNaReceita } from './useConsultaNaReceita';
 export function useDadosDaEmpresa(rota: string) {
   const c = useCadastroAberto(rota);
   const operador = useOperador().operador;
+  const comSci = useNovidade('sci-no-cadastro');
   useRegimesDoEntregas();
   const codigo = c.empresa?.codigo ?? null;
   const doEntregas = regimeNoEntregas(codigo);
@@ -187,6 +189,18 @@ export function useDadosDaEmpresa(rota: string) {
       const atual = c.cadastro.emiteNotaHonorario ?? null;
       // clicar no que já está marcado volta para "não informado"
       const novo = empresas.cadastro.definirNotaDeHonorario(c.cadastro, atual === sim ? null : sim, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
+    /** a empresa está no SCI (24/11/2026): só as ligadas aparecem no minimum; o interruptor tem a novidade
+     *  dele ('sci-no-cadastro', para todos), à parte da do minimum ('shadersci', modo desenvolvedor) */
+    comSci,
+    noSci: c.cadastro.noSci === true,
+    /** o plano de contas do SCI (24/11/2026: "colocar o plano de contas, referenciar para nao ficar selecionando"); null = falta escolher */
+    planoSci: c.cadastro.planoSci ?? null,
+    planosDoSci: empresas.cadastro.PLANOS_DO_SCI,
+    definirNoSci(sim: boolean, plano?: empresas.cadastro.PlanoDoSci) {
+      if (c.carregando) return;
+      const novo = empresas.cadastro.definirNoSci(c.cadastro, sim, c.por, new Date(), plano);
       if (novo !== c.cadastro) c.salvar(novo);
     },
     /** o lembrete de vencimento desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'padrao' = como o escritório */

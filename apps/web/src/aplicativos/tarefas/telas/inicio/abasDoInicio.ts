@@ -18,8 +18,10 @@ export const LISTAS_DAS_TAREFAS: readonly { id: 'minhas' | 'delegadas' | 'conclu
   { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao' },
   { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle' },
 ];
-export type ListaDasTarefas = (typeof LISTAS_DAS_TAREFAS)[number]['id'];
-export const listaDaUrl = (v: string | null): ListaDasTarefas => (v === 'delegadas' || v === 'concluidas' ? v : 'minhas');
+/** Outros colaboradores (24/11/2026): o Sênior, o Diretor e o Dono veem as tarefas dos Juniores e Plenos (a novidade 'outros-colaboradores') */
+export const OUTROS_COLABORADORES = { id: 'colaboradores' as const, rotulo: 'Outros colaboradores', icone: 'equipe' as const };
+export type ListaDasTarefas = (typeof LISTAS_DAS_TAREFAS)[number]['id'] | 'colaboradores';
+export const listaDaUrl = (v: string | null): ListaDasTarefas => (v === 'delegadas' || v === 'concluidas' || v === 'colaboradores' ? v : 'minhas');
 
 export function abaDaUrl(v: string | null): AbaDoInicio {
   if (v === 'painel' || v === 'tarefas' || v === 'documentos' || v === 'notificacoes') return v;

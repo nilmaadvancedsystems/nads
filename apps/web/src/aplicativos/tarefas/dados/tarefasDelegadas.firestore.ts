@@ -12,7 +12,7 @@ import {
   arrayRemove, arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, orderBy, query, setDoc as setDocBruto,
   updateDoc as updateDocBruto, where,
 } from 'firebase/firestore';
-import { entregas, tarefas } from '@nads/core';
+import { entregas, escutasDoBanco, tarefas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { anexoDe, conferirAnexos, type ArquivoParaAnexar, type RepoTarefasDelegadas } from './tarefasDelegadas';
 import { bytesDoAnexo } from './encolherAnexo';
@@ -59,6 +59,9 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
     if (!t) throw new Error('a tarefa não está mais na sua lista');
     return t;
   };
+  // Outros colaboradores (24/11/2026): as tarefas dos Juniores e Plenos, de 30 em 30 pessoas (o limite do "in" do banco)
+  const escutas = escutasDoBanco.criarEscutas(mudou);
+  const daEquipe = new Map<string, { carregadas: boolean; tarefas: TarefaDelegada[]; erro?: string }>();
   const daPessoa = (uid: string) => query(collection(db, COLECAO), where('pessoas', 'array-contains', uid), limit(500));
   /** a tarefa como está no banco agora (sem o banco, a da lista) */
   async function noBanco(id: string): Promise<TarefaDelegada> {
@@ -212,6 +215,15 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       });
       await reler();
     },
+    // o ok na resposta (24/11/2026) também vai nos pareceres (tipo 'ciente'): a regra não muda
+    async darOk(id) {
+      const por = eu();
+      const t = await noBanco(id);
+      if (!d.podeDarOk(t, por.uid)) throw new Error('Não tem resposta esperando o seu ok.');
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), { pareceres: arrayUnion(d.notaDoOk(por.nome, em)), historico: historicoNovo(t, [d.historicoDoOk(por.nome, em)]), atualizadaEm: em });
+      await reler();
+    },
     // o pedido de mais tempo (16/11/2026) também vai nos pareceres: a regra não muda
     async adiarCobranca(id, minutos, justificativa) {
       const por = eu();
@@ -283,6 +295,30 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       for (const a of t.anexos) for (let n = 0; n < a.partes; n++) await deleteDoc(parte(id, a.id, n));
       await deleteDoc(doc(db, COLECAO, id));
       await reler();
+    },
+    daEquipe(uids) {
+      const chave = [...uids].sort().join(',');
+      if (!chave) return { carregadas: true, tarefas: [] };
+      escutas.usar(chave);
+      const ja = daEquipe.get(chave);
+      if (ja) return ja;
+      const partes: TarefaDelegada[][] = [];
+      const lotes: string[][] = [];
+      for (let i = 0; i < uids.length; i += 30) lotes.push([...uids].sort().slice(i, i + 30));
+      const vieram = new Set<number>();
+      daEquipe.set(chave, { carregadas: false, tarefas: [] });
+      const paradas = lotes.map((lote, n) => ouvirInsistindo(query(collection(db, COLECAO), where('responsavel.uid', 'in', lote), limit(500)), s => {
+        partes[n] = s.docs.map(x => d.lerTarefa(x.id, x.data()));
+        vieram.add(n);
+        daEquipe.set(chave, { carregadas: vieram.size === lotes.length, tarefas: partes.flat() });
+        mudou();
+      }, e => {
+        console.warn('As tarefas dos colaboradores não abriram:', e instanceof Error ? e.message : e);
+        daEquipe.set(chave, { carregadas: true, tarefas: partes.flat(), erro: 'Não consegui abrir as tarefas dos colaboradores (o banco recusou). Vou tentar de novo sozinho.' });
+        mudou();
+      }));
+      escutas.guardar(chave, () => { paradas.forEach(p => p()); daEquipe.delete(chave); });
+      return daEquipe.get(chave)!;
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

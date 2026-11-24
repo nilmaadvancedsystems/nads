@@ -28,8 +28,15 @@ function Campo({ rotulo, para, className, children }: { rotulo: string; para?: s
   );
 }
 
-export function Janela({ titulo, caminho, selo, fechar, children, pe, className = '', classeDoFundo = '' }: {
+export function Janela({ titulo, caminho, selo, fechar, children, pe, className = '', classeDoFundo = '', app = 'Lançatudo', topo }: {
   titulo: string; caminho?: ReactNode; selo?: ReactNode; fechar: () => void; children: ReactNode; pe?: ReactNode; className?: string; classeDoFundo?: string;
+  /** o nome do aplicativo no começo do caminho (o ShadersCI usa a mesma janela) */
+  app?: string;
+  /**
+   * o que vai no topo no lugar do caminho, na linha do X (o lançamento do minimum, 24/11/2026: "remove esse cabecalho de
+   * diretorio de sistema"; "Deixa o botao fechar na mesma linha do lancamento multiplo")
+   */
+  topo?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useJanela(ref, fechar);
@@ -37,7 +44,9 @@ export function Janela({ titulo, caminho, selo, fechar, children, pe, className 
     <div className={'modal-overlay lt-fundo ' + classeDoFundo} onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={ref} className={'modal registro-novo lt-janela ' + className} role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="landmark" />Lançatudo<Icone nome="chevronRight" />{caminho || <b>{titulo}</b>}</span>
+          {topo
+            ? <div className="registro-topo-conteudo">{topo}</div>
+            : <span className="registro-caminho"><Icone nome="landmark" />{app}<Icone nome="chevronRight" />{caminho || <b>{titulo}</b>}</span>}
           {selo}
           <BotaoFechar onClick={fechar} />
         </header>

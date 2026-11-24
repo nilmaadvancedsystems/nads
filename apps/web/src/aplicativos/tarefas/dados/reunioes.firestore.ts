@@ -32,7 +32,8 @@ function lerReuniao(id: string, x: Record<string, unknown>): Reuniao {
   return {
     id, titulo: t(x.titulo), pauta: t(x.pauta), quando: t(x.quando), ...(x.link ? { link: t(x.link) } : {}),
     criadaPor: pessoa(x.criadaPor), origem: x.origem === 'direta' ? 'direta' : 'pedido', participantes: lista(x.participantes).map(pessoa), comDiretor: x.comDiretor === true,
-    ...(x.tipo === 'live' ? { tipo: 'live' as const } : {}), ...(x.pedirPresenca === true ? { pedirPresenca: true as const } : {}), ...(Number(x.duracao) > 0 ? { duracao: Number(x.duracao) } : {}),
+    ...(x.tipo === 'live' ? { tipo: 'live' as const } : {}), ...(x.pedirPresenca === true ? { pedirPresenca: true as const } : {}), ...(x.iniciadaEm ? { iniciadaEm: t(x.iniciadaEm) } : {}),
+    ...(x.remarcadaDe ? { remarcadaDe: t(x.remarcadaDe), remarcadaEm: t(x.remarcadaEm) } : {}), ...(x.canceladaEm ? { canceladaEm: t(x.canceladaEm) } : {}), ...(x.fixada === true ? { fixada: true as const } : {}), ...(Number(x.duracao) > 0 ? { duracao: Number(x.duracao) } : {}),
     status, ...(x.prazoDaRevisao ? { prazoDaRevisao: t(x.prazoDaRevisao) } : {}), ...(x.decididoPor ? { decididoPor: t(x.decididoPor) } : {}), ...(x.observacao ? { observacao: t(x.observacao) } : {}),
     ...(problema ? { problema } : {}), ...(solucao ? { solucao } : {}),
     comentarios: lista(x.comentarios).map(c => ({ uid: t(c.uid), nome: t(c.nome), texto: t(c.texto), em: t(c.em) })),
@@ -82,7 +83,10 @@ export function criarReunioesFirestore(quem: () => { uid: string; nome: string }
     revisar: (id, prazo) => mudar(id, x => r.revisar(x, prazo, eu().nome, agora())),
     decidir: (id, aprovar, observacao) => mudar(id, x => r.decidir(x, aprovar, observacao, eu().nome, agora())),
     remarcar: (id, quando) => mudar(id, x => r.remarcar(x, quando, eu().nome, agora())),
+    cancelar: id => mudar(id, x => r.cancelar(x, eu().nome, agora())),
+    fixar: (id, sim) => mudar(id, x => r.fixar(x, sim, eu().nome, agora())),
     confirmar: (id, vai) => mudar(id, x => r.confirmarPresenca(x, eu(), vai, agora())),
+    iniciar: id => mudar(id, x => r.iniciar(x, eu().nome, agora())),
     async anexar(id, qual, arquivo) {
       const arquivoId = doc(collection(db, COLECAO)).id;
       const pedacos = entregas.partesDoArquivo(arquivo.bytes);

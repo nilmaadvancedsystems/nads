@@ -8,7 +8,7 @@
 //     Fiscal (29/10/2026: segmento, monofásico, ICMS-ST, antecipação, DIFAL, retenções, benefício, parcelamento…).
 // Cada opção numa linha solta (ConfigLinha): o nome, a descrição curta e o controle à direita.
 import { empresas } from '@nads/core';
-import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, Segmentado, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaDaReceita } from './JanelaDaReceita';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
@@ -256,6 +256,20 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
         <ConfigLinha titulo="Emite nota de honorário">
           <Interruptor ligado={vm.emiteNotaHonorario === true} rotulo="Emite nota de honorário" onMudar={() => vm.definirNotaDeHonorario(vm.emiteNotaHonorario !== true)} />
         </ConfigLinha>
+        {/* está no SCI (Vitor, 24/11/2026: "ja que sairam do alterdata"): só as ligadas aparecem no minimum */}
+        {vm.comSci && (
+          <ConfigLinha titulo="Está no SCI" descricao="As empresas que saíram do Alterdata: só as ligadas aparecem no minimum.">
+            <Interruptor ligado={vm.noSci} rotulo="Está no SCI" onMudar={() => vm.definirNoSci(!vm.noSci)} />
+          </ConfigLinha>
+        )}
+        {/* ligada, pede o plano de contas do SCI (24/11/2026: "referenciar para nao ficar selecionando"): o minimum abre nele */}
+        {vm.comSci && vm.noSci && (
+          <ConfigLinha titulo="Plano de contas do SCI" descricao="O minimum abre a empresa neste plano."
+            aviso={vm.planoSci ? undefined : 'Escolha o plano: sem ele, o minimum pede a cada vez.'}>
+            <Segmentado<empresas.cadastro.PlanoDoSci | ''> valor={vm.planoSci ?? ''} onMudar={p => { if (p) vm.definirNoSci(true, p); }}
+              opcoes={vm.planosDoSci.map(p => ({ valor: p, rotulo: 'Plano ' + p }))} />
+          </ConfigLinha>
+        )}
       </ConfigSecao>
     </>
   );

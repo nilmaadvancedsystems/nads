@@ -29,6 +29,7 @@ export * from './regras/etiquetasDaFolha';
 export * from './regras/etiquetasDoEnvelope';
 export * from './regras/protocoloDeTributos';
 export * from './regras/controleDeTributos';
+export * from './regras/controleContabil';
 export * from './regras/protocolosDoAno';
 export * from './regras/prazosDoDp';
 // a tabela única de prazos das etapas (plano do Acessórias, 17/11/2026, ficha E02): o legal, o interno e a multa

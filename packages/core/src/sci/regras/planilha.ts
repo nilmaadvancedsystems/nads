@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx';
 import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci, LinhaDoNads, OpcoesDoSci, ResumoDoSci } from '../tipos';
 import { lerPlanilhaDoNads } from './leitura';
+import { classificacaoNormal } from './dePara';
+import { contaDoPlano, type ContaDoPlanoSci, type PlanoSci } from './plano';
 
 /** As 15 colunas da planilha do SCI, na ordem do gerador (A a K vão para o SCI; L a O são só para a análise). */
 export const COLUNAS_DO_SCI = [
@@ -45,6 +47,23 @@ export function mesPrincipal(linhas: readonly { data: string }[]): string {
   return melhor;
 }
 
+/** A conta do SCI pelo que vai na planilha: o código reduzido, o apelido ou a classificação (o SCI aceita os três). */
+export function contaNoPlanoSci(plano: PlanoSci, texto: string): ContaDoPlanoSci | null {
+  const pelo = contaDoPlano(plano, texto);
+  if (pelo || !texto.includes('.')) return pelo;
+  const c = classificacaoNormal(texto);
+  return plano.contas.find(x => classificacaoNormal(x.classificacao) === c) || null;
+}
+
+function problemasNoPlano(plano: PlanoSci, lado: 'débito' | 'crédito', codigo: string, participante: string): string[] {
+  if (!codigo) return [];
+  const c = contaNoPlanoSci(plano, codigo);
+  if (!c) return ['a conta ' + codigo + ' não existe no plano ' + plano.id + ' do SCI'];
+  if (!c.analitica) return ['a conta ' + codigo + ' (' + c.nome + ') não recebe lançamento no SCI'];
+  if (c.participante && !participante.trim()) return ['a conta de ' + lado + ' ' + codigo + ' pede o ' + c.participante + ' (participante)'];
+  return [];
+}
+
 /** Os lançamentos do SCI a partir das linhas do nads: troca as contas pelo de/para e aponta o que impede a importação. */
 export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDoSci): LancamentoSci[] {
   const cnpj = documentoComMascara(op.cnpjEmpresa);
@@ -56,6 +75,7 @@ export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDo
     const p = dePara.get(c);
     return p ? { codigo: p.codigo, nome: p.nome, semPar: false } : { codigo: c, nome: '', semPar: true };
   };
+  const nomeNoPlano = (codigo: string) => (op.planoSci && codigo ? contaNoPlanoSci(op.planoSci, codigo)?.nome || '' : '');
   return linhas.map(l => {
     const d = conta(l.debito);
     const c = conta(l.credito);
@@ -70,10 +90,14 @@ export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDo
     if (!(l.valor > 0)) problemas.push('sem valor');
     if (!historico) problemas.push('sem histórico');
     if (!cnpjOk) problemas.push('CNPJ da empresa inválido');
+    if (op.planoSci) {
+      if (!d.semPar) problemas.push(...problemasNoPlano(op.planoSci, 'débito', d.codigo, ''));
+      if (!c.semPar) problemas.push(...problemasNoPlano(op.planoSci, 'crédito', c.codigo, ''));
+    }
     return {
       data: l.data, debito: d.codigo, credito: c.codigo, valor: isNaN(l.valor) ? 0 : l.valor, historico,
       complemento: limparComplemento(l.complemento), documento: l.documento, lote, cnpjEmpresa: cnpj,
-      participanteD: '', participanteC: '', nomeD: d.nome, nomeC: c.nome, origem: l.origem, problemas,
+      participanteD: '', participanteC: '', nomeD: d.nome || nomeNoPlano(d.codigo), nomeC: c.nome || nomeNoPlano(c.codigo), origem: l.origem, problemas,
     };
   });
 }

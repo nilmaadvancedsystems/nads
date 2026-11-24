@@ -42,6 +42,13 @@ Commit, push e publicação só com autorização. Telas novas entram primeiro n
 
 ## Fase 0: validar antes de programar (com o usuário, sem código no nads)
 
+> **23/11/2026, à noite.** O SCI voltou, e outra sessão do Claude, no PC do SCI, cadastrou o gerador oficial
+> **`nads` (código 13)**: linha inicial 2, descartar 1, colunas A a K como no doc 02, C, e L a O sem campo. Ela
+> passou a planilha de teste na empresa 583. Na grade, o formato foi aceito inteiro: classificação, participante,
+> acento e Total (detalhes no doc 02, C). **Gravou** as 3 linhas (F12) e depois **excluiu** pelo lote `NADS2611`;
+> a exclusão pede a senha de master. A fase 0.1 está feita. Fica em aberto quais históricos de texto neutro usar
+> (o texto do histórico vai antes do complemento).
+
 | Passo | Quem | Resultado |
 |---|---|---|
 | 0.1 Cadastrar no SCI o **gerador da planilha SCI** (doc 02, C) e importar, numa empresa de teste, uma planilha de 3 linhas. Testar: conta pela classificação (além do código curto), colunas sem campo no meio (L a O), linha de total no fim, participante e acento no complemento | Eu gero a planilha e o passo a passo; você cadastra o gerador e importa | Saber exatamente o que o SCI aceita |
@@ -91,6 +98,20 @@ Formato escolhido pelo dono em 23/11/2026: **planilha .xlsx**, melhor para anali
   do Alterdata nas contas tocadas.
 
 ## Fase 2: o de/para das contas e dos históricos, sem banco
+
+> **Feito em 23/11/2026 (itens 1 e 2 da conversa, só no modo desenvolvedor), na Ferramenta nads → SCI:**
+> - **De/para automático** (`sci.deParaPeloPlano`): escolhe-se o plano padrão do SCI (90113 ou 90011, que o ShadersCI
+>   trouxe) e solta-se o plano da empresa exportado do Alterdata. Ele casa primeiro pela classificação (sem os zeros da
+>   esquerda, com o nome parecido) e depois pelo nome. A "classificação igual, nome diferente" fica a conferir, nunca
+>   automática. A planilha de de/para baixa para conferir e guardar no Drive, e a do escritório vale mais que o
+>   automático. Com o plano escolhido, a planilha aponta a conta que não existe no SCI, a sintética e a que pede
+>   participante.
+> - **Balancete do SCI de volta** (`sci.lerBalanceteDoSci`, `saldosInvertidos`, `conferirComOBalancete`): solta-se o
+>   CSV exportado do SCI e a Ferramenta mostra:
+>   - as contas com o saldo contrário à natureza (fornecedor devedor, caixa credor; as redutoras ficam de fora);
+>   - conta a conta, o que o nads mandou × o movimento no SCI (bate, faltou, a mais, fora do balancete).
+>   **Conferido com o arquivo real** (balancete exportado pela sessão do PC do SCI, formato no doc 02, Q): CONTA =
+>   código curto, saldos sem D/C com o sinal natural do grupo e parênteses quando ao contrário, Windows-1252.
 
 - **Core** (nada é gravado no Firestore):
   - o leitor do plano de contas e do plano de históricos **exportados do SCI**;

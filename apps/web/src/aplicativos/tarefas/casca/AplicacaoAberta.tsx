@@ -28,6 +28,8 @@ const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
 const Administrativo = pedaco(() => import('../telas/administrativo/Administrativo'), 'Administrativo');
 const Insights = pedaco(() => import('../telas/insights/Insights'), 'Insights');
 const Lancatudo = pedaco(() => import('../telas/lancatudo/Lancatudo'), 'Lancatudo');
+const ShadersCi = pedaco(() => import('../telas/shadersci/ShadersCi'), 'ShadersCi');
+const ControleDoContabil = pedaco(() => import('../telas/contabil/controle/ControleDoContabil'), 'ControleDoContabil');
 const OutrosSites = pedaco(() => import('../telas/desenvolvedor/OutrosSites'), 'OutrosSites');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
@@ -101,6 +103,10 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     // a Tela de Insights (18/11/2026, ficha tela-de-insights): só Diretor e admin
     case 'insights': return <Insights pagina={pagina} />;
     case 'lancatudo': return <Lancatudo pagina={pagina} />;
+    // o ShadersCI (23/11/2026): os lançamentos para o SCI
+    case 'shadersci': return <ShadersCi />;
+    // o Controle contábil (23/11/2026): o mês feito de cada empresa no ano
+    case 'controle-contabil': return <ControleDoContabil />;
     // o Desenvolvedor (13/11/2026): a Área do Cliente e a Central dos robôs, só no modo desenvolvedor
     case 'desenvolvedor': return <OutrosSites />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
@@ -132,7 +138,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={(a.id === 'inicio' && !tarefasNoInicioNovo) || (a.id === 'carteira' && a.paginas.length <= 1) || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || a.id === 'desenvolvedor' || a.id === 'lancatudo'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={(a.id === 'inicio' && !tarefasNoInicioNovo) || (a.id === 'carteira' && a.paginas.length <= 1) || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || a.id === 'desenvolvedor' || a.id === 'lancatudo' || a.id === 'shadersci' || a.id === 'controle-contabil'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

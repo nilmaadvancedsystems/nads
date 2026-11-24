@@ -50,6 +50,8 @@ import { criarFeedbackMemoria, type RepoFeedback } from './feedback';
 import { criarCategoriasDpMemoria, type RepoCategoriasDp } from './categoriasDp';
 import { criarControleTributosMemoria, type RepoControleTributos } from './controleTributos';
 import { criarControleTributosFirestore } from './controleTributos.firestore';
+import { criarControleContabilMemoria, type RepoControleContabil } from './controleContabil';
+import { criarControleContabilFirestore } from './controleContabil.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
 import { criarArquivoFisicoMemoria, type RepoArquivoFisico } from './arquivoFisico';
@@ -671,6 +673,20 @@ let controleTributos: RepoControleTributos | null = null;
 export function repoDoControleTributos(): RepoControleTributos {
   if (!controleTributos) controleTributos = noBanco ? criarControleTributosFirestore(() => quemPede()?.nome || '') : criarControleTributosMemoria();
   return controleTributos;
+}
+
+let controleContabil: RepoControleContabil | null = null;
+
+/**
+ * O Controle contábil (23/11/2026): no banco, controleContabil/{ano}_{código}; nos exemplos, na memória, com as 18 primeiras
+ * empresas do Contábil em situações variadas.
+ */
+export function repoDoControleContabil(): RepoControleContabil {
+  if (!controleContabil) controleContabil = noBanco ? criarControleContabilFirestore(() => quemPede()?.nome || '')
+    : criarControleContabilMemoria(ano => tarefas.linhasDeExemploContabil(ano,
+      tarefas.empresasDaRotina('contabil', repoDaTarefas().listarEmpresas()).map(e => e.codigo).filter((c): c is number => c != null).slice(0, 18),
+      tarefas.mesEsperadoContabil(ano, new Date())));
+  return controleContabil;
 }
 
 let categoriasDp: RepoCategoriasDp | null = null;

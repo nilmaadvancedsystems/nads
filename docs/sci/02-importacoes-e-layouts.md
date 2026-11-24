@@ -184,6 +184,30 @@ FAQ 3202, 3203, 32459, 5460, 5028, 7878, 6766, 4893, 42261, 4257 e 4569.
 - Na grade dá para vincular notas e baixar duplicatas (FAQ 4257).
 - O que não entrar volta em `naoimportados_<nome>.xlsx`, na mesma pasta, para corrigir e importar de novo (FAQ 5460).
 
+**Conferido no SCI em 23/11/2026** (gerador `nads`, código 13; empresa de teste com 3 linhas, só a grade de
+importação, ainda sem gravar):
+- a **classificação** (ex.: `04.2.1.01.002`) é aceita no débito e no crédito e vira o código curto. Então o de/para
+  pode ser feito pela classificação do plano;
+- o **CNPJ do participante** é resolvido para o código do participante cadastrado;
+- o **acento** do complemento sai certo;
+- a **linha Total** (linha inicial 2, descartar 1) é ignorada, e as colunas **L a O sem campo** não atrapalham.
+- **Gravado com F12** (as 3 linhas entraram, sem `naoimportados`; tipo "Importação", lote `NADS2611`):
+  - o SCI pergunta **"Deseja comparar lançamentos a importar com lançamentos já lançados?"**. No dia a dia, a
+    resposta "Sim" evita importar duas vezes a mesma planilha;
+  - depois ele avisa "Importação de dados concluída!" e gera as transações SPED sozinho;
+  - **o texto do histórico vem antes do complemento**: com o histórico 29 ("Vendas cfe NF nº"), o lançamento ficou
+    "Vendas cfe NF nº TESTE NADS 1 ...". Por isso o nads precisa de **históricos de texto neutro** (ou um histórico
+    sem texto) para que o complemento fale sozinho. **A confirmar** com o escritório quais códigos usar;
+  - às vezes o primeiro F12 fecha a tela sem gravar. Repetir com a grade em foco.
+- Os campos que o gerador oferece:
+  - Data, Débito, Crédito, Participante a débito/crédito, Valor principal, Contabilização, Histórico, Documento,
+    Complemento, Lote, Conciliado, CNPJ da filial, Nota explicativa, Centro de custo a débito/crédito;
+  - Incorporadoras (empreendimento e unidade, D/C);
+  - Produtor rural (os 12 do LCDPR);
+  - Multa, Juros e Descontos (cada um com conta D/C, histórico e valor D/C);
+  - Valores adicionais 1 a 5 (os mesmos, mais pagamento e recebimento);
+  - Constar na (DMPL, DLPA, DOAR, DFC, DVA, LALUR, BRE).
+
 **A "planilha SCI" do nads** (proposta; o gerador do SCI é configurado uma vez com estas colunas)
 
 | Col. | Título na planilha | Vai para o campo do gerador | Conteúdo |
@@ -434,6 +458,28 @@ Registro `LCPR` do item A. FAQ 7414, 4897 e 7588.
 
 ## Q. Balancete de volta para o nads
 
+**O formato real, conferido em 23/11/2026** (balancete de uma empresa exportado do SCI; o nads lê com
+`sci.lerBalanceteDoSci`):
+- *Relatórios › Balancete*, com **"Imprimir conta: Curta" e "Longa"** marcados (sem eles não vem a classificação) e
+  "Exportar CSV com cabeçalho". Depois *Exportar para… › CSV*; o nome sugerido é `Balancete.csv`.
+- Windows-1252, sem BOM, CRLF, separador `;`, sem aspas, vírgula decimal e ponto no milhar.
+- Linha 1: `BALANCETE DE 01/10/2026 A 31/10/2026;;;;;;`. Linha 2: `EMPRESA: 999 - NOME;CIDADE/UF -CNPJ:11.222.333/0001-81`.
+  Depois duas linhas vazias, os títulos `CONTA;CLASSIFICAÇÃO;NOME DA CONTA CONTÁBIL;SALDO ANTERIOR;DÉBITO;CRÉDITO;SALDO
+  ATUAL` e uma linha vazia. **CONTA** é o código curto e **CLASSIFICAÇÃO** é a longa.
+- **Sem D/C**: o saldo vem com o sinal natural do grupo (1 e 4 devedores; 2 e 3 credores). Um saldo ao contrário vem
+  **entre parênteses**: `(4.692,44)`. **Sem linha de totais** (a não ser que se marque "Totalizar embaixo"). Por
+  padrão, só saem as contas com saldo ou movimento.
+- Não há coluna dizendo se a conta é analítica: o nads deduz pela classificação (quem não tem conta abaixo).
+- Ao emitir, o SCI pode avisar "Existe uma diferença contábil entre Ativo x Passivo. Deseja emitir relatório mesmo
+  assim?" (acontece quando o resultado ainda não foi encerrado). É só responder Sim.
+
+**O razão** (*Razão e livro caixa*, atalho Ctrl+A no SCI), exportado em "CSV sem quebra de página":
+- vem em UTF-8 **com BOM**, diferente do balancete;
+- só traz `Histórico;Valor;Saldo`, com a data numa linha própria (`05/10/2026;;`) e o valor sem sinal;
+- sem chave, contrapartida, documento nem D/C, a menos que essas opções sejam marcadas na tela;
+- **a última linha pode sumir** nesse modo. Por isso, para conferir, vale o balancete, ou o razão em CSV comum com
+  "Totais › Conta".
+
 - *Relatórios › Balancete* › "Exportar CSV com cabeçalho" (FAQ 5378). A linha 1 traz a data, a linha 2 traz a empresa,
   a cidade/UF e o CNPJ, e depois vêm as contas. As colunas exatas ficam **a confirmar** com um arquivo real, que o
   usuário exporta uma vez.
@@ -446,6 +492,9 @@ Registro `LCPR` do item A. FAQ 7414, 4897 e 7588.
 ## R. Exclusão em lote
 
 - Na consulta de lançamentos da empresa: filtrar e usar **"Excluir todos os registros filtrados"** (FAQ 6297).
+- **Conferido em 23/11/2026**: o filtro pelo lote `NADS2611` trouxe só as 3 linhas do teste, e a exclusão funcionou
+  (o mês voltou como era). Mas o SCI pede a **"Senha de segurança do processo"**, de um usuário master ou responsável
+  pela equipe. Então refazer um mês sempre precisa de uma pessoa com essa senha; não dá para um robô fazer sozinho.
 - Por isso o nads deve sempre preencher o **lote** (campo 009) com uma marca própria, como `NADS2611` ou `FOLHA2611`.
   Assim, para refazer um mês, basta filtrar pelo lote e excluir.
 - O relatório "Contas movimentadas" mostra até os lançamentos excluídos (FAQ 4439).

@@ -33,6 +33,8 @@ export interface PessoaComFoto { uid: string; nome: string; foto: string | null;
  * documento; nas Notificações, as dos comunicados. Nas Tarefas e nos Documentos também o Cliente ("em ambos coloca um filtro
  * de cliente")
  */
+/** o card da reunião que mudou nas últimas 24 h (24/11/2026); '' = o card de sempre */
+type Mudanca = '' | 'cancelada' | 'remarcada' | 'finalizada';
 type IdDoFiltro = 'atrasadas' | 'hoje' | 'urgentes' | 'delegadas' | 'documentos' | 'recebidos' | 'enviados' | 'pendentes' | 'concluidos' | 'avisos' | 'reunioes' | 'estudos' | 'fixados';
 type Filtro = { id: IdDoFiltro; rotulo: string; icone: 'alert' | 'clock' | 'zap' | 'aviao' | 'clipe' | 'caixaEntrada' | 'checkCircle' | 'calendar' | 'lampada' | 'mapaPin' };
 const DE_TAREFA: Filtro[] = [
@@ -173,6 +175,8 @@ export function useInicioNovo() {
   // e, para quem cobrou, o que voltou: o mais tempo pedido (com a justificativa) e a resposta (16/11/2026: "para quem cobrou
   // aparece que o usuario pediu + 5 +10 minutos")
   const retornos = cobrancaNotificada ? d.retornosDasCobrancas(todas, uid) : [];
+  // e o ok de quem cobrou na resposta (a novidade 'ok-na-resposta'; 24/11/2026: "que ela fique informada disso")
+  const oks = useNovidade('ok-na-resposta') ? d.oksRecebidos(todas, uid) : [];
   const cobrancas = [
     ...recebidas.map(c => ({ tarefa: c.tarefa, nota: c.nota, aberta: c.aberta, icone: 'sino' as const, texto: c.nota.por + ' cobrou atualização da tarefa ' + c.tarefa.titulo })),
     ...retornos.map(c => ({
@@ -180,6 +184,7 @@ export function useInicioNovo() {
       texto: c.nota.tipo === 'adiamento' ? c.nota.por + ' pediu mais ' + (c.nota.minutos || 0) + ' minutos na tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto
         : c.nota.por + ' respondeu à cobrança da tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto,
     })),
+    ...oks.map(c => ({ tarefa: c.tarefa, nota: c.nota, aberta: false, icone: 'check' as const, texto: c.nota.por + ' viu a sua resposta na tarefa ' + c.tarefa.titulo + ' e deu ok' })),
   ].sort((a, b) => b.nota.em.localeCompare(a.nota.em))
     .filter(c => aba !== 'notificacoes' || (!filtros.length && (!q || (c.texto + ' ' + c.nota.por).toLowerCase().includes(q))))
     .map(c => ({
@@ -292,12 +297,19 @@ export function useInicioNovo() {
     })),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
     reunioes: [
-      // o que o card espera da pessoa (18/11/2026, o botão ao passar o mouse): a presença na reunião ou o Recebido do comunicado
-      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo,
-        espera: (x.acoes.includes('confirmar') && x.minhaPresenca === null ? 'presenca' : '') as '' | 'presenca' | 'recebido' })),
-      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '',
-        espera: (c.precisaReceber ? 'recebido' : '') as '' | 'presenca' | 'recebido' })),
-    ].sort((a, b) => a.quando.localeCompare(b.quando)).slice(0, 4),
+      ...[
+        // o que o card espera da pessoa (18/11/2026, o botão ao passar o mouse): a presença na reunião ou o Recebido do comunicado
+        ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo, pisca: x.pisca, podeIniciar: x.acoes.includes('iniciar'),
+          podeRemarcar: x.acoes.includes('remarcar'), mudanca: '' as Mudanca, quandoNovo: '', remarcadaAgora: x.remarcadaAgora, temArquivos: false,
+          espera: (x.acoes.includes('confirmar') && x.minhaPresenca === null ? 'presenca' : '') as '' | 'presenca' | 'recebido' })),
+        ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '', pisca: false, podeIniciar: false,
+          podeRemarcar: false, mudanca: '' as Mudanca, quandoNovo: '', remarcadaAgora: false, temArquivos: false,
+          espera: (c.precisaReceber ? 'recebido' : '') as '' | 'presenca' | 'recebido' })),
+      ].sort((a, b) => a.quando.localeCompare(b.quando)).filter((x, i) => i < 4 || x.remarcadaAgora),
+      // a cancelada e o dia de antes da remarcada, por 24 h (24/11/2026), fora do limite de 4
+      ...reunioes.mudancas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.mudanca === 'cancelada' ? x.quandoTexto : x.quandoNovo, quando: x.diaDoCard, rotulo: x.rotulo,
+        pisca: false, podeIniciar: false, podeRemarcar: false, mudanca: x.mudanca as Mudanca, quandoNovo: x.quandoNovo, remarcadaAgora: false, temArquivos: !!(x.problema || x.solucao), espera: '' as '' | 'presenca' | 'recebido' })),
+    ].sort((a, b) => a.quando.localeCompare(b.quando)),
     /**
      * o que espera a confirmação da pessoa, por cima do calendário do Painel (Vitor, 13/11/2026: "Se for algo que precisa de
      * confirmação faça aquele esquema de colocar sobrepondo o calendário"): a reunião sem a resposta de presença e o aviso

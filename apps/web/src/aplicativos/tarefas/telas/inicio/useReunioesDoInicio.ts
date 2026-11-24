@@ -51,6 +51,10 @@ export function useReunioesDoInicio() {
       faltaComentar: r.faltaComentar(x).map(p => p.nome), souResponsavel: r.responsavel(x, uid),
       /** a minha resposta (true vai, false não vai, null ainda não respondi) e quem não respondeu */
       minhaPresenca: x.presencas.find(p => p.uid === uid)?.vai ?? null, semResposta: r.semResposta(x).map(p => p.nome),
+      /** no dia, ainda não iniciada: o card fica vermelho e pisca (24/11/2026) */
+      pisca: r.piscaNoDia(x, agora),
+      /** remarcada nas últimas 24 h: o card do dia novo aparece mesmo além das 4 primeiras */
+      remarcadaAgora: !!x.remarcadaDe && r.recente(x.remarcadaEm, Date.now()),
     };
   };
   return {
@@ -61,6 +65,22 @@ export function useReunioesDoInicio() {
     pendentes: aprova ? visiveis.filter(x => x.origem === 'pedido' && (x.status === 'em-analise' || x.status === 'revisando')).length : 0,
     /** as próximas, para o Painel e o calendário (aprovadas ou remarcadas, de hoje em diante) */
     proximas: visiveis.filter(x => (x.status === 'aprovada' || x.status === 'remarcada') && x.quando >= agora.slice(0, 10)).map(item),
+    /**
+     * as mudanças das últimas 24 h, para o Painel (Vitor, 24/11/2026): a cancelada fica com o card "Cancelada"; a remarcada
+     * deixa o card do dia de antes (com o ícone trocado) além do card do dia novo
+     */
+    // a finalizada também fica 24 h (24/11/2026: "fica cancelada ou finalizada"); a fixada aparece só como fixada
+    mudancas: visiveis.flatMap(x => {
+      type Mudanca = 'cancelada' | 'remarcada' | 'finalizada';
+      const agoraMs = Date.now();
+      if (x.fixada) return [];
+      if (x.status === 'cancelada' && r.recente(x.canceladaEm, agoraMs)) return [{ ...item(x), mudanca: 'cancelada' as Mudanca, diaDoCard: x.quando, quandoNovo: '' }];
+      if ((x.status === 'finalizada' || x.status === 'concluida' || x.status === 'encerrada') && r.recente(r.finalizadaEm(x), agoraMs)) return [{ ...item(x), mudanca: 'finalizada' as Mudanca, diaDoCard: x.quando, quandoNovo: '' }];
+      if ((x.status === 'remarcada' || x.status === 'aprovada') && x.remarcadaDe && r.recente(x.remarcadaEm, agoraMs)) return [{ ...item(x), mudanca: 'remarcada' as Mudanca, diaDoCard: x.remarcadaDe, quandoNovo: quandoTexto(x.quando) }];
+      return [];
+    }),
+    /** as fixadas no Painel pelo Diretor ou pelo Dono (24/11/2026): quem vê a reunião vê o card e baixa os arquivos */
+    fixadas: visiveis.filter(x => x.fixada).map(item),
     /** quem pode ir (a equipe ativa, sem a própria pessoa) */
     equipe: ativos.filter(u => u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
     aceita: ACEITA_NA_REUNIAO,
@@ -74,8 +94,16 @@ export function useReunioesDoInicio() {
     revisar: (id: string, prazo: string) => fazer('Não deu para revisar', () => repo.revisar(id, prazo), 'Em revisão, com o prazo de resposta.'),
     decidir: (id: string, aprovar: boolean, obs: string) => fazer('Não deu para decidir', () => repo.decidir(id, aprovar, obs), aprovar ? 'Reunião aprovada.' : 'Reunião recusada.'),
     remarcar: (id: string, quando: string) => fazer('Não deu para remarcar', () => repo.remarcar(id, quando), 'Reunião remarcada.'),
+    fixar: (id: string, sim: boolean) => fazer(sim ? 'Não deu para fixar' : 'Não deu para tirar do Painel', () => repo.fixar(id, sim), sim ? 'Reunião fixada no Painel.' : 'Reunião tirada do Painel.'),
+    cancelar: (id: string) => fazer('Não deu para cancelar', () => repo.cancelar(id), 'Reunião cancelada.'),
     confirmar: (id: string, vai: boolean) => fazer('A resposta não foi gravada', () => repo.confirmar(id, vai), vai ? 'Presença confirmada.' : 'Avisado que você não vai.'),
+    iniciar: (id: string) => fazer('Não deu para iniciar', () => repo.iniciar(id), 'Reunião em andamento.'),
     anexar: (id: string, qual: QualArquivo, arquivo: File) => fazer('O arquivo não foi anexado', async () => repo.anexar(id, qual, await encolherAnexo(arquivo)), 'Arquivo anexado.'),
+    /** o botão de download do card (24/11/2026): baixa o Problema e a Solução que tiver */
+    async baixarArquivos(id: string) {
+      const x = reunioes.find(y => y.id === id);
+      for (const qual of ['problema', 'solucao'] as const) if (x?.[qual]) await this.baixar(id, qual);
+    },
     async baixar(id: string, qual: QualArquivo) {
       const a = reunioes.find(x => x.id === id)?.[qual];
       const bytes = await repo.baixar(id, qual).catch(() => null);

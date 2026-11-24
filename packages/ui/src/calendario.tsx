@@ -19,7 +19,7 @@ export function somarMeses(mes: string, n: number): string {
   return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
 }
 
-export function CalendarioDoMes({ mes, hoje, marcados = {}, feriados = {}, escolhido = null, onDia, onMes, dicaDoMarcado }: {
+export function CalendarioDoMes({ mes, hoje, marcados = {}, feriados = {}, escolhido = null, onDia, onMes, dicaDoMarcado, bloqueado }: {
   /** o mês mostrado, 'aaaa-mm' */
   mes: string;
   /** hoje, 'aaaa-mm-dd' */
@@ -34,6 +34,8 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, feriados = {}, escol
   onMes?: (mes: string) => void;
   /** a dica do dia marcado ("3 tarefas") */
   dicaDoMarcado?: (quantos: number) => string;
+  /** o dia que não se escolhe ('aaaa-mm-dd' → o motivo, na dica; null = pode): apagado e riscado, sem clique (24/11/2026, o minimum: "nao deixa lançar nos sábados e feriados nacionais") */
+  bloqueado?: (dia: string) => string | null;
 }) {
   const [a, m] = mes.split('-').map(Number);
   const primeiro = new Date(Date.UTC(a, m - 1, 1)).getUTCDay();
@@ -69,12 +71,13 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, feriados = {}, escol
           const dia = iso(c.n);
           const qtd = marcados[c.n] || 0;
           const fer = feriados[c.n];
+          const trava = bloqueado?.(dia) || null;
           const classe = 'cal-mes-dia' + (dia === hoje ? ' hoje' : dia < hoje ? ' passou' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '')
-            + (fer ? ' feriado ' + fer.tipo : '');
-          const dica = [fer?.dica, qtd ? (dicaDoMarcado ? dicaDoMarcado(qtd) : String(qtd)) : ''].filter(Boolean).join(' · ') || undefined;
+            + (fer ? ' feriado ' + fer.tipo : '') + (trava ? ' bloqueado' : '');
+          const dica = [fer?.dica, trava, qtd ? (dicaDoMarcado ? dicaDoMarcado(qtd) : String(qtd)) : ''].filter(Boolean).join(' · ') || undefined;
           return (
             <button key={i} type="button" className={classe} role="gridcell" aria-pressed={dia === escolhido} aria-current={dia === hoje ? 'date' : undefined}
-              title={dica} aria-label={c.n + (dia === hoje ? ', hoje' : '') + (dica ? ', ' + dica : '')} disabled={!onDia} onClick={() => onDia?.(dia === escolhido ? null : dia)}>
+              title={dica} aria-label={c.n + (dia === hoje ? ', hoje' : '') + (dica ? ', ' + dica : '')} disabled={!onDia || !!trava} onClick={() => onDia?.(dia === escolhido ? null : dia)}>
               <span className="cal-mes-num">{c.n}</span>
               {qtd > 0 && <span className="cal-mes-pontos" aria-hidden="true">{Array.from({ length: Math.min(qtd, 3) }, (_, k) => <i key={k} />)}</span>}
             </button>
@@ -92,7 +95,11 @@ const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + Str
  * a atual e deixa o select do calendario tambem, se a pessoa querer"): o 📅 abre o calendário do mês da data (ou de hoje) e o
  * clique no dia preenche o campo.
  */
-export function CampoDataComCalendario({ valor, onMudar, rotulo, id, onEnter }: { valor: string; onMudar: (v: string) => void; rotulo: string; id?: string; onEnter?: () => void }) {
+export function CampoDataComCalendario({ valor, onMudar, rotulo, id, onEnter, bloqueado }: {
+  valor: string; onMudar: (v: string) => void; rotulo: string; id?: string; onEnter?: () => void;
+  /** os dias que o calendário não deixa escolher (o CalendarioDoMes) */
+  bloqueado?: (dia: string) => string | null;
+}) {
   const hoje = hojeIso();
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
   const escolhido = m ? m[3] + '-' + m[2] + '-' + m[1] : null;
@@ -104,7 +111,7 @@ export function CampoDataComCalendario({ valor, onMudar, rotulo, id, onEnter }: 
       <MenuSuspenso rotulo="" icone="calendar" semSeta className="icon-btn icon-btn-sm" dica="Escolher no calendário" flutuante direita largura={280}
         conteudo={fechar => (
           <div className="campo-data-cal-pop">
-            <CalendarioDoMes mes={mes} hoje={hoje} escolhido={escolhido} onMes={setMes}
+            <CalendarioDoMes mes={mes} hoje={hoje} escolhido={escolhido} onMes={setMes} bloqueado={bloqueado}
               onDia={d => { if (!d) return; onMudar(d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4)); fechar(); }} />
           </div>
         )} />

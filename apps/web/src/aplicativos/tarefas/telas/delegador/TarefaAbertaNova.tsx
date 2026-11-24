@@ -130,8 +130,17 @@ function RepetirDaTarefa({ vm }: { vm: Vm }) {
 function CobrancaDaTarefa({ vm }: { vm: Vm }) {
   const c = vm.cobranca;
   const discreta = useNovidade('cobranca-notificada');
-  if (!c || (!c.aberta && !c.resposta)) return null;
+  // quem respondeu também vê o ok de quem cobrou (24/11/2026)
+  if (!c || (!c.aberta && !c.resposta && !(c.ok && c.minhaResposta))) return null;
   if (discreta) return <CobrancaDiscreta vm={vm} />;
+  if (!c.aberta && !c.resposta && c.ok && c.minhaResposta) {
+    return (
+      <div className="tdl-cobranca respondida" role="status">
+        <p className="tdl-cobranca-topo"><Icone nome="checkCircle" /><b>{c.ok.por} viu a sua resposta e deu ok</b><span className="fraco">{c.ok.quando}</span></p>
+        <p className="tdl-cobranca-texto fraco">{c.minhaResposta.texto}</p>
+      </div>
+    );
+  }
   if (c.aberta && c.responder) {
     return (
       <div className="tdl-cobranca cobrada" role="status">
@@ -154,6 +163,9 @@ function CobrancaDaTarefa({ vm }: { vm: Vm }) {
     <div className="tdl-cobranca respondida">
       <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.resposta?.por} respondeu à cobrança</b><span className="fraco">{c.resposta?.quando}</span></p>
       <p className="tdl-cobranca-texto">{c.resposta?.texto}</p>
+      {/* o ok na resposta (24/11/2026): quem respondeu fica sabendo que foi visto */}
+      {c.ok ? <p className="tdl-cobranca-ok"><Icone nome="check" />Você deu ok em {c.ok.quando}. {c.resposta?.por} está sabendo.</p>
+        : c.podeDarOk && <span className="tdl-cobranca-acoes"><BotaoAcao className="btn btn-outline" carregando={c.ocupado} textoCarregando="Enviando" onClick={() => { void vm.darOk(); }}><Icone nome="check" />Ok, vi a resposta</BotaoAcao></span>}
     </div>
   );
 }
@@ -169,10 +181,11 @@ function CobrancaDiscreta({ vm }: { vm: Vm }) {
     <>
       <div className="tdl-cobranca-linhas" role="status">
         {c.andamento.map(p => (
-          <p key={p.quando + p.texto}><Icone nome={p.tipo === 'adiamento' ? 'clock' : p.tipo === 'resposta' ? 'checkCircle' : 'sino'} /><span>{p.texto} <span className="fraco">· {p.quando}</span></span></p>
+          <p key={p.quando + p.texto}><Icone nome={p.tipo === 'adiamento' ? 'clock' : p.tipo === 'resposta' ? 'checkCircle' : p.tipo === 'ciente' ? 'check' : 'sino'} /><span>{p.texto} <span className="fraco">· {p.quando}</span></span></p>
         ))}
         {c.aberta && !c.responder && <p><Icone nome="clock" /><span>Esperando a resposta.</span></p>}
       </div>
+      {c.podeDarOk && <span className="tdl-cobranca-acoes"><BotaoAcao className="btn btn-outline" carregando={c.ocupado} textoCarregando="Enviando" onClick={() => { void vm.darOk(); }}><Icone nome="check" />Ok, vi a resposta</BotaoAcao></span>}
       {c.aberta && c.responder && (
         <div className="tdl-cobranca">
           <textarea rows={2} value={vm.resposta} maxLength={vm.maiorParecer} placeholder="Responder à cobrança: como está a tarefa?" aria-label="A resposta à cobrança"

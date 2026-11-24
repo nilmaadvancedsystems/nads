@@ -18,8 +18,14 @@ export interface RepoReunioes {
   revisar(id: string, prazo: string): Promise<void>;
   decidir(id: string, aprovar: boolean, observacao: string): Promise<void>;
   remarcar(id: string, quando: string): Promise<void>;
+  /** não vai acontecer (24/11/2026): fica Cancelada, 24 h no Painel */
+  cancelar(id: string): Promise<void>;
+  /** o Diretor ou o Dono fixa (ou tira) no Painel a reunião que terminou ou foi cancelada (24/11/2026) */
+  fixar(id: string, sim: boolean): Promise<void>;
   /** o convidado responde se vai */
   confirmar(id: string, vai: boolean): Promise<void>;
+  /** quem criou inicia a reunião (24/11/2026): fica Em andamento e o card para de piscar */
+  iniciar(id: string): Promise<void>;
   anexar(id: string, qual: QualArquivo, arquivo: ArquivoParaAnexar): Promise<void>;
   /** os bytes do arquivo, para baixar (null = não achou) */
   baixar(id: string, qual: QualArquivo): Promise<Uint8Array | null>;
@@ -48,14 +54,19 @@ function exemplos(eu: Pessoa): Reuniao[] {
     r.confirmarPresenca(r.decidir(base('rn-3', 'Alinhamento com o cliente novo', 'Entender a rotina da empresa antes do primeiro fechamento.', dia(1, '09:30'), eu, [clara, felipe], 30), true, 'Pode usar a sala de reunião.', nilma.nome, ha(20)), clara, true, ha(18)),
     // aprovada, pedida por outro, esperando a minha presença
     r.decidir(base('rn-9', 'Organização do arquivo morto', 'Quem separa as pastas de 2021 e onde guardar.', dia(2, '10:00'), fernando, [eu, clara], 26), true, '', nilma.nome, ha(22)),
-    // em andamento agora (o dia e a hora já passaram), com o Problema anexado
-    r.anexar(r.decidir(base('rn-4', 'Fechamento de outubro', 'O que ficou pendente e quem fecha cada empresa.', dia(0, '00:01'), eu, [clara, felipe], 50), true, '', nilma.nome, ha(40)), 'problema', arquivo('rn-4-p', 'problemas-outubro.pdf', eu.nome), eu.nome, ha(2)),
+    // hoje, ainda não iniciada: o card pisca em vermelho até quem criou clicar em Iniciar reunião (24/11/2026)
+    r.decidir(base('rn-10', 'Conferência do Simples Nacional', 'As empresas que mudam de anexo no mês.', dia(0, '07:30'), eu, [clara], 12), true, '', nilma.nome, ha(11)),
+    // em andamento agora (iniciada por quem criou), com o Problema anexado
+    r.anexar(r.iniciar(r.decidir(base('rn-4', 'Fechamento de outubro', 'O que ficou pendente e quem fecha cada empresa.', dia(0, '00:01'), eu, [clara, felipe], 50), true, '', nilma.nome, ha(40)), eu.nome, ha(3)), 'problema', arquivo('rn-4-p', 'problemas-outubro.pdf', eu.nome), eu.nome, ha(2)),
     // finalizada, esperando o meu comentário
     r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-5', 'Padronizar os históricos', 'Os históricos do Contábil que cada um escreve de um jeito.', dia(-2, '14:00'), fernando, [clara, eu], 80), true, '', nilma.nome, ha(70)), 'problema', arquivo('rn-5-p', 'problema.docx', 'Fernando'), 'Fernando', ha(30)), 'solucao', arquivo('rn-5-s', 'solucao.xlsx', 'Fernando'), 'Fernando', ha(30)), 'Fernando', ha(29)), clara, 'Ficou claro; vou usar a planilha nova.', ha(20)),
-    // concluída, esperando o Diretor encerrar
-    r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-6', 'Prazo das guias do DAS', 'Por que as guias atrasaram em setembro.', dia(-5, '11:00'), eu, [felipe], 140), true, 'Tragam os números.', nilma.nome, ha(130)), 'problema', arquivo('rn-6-p', 'atrasos.pdf', eu.nome), eu.nome, ha(60)), 'solucao', arquivo('rn-6-s', 'novo-fluxo.pdf', eu.nome), eu.nome, ha(60)), eu.nome, ha(59)), felipe, 'Concordo com o fluxo novo.', ha(50)),
+    // concluída, esperando o Diretor encerrar; fixada no Painel (24/11/2026), com os dois arquivos para quem foi
+    r.fixar(r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-6', 'Prazo das guias do DAS', 'Por que as guias atrasaram em setembro.', dia(-5, '11:00'), eu, [felipe], 140), true, 'Tragam os números.', nilma.nome, ha(130)), 'problema', arquivo('rn-6-p', 'atrasos.pdf', eu.nome), eu.nome, ha(60)), 'solucao', arquivo('rn-6-s', 'novo-fluxo.pdf', eu.nome), eu.nome, ha(60)), eu.nome, ha(59)), felipe, 'Concordo com o fluxo novo.', ha(50)), true, nilma.nome, ha(40)),
     // recusada, com a observação
     r.decidir(base('rn-7', 'Folga coletiva de dezembro', 'Combinar os dias de folga do fim do ano.', dia(6, '17:00'), eu, [], 60), false, 'Vamos tratar na reunião geral do dia 18.', nilma.nome, ha(48)),
+    // cancelada há pouco e remarcada há pouco: os cards de 24 h no Painel (24/11/2026)
+    r.cancelar(r.decidir(base('rn-11', 'Visita ao cliente de Linhares', 'Levar os balancetes do trimestre.', dia(1, '14:00'), eu, [felipe], 30), true, '', nilma.nome, ha(29)), eu.nome, ha(1)),
+    r.remarcar(r.decidir(base('rn-12', 'Revisão das férias de dezembro', 'Quem tira férias e quem cobre.', dia(0, '16:00'), fernando, [eu, clara], 30), true, '', nilma.nome, ha(28)), dia(2, '16:00'), 'Fernando', ha(2)),
     // marcada direto pelo Diretor (todos veem)
     r.nova({ titulo: 'Reunião geral do escritório', pauta: 'Metas de dezembro e a confraternização.', quando: dia(3, '08:30'), link: 'https://meet.google.com/', participantes: [], comDiretor: true, tipo: 'live', duracao: 90 }, { id: 'rn-8', por: nilma, em: ha(10), direta: true }),
   ];
@@ -91,7 +102,10 @@ export function criarReunioesMemoria(quem: () => Pessoa | null, paraQuemUsa = fa
     async revisar(id, prazo) { trocar(id, x => r.revisar(x, prazo, eu().nome, agora())); },
     async decidir(id, aprovar, observacao) { trocar(id, x => r.decidir(x, aprovar, observacao, eu().nome, agora())); },
     async remarcar(id, quando) { trocar(id, x => r.remarcar(x, quando, eu().nome, agora())); },
+    async cancelar(id) { trocar(id, x => r.cancelar(x, eu().nome, agora())); },
+    async fixar(id, sim) { trocar(id, x => r.fixar(x, sim, eu().nome, agora())); },
     async confirmar(id, vai) { trocar(id, x => r.confirmarPresenca(x, eu(), vai, agora())); },
+    async iniciar(id) { trocar(id, x => r.iniciar(x, eu().nome, agora())); },
     async anexar(id, qual, arquivo) {
       const anexoId = 'ax-' + idNovo();
       bytes.set(anexoId, arquivo.bytes);
