@@ -77,16 +77,8 @@ const AGENDA_A_CADA_MS = 15 * 1000;
 const robosDaMaquina = maquina => (catalogo.robos || []).filter(r => r.maquina === maquina);
 const roboDaMaquina = (maquina, id) => robosDaMaquina(maquina).find(r => r.id === id) || null;
 
-/** Tira da linha o que parece segredo (token, senha, chave de API, Bearer, cookie, base64 comprido). */
-function limparSegredos(texto) {
-  return String(texto == null ? '' : texto)
-    .replace(/\b(bearer|basic)\s+[\w\-.~+/=]{8,}/gi, '$1 ***')
-    .replace(/\b(token|access_token|refresh_token|id_token|senha|password|passwd|secret|segredo|client_secret|api[_-]?key|chave|authorization|cookie|set-cookie)(["']?\s*[:=]\s*["']?)[^\s"',;&]+/gi, '$1$2***')
-    .replace(/\bAIza[\w-]{20,}/g, '***')
-    .replace(/\bya29\.[\w\-.]+/g, '***')
-    .replace(/\b(sk|pk|rk)-[\w-]{16,}/g, '***')
-    .replace(/[A-Za-z0-9+_-]{40,}={0,2}/g, '***');
-}
+// o limpador de segredos mora em limpar-segredos.js (o suporte também usa)
+const { limparSegredos } = require('./limpar-segredos');
 
 /** Uma linha do log pronta para o espelho: sem a cor do terminal, sem segredo, numa linha só, cortada. */
 function linhaParaEspelho(texto) {

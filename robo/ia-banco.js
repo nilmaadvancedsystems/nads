@@ -10,6 +10,44 @@
 // Só é cortado o que não serve pra responder e estouraria a conversa:
 // imagens em base64 (assinatura, foto) e textos muito compridos.
 
+// A TRAVA DA IA (auditoria de segurança, 24/11/2026): o Admin SDK ignora a regra do banco, e quem pergunta só precisa
+// ser da equipe. Sem trava, qualquer um pedia à IA "os convites de troca de senha não usados" e recebia o código que troca
+// a senha de outra conta, ou lia as anotações, o Financeiro, a Carteira, os tokens da Área do Cliente, o cofre.
+// Agora a IA só lê as coleções desta lista (o que as instruções dela já citam), só no primeiro nível (nenhuma
+// subcoleção: partes de arquivo, anotações, mensagens), e sem os campos de segredo. O resto responde "fora do alcance".
+// Fora, de propósito: as coleções em que o id é a senha do link (convites, rotaLinks, portais, assinaturas, protocolos,
+// ticketsLinks, areasCliente), config (o endereço do serviço de contas), auditoria, segredos, cofre*, nads*,
+// financeiro*, carteira*, conversasIA, painel*, robosPermissoes. Para liberar uma coleção nova, ponha aqui com o
+// porquê (e confira se o id dela não é um código).
+const COLECOES_DA_IA = new Set([
+  'clientes', 'entregas', 'documentosMensal', 'solicitacoes', 'recados', 'honorarioNaoAplicavel',
+  'arquivamentos', 'solicitacoesArquivo', 'driveIndice', 'robo', 'usuarios', 'lembretesCliente',
+  'rotinas', 'cadastro', 'empresas', 'tarefas',
+]);
+// campos que nunca saem, em coleção nenhuma (o token de notificação, o código do convite, senha, segredo)
+const CAMPO_DE_SEGREDO = /senha|password|token|segredo|secret|codigoconvite|privad/i;
+
+/** O caminho (coleção ou documento) que a IA pode ler: o primeiro nível de uma coleção da lista. */
+function caminhoLiberado(caminho, tipo) {
+  const partes = String(caminho || '').split('/').filter(Boolean);
+  if (!partes.length || partes.some(p => p === '..' || p === '.')) return false;
+  if (!COLECOES_DA_IA.has(partes[0])) return false;
+  return tipo === 'documento' ? partes.length === 2 : partes.length === 1;
+}
+
+/** Tira os campos de segredo, em qualquer profundidade. */
+function semSegredos(v, prof) {
+  prof = prof || 0;
+  if (v == null || typeof v !== 'object' || prof > 8) return v;
+  if (Array.isArray(v)) return v.map(x => semSegredos(x, prof + 1));
+  if (typeof v.toDate === 'function' || Buffer.isBuffer(v) || (v.path && v.firestore)) return v;
+  const o = {};
+  Object.keys(v).forEach(k => { if (!CAMPO_DE_SEGREDO.test(k)) o[k] = semSegredos(v[k], prof + 1); });
+  return o;
+}
+
+const FORA_DO_ALCANCE = 'Essa parte do banco está fora do alcance da IA (só: ' + [...COLECOES_DA_IA].sort().join(', ') + ', no primeiro nível). Peça pela tela.';
+
 const LIMITE_PADRAO = 30;
 const LIMITE_MAXIMO = 200;
 const TEXTO_MAXIMO = 600;
@@ -76,7 +114,7 @@ const FERRAMENTAS_BANCO = [
   },
   {
     name: 'ler_documento',
-    description: 'Lê um documento inteiro pelo caminho (ex.: "clientes/ID", "config/integracoes", "robo/estado") e diz quais subcoleções ele tem.',
+    description: 'Lê um documento inteiro pelo caminho (ex.: "clientes/ID", "robo/estado"). Só coleção/id, nas coleções liberadas para a IA.',
     parametersJsonSchema: {
       type: 'object',
       properties: { caminho: { type: 'string', description: 'Caminho do documento: coleção/id[/subcoleção/id...].' } },
@@ -92,7 +130,7 @@ const FERRAMENTAS_BANCO = [
     parametersJsonSchema: {
       type: 'object',
       properties: {
-        colecao: { type: 'string', description: 'Caminho da coleção (ex.: "entregas", "conversasIA/ID/mensagens").' },
+        colecao: { type: 'string', description: 'Nome da coleção (ex.: "entregas", "clientes"), só as liberadas para a IA e sem subcoleção.' },
         filtros: {
           type: 'array',
           description: 'Filtros (todos valem juntos).',
@@ -133,25 +171,28 @@ async function executarBanco(db, nome, args) {
   switch (nome) {
     case 'listar_colecoes': {
       const cols = await db.listCollections();
-      return { colecoes: cols.map(c => c.id).sort() };
+      return { colecoes: cols.map(c => c.id).filter(id => COLECOES_DA_IA.has(id)).sort() };
     }
     case 'ler_documento': {
       const partes = String(a.caminho || '').split('/').filter(Boolean);
       if (!partes.length || partes.length % 2 !== 0) return { erro: 'O caminho tem que apontar pra um documento (coleção/id).' };
+      if (!caminhoLiberado(a.caminho, 'documento')) return { erro: FORA_DO_ALCANCE };
       const ref = db.doc(partes.join('/'));
-      const [snap, subs] = await Promise.all([ref.get(), ref.listCollections()]);
-      if (!snap.exists) return { caminho: ref.path, existe: false, subcolecoes: subs.map(c => c.id) };
-      return { caminho: ref.path, existe: true, dados: enxugar(snap.data()), subcolecoes: subs.map(c => c.id) };
+      const snap = await ref.get();
+      if (!snap.exists) return { caminho: ref.path, existe: false };
+      return { caminho: ref.path, existe: true, dados: enxugar(semSegredos(snap.data())) };
     }
     case 'consultar_colecao': {
+      if (!caminhoLiberado(a.colecao, 'colecao')) return { erro: FORA_DO_ALCANCE };
       let q = montarConsulta(db, a);
       if (a.ordenar_por) q = q.orderBy(a.ordenar_por, a.decrescente ? 'desc' : 'asc');
       const limite = limitar(a.limite);
       const snap = await q.limit(limite + 1).get();
-      const docs = snap.docs.slice(0, limite).map(d => Object.assign({ id: d.id }, enxugar(escolherCampos(d.data(), a.campos))));
+      const docs = snap.docs.slice(0, limite).map(d => Object.assign({ id: d.id }, enxugar(semSegredos(escolherCampos(d.data(), a.campos)))));
       return { colecao: a.colecao, mostrando: docs.length, temMais: snap.docs.length > limite, documentos: docs };
     }
     case 'contar': {
+      if (!caminhoLiberado(a.colecao, 'colecao')) return { erro: FORA_DO_ALCANCE };
       const snap = await montarConsulta(db, a).count().get();
       return { colecao: a.colecao, total: snap.data().count };
     }
@@ -160,4 +201,4 @@ async function executarBanco(db, nome, args) {
   }
 }
 
-module.exports = { FERRAMENTAS_BANCO, executarBanco, enxugar, escolherCampos };
+module.exports = { FERRAMENTAS_BANCO, executarBanco, enxugar, escolherCampos, caminhoLiberado, semSegredos, COLECOES_DA_IA };

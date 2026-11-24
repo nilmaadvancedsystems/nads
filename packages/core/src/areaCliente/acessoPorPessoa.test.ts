@@ -1,6 +1,6 @@
 // A Área do Cliente com senha, uma por pessoa (18/11/2026).
 import { describe, expect, it } from 'vitest';
-import { clienteAbreOLink, erroDaPessoa, mesmasPermissoes, permissoesPorEmail } from './acessoPorPessoa';
+import { clienteAbreOLink, contaPrecisaZerar, erroDaPessoa, mesmasPermissoes, permissoesPorEmail } from './acessoPorPessoa';
 
 const t = (c: string) => c.repeat(40);
 
@@ -33,5 +33,12 @@ describe('o acesso por pessoa', () => {
     expect(clienteAbreOLink({ cliente: true, a: [t('a')] }, t('a'))).toBe(true);
     expect(clienteAbreOLink({ cliente: true, a: [t('a')] }, t('b'))).toBe(false);
     expect(clienteAbreOLink({ a: [t('a')] }, t('a'))).toBe(false);
+  });
+});
+
+describe('a conta que já existia (auditoria de segurança, 24/11/2026)', () => {
+  it('só a conta com a marca de cliente, que o robô põe, escapa de ter a senha zerada', () => {
+    expect([null, undefined, {}, { cliente: false }, { cliente: 'true' }, { admin: true }].map(contaPrecisaZerar)).toEqual([true, true, true, true, true, true]);
+    expect(contaPrecisaZerar({ cliente: true, a: [] })).toBe(false);
   });
 });

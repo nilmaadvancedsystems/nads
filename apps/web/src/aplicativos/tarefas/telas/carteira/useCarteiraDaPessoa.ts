@@ -296,8 +296,11 @@ export function useComissoesDaEquipe() {
   const [janela, setJanela] = useState<'' | 'registrar' | 'servicos'>('');
   const doMes = repo.comissoesDoMes(m.mes);
   const [dev] = useModoDesenvolvedor();
+  // o que não bate (o valor, a %, o valor do serviço) aparece na linha antes do Marcar como pago (auditoria, 24/11/2026)
+  const servicos = repo.servicos();
   return {
     m, exemplos: repo.exemplos, dev, teste: useTesteDaCarteira(), carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
+    avisos: (c: carteira.Comissao) => (servicos.carregada ? carteira.avisosDaComissao(c, servicos.lista) : []),
     resumo: carteira.resumoParaPagar(doMes.lista), totais: carteira.totaisDasComissoes(doMes.lista),
     aberta, alternar: (uid: string) => setAberta(a => (a === uid ? '' : uid)), fazendo, janela, setJanela,
     /** aprovar, recusar (com o motivo), marcar como pago (confirma antes) ou voltar para lançada */

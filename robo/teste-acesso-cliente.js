@@ -24,6 +24,7 @@ const auth = {
   createUser: async ({ email }) => { const u = { uid: 'uid-' + (++n), email, customClaims: null }; contas.set(email, u); chamadas.push('criar ' + email); return u; },
   setCustomUserClaims: async (uid, c) => { for (const u of contas.values()) if (u.uid === uid) u.customClaims = c; chamadas.push('permissoes ' + uid + ' ' + c.a.length); },
   revokeRefreshTokens: async uid => { chamadas.push('derrubar ' + uid); },
+  updateUser: async (uid, c) => { chamadas.push('senha ' + uid + ' ' + (c.password && c.password.length >= 32 ? 'aleatoria' : '?')); },
 };
 const ouvintes = {};
 const ouvir = (nome, _c, f) => { ouvintes[nome] = f; return () => {}; };
@@ -65,6 +66,19 @@ const snap = docs => ({ docs: docs.map(([id, x]) => ({ id, data: () => x, get: k
     chamadas.length = 0;
     await r.rodar();
     assert.deepStrictEqual(chamadas, [], 'sem mudança, sem chamada');
+    // a conta que um estranho criou antes com o e-mail do cliente (auditoria de segurança, 24/11/2026): senha zerada e sessões
+    // derrubadas antes dos links; a que o robô já marcou como cliente, não
+    contas.set('ana@loja.com', { uid: 'uid-estranho', email: 'ana@loja.com', customClaims: null });
+    chamadas.length = 0;
+    ouvintes['Acesso do cliente: pessoas'](snap([
+      ['462_maria', { codigo: 462, nome: 'Maria', email: 'maria@padaria.com', ativo: true, situacao: 'pronto' }],
+      ['462_ana', { codigo: 462, nome: 'Ana', email: 'ana@loja.com', ativo: true }],
+    ]));
+    await r.rodar();
+    assert.deepStrictEqual(chamadas.slice(0, 2), ['senha uid-estranho aleatoria', 'derrubar uid-estranho'], 'zera antes de dar os links');
+    assert.deepStrictEqual(contas.get('ana@loja.com').customClaims, { cliente: true, a: [T1] });
+    assert.ok(!chamadas.some(c => c.includes('uid-1 ')) || !chamadas.some(c => c.startsWith('senha uid-1')), 'a Maria (já cliente) não é zerada');
+
     console.log('teste-acesso-cliente: ok');
   } finally { r.parar(); }
 })().catch(e => { console.error(e); process.exit(1); });

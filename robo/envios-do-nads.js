@@ -242,6 +242,8 @@ function caminhoDoExtratoNoIndice(itens, clienteId, ex, sub = 'BANCÁRIOS', nome
 }
 
 /** Grava o extrato direto na pasta do banco (pela API do Drive). null = não dá (não é extrato, empresa fora do mapa, outro ano). */
+const { envioDoMandeiConferido } = require('./mandei-conferir');
+
 async function gravarNaPastaDoBanco(db, drive, envio, c) {
   const comp = extratoDoNome(c.nome) ? null : comprovanteDoNome(c.nome);
   const ex = extratoDoNome(c.nome) || comp;
@@ -304,8 +306,19 @@ function iniciarEnviosDoNads(db, log) {
   async function tratar(doc) {
     if (tratando.has(doc.id)) return;
     tratando.add(doc.id);
-    const envio = doc.data();
+    let envio = doc.data();
     try {
+      // o envio do cliente pelo Mandei: a empresa, o cliente e o mês são os do link, não os que o navegador mandou
+      if (envio.criadoPorUid === 'mandei') {
+        const link = envio.ticket ? await db.collection('ticketsLinks').doc(String(envio.ticket)).get() : null;
+        envio = envioDoMandeiConferido(envio, link && link.exists ? link.data() : null);
+        if (envio.erro) {
+          await apagarPartes(doc.ref);
+          await doc.ref.update({ status: 'erro', erro: envio.erro, prontoEm: new Date().toISOString() });
+          log('envio do Mandei recusado (' + envio.erro + '):', envio.nome);
+          return;
+        }
+      }
       await doc.ref.update({ status: 'gravando', gravandoEm: new Date().toISOString() });
       const ps = await doc.ref.collection('partes').get();
       const c = montarEnvio(envio, ps.docs.map(d => ({ n: Number(d.id), dados: d.get('dados') })));
@@ -454,5 +467,5 @@ function iniciarDestinoDosEnvios(db, log) {
   }, log);
 }
 
-module.exports = { extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
+module.exports = { envioDoMandeiConferido, extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
   gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios };

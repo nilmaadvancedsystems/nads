@@ -47,7 +47,9 @@ export function ComissoesDaEquipe() {
                   return (
                     <Fragment key={p.uid}>
                       <tr className="linha-abre" tabIndex={0} title={aberta === p.uid ? 'Fechar' : 'Ver as comissões'} onClick={() => vm.alternar(p.uid)} onKeyDown={e => { if (e.key === 'Enter') vm.alternar(p.uid); }}>
-                        <td><Icone nome={aberta === p.uid ? 'caretDown' : 'chevronRight'} width={14} height={14} /> <b>{p.nome}</b></td>
+                        <td><Icone nome={aberta === p.uid ? 'caretDown' : 'chevronRight'} width={14} height={14} /> <b>{p.nome}</b>
+                          {dela.some(c => vm.avisos(c).length > 0) && <span className="badge badge-danger" title="Alguma comissão não bate com a tabela: abra para ver"><Icone nome="alert" width={12} height={12} />Conferir</span>}
+                        </td>
                         <td className="num">{p.quantas}</td>
                         <td className="num"><b>{p.aRevisar + p.aPagar ? formatos.reais(p.aRevisar + p.aPagar) : '—'}</b></td>
                         <td className="num">{p.pagas ? formatos.reais(p.pagas) : '—'}</td>
@@ -58,7 +60,9 @@ export function ComissoesDaEquipe() {
                       {aberta === p.uid && dela.map(c => (
                         <tr key={c.id} className="cart-sublinha">
                           <td className="fraco">{c.data.split('-').reverse().join('/')} · {c.cliente}</td>
-                          <td className="fraco">{c.descricao}{c.motivo ? ' · ' + c.motivo : ''}</td>
+                          <td className="fraco">{c.descricao}{c.motivo ? ' · ' + c.motivo : ''}
+                            {vm.avisos(c).map(a => <span key={a} className="registro-dica registro-dica-erro"><Icone nome="alert" />{a}</span>)}
+                          </td>
                           {/* a escondida (16/11/2026): o valor só depois que o robô calcula; o do serviço não aparece */}
                           <td className="num">{carteira.esperandoCalculo(c) ? <span className="fraco">{c.calculo === 'erro' ? 'Sem cálculo' : 'Calculando…'}</span> : formatos.reais(c.valor)}</td>
                           <td><SeloDaComissao s={c.situacao} semAprovacao /></td>

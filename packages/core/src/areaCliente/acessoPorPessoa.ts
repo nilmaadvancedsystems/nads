@@ -60,6 +60,18 @@ export function mesmasPermissoes(atual: unknown, nova: PermissoesDoCliente): boo
   return !!a && a.cliente === true && Array.isArray(a.a) && a.a.length === nova.a.length && a.a.every((t, i) => t === nova.a[i]);
 }
 
+/**
+ * A conta que JÁ existia com o e-mail da pessoa (auditoria de segurança, 24/11/2026): o cadastro por e-mail e senha do Firebase
+ * é aberto (a chave do app é pública), então um estranho podia criar a conta com o e-mail do cliente antes do escritório
+ * cadastrar a pessoa, com a senha dele, e o robô só punha os links nela. Conta sem a marca de cliente (que só o robô põe) não
+ * foi feita pelo robô: antes dos links, o robô troca a senha por uma aleatória e derruba as sessões; a pessoa cria a dela
+ * pelo e-mail (o Pedir senha), o que prova que o e-mail é dela.
+ */
+export function contaPrecisaZerar(permissoes: unknown): boolean {
+  const p = permissoes && typeof permissoes === 'object' ? (permissoes as { cliente?: unknown }) : null;
+  return !p || p.cliente !== true;
+}
+
 /** O cliente logado abre este link? (a mesma conta da regra do banco, para a tela não prometer o que o banco nega) */
 export function clienteAbreOLink(permissoes: unknown, token: string): boolean {
   const p = permissoes && typeof permissoes === 'object' ? (permissoes as { cliente?: unknown; a?: unknown }) : null;

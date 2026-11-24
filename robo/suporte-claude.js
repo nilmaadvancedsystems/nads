@@ -22,6 +22,7 @@ const { spawn } = require('child_process');
 const CLAUDE = process.env.CLAUDE_EXE || path.join(os.homedir(), '.local', 'bin', 'claude.exe');
 const MODELO = process.env.SUPORTE_MODELO || 'claude-opus-5-5';
 const RAIZ = path.join(__dirname, '..');
+const { limparSegredos } = require('./limpar-segredos');
 const PASTA = path.join(os.tmpdir(), 'nads-suporte');
 const LIMITE_MS = 15 * 60000;
 const ESPERA_DOS_PEDACOS_MS = 3 * 60000;
@@ -47,6 +48,9 @@ const INSTRUCOES = [
 ].join('\n');
 
 // Sem as variáveis de uma sessão do Claude que por acaso tenha ligado este programa (a mesma regra do arquivador).
+const SEM_LER = ['Read(./robo/*.json)', 'Read(./robo/.firebase-token)', 'Read(./robo/**/*.pfx)', 'Read(./robo/**/*.p12)', 'Read(**/.env*)',
+  'Read(~/.config/**)', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/AppData/**)'];
+
 function ambienteLimpo() {
   const env = Object.assign({}, process.env);
   Object.keys(env).forEach(k => { if (/^CLAUDE_?CODE|^CLAUDECODE$|^ANTHROPIC_/.test(k)) delete env[k]; });
@@ -58,6 +62,10 @@ function perguntarAoClaude(pedido, pastaDoArquivo) {
   return new Promise((resolve, reject) => {
     const args = ['-p', pedido, '--model', MODELO, '--append-system-prompt', INSTRUCOES,
       '--tools', 'Read,Grep,Glob,Bash', '--allowedTools', 'Read,Grep,Glob,Bash(node robo/suporte-ler.js:*)',
+      // os segredos que ficam no PC fora do git (auditoria de segurança, 24/11/2026): o texto do bug é de quem manda, e o
+      // relatório volta para ele; o Claude não lê token, credencial nem o login do firebase-tools (o limparSegredos ainda
+      // passa no relatório)
+      '--disallowedTools', SEM_LER.join(','),
       '--permission-mode', 'dontAsk', '--add-dir', pastaDoArquivo, '--setting-sources', 'project',
       '--strict-mcp-config', '--no-session-persistence', '--output-format', 'text'];
     const filho = spawn(CLAUDE, args, { cwd: RAIZ, env: ambienteLimpo(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -166,7 +174,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
       const fim = relatorio.trim().split('\n').pop().replace(/[*_.\s]+/g, ' ').trim().toLowerCase();
       if (!VEREDITOS.some(v => fim.endsWith(v.toLowerCase()))) relatorio += '\n\nPrecisa da sua análise';
       vigia.voltou();
-      await ref.update({ analise: 'pronta', relatorio: relatorio.slice(0, 20000), analisadoEm: new Date().toISOString() });
+      await ref.update({ analise: 'pronta', relatorio: limparSegredos(relatorio).slice(0, 20000), analisadoEm: new Date().toISOString() });
       log('[suporte] report pronto', id);
     } catch (err) {
       if (LOGIN_VENCIDO.test(err.message)) {

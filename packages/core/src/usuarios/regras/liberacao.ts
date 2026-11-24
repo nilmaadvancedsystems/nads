@@ -47,8 +47,14 @@ const texto = (v: unknown) => (v == null ? '' : String(v));
 /** O id da sessão liberada: o usuário e a hora do login. */
 export const idDaSessao = (uid: string, authTime: string) => uid + '_' + authTime;
 
+/**
+ * O sorteio do código: o gerador criptográfico do navegador (auditoria de segurança, 24/11/2026: o Math.random é previsível
+ * para quem vê outros números dele). Um número de 0 a 1, como o Math.random.
+ */
+export const sorteioSeguro = (): number => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+
 /** Um código de 6 dígitos (o sorteio vem de fora, para dar para testar). */
-export function codigoNovo(sortear: () => number = Math.random): string {
+export function codigoNovo(sortear: () => number = sorteioSeguro): string {
   return String(Math.floor(sortear() * 1_000_000)).padStart(6, '0');
 }
 
