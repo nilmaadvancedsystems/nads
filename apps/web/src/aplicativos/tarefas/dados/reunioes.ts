@@ -20,6 +20,8 @@ export interface RepoReunioes {
   remarcar(id: string, quando: string): Promise<void>;
   /** o convidado responde se vai */
   confirmar(id: string, vai: boolean): Promise<void>;
+  /** quem criou inicia a reunião (24/11/2026): fica Em andamento e o card para de piscar */
+  iniciar(id: string): Promise<void>;
   anexar(id: string, qual: QualArquivo, arquivo: ArquivoParaAnexar): Promise<void>;
   /** os bytes do arquivo, para baixar (null = não achou) */
   baixar(id: string, qual: QualArquivo): Promise<Uint8Array | null>;
@@ -48,8 +50,10 @@ function exemplos(eu: Pessoa): Reuniao[] {
     r.confirmarPresenca(r.decidir(base('rn-3', 'Alinhamento com o cliente novo', 'Entender a rotina da empresa antes do primeiro fechamento.', dia(1, '09:30'), eu, [clara, felipe], 30), true, 'Pode usar a sala de reunião.', nilma.nome, ha(20)), clara, true, ha(18)),
     // aprovada, pedida por outro, esperando a minha presença
     r.decidir(base('rn-9', 'Organização do arquivo morto', 'Quem separa as pastas de 2021 e onde guardar.', dia(2, '10:00'), fernando, [eu, clara], 26), true, '', nilma.nome, ha(22)),
-    // em andamento agora (o dia e a hora já passaram), com o Problema anexado
-    r.anexar(r.decidir(base('rn-4', 'Fechamento de outubro', 'O que ficou pendente e quem fecha cada empresa.', dia(0, '00:01'), eu, [clara, felipe], 50), true, '', nilma.nome, ha(40)), 'problema', arquivo('rn-4-p', 'problemas-outubro.pdf', eu.nome), eu.nome, ha(2)),
+    // hoje, ainda não iniciada: o card pisca em vermelho até quem criou clicar em Iniciar reunião (24/11/2026)
+    r.decidir(base('rn-10', 'Conferência do Simples Nacional', 'As empresas que mudam de anexo no mês.', dia(0, '07:30'), eu, [clara], 12), true, '', nilma.nome, ha(11)),
+    // em andamento agora (iniciada por quem criou), com o Problema anexado
+    r.anexar(r.iniciar(r.decidir(base('rn-4', 'Fechamento de outubro', 'O que ficou pendente e quem fecha cada empresa.', dia(0, '00:01'), eu, [clara, felipe], 50), true, '', nilma.nome, ha(40)), eu.nome, ha(3)), 'problema', arquivo('rn-4-p', 'problemas-outubro.pdf', eu.nome), eu.nome, ha(2)),
     // finalizada, esperando o meu comentário
     r.comentar(r.finalizar(r.anexar(r.anexar(r.decidir(base('rn-5', 'Padronizar os históricos', 'Os históricos do Contábil que cada um escreve de um jeito.', dia(-2, '14:00'), fernando, [clara, eu], 80), true, '', nilma.nome, ha(70)), 'problema', arquivo('rn-5-p', 'problema.docx', 'Fernando'), 'Fernando', ha(30)), 'solucao', arquivo('rn-5-s', 'solucao.xlsx', 'Fernando'), 'Fernando', ha(30)), 'Fernando', ha(29)), clara, 'Ficou claro; vou usar a planilha nova.', ha(20)),
     // concluída, esperando o Diretor encerrar
@@ -92,6 +96,7 @@ export function criarReunioesMemoria(quem: () => Pessoa | null, paraQuemUsa = fa
     async decidir(id, aprovar, observacao) { trocar(id, x => r.decidir(x, aprovar, observacao, eu().nome, agora())); },
     async remarcar(id, quando) { trocar(id, x => r.remarcar(x, quando, eu().nome, agora())); },
     async confirmar(id, vai) { trocar(id, x => r.confirmarPresenca(x, eu(), vai, agora())); },
+    async iniciar(id) { trocar(id, x => r.iniciar(x, eu().nome, agora())); },
     async anexar(id, qual, arquivo) {
       const anexoId = 'ax-' + idNovo();
       bytes.set(anexoId, arquivo.bytes);

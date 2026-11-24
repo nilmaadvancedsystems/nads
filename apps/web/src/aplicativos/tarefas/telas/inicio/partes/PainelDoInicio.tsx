@@ -115,10 +115,12 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             {vm.reunioes.map(r => (
               <CardDoQuadro key={'r' + r.id} abrir={() => abrir(r.id)}
                 // o Recebido da reunião vale como "vou" (Vitor, 18/11/2026, a opção 2): só o nome do botão muda
-                acao={r.espera === 'presenca' ? { rotulo: 'Recebido', fazer: () => vm.reunioesVm.confirmar(r.id, true) }
+                // quem criou inicia pelo card (24/11/2026): o vermelho piscando para
+                acao={r.podeIniciar ? { rotulo: 'Iniciar reunião', fazer: () => vm.reunioesVm.iniciar(r.id) }
+                  : r.espera === 'presenca' ? { rotulo: 'Recebido', fazer: () => vm.reunioesVm.confirmar(r.id, true) }
                   : r.espera === 'recebido' ? { rotulo: 'Recebido', fazer: () => void vm.marcarRecebido(r.id) } : null}
                 marca={<span className="ini-quadro-dia" aria-hidden="true"><b>{r.quando ? r.quando.slice(8, 10) : '—'}</b><small>{r.quando ? MESES[Number(r.quando.slice(5, 7)) - 1] : ''}</small></span>}
-                titulo={r.tituloNaLista} detalhe={'Reunião · ' + r.reuniao} pendente={!!r.espera} />
+                titulo={r.tituloNaLista} detalhe={'Reunião · ' + r.reuniao} pendente={!!r.espera} noDia={r.pisca} />
             ))}
             {vm.avisosNoQuadro.map(a => (
               <CardDoQuadro key={'a' + a.id} abrir={() => abrir(a.id)} aviso
@@ -175,9 +177,10 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
  * Um card do Quadro de avisos (modo desenvolvedor): ao passar o mouse (ou com o foco) o conteúdo embaça e aparece o botão no
  * meio — o Recebido (no aviso; na reunião, vale como "vou") ou, sem pendência, Abrir. No toque, o card só abre.
  */
-function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, acao, abrir }: { marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; acao: { rotulo: string; fazer: () => void } | null; abrir: () => void }) {
+function CardDoQuadro({ marca, titulo, detalhe, pendente, aviso, noDia, acao, abrir }: { marca: ReactNode; titulo: string; detalhe: string; pendente: boolean; aviso?: boolean; noDia?: boolean; acao: { rotulo: string; fazer: () => void } | null; abrir: () => void }) {
   return (
-    <div className={'ini-quadro-item' + (aviso ? ' aviso' : '') + (pendente ? ' pendente' : '')} role="button" tabIndex={0}
+    // noDia: a reunião de hoje que quem criou ainda não iniciou fica vermelha e pisca (24/11/2026)
+    <div className={'ini-quadro-item' + (aviso ? ' aviso' : '') + (pendente ? ' pendente' : '') + (noDia ? ' no-dia' : '')} role="button" tabIndex={0}
       onClick={abrir} onKeyDown={e => { if (e.key === 'Enter') abrir(); }}>
       <span className="ini-quadro-conteudo">
         {marca}

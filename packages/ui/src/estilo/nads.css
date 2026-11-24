@@ -7175,6 +7175,15 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-quadro-solto .ini-quadro-item{position:relative;overflow:hidden;}
 .ini-quadro-conteudo{display:flex;align-items:center;gap:12px;width:100%;min-width:0;transition:filter .15s,opacity .15s;}
 .ini-quadro-conteudo > svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
+/* a reunião de hoje que quem criou ainda não iniciou (Vitor, 24/11/2026: "No dia da reunião, muda a cor do card para vermelho
+   e a data para preto, e deixe piscando"): vermelho fixo (o modo desenvolvedor troca o --accent por azul) */
+@keyframes reuniaoDoDiaPisca{0%,100%{opacity:1;}50%{opacity:.55;}}
+.ini-quadro-item.no-dia,.ini-quadro-solto .ini-quadro-item.no-dia{background:#CF222E;border-color:#CF222E;color:#fff;animation:reuniaoDoDiaPisca 1.4s ease-in-out infinite !important;}
+.ini-quadro-item.no-dia:hover{border-color:#fff;}
+.ini-quadro-item.no-dia .ini-quadro-dia{background:#fff;color:#000;}
+.ini-quadro-item.no-dia .hint,.ini-quadro-item.no-dia .ini-quadro-conteudo > svg{color:rgba(255,255,255,.85);}
+.ini-quadro-item.no-dia:hover,.ini-quadro-item.no-dia:focus-within{animation:none !important;}
+@media (prefers-reduced-motion: reduce){.ini-quadro-item.no-dia{animation:none !important;}}
 .ini-quadro-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .15s;}
 @media (hover:hover){
   .ini-quadro-solto .ini-quadro-item:hover .ini-quadro-conteudo,.ini-quadro-solto .ini-quadro-item:focus-within .ini-quadro-conteudo{filter:blur(3px);opacity:.45;}

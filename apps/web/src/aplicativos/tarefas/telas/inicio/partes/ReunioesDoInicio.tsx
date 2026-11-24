@@ -219,6 +219,12 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
       {x.souResponsavel && x.semResposta.length > 0 && (x.status === 'aprovada' || x.status === 'remarcada') && <p className="hint">Ainda não responderam se vão: {x.semResposta.join(', ')}</p>}
 
       <div className="ini-reuniao-acoes">
+        {pode('iniciar') && (
+          <div className="ini-reuniao-linha">
+            <span>Começou? O card da reunião fica vermelho, piscando, até você iniciar.</span>
+            <button type="button" className="btn btn-primary" onClick={() => void vm.iniciar(x.id)}><Icone nome="check" />Iniciar reunião</button>
+          </div>
+        )}
         {pode('confirmar') && (
           <div className="ini-reuniao-linha">
             <span>Você vai?{x.minhaPresenca != null && <span className="fraco"> (respondeu: {x.minhaPresenca ? 'vou' : 'não vou'})</span>}</span>
