@@ -256,6 +256,12 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
         <ConfigLinha titulo="Emite nota de honorário">
           <Interruptor ligado={vm.emiteNotaHonorario === true} rotulo="Emite nota de honorário" onMudar={() => vm.definirNotaDeHonorario(vm.emiteNotaHonorario !== true)} />
         </ConfigLinha>
+        {/* está no SCI (Vitor, 24/11/2026: "ja que sairam do alterdata"): só as ligadas aparecem no minimum */}
+        {vm.comSci && (
+          <ConfigLinha titulo="Está no SCI" descricao="As empresas que saíram do Alterdata: só as ligadas aparecem no minimum.">
+            <Interruptor ligado={vm.noSci} rotulo="Está no SCI" onMudar={() => vm.definirNoSci(!vm.noSci)} />
+          </ConfigLinha>
+        )}
       </ConfigSecao>
     </>
   );

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -419,6 +419,20 @@ describe('a nota de honorário (07/10/2026)', () => {
     const nada = definirNotaDeHonorario(c, null, 'Vitor', AGORA);
     expect('emiteNotaHonorario' in nada).toBe(false);
     expect('emiteNotaHonorario' in documentoDoCadastro(nada)).toBe(false);
+  });
+});
+
+describe('está no SCI (24/11/2026)', () => {
+  it('liga e desliga; vai e volta do documento, com o histórico', () => {
+    const c = definirNoSci(vazio(), true, 'Vitor', AGORA);
+    expect(c.noSci).toBe(true);
+    expect(c.historico[0]).toMatchObject({ acao: 'Está no SCI', detalhe: 'Sim' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).noSci).toBe(true);
+    expect(definirNoSci(c, true, 'Vitor', AGORA)).toBe(c);
+    const fora = definirNoSci(c, false, 'Vitor', AGORA);
+    expect('noSci' in fora).toBe(false);
+    expect('noSci' in documentoDoCadastro(fora)).toBe(false);
+    expect(fora.historico[0]).toMatchObject({ detalhe: 'Não' });
   });
 });
 

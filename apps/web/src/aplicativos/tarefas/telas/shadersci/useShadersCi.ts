@@ -3,9 +3,10 @@
 // lançamento (novo ou editando), a tabela com a seleção, o copiar e colar (botão direito, Ctrl+C e Ctrl+V), o desfazer e a
 // planilha do gerador do SCI. Tudo fica só neste navegador, por empresa (o dono: "Só no navegador"): nada vai para o banco.
 import { sci } from '@nads/core';
-import { baixarBytes, useRetorno } from '@nads/ui';
+import { baixarBytes, useCarregando, useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useTodosOsCadastros } from '../../dados/repo';
 import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
@@ -26,6 +27,15 @@ function gravarGuardado(chave: string, g: Guardado) {
   try { localStorage.setItem(PREFIXO + chave, JSON.stringify(g)); } catch { /* sem espaço: fica só na tela */ }
 }
 
+// as empresas marcadas no SCI pelo ⚡ Dados de teste: só neste navegador, só no modo desenvolvedor
+const CHAVE_TESTE_SCI = 'nads-minimum-sci-teste';
+function lerTesteSci(): number[] {
+  try { const v = JSON.parse(localStorage.getItem(CHAVE_TESTE_SCI) || '[]'); return Array.isArray(v) ? v.filter((n): n is number => typeof n === 'number') : []; } catch { return []; }
+}
+function gravarTesteSci(codigos: number[]) {
+  try { if (codigos.length) localStorage.setItem(CHAVE_TESTE_SCI, JSON.stringify(codigos)); else localStorage.removeItem(CHAVE_TESTE_SCI); } catch { /* sem espaço */ }
+}
+
 let contador = 0;
 const idNovo = () => Date.now().toString(36) + (contador++).toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -39,9 +49,20 @@ const doLancamento = (l: sci.CamposDoLancamento): Formulario => ({
 });
 
 export function useShadersCi() {
-  const entrada = useLancatudo();
   const { toast, aviso } = useRetorno();
   const [dev] = useModoDesenvolvedor();
+  // só as empresas que estão no SCI (24/11/2026: "Apenas empresas que estão na sci"): o "Está no SCI" do Cadastro e, no
+  // modo desenvolvedor, as marcadas pelo ⚡ Dados de teste
+  const cadastros = useTodosOsCadastros();
+  useCarregando(!cadastros.carregada);
+  const [testeSci, setTesteSci] = useState<number[]>(lerTesteSci);
+  const doSci = useMemo(() => {
+    const s = new Set<number>();
+    for (const c of cadastros.porId.values()) if (c.noSci && c.codigo != null) s.add(c.codigo);
+    if (dev) for (const c of testeSci) s.add(c);
+    return s;
+  }, [cadastros.porId, testeSci, dev]);
+  const entrada = useLancatudo(doSci);
   const chave = entrada.empresa ? String(entrada.empresa.codigo) : null;
   const [guardado, setGuardado] = useState<Guardado>(() => lerGuardado(chave));
   const [daChave, setDaChave] = useState(chave);
@@ -220,8 +241,20 @@ export function useShadersCi() {
       if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
       else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento.' : ' lançamentos.'));
     },
+    /** a tela inicial: as empresas do SCI, por nome, e se a lista já chegou do banco */
+    empresasDoSci: entrada.lista,
+    carregada: cadastros.carregada,
     // o ⚡ Dados de teste (só no modo desenvolvedor; fica só neste navegador)
     teste: {
+      temSciDeTeste: testeSci.length > 0,
+      /** marca 4 empresas da lista como no SCI, só neste navegador */
+      marcarSci() {
+        const novas = entrada.todas.filter(e => !doSci.has(e.codigo)).slice(0, 4).map(e => e.codigo);
+        const todas = [...testeSci, ...novas];
+        setTesteSci(todas); gravarTesteSci(todas);
+        toast(novas.length + (novas.length === 1 ? ' empresa marcada' : ' empresas marcadas') + ' no SCI, só neste navegador.');
+      },
+      desmarcarSci() { setTesteSci([]); gravarTesteSci([]); },
       preencher() {
         const d = (dia: number) => ano + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
         const exemplos: sci.CamposDoLancamento[] = guardado.plano === '90113' ? [
