@@ -175,10 +175,12 @@ export function useAreaCliente() {
   // no endereço (24/11/2026: "quero ver como os termos da lgpd aparecem"; nada é gravado). O tutorial espera o "Concordo"
   // (24/11/2026: "Corrigir os dois"; antes, ele abria por cima da política)
   const verPolitica = area.exemplos && typeof location !== 'undefined' && new URLSearchParams(location.search).has('politica');
-  const politicaPendente = usePolitica(token, area.carregado && area.valido && !area.pedeLogin && (!area.exemplos || verPolitica));
+  // (24/11/2026: "eu abri no meu proprio navegador que ja tinha aceitado e nao foi") no exemplo, o ?politica mostra tudo de
+  // novo para demonstrar: a política mesmo já aceita e o tutorial mesmo já visto
+  const politicaPendente = usePolitica(token, area.carregado && area.valido && !area.pedeLogin && (!area.exemplos || verPolitica), verPolitica);
   useEffect(() => {
-    if (area.carregado && area.valido && token && !politicaPendente && !jaViuOTutorial(token)) setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
-  }, [area.carregado, area.valido, token, politicaPendente]);
+    if (area.carregado && area.valido && token && !politicaPendente && (verPolitica || !jaViuOTutorial(token))) setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
+  }, [area.carregado, area.valido, token, politicaPendente, verPolitica]);
 
   // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá. Desde 17/11/2026 (ficha
   // aviso-de-resposta do plano do Acessórias) o lido fica guardado neste aparelho e não volta a cada visita (sinoLido.ts)

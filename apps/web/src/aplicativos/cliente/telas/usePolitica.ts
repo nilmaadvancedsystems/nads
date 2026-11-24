@@ -13,12 +13,13 @@ const lerAceite = (token: string) => { try { return localStorage.getItem(chave(t
 const guardarAceite = (token: string, versao: string) => { try { localStorage.setItem(chave(token), versao); } catch { /* sem guardar: pede de novo na próxima */ } };
 
 /** Abre a janela quando precisa; devolve true enquanto o aceite está pendente (o tutorial espera). */
-export function usePolitica(token: string, pronta: boolean): boolean {
+/** de novo: mostra mesmo já aceita (a demonstração do exemplo com ?politica, 24/11/2026) */
+export function usePolitica(token: string, pronta: boolean, deNovo = false): boolean {
   const { modal } = useRetorno();
   const aberta = useRef(false);
   // o link aceito nesta visita (o localStorage não avisa a tela quando muda)
   const [aceitoAgora, setAceitoAgora] = useState('');
-  const pendente = pronta && !!token && aceitoAgora !== token && ac.precisaAceitar(lerAceite(token));
+  const pendente = pronta && !!token && aceitoAgora !== token && ac.precisaAceitar(deNovo ? '' : lerAceite(token));
   useEffect(() => {
     if (!pendente || aberta.current) return;
     aberta.current = true;

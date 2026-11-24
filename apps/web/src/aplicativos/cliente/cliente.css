@@ -1516,15 +1516,23 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 /* o tutorial do PC (24/11/2026: "bem cinematico", "o mais bonito e leve possivel"; depois "tira esse impact frame"):
    partes/cinemaDoTutorial.ts anima. A grade de pontinhos atrás do cartão (a onda do anime.js), a linha da moldura em
    cada passo; o CSS de entrada do balão sai (o anime.js faz). Só transform e opacity */
+/* sem a barra de rolagem da página com o tutorial aberto (24/11/2026: "scroll no tutorial"); a rolagem do próprio tutorial continua */
+html.cli-tut-aberto{scrollbar-width:none;}
+html.cli-tut-aberto::-webkit-scrollbar,html.cli-tut-aberto body::-webkit-scrollbar{display:none;width:0;}
 .cli-tut.cinema .cli-tut-balao{animation:none;}
+/* o cartão inteiro anda com o mouse (24/11/2026: "o quadrado inteiro nao o N") */
+.cli-tut.cinema{perspective:1100px;}
+.cli-tut.cinema .cli-tut-balao.cartao{will-change:transform;}
 .cli-tut.cinema .cli-tut-fundo{animation:none;}
+/* (24/11/2026: "ta muito acelerado as trocas") o destaque e a moldura deslizam até a parte nova devagar, e o balão também */
+/* com !important: o nível de animação "normal" do app desliga toda transição de CSS (com !important); a viagem do anel no
+   tutorial do PC é a transição escolhida pelo dono ("Só o anel viaja", 24/11/2026) e fica de fora dessa regra */
+.cli-tut.cinema .cli-tut-destaque.anda{transition:transform .75s cubic-bezier(.16,1,.3,1),width .75s cubic-bezier(.16,1,.3,1),height .75s cubic-bezier(.16,1,.3,1) !important;}
+.cli-tut.cinema .cli-tut-balao.anda{transition:left .75s cubic-bezier(.16,1,.3,1),top .75s cubic-bezier(.16,1,.3,1) !important;}
 .cli-tut-luz{position:absolute;left:50%;top:50%;width:900px;height:900px;margin:-450px 0 0 -450px;border-radius:50%;pointer-events:none;opacity:0;
   background:radial-gradient(circle,color-mix(in srgb,var(--accent) 16%,transparent) 0%,transparent 62%);}
-.cli-tut-voo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:3;}
-.cli-tut-voo > span{display:block;height:150px;opacity:0;}
-.cli-tut-voo svg{height:100%;width:auto;display:block;}
 .cli-tut-moldura{position:absolute;top:0;left:0;overflow:visible;pointer-events:none;}
-.cli-tut-moldura rect{fill:none;stroke:color-mix(in srgb,var(--accent) 85%,#fff);stroke-width:2;}
+.cli-tut-moldura rect{fill:none;stroke:color-mix(in srgb,var(--accent) 85%,#fff);stroke-width:2;transform-box:fill-box;transform-origin:center;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--accent) 60%,transparent));}
 
 /* a troca de empresa mais completa (13/11/2026: "muito simples"): a empresa aberta no alto com o regime e os atalhos;
    "Trocar para" com as outras (o nome em até duas linhas, o documento e quando foi aberta); a dica com o ícone */
@@ -2411,6 +2419,12 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 
 /* a política de privacidade (22/11/2026, ficha aceite-lgpd) */
 .cli-politica{max-height:50vh;overflow:auto;display:grid;gap:10px;text-align:left;}
+/* (24/11/2026: "esse valor fica escondido na lgpd") a janela cabe na tela: o título e o Concordo ficam à vista e só o texto
+   rola por dentro (antes, em tela baixa, a janela passava da tela e o título sumia em cima) */
+.modal.modal-centro:has(.cli-politica){display:flex;flex-direction:column;max-height:calc(100dvh - 32px);}
+.modal.modal-centro:has(.cli-politica) > *{flex:none;}
+.modal.modal-centro:has(.cli-politica) > :has(.cli-politica){flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+.modal.modal-centro:has(.cli-politica) .cli-politica{flex:1 1 auto;min-height:0;max-height:none;}
 .cli-politica h4{margin:0 0 2px;font-size:14px;}
 .cli-politica p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-muted);}
 

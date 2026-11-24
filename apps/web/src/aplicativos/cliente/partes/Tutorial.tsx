@@ -5,7 +5,7 @@
 // tela dele (o irPara). Teclado: → e Enter avançam, ← volta, Esc fecha. Os passos vêm de dados/tutorial.ts.
 import { Icone, MarcaN } from '@nads/ui';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { abertura, entradaDoPasso, festaDoFim, saidaDoCartao, temCinema } from './cinemaDoTutorial';
+import { abertura, entradaDoPasso, saidaDoCartao, saidaDoTutorial, temCinema } from './cinemaDoTutorial';
 import { createPortal } from 'react-dom';
 import { capitulosDoTutorial, ICONE_DO_CAPITULO, type PassoDoTutorial } from '../dados/tutorial';
 
@@ -21,6 +21,8 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   const [i, setI] = useState(0);
   const [alvo, setAlvo] = useState<Caixa | null>(null);
   const [procurando, setProcurando] = useState(false);
+  // o passo cuja parte não foi achada (a busca desistiu): o cartão vai para o meio
+  const [desistiu, setDesistiu] = useState('');
   const [tamanho, setTamanho] = useState({ w: 360, h: 220 });
   const balao = useRef<HTMLDivElement>(null);
   const raiz = useRef<HTMLDivElement>(null);
@@ -34,9 +36,21 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   const ultimo = i === passos.length - 1;
 
   const ir = useCallback((k: number) => { if (k >= 0 && k < passos.length) setI(k); }, [passos.length]);
-  const proximo = useCallback(() => { if (ultimo) onFechar(true); else ir(i + 1); }, [ultimo, onFechar, ir, i]);
+  // fechar no PC sem corte seco (24/11/2026): a tela do começo abre por baixo, ainda coberta, e o tutorial se dissolve
+  const fechando = useRef(false);
+  const fechar = useCallback((concluiu: boolean) => {
+    if (!cinema || !raiz.current) { onFechar(concluiu); return; }
+    if (fechando.current) return;
+    fechando.current = true;
+    const tudo = !passos[0]?.alvo;
+    if (concluiu && tudo) irPara('inicio');
+    // um quadro para a tela do começo desenhar antes de dissolver
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (raiz.current) saidaDoTutorial(raiz.current, () => onFechar(concluiu)); else onFechar(concluiu); }));
+  }, [cinema, onFechar, irPara, passos]);
+  const proximo = useCallback(() => { if (ultimo) fechar(true); else ir(i + 1); }, [ultimo, fechar, ir, i]);
 
-  // abre a tela do passo (se precisar)
+  // abre a tela do passo (se precisar). No PC a troca de tela não tem efeito: quem faz a transição é o anel, que desliza
+  // da parte antiga até a nova (24/11/2026, o dono escolheu "Só o anel viaja" depois de véu, deslize, fusão e fade)
   useEffect(() => { if (passo?.aba && passo.aba !== abaAtual) irPara(passo.aba); }, [passo, abaAtual, irPara]);
 
   // acha a parte (a tela nova pode demorar um pouco), rola até ela e acompanha onde está (a rolagem, a janela que muda)
@@ -50,9 +64,10 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   useEffect(() => {
     setAndando(true);
     setAssentou(false);
-    const t = setTimeout(() => setAndando(false), 700);
+    // no PC o deslizar é mais lento (0,75 s): o "anda" dura um pouco mais
+    const t = setTimeout(() => setAndando(false), cinema ? 950 : 700);
     return () => clearTimeout(t);
-  }, [passo]);
+  }, [passo, cinema]);
   useEffect(() => {
     if (!passo?.alvo) { setAlvo(null); setProcurando(false); return; }
     setProcurando(true);
@@ -86,7 +101,7 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
             if (!el.closest('.cli-topo, .cli-abas-baixo, .cli-lateral') && r1.top < cima + 8) window.scrollBy({ top: r1.top - cima - 12, behavior: 'auto' });
           }
         }
-        else if (performance.now() - inicio > 2500) { setProcurando(false); return; }
+        else if (performance.now() - inicio > 2500) { setProcurando(false); setDesistiu(passo.id); return; }
       }
       if (el) {
         const r = el.getBoundingClientRect();
@@ -122,6 +137,11 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
 
   // a página atrás não rola com o tutorial aberto (24/11/2026: "quando eu estou com o tutorial aberto da para escrollar"):
   // a roda, o toque e as teclas de rolar param aqui; a rolagem do próprio tutorial (scrollIntoView) continua
+  // e a barra de rolagem da página some enquanto o tutorial está aberto (24/11/2026: "scroll no tutorial")
+  useEffect(() => {
+    document.documentElement.classList.add('cli-tut-aberto');
+    return () => document.documentElement.classList.remove('cli-tut-aberto');
+  }, []);
   useEffect(() => {
     const parar = (e: Event) => e.preventDefault();
     const teclas = (e: KeyboardEvent) => { if ([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown'].includes(e.key) && !(e.target instanceof HTMLButtonElement && e.key === ' ')) e.preventDefault(); };
@@ -134,16 +154,18 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   // o teclado
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onFechar(false); }
+      if (e.key === 'Escape') { e.preventDefault(); fechar(false); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); proximo(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); ir(i - 1); }
     };
     window.addEventListener('keydown', tecla);
     return () => window.removeEventListener('keydown', tecla);
-  }, [onFechar, proximo, ir, i]);
+  }, [fechar, proximo, ir, i]);
 
   const pronto = !!alvo && !!passo && alvo.id === passo.id;
-  const noMeio = !passo?.alvo || (!procurando && !pronto);
+  // (24/11/2026, "Só o anel viaja") o anel fica na parte antiga enquanto a nova é procurada, e desliza até ela: antes, no
+  // primeiro desenho do passo novo, ele sumia e nascia já no lugar novo (um pulo, sem viagem)
+  const noMeio = !passo?.alvo || (!procurando && !pronto && (alvo == null || desistiu === passo.id));
   const escondido = !noMeio && (!pronto || !assentou);
   const lugar = alvo && !noMeio ? ondeFicaOBalao(alvo, tamanho) : null;
   const n = passos.length;
@@ -158,7 +180,8 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   useLayoutEffect(() => {
     if (!cinema || !idDoPasso || !raiz.current || !balao.current) return;
     if (primeiro && noMeio) { const a = abertura(raiz.current, balao.current); return () => { a.revert(); }; }
-    if (fim) { const a = festaDoFim(balao.current); return () => { a.revert(); }; }
+    // o "Tudo pronto!" entra igual ao começo (24/11/2026)
+    if (fim) { const a = abertura(raiz.current, balao.current); return () => { a.revert(); }; }
     if (!noMeio && !escondido) { const a = entradaDoPasso(balao.current, moldura.current); return () => { a.revert(); }; }
   }, [cinema, idDoPasso, primeiro, fim, noMeio, escondido]);
   // Começar, no PC: o cartão sai para a frente e as faixas se recolhem antes do primeiro passo
@@ -182,9 +205,8 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
         ? <div className={'cli-tut-destaque' + (andando ? ' anda' : '')} style={{ transform: `translate(${alvo.x}px, ${alvo.y}px)`, width: alvo.w, height: alvo.h }} aria-hidden="true" />
         : <div className="cli-tut-fundo" aria-hidden="true" />}
       {/* o PC (24/11/2026): a grade de pontinhos na entrada e a linha que percorre a volta da parte em cada passo */}
-      {/* a entrada do PC (24/11/2026, "Do N para o cartão"): o holofote fraco atrás e o N grande que voa até o cartão */}
-      {cinema && primeiro && <div className="cli-tut-luz" aria-hidden="true" />}
-      {cinema && primeiro && <div className="cli-tut-voo" aria-hidden="true"><span><MarcaN /></span></div>}
+      {/* a entrada do PC (24/11/2026, "Do N para o cartão"): o holofote fraco atrás (o N fica parado no cartão) */}
+      {cinema && (primeiro || fim) && <div className="cli-tut-luz" aria-hidden="true" />}
       {cinema && alvo && !noMeio && (
         <svg key={'m-' + passo.id} className="cli-tut-moldura" style={{ transform: `translate(${alvo.x - 3}px, ${alvo.y - 3}px)` }} width={alvo.w + 6} height={alvo.h + 6} aria-hidden="true">
           <rect ref={moldura} x={1.5} y={1.5} width={alvo.w + 3} height={alvo.h + 3} rx={16} />
@@ -205,7 +227,7 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
             {i > 0 && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)} aria-label="Voltar ao passo anterior"><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
             <span className="cli-tut-ico" aria-hidden="true"><Icone nome={passo.icone} width={16} height={16} /></span>
             <span className="cli-tut-conta"><b>{passo.capitulo}</b> · {nDoPasso} de {totalDePassos}</span>
-            <button type="button" className="cli-tut-x" onClick={() => onFechar(false)} aria-label="Fechar o tutorial" title="Fechar (Esc)"><Icone nome="x" width={14} height={14} /></button>
+            <button type="button" className="cli-tut-x" onClick={() => fechar(false)} aria-label="Fechar o tutorial" title="Fechar (Esc)"><Icone nome="x" width={14} height={14} /></button>
           </div>
         )}
         <h2 id="cli-tut-titulo">{passo.titulo}</h2>
@@ -232,7 +254,7 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
         <div className="cli-tut-pe">
           {primeiro ? (
             <>
-              <button type="button" className="btn btn-ghost" onClick={() => onFechar(false)}>Agora não</button>
+              <button type="button" className="btn btn-ghost" onClick={() => fechar(false)}>Agora não</button>
               <button type="button" ref={principal} className="btn btn-primary" onClick={comecar} disabled={saindo}>Começar<Icone nome="chevronRight" width={16} height={16} /></button>
             </>
           ) : fim ? (
@@ -242,7 +264,7 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
             </>
           ) : (
             <>
-              <button type="button" className="cli-tut-pular" onClick={() => onFechar(false)}>Pular</button>
+              <button type="button" className="cli-tut-pular" onClick={() => fechar(false)}>Pular</button>
               <span className="cli-tut-botoes">
                 {ultimo
                   ? <button type="button" ref={principal} className="btn btn-sm btn-primary" onClick={proximo}><Icone nome="check" width={16} height={16} />Entendi</button>
