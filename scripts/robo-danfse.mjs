@@ -38,6 +38,8 @@ const codigo = [
   'export { notasDoMes, listaDeNotasDoMes } from ' + caminho('packages/core/src/areaCliente/notasDoMes.ts') + ';',
   'export { erroDaLogo } from ' + caminho('packages/core/src/areaCliente/logo.ts') + ';',
   'export { chaveDoPedidoDeDanfe, idDaDanfe, partesDaChave } from ' + caminho('packages/core/src/areaCliente/pedidoDeDanfe.ts') + ';',
+  // os documentos antigos do RH sob pedido (ficha 37, 24/11/2026)
+  'export { idDoPedidoDeDocumentoDp, mesComArquivoDp, MESES_COM_ARQUIVO_DP, MESES_NA_LISTA_DP, textoDoPdf, informeDaEmpresa, anoDoInforme } from ' + caminho('packages/core/src/areaCliente/documentoAntigo.ts') + ';',
   // os vencimentos da agenda do cliente com os feriados (17/11/2026, ficha E01 do plano do Acessórias): o robô faz a mesma
   // conta do site pelo calendário único, em vez de uma cópia (robo/area-cliente-regras.js)
   // o certificado A1 do cofre na Área do Cliente (17/11/2026, ficha certificado-digital)

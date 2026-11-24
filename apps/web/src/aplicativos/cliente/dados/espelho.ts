@@ -302,6 +302,8 @@ export function lerDocumentoDp(id: string, x: unknown): ac.DocumentoDoDp | null 
     tipo: 'dp', id, nome: texto(d.nome).trim(), categoria: (CATEGORIAS_DP.has(texto(d.categoria)) ? texto(d.categoria) : 'outro') as ac.CategoriaDoDp,
     competencia: texto(d.competencia), tamanho: typeof d.tamanho === 'number' ? d.tamanho : 0, funcionario: texto(d.funcionario),
     partes: typeof d.partes === 'number' && d.partes >= 0 ? Math.floor(d.partes) : 0,
+    // o mês antigo, sob pedido (ficha 37, 24/11/2026)
+    ...(d.sobPedido === true ? { sobPedido: true } : {}),
   };
 }
 

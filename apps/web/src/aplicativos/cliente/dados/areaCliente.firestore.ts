@@ -529,6 +529,26 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     async baixarDocumentoDp(token, id) {
       if (!ehTokenDoLink(token) || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
       try {
+        // o mês antigo (ficha 37, 24/11/2026): o PDF não está no espelho; pede ao robô pela caixa dos chamados (como a
+        // DANFE) e espera os pedaços chegarem (até 2 minutos)
+        const meta = ultimo.get(token)?.documentosDp?.find(d => d.id === id);
+        if (meta?.sobPedido && !(meta.partes > 0)) {
+          const pedido = ac.pedidoDeDocumentoDp(id);
+          if (!pedido) return null;
+          const banco = abrir();
+          const ref = doc(banco, 'areasCliente', token, 'documentos', id);
+          const inicio = new Date(Date.now() - 60_000).toISOString();
+          await addDoc(collection(banco, 'areaClienteChamados'), { token, ...pedido, criadoEm: serverTimestamp() });
+          const chegou = await new Promise<boolean>(ok => {
+            const fim = setTimeout(() => { parar(); ok(false); }, 120_000);
+            const parar = onSnapshot(ref, s => {
+              const x = s.data();
+              if (x && Number(x.partes) > 0) { clearTimeout(fim); parar(); ok(true); }
+              else if (x && x.erro && String(x.atualizadoEm || '') >= inicio) { clearTimeout(fim); parar(); ok(false); }
+            }, () => { clearTimeout(fim); parar(); ok(false); });
+          });
+          if (!chegou) return null;
+        }
         const s = await getDocs(query(collection(abrir(), 'areasCliente', token, 'documentos'), where('de', '==', id)));
         const pedacos: PedacoDoPdf[] = s.docs.map(d => d.data()).filter(x => typeof x.base64 === 'string' && typeof x.n === 'number' && typeof x.total === 'number')
           .map(x => ({ base64: x.base64 as string, n: x.n as number, total: x.total as number }));

@@ -56,5 +56,7 @@ export * from './faturamento';
 export * from './notasDoMes';
 export * from './logo';
 export * from './pedidoDeDanfe';
+// os documentos antigos do RH sob pedido (ficha 37, 24/11/2026)
+export * from './documentoAntigo';
 export * from './acessoPorPessoa';
 export * from './emailDeSenha';

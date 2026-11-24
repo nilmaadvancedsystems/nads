@@ -70,9 +70,12 @@ export function useDp({ token, area, hoje }: DaCasca) {
 
   async function baixar(id: string) {
     setBaixando(id);
+    // o mês antigo vem do escritório na hora (ficha 37): avisa que leva alguns segundos
+    const antigo = area.documentosDp.find(d => d.id === id);
+    if (antigo?.sobPedido && !(antigo.partes > 0)) toast('Buscando o arquivo no escritório. Leva alguns segundos.');
     try {
       const r = await repoAreaCliente.baixarDocumentoDp(token, id);
-      if (r) baixarArquivo(r.nome, r.arquivo); else toast('Não achamos este arquivo agora. Peça ao escritório em Solicitações.');
+      if (r) baixarArquivo(r.nome, r.arquivo); else toast('Não achamos este arquivo agora. Tente de novo em alguns minutos ou peça ao escritório em Solicitações.');
     } finally { setBaixando(''); }
   }
 
@@ -83,7 +86,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
   // sem a extensão (o ícone já diz o tipo) e, na ficha da pessoa, sem o nome dela de novo (12/11/2026)
   const linhaDoDoc = (d: ac.DocumentoDoDp, naFicha = false) => ({
     id: d.id, nome: d.nome.replace(/\.[a-z0-9]{2,5}$/i, ''), formato: formatoPeloNome(d.nome), dono: d.funcionario && !naFicha ? nomeDe.get(d.funcionario) ?? '' : '',
-    detalhe: [mesBr(d.competencia), d.tamanho ? ac.tamanhoLegivel(d.tamanho) : ''].filter(Boolean).join(' · '), podeBaixar: d.partes > 0,
+    detalhe: [mesBr(d.competencia), d.tamanho ? ac.tamanhoLegivel(d.tamanho) : ''].filter(Boolean).join(' · '),
+    // o mês antigo também baixa: o escritório manda na hora (ficha 37, 24/11/2026)
+    podeBaixar: d.partes > 0 || !!d.sobPedido,
   });
   const b = sem(busca.trim());
   // a equipe: os ativos ou quem saiu (um ou outro), com a busca

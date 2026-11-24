@@ -388,8 +388,11 @@ function iniciarAreaDoCliente(db, log) {
 
   // ---------- 6. o Registro ----------
   const dpNoEspelho = new Map();      // token → Set(ids dos documentos do DP no espelho)
+  const caminhosDp = new Map();       // 'token/id' → { arquivo, nome } dos meses antigos (ficha 37: o PDF sob pedido)
+  const servidosDp = new Set();       // 'token/id' dos antigos já entregues (os pedaços estão no espelho)
   const dpDoMes = new Map();          // 'AAAA-MM' → { em, clientes } (a lista dpArquivos do mês)
   const guiasLidas = new Map();       // 'origem|id|tamanho' → as guias do FGTS lidas daquele PDF
+  const informesLidos = new Map();    // 'inf|caminho|tamanho|data' → o informe é da empresa? (ficha 37)
   const folhasLidas = new Map();      // 'folha|id|tamanho' → { holerites, ferias } lidos daquele PDF (13/11/2026)
 
   /**
@@ -568,6 +571,8 @@ function iniciarAreaDoCliente(db, log) {
     await Promise.all(pedacos.docs.map(d => d.ref.delete()));
     await col.doc(id).delete();
     hashes.delete(token + '/documentos/' + id);
+    servidosDp.delete(token + '/' + id);
+    caminhosDp.delete(token + '/' + id);
   }
 
   /**
@@ -590,7 +595,11 @@ function iniciarAreaDoCliente(db, log) {
       guias.push(...guiasLidas.get(chave));
     }
     // os documentos do DP dos últimos meses, de cada empresa do link
-    const meses = Array.from({ length: MESES_DO_DP }, (_, k) => R.competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - k, 1)));
+    // (ficha 37, 24/11/2026) a lista vai a 12 meses; o PDF fica só nos 3 recentes, os outros vêm sob pedido
+    const mesesNaLista = P.MESES_NA_LISTA_DP || MESES_DO_DP;
+    const meses = Array.from({ length: mesesNaLista }, (_, k) => R.competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - k, 1)));
+    const deHoje = R.competenciaDe(hoje);
+    const recente = c => (P.mesComArquivoDp ? P.mesComArquivoDp(c, deHoje, MESES_DO_DP) : true);
     const docs = [];
     for (const mes of meses) {
       const clientesDoMes = await arquivosDoDp(mes);
@@ -604,8 +613,37 @@ function iniciarAreaDoCliente(db, log) {
         }
       }
     }
+    // o informe de rendimentos que a empresa emite aos funcionários (ficha 37; o dono, 24/11/2026: "Sim, pelo CNPJ"): da
+    // pasta CONTÁBIL/INFORME DE RENDIMENTOS dos dois últimos anos-base, só os em que a fonte pagadora é a própria empresa
+    // (o CNPJ escrito no PDF; os dos bancos ficam de fora). Cada PDF é lido uma vez (pelo caminho, tamanho e data)
+    for (const e of empresas) {
+      if (!P.informeDaEmpresa || !/^\d{14}$/.test(e.cnpj || '')) continue;
+      for (const ano of [hoje.getFullYear() - 1, hoje.getFullYear()]) {
+        const raiz = path.join(DRIVE, String(ano));
+        let cliente = null;
+        try { cliente = fs.readdirSync(raiz, { withFileTypes: true }).find(d => d.isDirectory() && d.name.startsWith(e.codigo + ' - ')); } catch (err) { continue; }
+        if (!cliente) continue;
+        const pasta = path.join(raiz, cliente.name, 'CONTÁBIL', 'INFORME DE RENDIMENTOS', String(ano));
+        let nomes = [];
+        try { nomes = fs.readdirSync(pasta).filter(n => /\.pdf$/i.test(n) && P.anoDoInforme(n) === ano); } catch (err) { continue; }
+        for (const nome of nomes) {
+          const arquivo = path.join(pasta, nome);
+          let st;
+          try { st = fs.statSync(arquivo); } catch (err) { continue; }
+          const chave = 'inf|' + arquivo + '|' + st.size + '|' + st.mtimeMs;
+          if (!informesLidos.has(chave)) {
+            let daEmpresa = false;
+            try { daEmpresa = P.informeDaEmpresa(P.textoDoPdf(await P.itensDoPdf(new Uint8Array(fs.readFileSync(arquivo)))), e.cnpj); } catch (err) { log('Registro: não li o informe ' + nome + ' -', err.message); }
+            informesLidos.set(chave, daEmpresa);
+          }
+          if (!informesLidos.get(chave)) continue;
+          const id = 'inf-' + require('crypto').createHash('sha1').update(arquivo).digest('hex').slice(0, 24);
+          docs.push({ id, nome: nome.slice(0, 200), pasta: 'CONTÁBIL/INFORME DE RENDIMENTOS', categoria: 'informe', competencia: ano + '-12', tamanho: st.size, arquivo });
+        }
+      }
+    }
     // as guias da pasta FGTS do Drive (o Detalhe da Guia, quando o DP salvou lá)
-    for (const d of docs.filter(x => x.categoria === 'fgts' && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
+    for (const d of docs.filter(x => recente(x.competencia) && x.categoria === 'fgts' && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
       const chave = 'drive|' + d.id + '|' + d.tamanho;
       if (!guiasLidas.has(chave)) {
         try { await guiasDoPdf(chave, fs.readFileSync(d.arquivo)); } catch (e) { guiasLidas.set(chave, []); }
@@ -616,7 +654,7 @@ function iniciarAreaDoCliente(db, log) {
     // completam o que as guias dão; sem eles, fica a estimativa pelas guias
     const holerites = [];
     const feriasDaFolha = [];
-    for (const d of docs.filter(x => ['folha', 'recibo', 'ferias'].includes(x.categoria) && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
+    for (const d of docs.filter(x => recente(x.competencia) && ['folha', 'recibo', 'ferias'].includes(x.categoria) && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
       const chave = 'folha|' + d.id + '|' + d.tamanho;
       if (!folhasLidas.has(chave)) {
         let bytes;
@@ -628,9 +666,28 @@ function iniciarAreaDoCliente(db, log) {
       if (lido.ferias) feriasDaFolha.push(lido.ferias);
     }
     const reg = P.registroComAFolha(P.registroDasGuias(guias), holerites, feriasDaFolha);
+    // o que já está no espelho (uma leitura depois de religar): os que têm o PDF lá ficam como estão quando o mês fica
+    // antigo, e os antigos já entregues sob pedido também (ficha 37, 24/11/2026)
+    let antes = dpNoEspelho.get(token);
+    if (!antes) {
+      const s = await espelhoDe(token).collection('documentos').where('tipo', '==', 'dp').select('partes').get();
+      antes = new Set(s.docs.map(x => x.id));
+      for (const x of s.docs) if (Number(x.get('partes')) > 0) servidosDp.add(token + '/' + x.id);
+    }
     const vivos = new Set();
     for (const d of docs) {
       if (vivos.has(d.id)) continue;
+      // o mês antigo (ficha 37): só na lista, sob pedido; guarda onde o arquivo está para quando o cliente pedir. O que já
+      // foi pedido e entregue (os pedaços no espelho) fica como está
+      if (!recente(d.competencia)) {
+        caminhosDp.set(token + '/' + d.id, { arquivo: d.arquivo, nome: d.nome });
+        if (servidosDp.has(token + '/' + d.id)) { vivos.add(d.id); continue; }
+        const velho = { tipo: 'dp', id: d.id, nome: d.nome, categoria: d.categoria, competencia: d.competencia, tamanho: d.tamanho,
+          funcionario: P.donoDoArquivo(d.nome, reg.funcionarios), partes: 0, sobPedido: true };
+        if (await gravar(token, 'documentos/' + d.id, velho, 'documentoDp')) gravados++;
+        vivos.add(d.id);
+        continue;
+      }
       const doc = { tipo: 'dp', id: d.id, nome: d.nome, categoria: d.categoria, competencia: d.competencia, tamanho: d.tamanho,
         funcionario: P.donoDoArquivo(d.nome, reg.funcionarios), partes: d.tamanho > MAIOR_ARQUIVO_DP ? 0 : pedacosDe(d.tamanho) };
       const ref = espelhoDe(token).collection('documentos').doc(d.id);
@@ -651,11 +708,10 @@ function iniciarAreaDoCliente(db, log) {
         }
       }
       if (await gravar(token, 'documentos/' + d.id, doc, 'documentoDp')) gravados++;
+      if (doc.partes > 0) servidosDp.add(token + '/' + d.id);
       vivos.add(d.id);
     }
-    // os que saíram (o mês ficou velho, o arquivo foi tirado da pasta)
-    let antes = dpNoEspelho.get(token);
-    if (!antes) antes = new Set((await espelhoDe(token).collection('documentos').where('tipo', '==', 'dp').select().get()).docs.map(x => x.id));
+    // os que saíram (o mês passou dos 12, o arquivo foi tirado da pasta)
     for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
     dpNoEspelho.set(token, vivos);
     // o resumo do pessoal: só quando tem funcionário ou documento (sem nada, a aba nem aparece para o cliente)
@@ -1173,6 +1229,9 @@ function iniciarAreaDoCliente(db, log) {
       // a guia que o cliente baixou (plano do Acessórias, 17/11/2026, ficha comprovante-de-leitura; frase do dono: "vamos continuar"): não vira chamado
       const guiaLida = doCore().guiaDoPedidoDeLeitura(atual.data());
       if (guiaLida) { await tratarLeitura(doc, atual.data(), guiaLida); return; }
+      // o documento antigo do RH pedido pelo cliente (ficha 37, 24/11/2026): não vira chamado
+      const idDocDp = doCore().idDoPedidoDeDocumentoDp ? doCore().idDoPedidoDeDocumentoDp(atual.data()) : '';
+      if (idDocDp) { await tratarDocumentoDp(doc, atual.data(), idDocDp); return; }
       const chaveDanfe = doCore().chaveDoPedidoDeDanfe(atual.data());
       if (chaveDanfe) { await tratarDanfe(doc, atual.data(), chaveDanfe); return; }
       const v = R.validarPedidoDeChamado(atual.data());
@@ -1345,6 +1404,43 @@ function iniciarAreaDoCliente(db, log) {
     }
     return xmlsGuardados.xmls.find(x => x.includes('Id="NFe' + chave + '"')) || null;
   }
+  // ---------- o documento antigo do RH sob pedido (ficha 37, 24/11/2026) ----------
+  // Só um documento deste link, marcado sobPedido no espelho e com o caminho conhecido (a última volta do espelho). Lê o
+  // arquivo da pasta do cliente e grava os pedaços; os pedaços primeiro, o documento por último (a tela espera por ele).
+  const LIMITE_DOCS_DP_POR_DIA = 100;
+  const docsDpHoje = { dia: '', porToken: {} };
+  async function tratarDocumentoDp(doc, p, id) {
+    const token = R.tokenValido(p.token) ? p.token : '';
+    const linkSnap = token ? await espelhoDe(token).get() : null;
+    if (!linkSnap || !linkSnap.exists) { log('Área do Cliente: pedido de documento do RH descartado (o link não existe)'); await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (docsDpHoje.dia !== dia) { docsDpHoje.dia = dia; docsDpHoje.porToken = {}; }
+    if ((docsDpHoje.porToken[token] || 0) >= LIMITE_DOCS_DP_POR_DIA) { log('Área do Cliente: pedido de documento do RH descartado (passou de ' + LIMITE_DOCS_DP_POR_DIA + ' hoje)'); await doc.ref.delete(); return; }
+    docsDpHoje.porToken[token] = (docsDpHoje.porToken[token] || 0) + 1;
+    const col = espelhoDe(token).collection('documentos');
+    const ref = col.doc(id);
+    const snap = await ref.get();
+    const falhar = async motivo => {
+      if (snap.exists) await ref.update({ erro: motivo, atualizadoEm: new Date().toISOString() });
+      await doc.ref.delete();
+      log('Área do Cliente: documento do RH sob pedido -', id, motivo);
+    };
+    if (!snap.exists || snap.get('tipo') !== 'dp' || snap.get('sobPedido') !== true) { await falhar('Este documento não pode ser pedido.'); return; }
+    if (Number(snap.get('partes')) > 0) { await doc.ref.delete(); return; }
+    const onde = caminhosDp.get(token + '/' + id);
+    if (!onde) { await falhar('O escritório ainda está organizando este documento. Tente de novo em alguns minutos.'); return; }
+    let bytes;
+    try { bytes = fs.readFileSync(onde.arquivo); } catch (e) { await falhar('O arquivo ainda não chegou ao computador do escritório. Tente mais tarde.'); return; }
+    if (bytes.length > MAIOR_ARQUIVO_DP) { await falhar('Este arquivo é grande demais para baixar por aqui. Peça ao escritório.'); return; }
+    const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+    for (const pd of pedacos) await col.doc(id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: id }));
+    await ref.update({ partes: pedacos.length, tamanho: bytes.length, erro: null, atualizadoEm: new Date().toISOString() });
+    servidosDp.add(token + '/' + id);
+    hashes.delete(token + '/documentos/' + id);
+    await doc.ref.delete();
+    log('Área do Cliente: documento do RH entregue sob pedido -', onde.nome);
+  }
+
   async function tratarDanfe(doc, p, chave) {
     const P = doCore();
     const token = R.tokenValido(p.token) ? p.token : '';

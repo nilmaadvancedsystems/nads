@@ -730,7 +730,8 @@ const CAMPOS_DO_ESPELHO = {
   funcionario: ['id', 'nome', 'cpf', 'matricula', 'remuneracao', 'desde', 'ultimo', 'ativo',
     'cargo', 'admissao', 'salarioBase', 'liquido', 'feriasVencidas', 'afastadoDe', 'afastadoAte', 'periodosDeFerias', 'fonte'],
   periodoFerias: ['inicio', 'fim', 'direito', 'gozados', 'aGozar', 'concederAte'],
-  documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes'],
+  // sobPedido: o mês antigo, o PDF vem quando o cliente pede; erro: o pedido não deu (ficha 37, 24/11/2026)
+  documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes', 'sobPedido', 'erro', 'atualizadoEm'],
   pedacoDp: ['base64', 'n', 'total', 'de'],
   // o acervo do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio; frase do dono: "Pasta fixa")
   documentoEscritorio: ['tipo', 'id', 'nome', 'area', 'enviadoEm', 'tamanho', 'partes'],
