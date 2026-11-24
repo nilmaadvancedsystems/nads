@@ -120,8 +120,9 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     guias, agenda: meses, envios, chamados,
     // a linha digitável das guias que têm (de mentira)
     codigos: { [guias[0].id]: '07190.00009 26277.123456 78901.234567 8 00000128437', [guias[1].id]: '85800000009-1 17420385001-2 26090012345-6 00000091742-0' },
+    // o boleto dos honorários já enviado (24/11/2026, ficha 50): quadro próprio, sem "pago" (por isso saiu das Pagas)
+    honorarios: [{ id: 'hon-' + mesDe(hoje) + '-9999', tipo: 'HON', competencia: mesDe(hoje), vencimento: br(emDias(hoje, 8)), valor: 1250, linha: '75691.31324 01000.000102 00000.012345 6 00000000125000', situacao: 'a vencer', temPdf: false }],
     pagas: [
-      { id: 'p1', tipo: 'HON', nome: 'Honorários da Nilma Contabilidade', competencia: mesDe(hoje), valor: 1250, pagoEm: br(emDias(hoje, -6)), temComprovante: true },
       { id: 'p2', tipo: 'DCTFWeb', nome: 'INSS da folha (DCTFWeb)', competencia: ac.competenciaDoMesDeVencimento(mesDe(emDias(hoje, -28))), valor: 1980.3, pagoEm: br(emDias(hoje, -28)), temComprovante: true },
     ],
     documentos: documentosDeExemplo(hoje),

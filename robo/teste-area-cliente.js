@@ -119,6 +119,25 @@ igual('de outra empresa: não sai neste link', R.guiasDoFgtsDoLink([pedidoComple
 igual('com mais de 12 meses: não sai', R.guiasDoFgtsDoLink([Object.assign({}, pedidoCompleto, { competencia: '2025-09' })], [58], HOJE), []);
 igual('reemissão: vale o pedido mais recente', R.guiasDoFgtsDoLink([pedidoCompleto, Object.assign({}, pedidoCompleto, { id: 'p2', numeroGuia: '999', fimEm: '2026-10-12T10:00:00Z' })], [58], HOJE).map(g => g.numero), ['999']);
 
+// os boletos dos honorários (24/11/2026, ficha 50): só os enviados, do contrato da empresa do link, sem "pago"
+const boletoHon = {
+  id: 'b1', competencia: '2026-10', vencimento: '2026-10-20', valor: 850, linha: '75691.31324 01000.000102 00000.012345 6 00000000085000', contratoId: 'h1',
+  partes: 1, tamanho: 100, arquivo: 'boleto.pdf', destinatarios: ['cliente@x.com'], criadoPor: 'Ana', pagoEm: '2026-10-19',
+  envio: { status: 'enviado', enviadoEm: '2026-10-10T10:00:00Z', para: ['cliente@x.com'], por: 'Diretor', porUid: 'u1', gmailId: 'g1' },
+};
+const contratosHon = new Map([['h1', '58'], ['h2', '59']]);
+const hon = R.honorariosDoLink([boletoHon], contratosHon, [58], HOJE);
+igual('honorários: o enviado sai, com a linha e o PDF, sem pagoEm', hon.map(h => [h.guia.id, h.guia.tipo, h.guia.vencimento, h.guia.valor, !!h.guia.linha, h.guia.temPdf, 'pagoEm' in h.guia, h.boletoId]), [['hon-2026-10-58', 'HON', '20/10/2026', 850, true, true, false, 'b1']]);
+semInternos('honorários: nenhum campo interno', hon.map(h => h.guia));
+igual('honorários: passa na lista branca', joga(() => hon.forEach(h => R.conferirListaBranca('guia', h.guia))), '');
+igual('honorários: ainda na fila ou com erro não sai', ['fila', 'enviando', 'erro', undefined].map(s => R.honorariosDoLink([Object.assign({}, boletoHon, { envio: { status: s } })], contratosHon, [58], HOJE).length), [0, 0, 0, 0]);
+igual('honorários: tirado do lote não sai', R.honorariosDoLink([Object.assign({}, boletoHon, { fora: true })], contratosHon, [58], HOJE), []);
+igual('honorários: de outra empresa não sai neste link', R.honorariosDoLink([Object.assign({}, boletoHon, { contratoId: 'h2' })], contratosHon, [58], HOJE), []);
+igual('honorários: sem contrato não sai', R.honorariosDoLink([Object.assign({}, boletoHon, { contratoId: 'zz' })], contratosHon, [58], HOJE), []);
+igual('honorários: com mais de 6 meses não sai', R.honorariosDoLink([Object.assign({}, boletoHon, { competencia: '2026-03' })], contratosHon, [58], HOJE), []);
+igual('honorários: refeito, vale o enviado mais recente', R.honorariosDoLink([boletoHon, Object.assign({}, boletoHon, { id: 'b2', valor: 900, envio: { status: 'enviado', enviadoEm: '2026-10-12T10:00:00Z' } })], contratosHon, [58], HOJE).map(h => [h.boletoId, h.guia.valor]), [['b2', 900]]);
+igual('honorários: sem PDF (no Drive), temPdf false', R.honorariosDoLink([Object.assign({}, boletoHon, { partes: undefined, driveId: 'd1' })], contratosHon, [58], HOJE).map(h => h.guia.temPdf), [false]);
+
 const resumo = R.resumoDoCliente([{ codigo: 58, nome: 'TORNEARIA', cnpj: '11.222.333/0001-81', regime: 'Simples', dp: { obrigacoes: [] }, execucoes: {} }], { whatsapp: '(38) 9138-3638', email: 'x@y.com', senha: 'nunca' }, '2026-10-16T10:00:00Z');
 igual('o resumo: só código, nome e CNPJ (só números); o contato só com os campos dele', resumo, { empresas: [{ codigo: 58, nome: 'TORNEARIA', cnpj: '11222333000181' }], escritorio: { email: 'x@y.com', whatsapp: '(38) 9138-3638' }, atualizadoEm: '2026-10-16T10:00:00Z' });
 igual('o resumo passa na lista branca', joga(() => R.conferirListaBranca('resumo', resumo)), '');
@@ -249,6 +268,8 @@ if (C) {
   igual('os vencimentos de 3 anos são os do core', R.VENCIMENTOS.map(v => competencias.map(c => R.vencimentoNaCompetencia(v, c))), C.v.VENCIMENTOS.map(v => competencias.map(c => C.v.vencimentoNaCompetencia(v, c))));
   const pedidos = [pedidoCompleto, Object.assign({}, pedidoCompleto, { aviso: '' }), Object.assign({}, pedidoCompleto, { valor: 'x' }), Object.assign({}, pedidoCompleto, { vencimento: '31/02/2026', aviso: '' }), Object.assign({}, pedidoCompleto, { numeroGuia: ' ', pdfNome: '', aviso: '' })];
   igual('a guia do FGTS é a do core', pedidos.map(p => [R.guiaDoFgts(p, HOJE), R.guiaDoFgts(p, HOJE, true)]), pedidos.map(p => [C.g.guiaDoFgts(p, HOJE), C.g.guiaDoFgts(p, HOJE, true)]));
+  const boletos = [boletoHon, Object.assign({}, boletoHon, { valor: 0 }), Object.assign({}, boletoHon, { vencimento: '2026-02-31' }), Object.assign({}, boletoHon, { linha: 'abc', partes: 0 }), Object.assign({}, boletoHon, { envio: { status: 'fila' } }), Object.assign({}, boletoHon, { valor: 850.555 })];
+  igual('o boleto dos honorários é o do core', boletos.map(b => R.guiaDoHonorario(b, 58, HOJE)), boletos.map(b => C.g.guiaDoHonorario(b, 58, HOJE)));
   igual('a situação da guia é a do core', ['15/10/2026', '16/10/2026', '17/10/2026', 'x'].map(v => R.situacaoDaGuia(v, HOJE)), ['15/10/2026', '16/10/2026', '17/10/2026', 'x'].map(v => C.g.situacaoDaGuia(v, HOJE)));
   igual('o chamado do cliente é o do core', R.chamadoDoCliente(R.chamadoInterno('c1', interno)), C.c.chamadoDoCliente(R.chamadoInterno('c1', interno)));
   igual('os tipos de chamado são os do core', R.TIPOS_DE_CHAMADO, C.c.TIPOS_DE_CHAMADO);

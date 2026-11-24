@@ -42,6 +42,8 @@ const ESPERA_ENTRE_EMPRESAS_MS = 1000;
 const ESPERA_ENTRE_LINKS_MS = 2000;
 const CLIENTES_VALEM_MS = 6 * 36e5;
 const MESES_DE_GUIAS = 12;
+// os boletos dos honorários (24/11/2026, ficha 50): os dos últimos 6 meses
+const MESES_DE_HONORARIOS = 6;
 // o Registro: os documentos do DP do mês atual e dos dois anteriores; os funcionários pelas guias de seis meses
 const MESES_DO_DP = 3;
 const MESES_DO_REGISTRO = 6;
@@ -218,6 +220,7 @@ function iniciarAreaDoCliente(db, log) {
     for (const m of [hashes, pdfsNoEspelho, pagasNoEspelho]) for (const k of [...m.keys()]) if (k.startsWith(token + '/')) m.delete(k);
     pagasConferidas.delete(token);
     fgtsNoEspelho.delete(token);
+    honNoEspelho.delete(token);
     dpNoEspelho.delete(token);
     historicoLido.delete(token);
   }
@@ -280,7 +283,8 @@ function iniciarAreaDoCliente(db, log) {
     let marcadas = 0;
     for (const e of comExtrato) {
       const sufixo = '-' + e.codigo;
-      const guias = snap.docs.filter(d => d.id.endsWith(sufixo)).map(d => Object.assign({ id: d.id }, d.data()));
+      // o boleto dos honorários nunca vira "pago" (24/11/2026, ficha 50; o dono: "Só o boleto, sem 'pago'")
+      const guias = snap.docs.filter(d => d.id.endsWith(sufixo) && d.get('tipo') !== 'HON').map(d => Object.assign({ id: d.id }, d.data()));
       if (!guias.length) continue;
       const pagas = P.guiasPagasPeloExtrato(guias, P.saidasDosMeses(lancamentosEmCache.get(e.codigo)));
       for (const [id, pagoEm] of pagas) {
@@ -312,6 +316,64 @@ function iniciarAreaDoCliente(db, log) {
       pdfsNoEspelho.delete(token + '/guias/' + id);
     }
     fgtsNoEspelho.set(token, ids);
+  }
+
+  // ---------- os boletos dos honorários (24/11/2026, ficha 50; o dono: "Só o boleto, sem 'pago'") ----------
+  // Só os já ENVIADOS por e-mail ao cliente (financeiroBoletos, envio.status 'enviado'), pelo contrato
+  // (financeiroHonorarios/{contratoId}.codigo = o código da empresa). Ficam em guias/hon-{AAAA-MM}-{cód}, com o PDF em
+  // guias/{id}/pdf/{n} como as do FGTS; o site os separa das guias de imposto. Nunca pagoEm (marcarGuiasPagas pula).
+  const boletosHon = new Map();   // id -> o boleto
+  const contratosHon = new Map(); // contratoId -> código da empresa (texto)
+  const honNoEspelho = new Map(); // token -> Set(ids das guias HON no espelho)
+
+  async function espelharHonorario(token, guia, boletoId) {
+    const ref = espelhoDe(token).collection('guias').doc(guia.id);
+    const chave = token + '/guias/' + guia.id;
+    let g = guia;
+    if (g.temPdf) {
+      const assinatura = R.assinaturaDoPdf(g) + '|' + boletoId;
+      let pdfOk = pdfsNoEspelho.get(chave) === assinatura;
+      if (!pdfOk && !pdfsNoEspelho.has(chave)) {
+        // depois de religar: a mesma guia (valor, vencimento) com os pedaços todos lá não baixa de novo
+        const s = await ref.get();
+        if (s.exists) {
+          hashes.set(chave, R.hashDoEspelho(s.data()));
+          if (s.get('temPdf') === true && R.assinaturaDoPdf(s.data()) === R.assinaturaDoPdf(g)) {
+            const ps = await ref.collection('pdf').select('n', 'total').get();
+            pdfOk = ps.size > 0 && ps.docs.every(d => d.get('total') === ps.size);
+          }
+        }
+      }
+      if (!pdfOk) {
+        try {
+          const bref = db.collection('financeiroBoletos').doc(boletoId);
+          const buffer = await require('./lote-dp').bufferDoArquivo(bref, boletosHon.get(boletoId) || {});
+          const pedacos = R.pedacosDoPdf(buffer.toString('base64'));
+          const velhos = await ref.collection('pdf').select().get();
+          for (const p of pedacos) await ref.collection('pdf').doc(String(p.n)).set(R.conferirListaBranca('pdf', p));
+          await Promise.all(velhos.docs.filter(d => Number(d.id) >= pedacos.length).map(d => d.ref.delete()));
+          pdfOk = true;
+        } catch (e) {
+          log('Área do Cliente: o PDF do boleto de honorários não veio -', guia.id, e.message);
+          g = Object.assign({}, g, { temPdf: false });
+        }
+      }
+      if (pdfOk) pdfsNoEspelho.set(chave, assinatura);
+    }
+    return gravar(token, 'guias/' + guia.id, g, 'guia');
+  }
+
+  /** Tira do espelho os boletos de honorários que saíram (só tipo HON). */
+  async function limparHonorarios(token, ids) {
+    let antes = honNoEspelho.get(token);
+    if (!antes) antes = new Set((await espelhoDe(token).collection('guias').where('tipo', '==', 'HON').select().get()).docs.map(d => d.id));
+    for (const id of antes) {
+      if (ids.has(id)) continue;
+      await db.recursiveDelete(espelhoDe(token).collection('guias').doc(id));
+      hashes.delete(token + '/guias/' + id);
+      pdfsNoEspelho.delete(token + '/guias/' + id);
+    }
+    honNoEspelho.set(token, ids);
   }
 
   /** Um chamado no espelho de um link (se o link dele foi trocado, o chamado passa a ser do link novo). */
@@ -633,6 +695,13 @@ function iniciarAreaDoCliente(db, log) {
     }
     await limparGuiasDoFgts(token, new Set(guias.map(g => g.id)));
 
+    // os boletos dos honorários já enviados (24/11/2026, ficha 50): um erro aqui não para o resto do espelho
+    try {
+      const hon = R.honorariosDoLink([...boletosHon.values()], contratosHon, link.codigos, hoje, MESES_DE_HONORARIOS);
+      for (const h of hon) if (await espelharHonorario(token, h.guia, h.boletoId)) gravados++;
+      await limparHonorarios(token, new Set(hon.map(h => h.guia.id)));
+    } catch (e) { log('Honorários: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
     // o Registro (os funcionários e os documentos do DP): um erro aqui não para o resto do espelho
     try { gravados += await espelharPessoal(token, link, empresas, hoje); } catch (e) { log('Registro: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
     // a ficha cadastral (plano do Acessórias, 18/11/2026, ficha dados-cadastrais; frase do dono: "Sim, comece assim"): a da primeira empresa do link (a do
@@ -843,6 +912,29 @@ function iniciarAreaDoCliente(db, log) {
     if (!primeiraFgts) for (const ch of snap.docChanges()) tokensDaEmpresa(ch.doc.get('codigo')).forEach(t => fila.add(t));
     primeiraFgts = false;
     pronto('fgts');
+    agendar();
+  }, log);
+
+  // os boletos dos honorários (24/11/2026, ficha 50): os contratos (código da empresa) e os boletos dos últimos meses (o
+  // filtro do enviado é aqui, na memória: um "==" com ">=" noutro campo pediria um índice novo). Não seguram o "pronto":
+  // sem eles, o espelho sai sem os honorários e entra na próxima volta.
+  const primeiroDosHon = { contratos: true, boletos: true };
+  const filaDoContrato = contratoId => { const c = contratosHon.get(String(contratoId || '')); if (c) tokensDaEmpresa(c).forEach(t => fila.add(t)); };
+  ouvir('Área do Cliente: contratos dos honorários', () => db.collection('financeiroHonorarios'), snap => {
+    const antes = new Map(contratosHon);
+    contratosHon.clear();
+    for (const d of snap.docs) { const c = String(d.get('codigo') ?? '').trim(); if (/^\d+$/.test(c)) contratosHon.set(d.id, String(Number(c))); }
+    // um contrato que trocou de empresa: as duas empresas refazem
+    if (!primeiroDosHon.contratos) for (const ch of snap.docChanges()) { const a = antes.get(ch.doc.id); if (a !== contratosHon.get(ch.doc.id)) { if (a) tokensDaEmpresa(a).forEach(t => fila.add(t)); filaDoContrato(ch.doc.id); } }
+    primeiroDosHon.contratos = false;
+    agendar();
+  }, log);
+  const desdeDosHon = (() => { const h = new Date(); return R.competenciaDe(new Date(h.getFullYear(), h.getMonth() - MESES_DE_HONORARIOS, 1)); })();
+  ouvir('Área do Cliente: boletos dos honorários', () => db.collection('financeiroBoletos').where('competencia', '>=', desdeDosHon), snap => {
+    boletosHon.clear();
+    for (const d of snap.docs) boletosHon.set(d.id, Object.assign({ id: d.id }, d.data()));
+    if (!primeiroDosHon.boletos) for (const ch of snap.docChanges()) filaDoContrato(ch.doc.get('contratoId'));
+    primeiroDosHon.boletos = false;
     agendar();
   }, log);
 

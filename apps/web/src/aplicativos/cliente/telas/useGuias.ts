@@ -108,6 +108,12 @@ export function useGuias(props: DaCasca) {
       id: x.id, nome: 'Parcelamento ' + x.orgao + (x.modalidade ? ' (' + x.modalidade + ')' : ''),
       texto: 'parcela ' + x.parcela + ' de ' + x.parcelas + ' · ' + formatos.reais(x.valorParcela) + ' · vence ' + x.vencimento.slice(0, 5),
     })),
+    // os boletos dos honorários do escritório (24/11/2026, ficha 50; o dono: "Só o boleto, sem 'pago'"): os três mais
+    // novos, num quadro próprio, com o vencimento e sem situação (nem "vencida", nem "pago")
+    honorarios: area.honorarios.slice(0, 3).map(h => ({
+      id: h.id, nome: 'Honorários de ' + formatos.rot(h.competencia).toLowerCase(),
+      texto: formatos.reais(h.valor) + ' · vencimento ' + h.vencimento.slice(0, 5), linha: h.linha ?? '', temPdf: h.temPdf,
+    })),
     // a linha embaixo do título (16/11/2026, "muita informação": no máximo dois fatos)
     resumo: resumoCurtoDasGuias({
       nomeDoMes, aPagar: { valor: formatos.reais(p.aPagar.valor), guias: p.aPagar.guias }, vencidas: p.vencidas.guias,

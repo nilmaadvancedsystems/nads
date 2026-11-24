@@ -132,3 +132,11 @@
 .cli-gu-parcelamentos li { display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: start; }
 .cli-gu-parcelamentos li svg { margin-top: 2px; }
 .cli-gu-parcelamentos li .hint { display: block; }
+/* o boleto dos honorários (24/11/2026, ficha 50): as ações à direita; no celular, embaixo do texto */
+.cli-gu-honorarios li { grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; }
+.cli-gu-honorarios li svg { margin-top: 0; }
+.cli-gu-hon-acoes { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 560px) {
+  .cli-gu-honorarios li { grid-template-columns: 16px minmax(0, 1fr); }
+  .cli-gu-hon-acoes { grid-column: 2; justify-content: flex-start; }
+}

@@ -91,6 +91,23 @@ export function Guias(props: DaCasca) {
               </ul>
             </section>
           )}
+          {/* o boleto dos honorários do escritório (24/11/2026, ficha 50): só os já enviados por e-mail, sem "pago" */}
+          {vm.honorarios.length > 0 && (
+            <section className="card cli-gu-parcelamentos cli-gu-honorarios" aria-label="Honorários do escritório">
+              <ul>
+                {vm.honorarios.map(h => (
+                  <li key={h.id}>
+                    <Icone nome="recibo" width={16} height={16} />
+                    <span><b>{h.nome}</b><span className="hint">{h.texto}</span></span>
+                    <span className="cli-gu-hon-acoes">
+                      {h.linha && <button type="button" className="btn btn-sm btn-ghost" onClick={() => vm.copiarCodigo(h.linha)}><Icone nome="copiar"width={14} height={14} />Copiar código</button>}
+                      {h.temPdf && <button type="button" className="btn btn-sm" disabled={vm.baixando === h.id} onClick={() => void vm.baixar(h.id)}><Icone nome="download" width={14} height={14} />Boleto</button>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         {temLado && (

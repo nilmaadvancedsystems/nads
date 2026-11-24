@@ -34,6 +34,19 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
     });
     expect(lerResumo(null)).toBeNull();
   });
+  it('o boleto dos honorários (24/11/2026, ficha 50): lido de volta e separado das guias de imposto, nunca "pago"', () => {
+    const hon = R.guiaDoHonorario({ id: 'b1', competencia: '2026-10', vencimento: '2026-10-15', valor: 850, linha: '75691.31324 01000.000102 00000.012345 6 00000000085000', partes: 1, envio: { status: 'enviado' } }, 58, HOJE);
+    R.conferirListaBranca('guia', hon);
+    expect(lerGuia('hon-2026-10-58', hon)).toEqual(hon);
+    const fgts = R.guiaDoFgts({ id: 'p1', competencia: '2026-09', status: 'pronto', modo: 'emitir', vencimento: '20/10/2026', valor: '1.917,42', numeroGuia: '123', aviso: '', pdfNome: 'f.pdf' }, HOJE);
+    // mesmo que viesse com pagoEm, o honorário não vai para Pagas, nem fica entre as guias (é vencida pela data, mas não conta)
+    const lidas = [lerGuia('p1', fgts)!, { ...lerGuia('hon-2026-10-58', hon)!, pagoEm: '14/10/2026' }];
+    const e = estadoDoEspelho({ resumo: null, nomeDoLink: 'X', guias: lidas, agenda: [], envios: [], chamados: [] });
+    expect(e.guias.map(g => g.id)).toEqual(['p1']);
+    expect(e.pagas).toEqual([]);
+    expect(e.secoes.pagas).toBe(false);
+    expect(e.honorarios.map(g => [g.id, g.tipo, g.vencimento, 'pagoEm' in g])).toEqual([['hon-2026-10-58', 'HON', '15/10/2026', false]]);
+  });
   it('a guia do FGTS (area-cliente.js) e a de DAS (envios-do-nads.js, sem número)', () => {
     const fgts = R.guiaDoFgts({ id: 'p1', competencia: '2026-09', status: 'pronto', modo: 'emitir', vencimento: '20/10/2026', valor: '1.917,42', numeroGuia: '123', aviso: '', pdfNome: 'f.pdf' }, HOJE);
     R.conferirListaBranca('guia', fgts);
@@ -87,7 +100,7 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
   it('os campos lidos são exatamente os que o robô pode gravar (lista branca)', () => {
     const C = R.CAMPOS_DO_ESPELHO;
     expect(C.resumo).toEqual(['empresas', 'escritorio', 'atualizadoEm']);
-    expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm']); // o tributo da DARF (17/11/2026, ficha todas-as-guias); pagoEm (18/11/2026, ficha guia-paga-confirmada)
+    expect(C.guia).toEqual(['id', 'tipo', 'competencia', 'vencimento', 'valor', 'numero', 'tributo', 'situacao', 'temPdf', 'pagoEm', 'linha']); // o tributo da DARF (17/11/2026, ficha todas-as-guias); pagoEm (18/11/2026, ficha guia-paga-confirmada); a linha do boleto dos honorários (24/11/2026, ficha 50)
     expect(C.agenda).toEqual(['mes', 'itens', 'atualizadoEm']);
     expect(C.item).toEqual(['id', 'nome', 'vence', 'situacao', 'feitoEm']);
     expect(C.chamado).toEqual(['id', 'tipo', 'titulo', 'situacao', 'mensagens', 'passo']); // o passo atual do pedido (23/11/2026)
