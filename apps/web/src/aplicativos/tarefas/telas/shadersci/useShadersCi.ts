@@ -6,7 +6,7 @@ import { sci } from '@nads/core';
 import { baixarBytes, useCarregando, useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
-import { useTodosOsCadastros } from '../../dados/repo';
+import { useDadosDaEmpresaNoEntregas, useTodosOsCadastros } from '../../dados/repo';
 import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
@@ -109,6 +109,15 @@ export function useShadersCi() {
   }, [cadastros.porId, entrada.empresa]);
   const idDoPlano: sci.IdDoPlanoSci = planoDoCadastro ?? guardado.plano;
   const plano = sci.planoDoSci(idDoPlano);
+  // o CNPJ da planilha (24/11/2026: o campo do topo saiu, "remove isso"): o do Cadastro da empresa; sem ele, o do Entregas; sem
+  // nenhum, o digitado antes aqui (ou o dos dados de teste)
+  const cnpjDoEntregas = useDadosDaEmpresaNoEntregas(entrada.empresa?.codigo ?? null).dados?.documento || '';
+  const cnpjDoCadastro = useMemo(() => {
+    if (!entrada.empresa) return '';
+    for (const c of cadastros.porId.values()) if (c.codigo === entrada.empresa.codigo) return c.cnpj || '';
+    return '';
+  }, [cadastros.porId, entrada.empresa]);
+  const cnpj = cnpjDoCadastro || cnpjDoEntregas || guardado.cnpj;
   const ano = new Date().getFullYear();
 
   const guardar = useCallback((muda: (g: Guardado) => Guardado) => {
@@ -140,7 +149,7 @@ export function useShadersCi() {
   const visiveis = q ? linhas.filter(l => [sci.dataParaTexto(l.data), l.debito, l.credito, l.nomeD, l.nomeC, sci.valorParaTexto(l.valor), l.historico, l.complemento, l.documento, l.participanteD, l.participanteC]
     .some(v => sci.semAcento(v).includes(q))) : linhas;
   const resumo = sci.resumoDosLancamentos(guardado.lancamentos, plano);
-  const cnpjOk = (() => { const d = guardado.cnpj.replace(/\D/g, ''); return d.length === 14 || d.length === 11; })();
+  const cnpjOk = (() => { const d = cnpj.replace(/\D/g, ''); return d.length === 14 || d.length === 11; })();
 
   // o formulário lido: o lançamento e o que falta nele. O participante só vale onde a conta pede (24/11/2026: "Voce disponibiliza
   // os inputs de acordo com o que a pessoa selecionar"): o que ficou escondido não vai
@@ -227,8 +236,7 @@ export function useShadersCi() {
     /** o plano veio do Cadastro: não se escolhe aqui */
     planoDoCadastro: planoDoCadastro !== null,
     setPlano: (p: sci.IdDoPlanoSci) => guardar(g => ({ ...g, plano: p })),
-    cnpj: guardado.cnpj,
-    setCnpj: (v: string) => guardar(g => ({ ...g, cnpj: v })),
+    cnpj,
     cnpjOk,
     // o formulário, na janela do lançamento
     form, editando, janela,
@@ -440,10 +448,10 @@ export function useShadersCi() {
     podeExportar: resumo.quantos > 0,
     exportar() {
       if (!entrada.empresa) return;
-      if (!cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa.' }); return; }
-      const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, guardado.cnpj);
+      if (!cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
+      const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, cnpj);
       const mes = sci.mesPrincipal(guardado.lancamentos);
-      baixarBytes(sci.planilhaDoSci(lsci), sci.nomeDaPlanilhaSci(guardado.cnpj, mes, 'minimum'), sci.TIPO_XLSX_SCI);
+      baixarBytes(sci.planilhaDoSci(lsci), sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum'), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
       if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
       else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento.' : ' lançamentos.'));

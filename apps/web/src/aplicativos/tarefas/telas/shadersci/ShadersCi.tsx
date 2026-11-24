@@ -4,8 +4,9 @@
 // valor, o histórico do plano de históricos, o complemento, o documento e o participante na frente da conta que pede); embaixo, a tabela, com o botão
 // direito (editar, duplicar, inverter, copiar, colar, excluir) e os atalhos do Excel. Sai na planilha do gerador do SCI.
 import { sci } from '@nads/core';
-import { BotaoIcone, CampoDataComCalendario, Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
+import { BotaoIcone, CampoDataComCalendario, Icone, Interruptor, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { TituloDoTopo } from '../../../../comum/topo';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from '../drive/MenuDeContexto';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
 import { Janela } from '../lancatudo/Janelas';
@@ -16,6 +17,8 @@ export function ShadersCi() {
   if (!vm.carregada) return null;
   return (
     <section className="sci">
+      {/* o título da página é a empresa aberta, no lugar de "minimum" (24/11/2026: "troque o titulo minimum pelo nome da empresa numero e nome") */}
+      <TituloDoTopo titulo={vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : ''} />
       {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
       {/* a mesma janela: o lançamento simples ou, com a caixinha marcada, o múltiplo */}
       {vm.janela && (vm.multiplo ? <JanelaDoMultiplo vm={vm} /> : <JanelaDoLancamento vm={vm} />)}
@@ -23,13 +26,9 @@ export function ShadersCi() {
       <div className="tarefas-barra-topo">
         {vm.empresa && <>
           <EmpresaDaBarra vm={vm.entrada} id="sci-empresas" />
-          {vm.planoDoCadastro
-            ? <span className="badge" title="O plano de contas do SCI escolhido no Cadastro da empresa (Contábil › Parâmetros)">{vm.planos.find(p => p.id === vm.plano)?.rotulo || 'Plano ' + vm.plano}</span>
-            : <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
-          <label className={'busca-curta sci-cnpj' + (vm.cnpj && !vm.cnpjOk ? ' sci-invalido' : '')} title="O CNPJ da empresa: vai em todas as linhas da planilha">
-            <Icone nome="predio" />
-            <input type="text" inputMode="numeric" placeholder="CNPJ da empresa" aria-label="CNPJ da empresa" value={vm.cnpj} onChange={e => vm.setCnpj(e.target.value)} />
-          </label>
+          {/* sem o selo do plano e sem o campo do CNPJ (24/11/2026: "remove isso"): o plano e o CNPJ vêm do Cadastro da empresa;
+              só a empresa sem plano no Cadastro ainda escolhe aqui */}
+          {!vm.planoDoCadastro && <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
         </>}
         <span className="tarefas-barra-espaco" />
         {vm.dev && (
@@ -159,15 +158,14 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
   useEffect(() => { document.getElementById('sci-data')?.focus(); }, []);
   const h = vm.historico;
   return (
-    <Janela app="minimum" titulo={titulo} semCaminho fechar={vm.fecharJanela} className="sci-janela-lancamento"
+    <Janela app="minimum" titulo={titulo} topo={<ChaveDoMultiplo vm={vm} />} fechar={vm.fecharJanela} className="sci-janela-lancamento"
       pe={<>
-        {/* sem a lista do que falta (24/11/2026: "Nao gostei desses avisos, as vezes e so bloquear"): o Lançar só fica bloqueado */}
-        <span className="hint">Enter lança · F2 pesquisa · Esc fecha</span>
+        {/* sem a lista do que falta (24/11/2026: "Nao gostei desses avisos, as vezes e so bloquear"): o Lançar só fica bloqueado;
+            e sem a dica das teclas ("remove isso") */}
         <span className="tarefas-barra-espaco" />
         <BotoesDoPe vm={vm} editando={!!vm.editando} form="sci-form" lancar="Lançar" podeLancar={vm.podeLancar} />
       </>}>
       <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
-        <CaixinhaDoMultiplo vm={vm} />
         {/* a data menor, já no formato ao digitar, e o calendário (24/11/2026: "diminui o input de data, tá grande, ao preencher, ele já coloca no formato") */}
         <div className="field sci-meia sci-data">
           {/* o dia da semana ao lado do rótulo (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar") */}
@@ -205,16 +203,18 @@ function BotoesDoPe({ vm, editando, form, lancar, podeLancar }: { vm: VmShadersC
 
 // ------------------------------------------------------------------------------------------------- o lançamento múltiplo
 /**
- * A caixinha no alto do Novo lançamento (24/11/2026: "coloca uma opção de marcar"; o Vitor escolheu: "No Novo lançamento do
- * minimum, uma caixinha 'Lançamento múltiplo' que, marcada, abre vários débitos e créditos que têm de bater"). Na edição, só
- * mostra o tipo.
+ * A chave do múltiplo, no topo da janela, na linha do X (24/11/2026: "coloca uma opção de marcar"; "Deixa o botao fechar na mesma
+ * linha do lancamento multiplo, use o elemento on/off toggle para ficar bonito"): ligada, abre vários débitos e créditos que têm
+ * de bater. Na edição só mostra o tipo (apagada, sem clique).
  */
-function CaixinhaDoMultiplo({ vm }: { vm: VmShadersCi }) {
+function ChaveDoMultiplo({ vm }: { vm: VmShadersCi }) {
   const editando = !!vm.editando || !!vm.multiplo?.editando;
+  const mudar = () => { if (!editando) vm.marcarMultiplo(!vm.multiplo); };
   return (
-    <label className="tdl-ja-fazendo sci-marca-multiplo" title={editando ? 'Na edição o tipo do lançamento não muda' : undefined}>
-      <input type="checkbox" checked={!!vm.multiplo} disabled={editando} onChange={e => vm.marcarMultiplo(e.target.checked)} />Lançamento múltiplo
-    </label>
+    <span className={'sci-chave-multiplo' + (editando ? ' travada' : '')} title={editando ? 'Na edição o tipo do lançamento não muda' : undefined}>
+      <Interruptor ligado={!!vm.multiplo} rotulo="Lançamento múltiplo" onMudar={mudar} />
+      <span className="sci-chave-multiplo-rotulo" onClick={mudar}>Lançamento múltiplo</span>
+    </span>
   );
 }
 
@@ -233,15 +233,13 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
   useEffect(() => { document.querySelector<HTMLInputElement>('.sci-mp-conta input')?.focus(); }, []);
   const pronto = !vm.problemasDoMultiplo.length;
   return (
-    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Novo lançamento'} semCaminho fechar={vm.fecharJanela} className="sci-janela-multiplo"
+    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Novo lançamento'} topo={<ChaveDoMultiplo vm={vm} />} fechar={vm.fecharJanela} className="sci-janela-multiplo"
       pe={<>
-        <span className="hint">F2 pesquisa · Esc fecha</span>
         <span className="tarefas-barra-espaco" />
         <BotoesDoPe vm={vm} editando={m.editando} form="sci-form-multiplo" lancar="Lançar múltiplo" podeLancar={pronto} />
       </>}>
       <form id="sci-form-multiplo" className="registro-corpo" onSubmit={e => { e.preventDefault(); vm.gravarMultiplo(); }}>
         <div className="sci-form sci-multiplo-topo">
-          <CaixinhaDoMultiplo vm={vm} />
           <div className="field sci-terco sci-data">
             <label htmlFor="sci-mp-data">Data{vm.diaDaSemanaDoMultiplo && <span className="sci-dia-semana"> · {vm.diaDaSemanaDoMultiplo}</span>}</label>
             <CampoDataComCalendario id="sci-mp-data" rotulo="Data" valor={m.data} onMudar={v => vm.mudarDoMultiplo('data', v)} bloqueado={vm.diaSemLancamento} />
@@ -460,9 +458,10 @@ function JanelaDoPlano({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credit
   const campo = vm.campoDaPesquisa;
   const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById(campo)?.focus(), 0); };
   return (
+    // sem o caminho no topo, o selo do lado e a dica (24/11/2026: "remova isso e esse cabecalho de diretorio de todas as telas do
+    // minimum"): a busca fica no topo, na linha do X
     <Janela app="minimum" titulo={'Plano de contas ' + vm.plano} fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo"
-      selo={<span className="badge badge-neutral">{lado === 'debito' ? 'Débito' : 'Crédito'}</span>}>
-      <div className="registro-corpo">
+      topo={
         <label className="busca-curta sci-busca-plano">
           <Icone nome="search" />
           <input type="text" autoFocus placeholder="Código, classificação, nome ou apelido" aria-label="Buscar no plano de contas" value={q}
@@ -472,8 +471,8 @@ function JanelaDoPlano({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credit
               else if (e.key === 'ArrowUp') { e.preventDefault(); setAtivo(i => Math.max(0, i - 1)); }
               else if (e.key === 'Enter' && achadas[ativo]) { e.preventDefault(); escolher(achadas[ativo].codigo); }
             }} />
-        </label>
-        <p className="hint">Só as contas analíticas, que recebem lançamento. ↑ ↓ e Enter escolhem.</p>
+        </label>}>
+      <div className="registro-corpo">
         <div className="table-wrap sci-plano">
           <table className="table-compact ini-delegadas">
             <thead><tr><th className="num">Código</th><th>Classificação</th><th>Nome</th><th>Apelido</th><th aria-label="Participante" /></tr></thead>
@@ -506,8 +505,8 @@ function JanelaDosHistoricos({ vm }: { vm: VmShadersCi }) {
   const campo = vm.campoDaPesquisa === 'sci-historico' ? 'sci-complemento' : vm.campoDaPesquisa;
   const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById(campo)?.focus(), 0); };
   return (
-    <Janela app="minimum" titulo="Plano de históricos" fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo">
-      <div className="registro-corpo">
+    <Janela app="minimum" titulo="Plano de históricos" fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo"
+      topo={
         <label className="busca-curta sci-busca-plano">
           <Icone nome="search" />
           <input type="text" autoFocus placeholder="Número, nome ou apelido" aria-label="Buscar no plano de históricos" value={q}
@@ -517,8 +516,8 @@ function JanelaDosHistoricos({ vm }: { vm: VmShadersCi }) {
               else if (e.key === 'ArrowUp') { e.preventDefault(); setAtivo(i => Math.max(0, i - 1)); }
               else if (e.key === 'Enter' && achados[ativo]) { e.preventDefault(); escolher(achados[ativo].codigo); }
             }} />
-        </label>
-        <p className="hint">↑ ↓ e Enter escolhem.</p>
+        </label>}>
+      <div className="registro-corpo">
         <div className="table-wrap sci-plano">
           <table className="table-compact ini-delegadas">
             <thead><tr><th className="num">Número</th><th>Nome</th><th>Apelido</th><th aria-label="Complemento" /></tr></thead>

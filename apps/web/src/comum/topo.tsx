@@ -11,12 +11,33 @@ export type PedacoDaTrilha = { rotulo: string; titulo?: string; onClick?: () => 
 const Ctx = createContext<{
   alvo: HTMLElement | null; setAlvo: (e: HTMLElement | null) => void;
   trilha: PedacoDaTrilha[]; setTrilha: (t: PedacoDaTrilha[]) => void;
+  titulo: string; setTitulo: (t: string) => void;
 } | null>(null);
 
 export function TopoProvider({ children }: { children: ReactNode }) {
   const [alvo, setAlvo] = useState<HTMLElement | null>(null);
   const [trilha, setTrilha] = useState<PedacoDaTrilha[]>([]);
-  return <Ctx.Provider value={{ alvo, setAlvo, trilha, setTrilha }}>{children}</Ctx.Provider>;
+  const [titulo, setTitulo] = useState('');
+  return <Ctx.Provider value={{ alvo, setAlvo, trilha, setTrilha, titulo, setTitulo }}>{children}</Ctx.Provider>;
+}
+
+/** A casca lê o título que a página pôs no lugar do dela ('' = o da página, do menu). */
+export function useTituloDoTopo(): string {
+  return useContext(Ctx)?.titulo || '';
+}
+
+/**
+ * Usado pelas páginas: <TituloDoTopo titulo="583 · EMPORIO VERDE" /> troca o título da página na casca enquanto a página está
+ * aberta ('' volta ao do menu). O minimum põe a empresa aberta (24/11/2026: "troque o titulo minimum pelo nome da empresa numero e nome").
+ */
+export function TituloDoTopo({ titulo }: { titulo: string }) {
+  const ctx = useContext(Ctx);
+  const setTitulo = ctx?.setTitulo;
+  useEffect(() => {
+    setTitulo?.(titulo);
+    return () => setTitulo?.('');
+  }, [setTitulo, titulo]);
+  return null;
 }
 
 /** Onde as ações aparecem (dentro da casca). */

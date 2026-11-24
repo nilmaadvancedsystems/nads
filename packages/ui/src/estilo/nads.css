@@ -8434,7 +8434,13 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .modal.lt-janela.sci-janela-multiplo{max-width:1080px;width:min(1080px,100%);}
 .sci-multiplo-topo{margin-bottom:4px;}
 /* a caixinha do múltiplo, sozinha na primeira linha do formulário */
-.sci-form .sci-marca-multiplo{grid-column:1/-1;margin:0 0 12px;}
+/* a chave do múltiplo no topo, na linha do X (24/11/2026: "Deixa o botao fechar na mesma linha do lancamento multiplo, use o
+   elemento on/off toggle"); na edição, apagada e sem clique */
+.registro-topo-conteudo{flex:1 1 auto;min-width:0;display:flex;align-items:center;}
+.sci-chave-multiplo{display:inline-flex;align-items:center;gap:10px;}
+.sci-chave-multiplo-rotulo{font-size:var(--fs-14);font-weight:600;color:var(--ink);cursor:pointer;user-select:none;}
+.sci-chave-multiplo.travada{opacity:.6;}
+.sci-chave-multiplo.travada > *{pointer-events:none;}
 /* sem barra de rolagem nas janelas do minimum (24/11/2026: "REMOVE ESSA BARRA DE ROLAGEM do multiplo e do lancamento normal, essa
    rolagem deixa so no input se for muito caractere"): a tabela das partidas cresce com a janela, sem rolagem própria; numa tela
    baixa demais o miolo ainda rola pela roda do mouse (a regra de toda janela caber na tela), só que sem a barra */
@@ -8505,5 +8511,7 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-cnpj{width:210px;}
 .sci-cnpj.sci-invalido{border-color:var(--danger);}
 .sci-busca-plano{width:100%;margin-bottom:6px;}
+/* a busca no topo da janela, na linha do X (24/11/2026: sem o caminho nas telas do minimum) */
+.registro-topo .sci-busca-plano{margin-bottom:0;}
 .sci-plano{max-height:50vh;overflow:auto;}
 @media (max-width:900px){.sci-form{grid-template-columns:1fr 1fr;}.sci-form .sci-largo{grid-column:1/-1;}}
