@@ -3,13 +3,13 @@
 // registrado no banco por link e versão (areaClienteAceites, regra nova: o cliente só cria) e neste aparelho. O texto é
 // jurídico: o escritório aprova antes de ligar (POLITICA_LIGADA). Até lá, a janela não aparece. Só a lógica.
 
-/** Liga a janela do aceite (só depois de o escritório aprovar o texto abaixo). */
-export const POLITICA_LIGADA = false;
+/** Liga a janela do aceite (o dono aprovou o texto abaixo em 24/11/2026). */
+export const POLITICA_LIGADA = true;
 
 /** A versão da política: mudou o texto, muda a versão, e todos aceitam de novo. */
 export const VERSAO_DA_POLITICA = '2026-11-22';
 
-/** O texto da política (RASCUNHO a aprovar pelo escritório; um parágrafo por item). */
+/** O texto da política (aprovado pelo dono em 24/11/2026; mudou, muda a VERSAO_DA_POLITICA; um parágrafo por item). */
 export const TEXTO_DA_POLITICA: readonly { titulo: string; texto: string }[] = [
   { titulo: 'Quem cuida dos seus dados', texto: 'A Nilma Contabilidade trata os dados da sua empresa e das pessoas ligadas a ela (sócios e funcionários) para prestar os serviços de contabilidade, fiscal e departamento pessoal que você contratou.' },
   { titulo: 'Que dados usamos', texto: 'Os documentos que você manda (extratos, notas, comprovantes), os dados cadastrais da empresa e dos sócios e, para a folha, os dados dos funcionários que a lei exige. Na Área do Cliente, guardamos também o registro de quando você abre as guias e os documentos.' },
