@@ -159,7 +159,7 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
   useEffect(() => { document.getElementById('sci-data')?.focus(); }, []);
   const h = vm.historico;
   return (
-    <Janela app="minimum" titulo={titulo} fechar={vm.fecharJanela} className="sci-janela-lancamento"
+    <Janela app="minimum" titulo={titulo} semCaminho fechar={vm.fecharJanela} className="sci-janela-lancamento"
       pe={<>
         {/* sem a lista do que falta (24/11/2026: "Nao gostei desses avisos, as vezes e so bloquear"): o Lançar só fica bloqueado */}
         <span className="hint">Enter lança · F2 pesquisa · Esc fecha</span>
@@ -189,13 +189,14 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
 }
 
 /**
- * Os botões do pé das duas janelas (24/11/2026: "deixa a opcao fechar, lancar e salvar"): no novo, Fechar, Salvar (guarda o
- * preenchido sem lançar; o próximo Novo lançamento abre nele) e Lançar; na edição, Cancelar e Salvar alteração.
+ * Os botões do pé das duas janelas (24/11/2026: "deixa a opcao fechar, lancar e salvar"): no novo, Salvar (guarda o preenchido
+ * sem lançar; o próximo Novo lançamento abre nele) e Lançar, sem o Fechar (24/11/2026: "Remove esse botao fechar"; fecha pelo X
+ * e pelo Esc); na edição, Cancelar e Salvar alteração.
  */
 function BotoesDoPe({ vm, editando, form, lancar, podeLancar }: { vm: VmShadersCi; editando: boolean; form: string; lancar: string; podeLancar: boolean }) {
   return (
     <>
-      <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>{editando ? 'Cancelar' : 'Fechar'}</button>
+      {editando && <button type="button" className="btn btn-ghost" onClick={vm.fecharJanela}>Cancelar</button>}
       {!editando && <button type="button" className="btn btn-outline" onClick={vm.salvarRascunho} disabled={!vm.podeSalvar}>Salvar</button>}
       <button type="submit" form={form} className="btn btn-primary" disabled={!podeLancar}><Icone nome={editando ? 'check' : 'plus'} />{editando ? 'Salvar alteração' : lancar}</button>
     </>
@@ -232,7 +233,7 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
   useEffect(() => { document.querySelector<HTMLInputElement>('.sci-mp-conta input')?.focus(); }, []);
   const pronto = !vm.problemasDoMultiplo.length;
   return (
-    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Novo lançamento'} fechar={vm.fecharJanela} className="sci-janela-multiplo"
+    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Novo lançamento'} semCaminho fechar={vm.fecharJanela} className="sci-janela-multiplo"
       pe={<>
         <span className="hint">F2 pesquisa · Esc fecha</span>
         <span className="tarefas-barra-espaco" />
@@ -251,7 +252,8 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
           <table className="table-compact ini-delegadas">
             <thead>
               <tr>
-                <th className="sci-mp-lado">Lado</th><th className="sci-mp-conta">Conta</th><th className="sci-mp-part">Participante</th><th className="num sci-mp-valor">Valor</th>
+                {/* o débito e o crédito em duas colunas de valor, no lugar do D/C (24/11/2026: "D e C nao gostei o multiplo, apresenta ele de outra forma") */}
+                <th className="sci-mp-conta">Conta</th><th className="sci-mp-part">Participante</th><th className="num sci-mp-valor">Débito</th><th className="num sci-mp-valor">Crédito</th>
                 <th className="sci-mp-hist">Histórico</th><th>Complemento</th><th className="sci-mp-tirar" aria-label="Remover" />
               </tr>
             </thead>
@@ -264,10 +266,6 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
                 const f2 = (alvo: 'conta' | 'historico') => (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'F2') { e.preventDefault(); lupa(alvo); } };
                 return (
                   <tr key={pt.chave} className={lida?.problemas.length ? 'sci-partida-falta' : undefined} title={lida?.problemas.join('\n') || undefined}>
-                    <td className="sci-mp-lado">
-                      <Segmentado<sci.LadoDoLancamento> valor={pt.lado} onMudar={v => vm.mudarPartida(pt.chave, 'lado', v)}
-                        opcoes={[{ valor: 'debito', rotulo: 'D' }, { valor: 'credito', rotulo: 'C' }]} />
-                    </td>
                     <td className="sci-mp-conta">
                       <span className="lcdpr-codigo">
                         <input id={'sci-mp-conta-' + pt.chave} type="text" className="lcdpr-cod" value={pt.conta} autoComplete="off" placeholder="Conta" aria-label="Conta"
@@ -282,7 +280,14 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
                             placeholder={lida.participante === 'cliente' ? 'Cliente' : 'Fornecedor'} onChange={e => vm.mudarPartida(pt.chave, 'participante', e.target.value)} />
                         : <span className="hint">—</span>}
                     </td>
-                    <td className="sci-mp-valor"><input type="text" inputMode="decimal" className="num" value={pt.valor} autoComplete="off" placeholder="0,00" aria-label="Valor" onChange={e => vm.mudarPartida(pt.chave, 'valor', e.target.value)} /></td>
+                    {/* o valor digitado numa coluna leva a partida para aquele lado (o da outra coluna sai) */}
+                    {(['debito', 'credito'] as const).map(lado => (
+                      <td key={lado} className="sci-mp-valor">
+                        <input type="text" inputMode="decimal" className="num" value={pt.lado === lado ? pt.valor : ''} autoComplete="off" placeholder="0,00"
+                          aria-label={lado === 'debito' ? 'Valor a débito' : 'Valor a crédito'}
+                          onChange={e => { if (pt.lado !== lado) vm.mudarPartida(pt.chave, 'lado', lado); vm.mudarPartida(pt.chave, 'valor', e.target.value); }} />
+                      </td>
+                    ))}
                     <td className="sci-mp-hist">
                       <span className="lcdpr-codigo">
                         <input id={'sci-mp-hist-' + pt.chave} type="text" className="lcdpr-cod" value={pt.historico} autoComplete="off" placeholder="Nº" aria-label="Histórico"
