@@ -170,7 +170,8 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
       <form id="sci-form" className="registro-corpo sci-form" onSubmit={e => { e.preventDefault(); vm.gravar(); }}>
         {/* a data menor, já no formato ao digitar, e o calendário (24/11/2026: "diminui o input de data, tá grande, ao preencher, ele já coloca no formato") */}
         <div className="field sci-terco sci-data">
-          <label htmlFor="sci-data">Data</label>
+          {/* o dia da semana ao lado do rótulo (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar") */}
+          <label htmlFor="sci-data">Data{vm.diaDaSemana && <span className="sci-dia-semana"> · {vm.diaDaSemana}</span>}</label>
           <CampoDataComCalendario id="sci-data" rotulo="Data" valor={vm.form.data} onMudar={campo('data')} bloqueado={vm.diaSemLancamento} />
         </div>
         <Campo id="sci-valor" rotulo="Valor" valor={vm.form.valor} mudar={campo('valor')} placeholder="0,00" numerico classe="sci-terco" />

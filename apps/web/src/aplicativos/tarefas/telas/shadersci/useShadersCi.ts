@@ -36,6 +36,8 @@ function gravarTesteSci(codigos: number[]) {
   try { if (codigos.length) localStorage.setItem(CHAVE_TESTE_SCI, JSON.stringify(codigos)); else localStorage.removeItem(CHAVE_TESTE_SCI); } catch { /* sem espaço */ }
 }
 
+const DIAS_DA_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+
 let contador = 0;
 const idNovo = () => Date.now().toString(36) + (contador++).toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -180,6 +182,8 @@ export function useShadersCi() {
     historico: historico ? { codigo: historico.codigo, nome: historico.nome, pulaComplemento: historico.pulaComplemento } : null,
     /** o sábado e o feriado nacional, travados no calendário (24/11/2026: "nao deixa lançar nos sábados e feriados nacionais") */
     diaSemLancamento: sci.diaSemLancamento,
+    /** o dia da semana da data digitada (24/11/2026: "Deixa aparecendo o dia da semana, ao usuario lançar"); '' sem data válida */
+    diaDaSemana: lido.data ? DIAS_DA_SEMANA[new Date(Date.UTC(+lido.data.slice(0, 4), +lido.data.slice(5, 7) - 1, +lido.data.slice(8, 10))).getUTCDay()] : '',
     problemasDoFormulario: vazio ? [] : sci.problemasDoLancamento(lido, plano),
     vazio,
     /**
