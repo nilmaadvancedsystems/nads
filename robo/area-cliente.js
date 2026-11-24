@@ -442,6 +442,17 @@ function iniciarAreaDoCliente(db, log) {
   // cada empresa do link: o que a equipe pôs lá vai para a Central de documentos › Do escritório. A pasta não é criada:
   // sem ela, nada. O arquivo só é lido quando muda (o tamanho e a data); o que sai da pasta sai do espelho.
   const escritorioNoEspelho = new Map();
+  // a NFS-e dos honorários (24/11/2026, ficha 50, segunda etapa; o dono: "Depois do boleto"): as notas autorizadas em
+  // produção dos últimos 6 meses (nfseEmissoes, o robô da nuvem emite), por empresa tomadora; o PDF desenhado do XML como no
+  // nads (pdfDaDanfse), uma vez por nota. Vão para a Central › Do escritório, junto do acervo
+  const notasHon = new Map();     // id → { id, empresaCodigo, numeroNfse, competencia, autorizadaEm, xmlNfse }
+  const pdfsDasNotas = new Map(); // id → Buffer do PDF
+  const MESES_DA_NOTA = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  function nomeDaNotaDeHonorarios(n) {
+    const c = String(n.competencia || '');
+    const mes = /^\d{4}-\d{2}/.test(c) ? ' - honorários de ' + MESES_DA_NOTA[Number(c.slice(5, 7)) - 1] + ' de ' + c.slice(0, 4) : ' - honorários';
+    return ('NFS-e ' + String(n.numeroNfse || '').trim() + mes).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
+  }
   function arquivosDoEscritorio(codigo) {
     const P = doCore();
     const ano = String(new Date().getFullYear());
@@ -492,6 +503,28 @@ function iniciarAreaDoCliente(db, log) {
         if (await gravar(token, 'documentos/' + d.id, doc, 'documentoEscritorio')) gravados++;
         vivos.add(d.id);
       }
+    }
+    // as notas dos honorários das empresas do link (um erro numa nota não para o resto)
+    const codigos = new Set(empresas.map(e => Number(e.codigo)));
+    for (const n of notasHon.values()) {
+      if (!codigos.has(Number(n.empresaCodigo))) continue;
+      const id = 'nfse-' + String(n.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 100);
+      if (vivos.has(id)) continue;
+      try {
+        if (!pdfsDasNotas.has(id)) pdfsDasNotas.set(id, Buffer.from(await doCore().pdfDaDanfse(n.xmlNfse)));
+        const bytes = pdfsDasNotas.get(id);
+        if (bytes.length > MAIOR_ARQUIVO_DP) continue;
+        const doc = { tipo: 'escritorio', id, nome: nomeDaNotaDeHonorarios(n), area: 'contabil', enviadoEm: String(n.autorizadaEm || ''), tamanho: bytes.length, partes: pedacosDe(bytes.length) };
+        const ref = espelhoDe(token).collection('documentos').doc(id);
+        if (await hashAtual(ref, token + '/documentos/' + id) !== R.hashDoEspelho(doc)) {
+          const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+          doc.partes = pedacos.length;
+          const col = espelhoDe(token).collection('documentos');
+          for (const pd of pedacos) await col.doc(id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: id }));
+          if (await gravar(token, 'documentos/' + id, doc, 'documentoEscritorio')) gravados++;
+        }
+        vivos.add(id);
+      } catch (err) { log('Área do Cliente: a NFS-e dos honorários não foi para a Central -', n.id, err.message); }
     }
     let antes = escritorioNoEspelho.get(token);
     if (!antes) antes = new Set((await espelhoDe(token).collection('documentos').where('tipo', '==', 'escritorio').select().get()).docs.map(x => x.id));
@@ -999,6 +1032,22 @@ function iniciarAreaDoCliente(db, log) {
     for (const d of snap.docs) boletosHon.set(d.id, Object.assign({ id: d.id }, d.data()));
     if (!primeiroDosHon.boletos) for (const ch of snap.docChanges()) filaDoContrato(ch.doc.get('contratoId'));
     primeiroDosHon.boletos = false;
+    agendar();
+  }, log);
+
+  // as notas dos honorários (24/11/2026, ficha 50, segunda etapa): as autorizadas dos últimos 6 meses ("autorizadaEm" é um
+  // campo só, sem índice novo); o filtro da produção, da situação e da empresa é aqui, na memória
+  let primeirasNotasHon = true;
+  const desdeDasNotas = (() => { const h = new Date(); return new Date(h.getFullYear(), h.getMonth() - 6, 1).toISOString(); })();
+  ouvir('Área do Cliente: notas dos honorários', () => db.collection('nfseEmissoes').where('autorizadaEm', '>=', desdeDasNotas), snap => {
+    notasHon.clear();
+    for (const d of snap.docs) {
+      const x = d.data();
+      if (x.status !== 'autorizada' || x.ambiente !== 'producao' || x.empresaCodigo == null || !x.xmlNfse) continue;
+      notasHon.set(d.id, { id: d.id, empresaCodigo: Number(x.empresaCodigo), numeroNfse: x.numeroNfse, competencia: x.servico && x.servico.competencia, autorizadaEm: x.autorizadaEm, xmlNfse: x.xmlNfse });
+    }
+    if (!primeirasNotasHon) for (const ch of snap.docChanges()) { const c = ch.doc.get('empresaCodigo'); if (c != null) tokensDaEmpresa(c).forEach(t => fila.add(t)); pdfsDasNotas.delete('nfse-' + String(ch.doc.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 100)); }
+    primeirasNotasHon = false;
     agendar();
   }, log);
 
