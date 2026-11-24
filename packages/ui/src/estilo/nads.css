@@ -638,6 +638,9 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 main.main{padding:0 24px;}
 .topbar{border-bottom:none;padding:0;margin:24px auto 16px;align-items:center;}
 .page-title{font-size:var(--fs-20);font-weight:600;}
+/* a cápsula antes do título (o código da empresa no minimum, 24/11/2026: "Nao gosto desse pontinho, coloca outra coisa, usa capsula") */
+.page-title-linha{display:flex;align-items:center;gap:10px;min-width:0;}
+.page-title-selo{flex:none;display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:var(--fs-14);font-weight:600;font-variant-numeric:tabular-nums;line-height:1;}
 .content{max-width:none;}
 @media (max-width:768px){
   .layout{grid-template-columns:minmax(0,1fr);}

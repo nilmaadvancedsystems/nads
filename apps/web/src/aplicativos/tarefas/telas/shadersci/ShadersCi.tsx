@@ -6,7 +6,7 @@
 import { sci } from '@nads/core';
 import { BotaoIcone, CampoDataComCalendario, Icone, Interruptor, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react';
-import { TituloDoTopo } from '../../../../comum/topo';
+import { AcoesDoTopo, TituloDoTopo } from '../../../../comum/topo';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from '../drive/MenuDeContexto';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
 import { Janela } from '../lancatudo/Janelas';
@@ -18,19 +18,17 @@ export function ShadersCi() {
   return (
     <section className="sci">
       {/* o título da página é a empresa aberta, no lugar de "minimum" (24/11/2026: "troque o titulo minimum pelo nome da empresa numero e nome") */}
-      <TituloDoTopo titulo={vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : ''} />
+      <TituloDoTopo titulo={vm.empresa?.nome || ''} selo={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : undefined} />
       {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
       {/* a mesma janela: o lançamento simples ou, com a caixinha marcada, o múltiplo */}
       {vm.janela && (vm.multiplo ? <JanelaDoMultiplo vm={vm} /> : <JanelaDoLancamento vm={vm} />)}
       {vm.pesquisa === 'historico' ? <JanelaDosHistoricos vm={vm} /> : vm.pesquisa && <JanelaDoPlano vm={vm} lado={vm.pesquisa} />}
-      <div className="tarefas-barra-topo">
-        {vm.empresa && <>
-          <EmpresaDaBarra vm={vm.entrada} id="sci-empresas" />
-          {/* sem o selo do plano e sem o campo do CNPJ (24/11/2026: "remove isso"): o plano e o CNPJ vêm do Cadastro da empresa;
-              só a empresa sem plano no Cadastro ainda escolhe aqui */}
-          {!vm.planoDoCadastro && <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
-        </>}
-        <span className="tarefas-barra-espaco" />
+      {/* os botões na linha do título, sem a barra da empresa (24/11/2026: "remove isso e deixa alinhado com os botoes novo
+          lancamento e planilha do sci"); trocar de empresa fica no ícone da maleta */}
+      <AcoesDoTopo>
+        {/* sem o selo do plano e sem o campo do CNPJ (24/11/2026: "remove isso"): o plano e o CNPJ vêm do Cadastro da empresa;
+            só a empresa sem plano no Cadastro ainda escolhe aqui */}
+        {vm.empresa && !vm.planoDoCadastro && <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
         {vm.dev && (
           <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · fica só neste navegador"
             itens={vm.empresa ? [
@@ -43,10 +41,11 @@ export function ShadersCi() {
               { rotulo: 'Desmarcar as de teste', icone: 'x', desabilitado: !vm.teste.temSciDeTeste, onClick: vm.teste.desmarcarSci },
             ]} />
         )}
+        {vm.empresa && <BotaoIcone icone="briefcase" titulo="Trocar a empresa" onClick={vm.entrada.trocarEmpresa} />}
         {/* o Novo lançamento ao lado da Planilha do SCI (24/11/2026: "vai abrir uma popup, ai vai aparecer os dados para fazer o lançamento") */}
         {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoLancamento}><Icone nome="plus" />Novo lançamento</button>}
         {vm.empresa && <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.exportar} title="A planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)"><LogoExcel />Planilha do SCI</button>}
-      </div>
+      </AcoesDoTopo>
       {!vm.empresa
         ? <TelaInicial vm={vm} />
         : <Tabela vm={vm} />}

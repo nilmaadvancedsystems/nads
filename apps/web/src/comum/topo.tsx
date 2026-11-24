@@ -11,32 +11,37 @@ export type PedacoDaTrilha = { rotulo: string; titulo?: string; onClick?: () => 
 const Ctx = createContext<{
   alvo: HTMLElement | null; setAlvo: (e: HTMLElement | null) => void;
   trilha: PedacoDaTrilha[]; setTrilha: (t: PedacoDaTrilha[]) => void;
-  titulo: string; setTitulo: (t: string) => void;
+  titulo: TituloDaPagina; setTitulo: (t: TituloDaPagina) => void;
 } | null>(null);
+
+/** O título que a página põe na casca: o texto e, se tiver, a cápsula antes dele (o código da empresa). */
+export type TituloDaPagina = { texto: string; selo?: string };
+const SEM_TITULO: TituloDaPagina = { texto: '' };
 
 export function TopoProvider({ children }: { children: ReactNode }) {
   const [alvo, setAlvo] = useState<HTMLElement | null>(null);
   const [trilha, setTrilha] = useState<PedacoDaTrilha[]>([]);
-  const [titulo, setTitulo] = useState('');
+  const [titulo, setTitulo] = useState<TituloDaPagina>(SEM_TITULO);
   return <Ctx.Provider value={{ alvo, setAlvo, trilha, setTrilha, titulo, setTitulo }}>{children}</Ctx.Provider>;
 }
 
-/** A casca lê o título que a página pôs no lugar do dela ('' = o da página, do menu). */
-export function useTituloDoTopo(): string {
-  return useContext(Ctx)?.titulo || '';
+/** A casca lê o título que a página pôs no lugar do dela (texto '' = o da página, do menu). */
+export function useTituloDoTopo(): TituloDaPagina {
+  return useContext(Ctx)?.titulo || SEM_TITULO;
 }
 
 /**
- * Usado pelas páginas: <TituloDoTopo titulo="583 · EMPORIO VERDE" /> troca o título da página na casca enquanto a página está
- * aberta ('' volta ao do menu). O minimum põe a empresa aberta (24/11/2026: "troque o titulo minimum pelo nome da empresa numero e nome").
+ * Usado pelas páginas: <TituloDoTopo titulo="EMPORIO VERDE" selo="583" /> troca o título da página na casca enquanto a página
+ * está aberta ('' volta ao do menu); o selo vai numa cápsula antes dele. O minimum põe a empresa aberta (24/11/2026: "troque o
+ * titulo minimum pelo nome da empresa numero e nome"; "Nao gosto desse pontinho, coloca outra coisa, usa capsula").
  */
-export function TituloDoTopo({ titulo }: { titulo: string }) {
+export function TituloDoTopo({ titulo, selo }: { titulo: string; selo?: string }) {
   const ctx = useContext(Ctx);
   const setTitulo = ctx?.setTitulo;
   useEffect(() => {
-    setTitulo?.(titulo);
-    return () => setTitulo?.('');
-  }, [setTitulo, titulo]);
+    setTitulo?.(titulo ? { texto: titulo, selo } : SEM_TITULO);
+    return () => setTitulo?.(SEM_TITULO);
+  }, [setTitulo, titulo, selo]);
   return null;
 }
 

@@ -71,6 +71,8 @@ export function Casca(p: {
   secoes: SecaoCasca[];
   paginas: PaginaCasca[];
   titulo: string;
+  /** a cápsula antes do título (o código da empresa no minimum, 24/11/2026: "Nao gosto desse pontinho, coloca outra coisa, usa capsula") */
+  seloDoTitulo?: string;
   /** o título é a saudação do Início novo (13/11/2026): maior, digitado letra a letra e na mesma linha da fileira de ações */
   saudacao?: boolean;
   /** uma linha embaixo do título (cinza) */
@@ -219,7 +221,9 @@ export function Casca(p: {
       {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
       <header className={'topbar' + (p.saudacao ? ' topbar-saudacao' : '')} hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
-          <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
+          {p.seloDoTitulo
+            ? <div className="page-title-linha"><span className="page-title-selo">{p.seloDoTitulo}</span><h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2></div>
+            : <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>}
           {p.descricao && <p className="page-desc">{p.descricao}</p>}
         </div>
         <div id="topbarActions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{p.acoes}</div>

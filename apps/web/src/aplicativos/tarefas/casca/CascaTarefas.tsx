@@ -51,7 +51,8 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   const secoes = empresa ? empresa.paginas.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === empresa.pagina })) : vm.secoes;
   // o título que a página pôs (o <TituloDoTopo>) vale no lugar do do menu
   const tituloDaPagina = useTituloDoTopo();
-  const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : tituloDaPagina || vm.titulo;
+  const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : tituloDaPagina.texto || vm.titulo;
+  const seloDoTitulo = !empresa && tituloDaPagina.texto ? tituloDaPagina.selo : undefined;
   const trilha = useTrilhaDoTopo();
   const [feedbacks, setFeedbacks] = useState(false);
   // o aviso da tarefa nova (28/10/2026); a Central virou o módulo Minhas tarefas (30/10/2026), sem o correio no pé do menu
@@ -62,7 +63,7 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo} saudacao={vm.saudacao}
+    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo} seloDoTitulo={telaInteira || vm.semTitulo ? undefined : seloDoTitulo} saudacao={vm.saudacao}
       lateral={telaInteira || semLateral || vm.soAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || vm.semTitulo || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
