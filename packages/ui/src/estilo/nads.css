@@ -7247,6 +7247,13 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-escrever textarea{flex:1;}
 /* as colunas iguais em todos os grupos (cada grupo é uma tabela) */
 .ini-tabela{table-layout:fixed;width:100%;}
+/* Outros colaboradores (24/11/2026): só para ver; a linha aberta mostra a descrição e o histórico */
+.ini-colab-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ini-colab-topo h3{margin:0;}
+.ini-colab-tabela{width:100%;}
+.ini-colab-tabela td{vertical-align:top;}
+.ini-colab-detalhe td{background:var(--surface-2,transparent);}
+.ini-colab-historico{margin:8px 0 0;padding-left:18px;display:grid;gap:4px;font-size:var(--fs-13,13px);}
 .ini-tabela td:nth-child(2),.ini-tabela td:nth-child(6){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-tabela th:nth-child(1){width:44px;}
 .ini-tabela th:nth-child(3){width:110px;}

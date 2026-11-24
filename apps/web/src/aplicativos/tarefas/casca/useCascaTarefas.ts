@@ -12,7 +12,8 @@ import { usePessoal } from '../telas/pessoal/contexto';
 import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../comum/novidades';
 import { tarefas } from '@nads/core';
-import { abaDaUrl, ABAS_DO_INICIO, LISTAS_DAS_TAREFAS, listaDaUrl } from '../telas/inicio/abasDoInicio';
+import { abaDaUrl, ABAS_DO_INICIO, LISTAS_DAS_TAREFAS, listaDaUrl, OUTROS_COLABORADORES } from '../telas/inicio/abasDoInicio';
+import { useNivelDoInicio } from '../telas/inicio/useReunioesDoInicio';
 import { aplicarSimulacao, useSaudacaoSimulada } from '../telas/inicio/saudacaoSimulada';
 
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
@@ -58,6 +59,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const tarefasNoInicio = inicioNovo && abaDoInicio === 'tarefas';
   const listaDoInicio = listaDaUrl(new URLSearchParams(search).get('lista'));
   const delegadas = useTarefasDelegadas();
+  // Outros colaboradores (24/11/2026): só o Sênior, o Diretor e o Dono, com a novidade (no modo desenvolvedor, o nível do ⚡)
+  const nivelDoInicio = useNivelDoInicio();
+  const comColaboradores = useNovidade('outros-colaboradores') && tarefas.delegadas.veOutrosColaboradores(nivelDoInicio);
   const quantas = tarefasNoInicio ? tarefas.delegadas.contarAbas(delegadas.lista().tarefas.filter(t => !tarefas.delegadas.pedeDocumentos(t)), delegadas.eu()?.uid || '') : null;
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
@@ -74,7 +78,10 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     saudacao: inicioNovo && !!tituloDoInicio,
     semTitulo: app === 'fiscal' && ['relatorio-simples', 'relatorio-presumido', 'reinf'].includes(pagina),
     // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
-    secoes: tarefasNoInicio ? LISTAS_DAS_TAREFAS.map(l => ({ id: l.id, rotulo: l.rotulo, icone: l.icone, grupo: 1, ativa: l.id === listaDoInicio, contador: quantas && quantas[l.id] ? String(quantas[l.id]) : undefined }))
+    secoes: tarefasNoInicio ? [
+      ...LISTAS_DAS_TAREFAS.map(l => ({ id: l.id as string, rotulo: l.rotulo, icone: l.icone as NomeIcone, grupo: 1, ativa: l.id === listaDoInicio, contador: quantas && quantas[l.id] ? String(quantas[l.id]) : undefined })),
+      ...(comColaboradores ? [{ id: OUTROS_COLABORADORES.id as string, rotulo: OUTROS_COLABORADORES.rotulo, icone: OUTROS_COLABORADORES.icone as NomeIcone, grupo: 1, ativa: listaDoInicio === OUTROS_COLABORADORES.id, contador: undefined }] : []),
+    ]
       : comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
     paginas: inicioNovo ? ABAS_DO_INICIO.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone as NomeIcone, ativa: x.id === abaDoInicio })) : comAbas ? [
       ...(a?.paginas || []).filter(p => !ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone as NomeIcone, marca: p.marca === 'fgts' ? undefined : p.marca, ativa: p.id === pagina })),

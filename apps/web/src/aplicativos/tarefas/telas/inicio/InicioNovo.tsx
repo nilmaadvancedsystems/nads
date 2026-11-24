@@ -12,6 +12,8 @@ import { TarefaAbertaNova } from '../delegador/TarefaAbertaNova';
 import { useLembreteDoRecebimento } from '../delegador/useLembreteDoRecebimento';
 import { BuscaDoInicio } from './partes/BuscaDoInicio';
 import { ListaDoInicio } from './partes/ListaDoInicio';
+import { OutrosColaboradores } from './partes/OutrosColaboradores';
+import { useNovidade } from '../../../../comum/novidades';
 import { NotificacoesDoInicio } from './partes/NotificacoesDoInicio';
 import { PainelDoInicio } from './partes/PainelDoInicio';
 import { BotoesDasNotificacoes } from './partes/ReunioesDoInicio';
@@ -27,6 +29,8 @@ export function InicioNovo() {
   // a lista das Tarefas (Minhas, Delegadas por mim, Concluídas) vem da barra lateral padrão da casca (?lista=)
   const [params] = useSearchParams();
   const lista = listaDaUrl(params.get('lista'));
+  // Outros colaboradores (24/11/2026): só com a novidade; sem ela, o endereço antigo cai em Minhas tarefas
+  const colaboradores = useNovidade('outros-colaboradores') && lista === 'colaboradores';
   // nas Notificações, o Sênior, o Diretor e o Dono trocam o Delegar documentos e o Nova tarefa pelas reuniões
   const daSolicitacao = vm.aba === 'notificacoes' && vm.reunioesVm.papel !== 'participa';
   useCarregando(vm.carregando);
@@ -79,7 +83,8 @@ export function InicioNovo() {
           Vitor, o bloco dos Documentos ficava na tela depois de trocar de aba, um a cada visita; aqui não se repetiu) */}
       <div ref={conteudo} key={vm.aba} className="ini-conteudo" data-aba={vm.aba}>
         {vm.aba === 'painel' && <PainelDoInicio vm={vm} />}
-        {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba + lista} lugarDosFiltros={lugarDosFiltros} lugarDoFim={lugarDoFim} documentos={vm.aba === 'documentos'} lista={lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
+        {vm.aba === 'tarefas' && colaboradores && <OutrosColaboradores busca={vm.busca} comFoto={vm.comFoto} lugarDosFiltros={lugarDosFiltros} />}
+        {(vm.aba === 'documentos' || (vm.aba === 'tarefas' && !colaboradores)) && <ListaDoInicio key={vm.aba + lista} lugarDosFiltros={lugarDosFiltros} lugarDoFim={lugarDoFim} documentos={vm.aba === 'documentos'} lista={lista === 'colaboradores' ? 'minhas' : lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
         {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} podeMexer={vm.reunioesVm.papel === 'aprova'} lugarDosFiltros={lugarDosFiltros} />}
       </div>
       {vm.aberta && <TarefaAbertaNova key={vm.aberta} alvo={vm.aberta} voltar={vm.fechar} criada={vm.criada} saida={saida} />}

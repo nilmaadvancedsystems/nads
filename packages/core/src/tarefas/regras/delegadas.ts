@@ -1385,3 +1385,26 @@ export function partesDoTitulo(t: Pick<TarefaDelegada, 'titulo' | 'etapaDelegada
   if (c && empresa !== nomeDoCliente(c) && empresa !== c.nome) return inteiro;
   return { titulo: partes[0], periodo: partes[partes.length - 1] };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Outros colaboradores (Vitor, 24/11/2026: "os seniores, diretores e donos, conseguem ver as tarefas dos juniores e plenos …
+// apenas visualizar, nada de alterar"): só a leitura; quem pode ver e de quem são as tarefas, pelo nível.
+// ---------------------------------------------------------------------------------------------------------------------
+
+type NivelDaPessoa = 'dono' | 'diretor' | 'senior' | 'pleno' | 'junior' | null | undefined;
+/** o Sênior, o Diretor e o Dono veem as tarefas dos outros colaboradores */
+export const veOutrosColaboradores = (nivel: NivelDaPessoa): boolean => nivel === 'senior' || nivel === 'diretor' || nivel === 'dono';
+/** as tarefas que aparecem lá: as delegadas para um Júnior ou um Pleno */
+export const colaboradorObservado = (nivel: NivelDaPessoa): boolean => nivel === 'junior' || nivel === 'pleno';
+
+/** As tarefas dos colaboradores, por pessoa (a de mais tarefas em aberto primeiro), já na ordem do prazo. */
+export function porColaborador(lista: readonly TarefaDelegada[], hoje: string, agora = ''): { pessoa: Pessoa; tarefas: TarefaDelegada[]; abertas: number; atrasadas: number }[] {
+  const grupos = new Map<string, TarefaDelegada[]>();
+  for (const t of lista) grupos.set(t.responsavel.uid, [...(grupos.get(t.responsavel.uid) || []), t]);
+  return [...grupos.values()].map(ts => ({
+    pessoa: ts[0].responsavel,
+    tarefas: ordenar(ts, hoje, agora),
+    abertas: ts.filter(t => t.status !== 'concluida' && t.status !== 'cancelada').length,
+    atrasadas: ts.filter(t => atrasada(t, hoje, agora)).length,
+  })).sort((a, b) => b.abertas - a.abertas || a.pessoa.nome.localeCompare(b.pessoa.nome, 'pt-BR'));
+}

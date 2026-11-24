@@ -58,6 +58,11 @@ export interface RepoTarefasDelegadas {
    */
   fixarLink(id: string, url: string): Promise<void>;
   tirarLink(id: string, url: string): Promise<void>;
+  /**
+   * Outros colaboradores (24/11/2026): as tarefas delegadas para estas pessoas (os Juniores e Plenos), ao vivo, só para ver.
+   * Pedir já começa a ouvir; sem leitura por 15 min, a escuta se encerra. Nos exemplos, as de quem não é a pessoa usando.
+   */
+  daEquipe(uids: readonly string[]): { carregadas: boolean; tarefas: TarefaDelegada[]; erro?: string };
   tirarAnexo(id: string, anexoId: string): Promise<void>;
   /** os bytes do anexo, para baixar (null = não achou) */
   baixarAnexo(id: string, anexoId: string): Promise<Uint8Array | null>;
@@ -373,6 +378,10 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       for (const a of daTarefa(id).anexos) bytes.delete(a.id);
       lista = lista.filter(t => t.id !== id);
       mudou();
+    },
+    daEquipe: () => {
+      const uid = quem()?.uid || '';
+      return { carregadas: true, tarefas: lista.filter(t => t.responsavel.uid !== uid && t.criadaPor.uid !== t.responsavel.uid) };
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
