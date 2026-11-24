@@ -45,6 +45,16 @@ const idNovo = () => Date.now().toString(36) + (contador++).toString(36) + Math.
 export interface Formulario { data: string; debito: string; credito: string; valor: string; historico: string; complemento: string; documento: string; participanteD: string; participanteC: string }
 const FORMULARIO_VAZIO: Formulario = { data: '', debito: '', credito: '', valor: '', historico: '', complemento: '', documento: '', participanteD: '', participanteC: '' };
 
+/**
+ * A partida do lançamento múltiplo, em texto como se digita (24/11/2026: "uma funcao chamada lançamento multiplo, onde debito e
+ * credito tem que bater com partidas simples"): o lado, a conta, o participante (só quando a conta pede naquele lado), o valor, o
+ * histórico e o complemento. A data e o documento são do múltiplo inteiro.
+ */
+export interface PartidaDoFormulario { chave: string; lado: sci.LadoDoLancamento; conta: string; participante: string; valor: string; historico: string; complemento: string }
+export interface MultiploDoFormulario { id: string; editando: boolean; data: string; documento: string; partidas: PartidaDoFormulario[] }
+type CampoDaPartida = Exclude<keyof PartidaDoFormulario, 'chave'>;
+const partidaVazia = (lado: sci.LadoDoLancamento, valor = ''): PartidaDoFormulario => ({ chave: idNovo(), lado, conta: '', participante: '', valor, historico: '', complemento: '' });
+
 const doLancamento = (l: sci.CamposDoLancamento): Formulario => ({
   data: sci.dataParaTexto(l.data), debito: l.debito, credito: l.credito, valor: l.valor ? sci.valorParaTexto(l.valor) : '', historico: l.historico,
   complemento: l.complemento, documento: l.documento, participanteD: l.participanteD, participanteC: l.participanteC,
@@ -79,6 +89,10 @@ export function useShadersCi() {
   const [busca, setBusca] = useState('');
   // a lupa (F2): a conta de um dos lados ou o histórico
   const [pesquisa, setPesquisa] = useState<'debito' | 'credito' | 'historico' | null>(null);
+  // a lupa de uma partida do múltiplo (a chave dela); null = a do lançamento simples
+  const [pesquisaDaPartida, setPesquisaDaPartida] = useState<string | null>(null);
+  // a janela do lançamento múltiplo
+  const [multiplo, setMultiplo] = useState<MultiploDoFormulario | null>(null);
 
   // o plano do Cadastro (24/11/2026: "referenciar para nao ficar selecionando"): com ele, a empresa já abre nele e não se
   // escolhe; sem, vale o escolhido aqui
@@ -107,12 +121,15 @@ export function useShadersCi() {
     return () => window.removeEventListener('storage', outra);
   }, [chave]);
 
-  const linhas = useMemo(() => guardado.lancamentos.map(l => ({
-    ...l,
-    nomeD: sci.contaDoPlano(plano, l.debito)?.nome || '',
-    nomeC: sci.contaDoPlano(plano, l.credito)?.nome || '',
-    problemas: sci.problemasDoLancamento(l, plano),
-  })), [guardado.lancamentos, plano]);
+  const linhas = useMemo(() => {
+    const problemas = sci.problemasDosLancamentos(guardado.lancamentos, plano);
+    return guardado.lancamentos.map((l, i) => ({
+      ...l,
+      nomeD: sci.contaDoPlano(plano, l.debito)?.nome || '',
+      nomeC: sci.contaDoPlano(plano, l.credito)?.nome || '',
+      problemas: problemas[i],
+    }));
+  }, [guardado.lancamentos, plano]);
   const q = sci.semAcento(busca.trim());
   const visiveis = q ? linhas.filter(l => [sci.dataParaTexto(l.data), l.debito, l.credito, l.nomeD, l.nomeC, sci.valorParaTexto(l.valor), l.historico, l.complemento, l.documento, l.participanteD, l.participanteC]
     .some(v => sci.semAcento(v).includes(q))) : linhas;
@@ -135,6 +152,41 @@ export function useShadersCi() {
     ? { codigo: c.codigo, nome: c.nome, analitica: c.analitica, foraDoLado: sci.contaForaDoLado(c, lado), participante: sci.participanteDoLado(c, lado) }
     : null;
   const vazio = Object.values(form).every(v => !v.trim());
+
+  // o múltiplo lido: as partidas como vão para a lista, os problemas de cada uma e os totais
+  const partidasLidas: sci.LancamentoDoShader[] = multiplo ? multiplo.partidas.map(pt => {
+    const valor = sci.valorDoTexto(pt.valor);
+    const conta = sci.contaDoPlano(plano, pt.conta);
+    const pede = sci.participanteDoLado(conta, pt.lado);
+    return {
+      ...sci.lancamentoLimpo({
+        ...sci.LANCAMENTO_VAZIO, data: sci.dataDoTexto(multiplo.data, ano), documento: multiplo.documento,
+        debito: pt.lado === 'debito' ? pt.conta : '', credito: pt.lado === 'credito' ? pt.conta : '',
+        participanteD: pt.lado === 'debito' && pede ? pt.participante : '', participanteC: pt.lado === 'credito' && pede ? pt.participante : '',
+        valor: isNaN(valor) ? 0 : Math.abs(valor), historico: pt.historico, complemento: pt.complemento,
+      }, plano),
+      id: pt.chave, multiplo: multiplo.id,
+    };
+  }) : [];
+  const problemasDasPartidas = multiplo ? partidasLidas.map(l => sci.problemasDaPartida(l, plano)) : [];
+  const problemasDoMultiplo = multiplo ? sci.problemasDoMultiplo(partidasLidas) : [];
+  const totaisDoMultiplo = sci.totaisDoMultiplo(partidasLidas);
+  const mudarMultiplo = (muda: (m: MultiploDoFormulario) => MultiploDoFormulario) => setMultiplo(m => (m ? muda(m) : m));
+  /** abre o múltiplo de uma linha da lista (para editar) */
+  const abrirMultiplo = (id: string) => {
+    const ls = guardado.lancamentos.filter(l => l.multiplo === id);
+    if (!ls.length) return;
+    setMultiplo({
+      id, editando: true, data: sci.dataParaTexto(ls[0].data), documento: ls[0].documento,
+      partidas: ls.map(l => {
+        const lado: sci.LadoDoLancamento = sci.ladoDaPartida(l) || 'debito';
+        return {
+          chave: l.id, lado, conta: lado === 'debito' ? l.debito : l.credito, participante: lado === 'debito' ? l.participanteD : l.participanteC,
+          valor: l.valor ? sci.valorParaTexto(l.valor) : '', historico: l.historico, complemento: l.complemento,
+        };
+      }),
+    });
+  };
 
   const ids = (alvo?: readonly string[]) => (alvo && alvo.length ? alvo : [...marcados]);
   const doAlvo = (alvo?: readonly string[]) => { const s = new Set(ids(alvo)); return guardado.lancamentos.filter(l => s.has(l.id)); };
@@ -206,13 +258,78 @@ export function useShadersCi() {
       toast('Lançado.');
     },
     limparFormulario: () => { setForm(FORMULARIO_VAZIO); setEditando(null); },
-    editar: (id: string) => { const l = guardado.lancamentos.find(x => x.id === id); if (!l) return; setEditando(id); setForm(doLancamento(l)); setJanela(true); },
+    editar: (id: string) => {
+      const l = guardado.lancamentos.find(x => x.id === id);
+      if (!l) return;
+      // a partida de um múltiplo abre o múltiplo inteiro
+      if (l.multiplo) { abrirMultiplo(l.multiplo); return; }
+      setEditando(id); setForm(doLancamento(l)); setJanela(true);
+    },
+    // ------------------------------------------------------------------------------------ o lançamento múltiplo
+    multiplo,
+    /** o botão Lançamento múltiplo: um débito e um crédito para começar */
+    novoMultiplo: () => setMultiplo({ id: idNovo(), editando: false, data: '', documento: '', partidas: [partidaVazia('debito'), partidaVazia('credito')] }),
+    fecharMultiplo: () => { setMultiplo(null); setPesquisa(null); setPesquisaDaPartida(null); },
+    mudarDoMultiplo: (campo: 'data' | 'documento', v: string) => mudarMultiplo(m => ({ ...m, [campo]: v })),
+    mudarPartida: (chave: string, campo: CampoDaPartida, v: string) =>
+      mudarMultiplo(m => ({ ...m, partidas: m.partidas.map(pt => (pt.chave === chave ? { ...pt, [campo]: v } : pt)) })),
+    /** a partida nova já vem no lado que falta, com o valor que falta para bater */
+    adicionarPartida: () => mudarMultiplo(m => {
+      const d = totaisDoMultiplo.diferenca;
+      const lado: sci.LadoDoLancamento = d > 0 ? 'credito' : d < 0 ? 'debito' : m.partidas[m.partidas.length - 1]?.lado || 'debito';
+      return { ...m, partidas: [...m.partidas, partidaVazia(lado, d ? sci.valorParaTexto(Math.abs(d)) : '')] };
+    }),
+    removerPartida: (chave: string) => mudarMultiplo(m => ({ ...m, partidas: m.partidas.filter(pt => pt.chave !== chave) })),
+    /** o que a tela mostra de cada partida: o nome da conta, o participante que ela pede e o histórico */
+    partidaLida: (chave: string) => {
+      const i = multiplo ? multiplo.partidas.findIndex(pt => pt.chave === chave) : -1;
+      const pt = multiplo?.partidas[i];
+      if (!pt) return null;
+      const c = sci.contaDoPlano(plano, pt.conta);
+      return {
+        conta: c ? { nome: c.nome, analitica: c.analitica, foraDoLado: sci.contaForaDoLado(c, pt.lado) } : null,
+        participante: sci.participanteDoLado(c, pt.lado),
+        historico: sci.historicoDoSci(pt.historico),
+        problemas: problemasDasPartidas[i] || [],
+      };
+    },
+    diaDaSemanaDoMultiplo: (() => { const d = partidasLidas[0]?.data; return d ? DIAS_DA_SEMANA[new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))).getUTCDay()] : ''; })(),
+    totaisDoMultiplo: { ...totaisDoMultiplo, debitoTexto: sci.valorParaTexto(totaisDoMultiplo.debito), creditoTexto: sci.valorParaTexto(totaisDoMultiplo.credito), diferencaTexto: sci.valorParaTexto(Math.abs(totaisDoMultiplo.diferenca)) },
+    /** o que falta no múltiplo: o dele e o das partidas, sem repetir */
+    problemasDoMultiplo: [...new Set([...problemasDoMultiplo, ...problemasDasPartidas.flat()])],
+    /** Lançar: só com débito = crédito e nada faltando; o editado volta para o mesmo lugar da lista */
+    gravarMultiplo() {
+      if (!multiplo || problemasDoMultiplo.length || problemasDasPartidas.some(x => x.length)) return;
+      const novas = partidasLidas.map(l => ({ ...l, id: multiplo.editando ? l.id : idNovo() }));
+      mudarLista(ls => {
+        const i = ls.findIndex(l => l.multiplo === multiplo.id);
+        if (i < 0) return [...ls, ...novas];
+        const resto = ls.filter(l => l.multiplo !== multiplo.id);
+        return [...resto.slice(0, i), ...novas, ...resto.slice(i)];
+      });
+      setMultiplo(null);
+      toast(multiplo.editando ? 'Lançamento múltiplo alterado.' : 'Lançamento múltiplo lançado: ' + novas.length + ' partidas.');
+    },
     // a pesquisa no plano (F2 ou a lupa)
-    pesquisa, abrirPesquisa: (lado: 'debito' | 'credito' | 'historico') => setPesquisa(lado), fecharPesquisa: () => setPesquisa(null),
+    pesquisa, abrirPesquisa: (lado: 'debito' | 'credito' | 'historico', partida: string | null = null) => { setPesquisa(lado); setPesquisaDaPartida(partida); },
+    fecharPesquisa: () => { setPesquisa(null); setPesquisaDaPartida(null); },
+    /** o texto que a lupa já abre buscando e o campo que volta a ter o foco */
+    textoDaPesquisa: (() => {
+      const pt = pesquisaDaPartida && multiplo?.partidas.find(x => x.chave === pesquisaDaPartida);
+      if (pt) return pesquisa === 'historico' ? pt.historico : pt.conta;
+      return pesquisa ? form[pesquisa] : '';
+    })(),
+    campoDaPesquisa: pesquisaDaPartida ? 'sci-mp-' + (pesquisa === 'historico' ? 'hist' : 'conta') + '-' + pesquisaDaPartida : 'sci-' + (pesquisa || ''),
     /** a CD não aparece na lupa do débito, nem a FD na do crédito (24/11/2026: "nem deixa aparecer para o usuario essas contas dependendo do input que ele está") */
     buscarNoPlano: (texto: string, lado: sci.LadoDoLancamento) => sci.buscarNoPlano(plano, texto, 120).filter(c => !sci.contaForaDoLado(c, lado)).slice(0, 80),
     buscarHistoricos: (texto: string) => sci.buscarHistoricos(texto, 80),
-    escolherNoPlano: (codigo: string) => { if (pesquisa) setForm(f => ({ ...f, [pesquisa]: codigo })); setPesquisa(null); },
+    escolherNoPlano: (codigo: string) => {
+      if (pesquisaDaPartida) {
+        const campo: CampoDaPartida = pesquisa === 'historico' ? 'historico' : 'conta';
+        mudarMultiplo(m => ({ ...m, partidas: m.partidas.map(pt => (pt.chave === pesquisaDaPartida ? { ...pt, [campo]: codigo } : pt)) }));
+      } else if (pesquisa) setForm(f => ({ ...f, [pesquisa]: codigo }));
+      setPesquisa(null); setPesquisaDaPartida(null);
+    },
     // a tabela
     busca, setBusca,
     linhas: visiveis.map(l => ({ ...l, dataTexto: sci.dataParaTexto(l.data), valorTexto: l.valor ? sci.valorParaTexto(l.valor) : '' })),
@@ -238,7 +355,13 @@ export function useShadersCi() {
     duplicar(alvo?: readonly string[]) {
       const ls = doAlvo(alvo);
       if (!ls.length) return;
-      const copias = ls.map(l => ({ ...l, id: idNovo() }));
+      // a cópia de um múltiplo é outro múltiplo
+      const novosMultiplos = new Map<string, string>();
+      const copias = ls.map(l => {
+        if (!l.multiplo) return { ...l, id: idNovo() };
+        if (!novosMultiplos.has(l.multiplo)) novosMultiplos.set(l.multiplo, idNovo());
+        return { ...l, id: idNovo(), multiplo: novosMultiplos.get(l.multiplo) };
+      });
       const ultimo = ls[ls.length - 1].id;
       mudarLista(todos => { const i = todos.findIndex(l => l.id === ultimo); return [...todos.slice(0, i + 1), ...copias, ...todos.slice(i + 1)]; });
       setMarcados(new Set(copias.map(l => l.id)));
@@ -301,6 +424,14 @@ export function useShadersCi() {
           { ...sci.LANCAMENTO_VAZIO, data: d(8), debito: fornecedores, credito: banco, valor: 89000, historico: '1000', complemento: 'NF 555', documento: '555', participanteD: '45' },
           { ...sci.LANCAMENTO_VAZIO, data: d(10), debito: clientes, credito: caixa, valor: 1000, historico: 'Tarifa', complemento: 'Lançamento com problema, para testar' },
         ];
+        // e um múltiplo: o caixa paga o fornecedor e deposita o resto no banco (um crédito, dois débitos)
+        const m = idNovo();
+        const parte = { ...sci.LANCAMENTO_VAZIO, data: d(15), documento: '900', multiplo: m };
+        exemplos.push(
+          { ...parte, credito: caixa, valor: 150000, historico: '367', complemento: 'saída do caixa' },
+          { ...parte, debito: fornecedores, valor: 100000, historico: '1000', complemento: 'NF 900', participanteD: '45' },
+          { ...parte, debito: banco, valor: 50000, historico: '367', complemento: 'depósito do troco' },
+        );
         mudarLista(ls => [...ls, ...exemplos.map(l => ({ ...l, id: idNovo() }))]);
         if (!guardado.cnpj) guardar(g => ({ ...g, cnpj: '11.222.333/0001-81' }));
       },

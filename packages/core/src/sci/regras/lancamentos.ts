@@ -26,6 +26,12 @@ export interface LancamentoDoShader {
   /** o código do participante no SCI (o fornecedor no débito, o cliente no crédito) */
   participanteD: string;
   participanteC: string;
+  /**
+   * O lançamento múltiplo a que a partida pertence (24/11/2026: "uma funcao chamada lançamento multiplo, onde debito e credito tem
+   * que bater com partidas simples"): as partidas do mesmo múltiplo têm o mesmo id aqui, ficam juntas na lista e cada uma tem um
+   * lado só (débito ou crédito), como a transação do SCI. Sem = o lançamento simples, com débito e crédito.
+   */
+  multiplo?: string;
 }
 
 export type CamposDoLancamento = Omit<LancamentoDoShader, 'id'>;
@@ -114,11 +120,24 @@ function problemasDaConta(lado: LadoDoLancamento, codigo: string, conta: ContaDo
  */
 export function problemasDoLancamento(l: CamposDoLancamento, plano: PlanoSci): string[] {
   const p: string[] = [];
-  if (!l.data) p.push('sem data');
-  else { const fora = diaSemLancamento(l.data); if (fora) p.push(dataParaTexto(l.data) + ' é ' + fora + ': não se lança'); }
+  p.push(...problemasDaData(l.data));
   p.push(...problemasDaConta('debito', l.debito, contaDoPlano(plano, l.debito), l.participanteD));
   p.push(...problemasDaConta('credito', l.credito, contaDoPlano(plano, l.credito), l.participanteC));
   if (l.debito && l.debito === l.credito) p.push('débito e crédito na mesma conta');
+  p.push(...problemasDoValorEDoTexto(l));
+  if (l.participanteD.trim() && l.participanteD.trim() === l.participanteC.trim()) p.push('o participante do débito e o do crédito são o mesmo');
+  return p;
+}
+
+function problemasDaData(data: string): string[] {
+  if (!data) return ['sem data'];
+  const fora = diaSemLancamento(data);
+  return fora ? [dataParaTexto(data) + ' é ' + fora + ': não se lança'] : [];
+}
+
+/** O valor, o histórico, o complemento e o documento: os mesmos no lançamento simples e na partida do múltiplo. */
+function problemasDoValorEDoTexto(l: CamposDoLancamento): string[] {
+  const p: string[] = [];
   if (!(l.valor > 0)) p.push('sem valor');
   const historico = l.historico ? historicoDoSci(l.historico) : null;
   if (!l.historico) p.push('sem histórico');
@@ -126,8 +145,74 @@ export function problemasDoLancamento(l: CamposDoLancamento, plano: PlanoSci): s
   else if (!historico) p.push('o histórico ' + l.historico + ' não está no plano de históricos');
   if (!l.complemento.trim() && !historico?.pulaComplemento) p.push('sem complemento');
   if (!l.documento.trim()) p.push('sem documento');
-  if (l.participanteD.trim() && l.participanteD.trim() === l.participanteC.trim()) p.push('o participante do débito e o do crédito são o mesmo');
   return p;
+}
+
+// ------------------------------------------------------------------------------------------------ o lançamento múltiplo
+/** O lado da partida do múltiplo: o que tem conta (null = sem conta ou com as duas). */
+export function ladoDaPartida(l: CamposDoLancamento): LadoDoLancamento | null {
+  const d = !!l.debito.trim(), c = !!l.credito.trim();
+  return d && !c ? 'debito' : c && !d ? 'credito' : null;
+}
+
+/**
+ * O que impede a partida do múltiplo (sem olhar o resto do múltiplo): um lado só, a conta e o participante daquele lado, o valor,
+ * o histórico, o complemento, o documento, sem sábado nem feriado.
+ */
+export function problemasDaPartida(l: CamposDoLancamento, plano: PlanoSci): string[] {
+  const p: string[] = [...problemasDaData(l.data)];
+  const lado = ladoDaPartida(l);
+  if (!lado) p.push(l.debito.trim() ? 'a partida tem débito e crédito (no múltiplo, cada partida tem um lado só)' : 'a partida está sem conta');
+  else if (lado === 'debito') p.push(...problemasDaConta('debito', l.debito, contaDoPlano(plano, l.debito), l.participanteD));
+  else p.push(...problemasDaConta('credito', l.credito, contaDoPlano(plano, l.credito), l.participanteC));
+  if (lado === 'debito' && l.participanteC.trim()) p.push('a partida de débito não leva participante a crédito');
+  if (lado === 'credito' && l.participanteD.trim()) p.push('a partida de crédito não leva participante a débito');
+  p.push(...problemasDoValorEDoTexto(l));
+  return p;
+}
+
+export interface TotaisDoMultiplo { debito: number; credito: number; diferenca: number }
+
+/** Os totais das partidas (centavos): a diferença é débito − crédito. */
+export function totaisDoMultiplo(partidas: readonly CamposDoLancamento[]): TotaisDoMultiplo {
+  let debito = 0, credito = 0;
+  for (const l of partidas) {
+    const lado = ladoDaPartida(l);
+    if (lado === 'debito') debito += l.valor || 0;
+    else if (lado === 'credito') credito += l.valor || 0;
+  }
+  return { debito, credito, diferenca: debito - credito };
+}
+
+/** O que impede o múltiplo inteiro: pelo menos um débito e um crédito, a mesma data, e o total dos débitos igual ao dos créditos. */
+export function problemasDoMultiplo(partidas: readonly CamposDoLancamento[]): string[] {
+  const p: string[] = [];
+  const lados = partidas.map(ladoDaPartida);
+  if (!lados.includes('debito') || !lados.includes('credito')) p.push('o múltiplo precisa de pelo menos um débito e um crédito');
+  if (new Set(partidas.map(l => l.data)).size > 1) p.push('as partidas do múltiplo estão em datas diferentes');
+  const t = totaisDoMultiplo(partidas);
+  if (t.diferenca !== 0) p.push('o múltiplo não bate: débitos ' + valorParaTexto(t.debito) + ' × créditos ' + valorParaTexto(t.credito));
+  return p;
+}
+
+/**
+ * Os problemas de cada lançamento da lista, na ordem dela: o simples pelas regras dele; a partida pelas dela e pelas do múltiplo
+ * inteiro (o múltiplo que não bate deixa todas as partidas com problema, e nenhuma vai sozinha para o SCI).
+ */
+export function problemasDosLancamentos(ls: readonly CamposDoLancamento[], plano: PlanoSci): string[][] {
+  const doMultiplo = new Map<string, string[]>();
+  for (const id of new Set(ls.map(l => l.multiplo).filter((x): x is string => !!x))) {
+    doMultiplo.set(id, problemasDoMultiplo(ls.filter(l => l.multiplo === id)));
+  }
+  const proprios = ls.map(l => (l.multiplo ? problemasDaPartida(l, plano) : problemasDoLancamento(l, plano)));
+  // a partida boa de um múltiplo em que outra partida tem problema também não vai
+  const outraComProblema = new Set(ls.map((l, i) => (l.multiplo && proprios[i].length ? l.multiplo : '')).filter(Boolean));
+  return ls.map((l, i) => {
+    if (!l.multiplo) return proprios[i];
+    const p = [...proprios[i], ...(doMultiplo.get(l.multiplo) || [])];
+    if (!p.length && outraComProblema.has(l.multiplo)) p.push('outra partida deste múltiplo tem problema');
+    return p;
+  });
 }
 
 /**
@@ -149,18 +234,21 @@ export interface ResumoDosLancamentos { quantos: number; prontos: number; comPro
 
 export function resumoDosLancamentos(ls: readonly CamposDoLancamento[], plano: PlanoSci): ResumoDosLancamentos {
   let prontos = 0, total = 0, totalPronto = 0;
-  for (const l of ls) {
+  const problemas = problemasDosLancamentos(ls, plano);
+  ls.forEach((l, i) => {
     total += l.valor || 0;
-    if (!problemasDoLancamento(l, plano).length) { prontos++; totalPronto += l.valor; }
-  }
+    if (!problemas[i].length) { prontos++; totalPronto += l.valor; }
+  });
   return { quantos: ls.length, prontos, comProblema: ls.length - prontos, total, totalPronto };
 }
 
 /** Os lançamentos na planilha do gerador do SCI (planilhaDoSci): os prontos vão para Importar, os outros para Conferir. */
 export function lancamentosDoShaderParaOSci(ls: readonly CamposDoLancamento[], plano: PlanoSci, cnpjEmpresa: string): LancamentoSci[] {
   const cnpjOk = cnpjValido(cnpjEmpresa) || cpfValido(cnpjEmpresa);
-  return ls.map(l => {
-    const problemas = problemasDoLancamento(l, plano);
+  const todos = problemasDosLancamentos(ls, plano);
+  // a partida do múltiplo vai com um lado só (como a exportação do SCI): as partidas seguidas, na mesma data
+  return ls.map((l, i) => {
+    const problemas = todos[i];
     if (!cnpjOk) problemas.push('CNPJ da empresa inválido');
     return {
       data: l.data, debito: l.debito, credito: l.credito, valor: l.valor, historico: l.historico, complemento: limparComplemento(l.complemento),

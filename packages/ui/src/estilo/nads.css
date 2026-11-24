@@ -8426,6 +8426,33 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-tabela tr.sci-marcada{background:var(--accent-soft);}
 .sci-tabela .badge svg{width:12px;height:12px;}
 .sci-tabela td > .hint svg{width:14px;height:14px;color:var(--success);}
+/* o lançamento múltiplo (24/11/2026): a janela larga, a data e o documento em cima, as partidas numa tabela de campos e os totais
+   embaixo; na tabela de lançamentos, as partidas de um múltiplo com o filete à esquerda */
+.modal.lt-janela.sci-janela-multiplo{max-width:1080px;width:min(1080px,100%);}
+.sci-multiplo-topo{margin-bottom:4px;}
+.sci-multiplo{max-height:46vh;overflow:auto;}
+.sci-multiplo table{width:100%;table-layout:fixed;}
+.sci-multiplo .steps{flex-wrap:nowrap;white-space:nowrap;}
+.sci-multiplo td{vertical-align:top;}
+.sci-multiplo input{width:100%;min-width:0;}
+.sci-multiplo .lcdpr-codigo{display:flex;}
+.sci-multiplo .lcdpr-codigo input.lcdpr-cod{flex:1 1 auto;width:auto;border-top-right-radius:0;border-bottom-right-radius:0;font-variant-numeric:tabular-nums;}
+.sci-mp-lado{width:96px;}
+.sci-mp-conta{width:180px;}
+.sci-mp-part{width:104px;}
+.sci-mp-valor{width:110px;}
+.sci-mp-valor input{text-align:right;}
+.sci-mp-hist{width:140px;}
+.sci-mp-tirar{width:36px;}
+.sci-mp-nome{display:block;margin-top:2px;font-size:var(--fs-12);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+.sci-multiplo tr.sci-partida-falta > td:first-child{box-shadow:inset 2px 0 0 var(--warn);}
+.sci-multiplo-pe{display:flex;align-items:center;gap:12px;margin-top:12px;}
+.sci-multiplo-totais{display:inline-flex;gap:16px;align-items:center;font-size:var(--fs-14);color:var(--ink-muted);}
+.sci-multiplo-totais b{color:var(--ink);margin-left:4px;}
+.sci-multiplo-totais .sci-nao-bate,.sci-multiplo-totais .sci-nao-bate b{color:var(--danger);}
+.sci-multiplo-totais .sci-bate{display:inline-flex;align-items:center;gap:4px;color:var(--success);font-weight:600;}
+.sci-multiplo-totais svg{width:14px;height:14px;}
+.sci-tabela tr.sci-do-multiplo > td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
 /* a tela inicial do minimum (24/11/2026: "Faz uma tela inicial bem bonita, com animações"): no centro, o selo, o título, a
    busca e as empresas do SCI; tudo chega uma vez, de baixo para cima, um atrás do outro (exceção pedida à regra de não
    animar, como a gaveta; nada infinito). Sem movimento pedido pelo sistema, aparece parado */

@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import {
   buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
-  participanteDoLado, pascoa, planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
+  ladoDaPartida, participanteDoLado, pascoa, problemasDaPartida, problemasDosLancamentos, totaisDoMultiplo, planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
 } from './index';
 import { FERIADOS } from '../tarefas/regras/feriados';
 
@@ -98,6 +98,40 @@ describe('o lançamento', () => {
 
   it('o resumo soma os prontos à parte', () => {
     expect(resumoDosLancamentos([base, { ...base, valor: 500, data: '' }], p113)).toEqual({ quantos: 2, prontos: 1, comProblema: 1, total: 15500, totalPronto: 15000 });
+  });
+});
+
+// 24/11/2026: "uma funcao chamada lançamento multiplo, onde debito e credito tem que bater com partidas simples" (dados fictícios)
+describe('o lançamento múltiplo', () => {
+  const p = (lado: 'd' | 'c', conta: string, valor: number, extra: Partial<CamposDoLancamento> = {}): CamposDoLancamento =>
+    ({ ...base, debito: lado === 'd' ? conta : '', credito: lado === 'c' ? conta : '', valor, multiplo: 'M1', ...extra });
+  // o pagamento de duas guias pelo caixa: um crédito e dois débitos
+  const multiplo = [p('c', '5', 15000), p('d', '15', 0), p('d', '148', 10000, { participanteD: '45' }), p('d', '7', 5000)].filter(l => l.valor);
+
+  it('cada partida tem um lado só, com a conta e o participante daquele lado', () => {
+    expect(ladoDaPartida(multiplo[0])).toBe('credito');
+    expect(ladoDaPartida({ ...base })).toBeNull();
+    expect(problemasDaPartida(multiplo[1], p113)).toEqual([]);
+    expect(problemasDaPartida({ ...multiplo[1], participanteD: '' }, p113)).toEqual(['falta o fornecedor (participante) no débito']);
+    expect(problemasDaPartida({ ...base, multiplo: 'M1' }, p113)).toContain('a partida tem débito e crédito (no múltiplo, cada partida tem um lado só)');
+    expect(problemasDaPartida(p('d', '16', 100), p113)).toContain('a conta 16 (Clientes nacionais) só entra a crédito');
+  });
+
+  it('só fica pronto quando os débitos batem com os créditos', () => {
+    expect(totaisDoMultiplo(multiplo)).toEqual({ debito: 15000, credito: 15000, diferenca: 0 });
+    expect(problemasDosLancamentos([base, ...multiplo], p113)).toEqual([[], [], [], []]);
+    const torto = [multiplo[0], multiplo[1], { ...multiplo[2], valor: 4000 }];
+    expect(problemasDosLancamentos(torto, p113).every(x => x.includes('o múltiplo não bate: débitos 140,00 × créditos 150,00'))).toBe(true);
+    expect(problemasDosLancamentos([multiplo[0]], p113)[0]).toContain('o múltiplo precisa de pelo menos um débito e um crédito');
+    // uma partida com problema segura as outras
+    const comFalha = [multiplo[0], { ...multiplo[1], historico: '' }, multiplo[2]];
+    expect(problemasDosLancamentos(comFalha, p113)[0]).toEqual(['outra partida deste múltiplo tem problema']);
+  });
+
+  it('vai para a planilha do SCI com um lado em cada linha', () => {
+    const lsci = lancamentosDoShaderParaOSci(multiplo, p113, CNPJ);
+    expect(lsci.map(l => [l.debito, l.credito, l.valor, l.problemas.length])).toEqual([['', '5', 15000, 0], ['148', '', 10000, 0], ['7', '', 5000, 0]]);
+    expect(resumoDosLancamentos(multiplo, p113)).toMatchObject({ quantos: 3, prontos: 3 });
   });
 });
 

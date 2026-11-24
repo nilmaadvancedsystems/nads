@@ -4,7 +4,7 @@
 // valor, o histórico do plano de históricos, o complemento, o documento e o participante na frente da conta que pede); embaixo, a tabela, com o botão
 // direito (editar, duplicar, inverter, copiar, colar, excluir) e os atalhos do Excel. Sai na planilha do gerador do SCI.
 import { sci } from '@nads/core';
-import { CampoDataComCalendario, Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
+import { BotaoIcone, CampoDataComCalendario, Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from '../drive/MenuDeContexto';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
@@ -18,6 +18,7 @@ export function ShadersCi() {
     <section className="sci">
       {/* a janela do lançamento e, por cima dela, a do plano (F2) */}
       {vm.janela && <JanelaDoLancamento vm={vm} />}
+      {vm.multiplo && <JanelaDoMultiplo vm={vm} />}
       {vm.pesquisa === 'historico' ? <JanelaDosHistoricos vm={vm} /> : vm.pesquisa && <JanelaDoPlano vm={vm} lado={vm.pesquisa} />}
       <div className="tarefas-barra-topo">
         {vm.empresa && <>
@@ -45,6 +46,8 @@ export function ShadersCi() {
         )}
         {/* o Novo lançamento ao lado da Planilha do SCI (24/11/2026: "vai abrir uma popup, ai vai aparecer os dados para fazer o lançamento") */}
         {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoLancamento}><Icone nome="plus" />Novo lançamento</button>}
+        {/* o lançamento múltiplo (24/11/2026: "uma funcao chamada lançamento multiplo, onde debito e credito tem que bater com partidas simples") */}
+        {vm.empresa && <button type="button" className="btn btn-outline" onClick={vm.novoMultiplo}><Icone nome="list" />Lançamento múltiplo</button>}
         {vm.empresa && <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.exportar} title="A planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)"><LogoExcel />Planilha do SCI</button>}
       </div>
       {!vm.empresa
@@ -188,6 +191,106 @@ function JanelaDoLancamento({ vm }: { vm: VmShadersCi }) {
   );
 }
 
+// ------------------------------------------------------------------------------------------------- o lançamento múltiplo
+/**
+ * A janela do lançamento múltiplo (24/11/2026: "aqui tem uma exportação de lançamentos multiplos do sci, tenta entender como
+ * funciona e aplica no nads, uma funcao chamada lançamento multiplo, onde debito e credito tem que bater com partidas simples"):
+ * como a transação do SCI, a data e o documento valem para todas as partidas; cada partida tem um lado só (débito ou crédito),
+ * a conta com a lupa, o participante quando a conta pede (CD só a crédito, FD só a débito), o valor, o histórico e o
+ * complemento. Embaixo, os totais: só lança com os débitos iguais aos créditos. A partida nova já vem no lado e no valor que
+ * faltam para bater.
+ */
+function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
+  const m = vm.multiplo!;
+  const t = vm.totaisDoMultiplo;
+  useEffect(() => { document.getElementById('sci-mp-data')?.focus(); }, []);
+  const pronto = !vm.problemasDoMultiplo.length;
+  return (
+    <Janela app="minimum" titulo={m.editando ? 'Editar lançamento múltiplo' : 'Lançamento múltiplo'} fechar={vm.fecharMultiplo} className="sci-janela-multiplo"
+      pe={<>
+        {pronto
+          ? <span className="hint">Débitos e créditos batem · F2 pesquisa · Esc fecha</span>
+          : <p className="hint sci-falta" title={vm.problemasDoMultiplo.join('\n')}><Icone nome="alert" />{vm.problemasDoMultiplo.slice(0, 3).join(' · ') + (vm.problemasDoMultiplo.length > 3 ? ' …' : '')}</p>}
+        <span className="tarefas-barra-espaco" />
+        <button type="button" className="btn btn-ghost" onClick={vm.fecharMultiplo}>{m.editando ? 'Cancelar' : 'Fechar'}</button>
+        <button type="submit" form="sci-form-multiplo" className="btn btn-primary" disabled={!pronto}><Icone nome={m.editando ? 'check' : 'plus'} />{m.editando ? 'Salvar alteração' : 'Lançar múltiplo'}</button>
+      </>}>
+      <form id="sci-form-multiplo" className="registro-corpo" onSubmit={e => { e.preventDefault(); vm.gravarMultiplo(); }}>
+        <div className="sci-form sci-multiplo-topo">
+          <div className="field sci-terco sci-data">
+            <label htmlFor="sci-mp-data">Data{vm.diaDaSemanaDoMultiplo && <span className="sci-dia-semana"> · {vm.diaDaSemanaDoMultiplo}</span>}</label>
+            <CampoDataComCalendario id="sci-mp-data" rotulo="Data" valor={m.data} onMudar={v => vm.mudarDoMultiplo('data', v)} bloqueado={vm.diaSemLancamento} />
+          </div>
+          <Campo id="sci-mp-documento" rotulo="Documento" valor={m.documento} mudar={v => vm.mudarDoMultiplo('documento', v)} classe="sci-terco" />
+        </div>
+        <div className="table-wrap sci-multiplo">
+          <table className="table-compact ini-delegadas">
+            <thead>
+              <tr>
+                <th className="sci-mp-lado">Lado</th><th className="sci-mp-conta">Conta</th><th className="sci-mp-part">Participante</th><th className="num sci-mp-valor">Valor</th>
+                <th className="sci-mp-hist">Histórico</th><th>Complemento</th><th className="sci-mp-tirar" aria-label="Remover" />
+              </tr>
+            </thead>
+            <tbody>
+              {m.partidas.map(pt => {
+                const lida = vm.partidaLida(pt.chave);
+                const conta = lida?.conta;
+                const nomeDaConta = !conta ? (pt.conta ? 'Não está no plano' : '') : conta.foraDoLado ? conta.nome + ' (só a ' + (pt.lado === 'debito' ? 'crédito' : 'débito') + ')' : conta.nome + (conta.analitica ? '' : ' (sintética)');
+                const lupa = (alvo: 'conta' | 'historico') => vm.abrirPesquisa(alvo === 'conta' ? pt.lado : 'historico', pt.chave);
+                const f2 = (alvo: 'conta' | 'historico') => (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'F2') { e.preventDefault(); lupa(alvo); } };
+                return (
+                  <tr key={pt.chave} className={lida?.problemas.length ? 'sci-partida-falta' : undefined} title={lida?.problemas.join('\n') || undefined}>
+                    <td className="sci-mp-lado">
+                      <Segmentado<sci.LadoDoLancamento> valor={pt.lado} onMudar={v => vm.mudarPartida(pt.chave, 'lado', v)}
+                        opcoes={[{ valor: 'debito', rotulo: 'D' }, { valor: 'credito', rotulo: 'C' }]} />
+                    </td>
+                    <td className="sci-mp-conta">
+                      <span className="lcdpr-codigo">
+                        <input id={'sci-mp-conta-' + pt.chave} type="text" className="lcdpr-cod" value={pt.conta} autoComplete="off" placeholder="Conta" aria-label="Conta"
+                          onChange={e => vm.mudarPartida(pt.chave, 'conta', e.target.value)} onKeyDown={f2('conta')} />
+                        <button type="button" className="lcdpr-lupa" title="Pesquisar a conta (F2)" aria-label="Pesquisar a conta" onClick={() => lupa('conta')}><Icone nome="search" /></button>
+                      </span>
+                      {nomeDaConta && <span className={'hint sci-mp-nome' + (pt.lado === 'debito' ? ' lt-cod-nome-d' : ' lt-cod-nome-c')} title={nomeDaConta}>{nomeDaConta}</span>}
+                    </td>
+                    <td className="sci-mp-part">
+                      {lida?.participante
+                        ? <input type="text" value={pt.participante} autoComplete="off" aria-label={lida.participante === 'cliente' ? 'Cliente (participante)' : 'Fornecedor (participante)'}
+                            placeholder={lida.participante === 'cliente' ? 'Cliente' : 'Fornecedor'} onChange={e => vm.mudarPartida(pt.chave, 'participante', e.target.value)} />
+                        : <span className="hint">—</span>}
+                    </td>
+                    <td className="sci-mp-valor"><input type="text" inputMode="decimal" className="num" value={pt.valor} autoComplete="off" placeholder="0,00" aria-label="Valor" onChange={e => vm.mudarPartida(pt.chave, 'valor', e.target.value)} /></td>
+                    <td className="sci-mp-hist">
+                      <span className="lcdpr-codigo">
+                        <input id={'sci-mp-hist-' + pt.chave} type="text" className="lcdpr-cod" value={pt.historico} autoComplete="off" placeholder="Nº" aria-label="Histórico"
+                          onChange={e => vm.mudarPartida(pt.chave, 'historico', e.target.value)} onKeyDown={f2('historico')} />
+                        <button type="button" className="lcdpr-lupa" title="Pesquisar no plano de históricos (F2)" aria-label="Pesquisar o histórico" onClick={() => lupa('historico')}><Icone nome="search" /></button>
+                      </span>
+                      {pt.historico && <span className="hint sci-mp-nome" title={lida?.historico?.nome}>{lida?.historico?.nome || 'Não está no plano de históricos'}</span>}
+                    </td>
+                    <td className="sci-mp-compl"><input type="text" value={pt.complemento} autoComplete="off" aria-label="Complemento" placeholder={lida?.historico?.pulaComplemento ? 'Opcional' : 'Complemento'} onChange={e => vm.mudarPartida(pt.chave, 'complemento', e.target.value)} /></td>
+                    <td className="sci-mp-tirar"><BotaoIcone pequeno icone="x" titulo="Tirar a partida" onClick={() => vm.removerPartida(pt.chave)} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="sci-multiplo-pe">
+          <button type="button" className="btn btn-outline" onClick={() => { vm.adicionarPartida(); setTimeout(() => { const c = document.querySelectorAll<HTMLInputElement>('.sci-mp-conta input'); c[c.length - 1]?.focus(); }, 0); }}>
+            <Icone nome="plus" />Adicionar partida
+          </button>
+          <span className="tarefas-barra-espaco" />
+          <span className="sci-multiplo-totais">
+            <span>Débitos <b className="num">{t.debitoTexto}</b></span>
+            <span>Créditos <b className="num">{t.creditoTexto}</b></span>
+            <span className={t.diferenca ? 'sci-nao-bate' : 'sci-bate'}>{t.diferenca ? <>Diferença <b className="num">{t.diferencaTexto}</b></> : <><Icone nome="check" />Bate</>}</span>
+          </span>
+        </div>
+      </form>
+    </Janela>
+  );
+}
+
 // ------------------------------------------------------------------------------------------------- a tabela
 function Tabela({ vm }: { vm: VmShadersCi }) {
   const [menu, setMenu] = useState<MenuAberto | null>(null);
@@ -274,7 +377,7 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
             </thead>
             <tbody>
               {vm.linhas.map(l => (
-                <tr key={l.id} className={'ini-tr' + (vm.marcado(l.id) ? ' sci-marcada' : '') + (vm.editando === l.id ? ' linha-atual' : '')}
+                <tr key={l.id} className={'ini-tr' + (vm.marcado(l.id) ? ' sci-marcada' : '') + (vm.editando === l.id ? ' linha-atual' : '') + (l.multiplo ? ' sci-do-multiplo' : '')}
                   onClick={e => vm.marcar(l.id, e.ctrlKey || e.metaKey || e.shiftKey)} onDoubleClick={() => vm.editar(l.id)} onContextMenu={ev => aoMenu(ev, l.id)}>
                   <td className="sci-marca" onClick={e => { e.stopPropagation(); vm.marcar(l.id, true); }}><input type="checkbox" checked={vm.marcado(l.id)} readOnly tabIndex={-1} aria-label={'Selecionar o lançamento de ' + l.dataTexto} /></td>
                   <td className="ini-delegadas-curta">{l.dataTexto || '—'}</td>
@@ -311,10 +414,11 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
 
 // ------------------------------------------------------------------------------------------------- o plano de contas
 function JanelaDoPlano({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credito' }) {
-  const [q, setQ] = useState(vm.form[lado]);
+  const [q, setQ] = useState(vm.textoDaPesquisa);
   const [ativo, setAtivo] = useState(0);
   const achadas = vm.buscarNoPlano(q, lado);
-  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById('sci-' + lado)?.focus(), 0); };
+  const campo = vm.campoDaPesquisa;
+  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById(campo)?.focus(), 0); };
   return (
     <Janela app="minimum" titulo={'Plano de contas ' + vm.plano} fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo"
       selo={<span className="badge badge-neutral">{lado === 'debito' ? 'Débito' : 'Crédito'}</span>}>
@@ -355,10 +459,12 @@ function JanelaDoPlano({ vm, lado }: { vm: VmShadersCi; lado: 'debito' | 'credit
 // ------------------------------------------------------------------------------------------------- o plano de históricos
 /** A lupa do histórico (24/11/2026: "Te mandei o plano de historicos que eu queria que voce colocasse tambem"): o número, o apelido e o nome. */
 function JanelaDosHistoricos({ vm }: { vm: VmShadersCi }) {
-  const [q, setQ] = useState(vm.form.historico);
+  const [q, setQ] = useState(vm.textoDaPesquisa);
   const [ativo, setAtivo] = useState(0);
   const achados = vm.buscarHistoricos(q);
-  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById('sci-complemento')?.focus(), 0); };
+  // do lançamento simples, o foco vai para o complemento; da partida, volta para o histórico dela
+  const campo = vm.campoDaPesquisa === 'sci-historico' ? 'sci-complemento' : vm.campoDaPesquisa;
+  const escolher = (codigo: string) => { vm.escolherNoPlano(codigo); setTimeout(() => document.getElementById(campo)?.focus(), 0); };
   return (
     <Janela app="minimum" titulo="Plano de históricos" fechar={vm.fecharPesquisa} className="lt-janela-plano" classeDoFundo="lt-plano-fundo">
       <div className="registro-corpo">
