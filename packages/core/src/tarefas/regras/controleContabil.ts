@@ -6,7 +6,10 @@
 // com o .xlsx da planilha (lerPlanilhaDoControleContabil + planoDaImportacaoContabil): nada da planilha mora no código.
 import * as XLSX from 'xlsx';
 
-/** Quem já usa o Controle contábil fora do modo desenvolvedor (23/11/2026: "Fernando primeiro"), pelo primeiro nome. */
+/**
+ * Quem do Contábil usa o Controle (o Controle Forestry), além dos diretores e dos donos, pelo primeiro nome (23/11/2026: "Fernando
+ * primeiro"; 25/11/2026: "O unico contabil que vai ter acesso a esse controle vai ser o usuario fernando").
+ */
 export const CONTROLE_CONTABIL_LIBERADO_PARA: readonly string[] = ['fernando'];
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();

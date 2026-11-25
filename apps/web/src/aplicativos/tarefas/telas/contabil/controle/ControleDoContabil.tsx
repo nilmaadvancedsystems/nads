@@ -85,10 +85,10 @@ export function ControleDoContabil() {
         <span className="tarefas-barra-espaco" />
         {vm.podeGravar && (
           <>
-            <button type="button" className="btn btn-outline" onClick={() => arquivo.current?.click()} title="Trazer os meses e as observações da planilha do Controle contábil (.xlsx): mostra o que muda antes de gravar">
+            <button type="button" className="btn btn-outline" onClick={() => arquivo.current?.click()} title="Trazer os meses e as observações da planilha do Controle Forestry (.xlsx): mostra o que muda antes de gravar">
               <Icone nome="fileUp" width={16} height={16} />Importar planilha
             </button>
-            <input ref={arquivo} type="file" accept=".xlsx,.xls,.csv" hidden aria-label="A planilha do Controle contábil"
+            <input ref={arquivo} type="file" accept=".xlsx,.xls,.csv" hidden aria-label="A planilha do Controle Forestry"
               onChange={e => { const a = e.target.files?.[0]; e.target.value = ''; if (a) void vm.lerArquivo(a); }} />
           </>
         )}
@@ -107,7 +107,7 @@ export function ControleDoContabil() {
       {vm.falhou && <p className="hint cc-erro">Não deu para ler o controle de {vm.ano}: confira a internet (ou a permissão do banco) e recarregue.</p>}
 
       {vm.carregando ? <Esqueleto linhas={8} /> : (
-        <section className="card fr-cartao" aria-label={'Controle contábil ' + vm.ano}>
+        <section className="card fr-cartao" aria-label={'Controle Forestry ' + vm.ano}>
           <div className="fr-cartao-topo">
             <span className="cc-resumo" title={vm.esperado ? 'Em dia = feita até ' + vm.rotuloEsperado + '/' + vm.ano : undefined}>
               {resumo.map(s => (

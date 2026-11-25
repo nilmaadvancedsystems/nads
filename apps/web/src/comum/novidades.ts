@@ -84,7 +84,7 @@ export const NOVIDADES = {
   sci: { desde: '23/11/2026', aprovada: false },
   /** o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando no nads): o mês feito de cada empresa no ano,
    *  a situação e a pendência; o Contábil e o admin no modo desenvolvedor, e o Fernando também fora dele ("Fernando primeiro") */
-  'controle-contabil': { desde: '23/11/2026', aprovada: false },
+  'controle-contabil': { desde: '23/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

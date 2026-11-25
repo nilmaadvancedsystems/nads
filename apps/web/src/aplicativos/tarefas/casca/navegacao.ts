@@ -71,10 +71,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'minimum' },
   ] },
   // o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando virou módulo): até que mês a contabilidade
-  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. O Contábil e o admin, no
-  // modo desenvolvedor (a novidade 'controle-contabil'); fora dele, só quem está em t.CONTROLE_CONTABIL_LIBERADO_PARA ("Fernando primeiro")
-  { id: 'controle-contabil', nome: 'Controle contábil', icone: 'checklist', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Controle contábil' },
+  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. Na versão final para os
+  // diretores e os donos e, do Contábil, só o Fernando, sem o acesso padrão do departamento (25/11/2026: "esse pode lancar na versao
+  // final para diretores e donos. O unico contabil que vai ter acesso a esse controle vai ser o usuario fernando")
+  // o nome (25/11/2026: "O nome da aplicacao será Controle Forestry"); o id e o banco continuam controle-contabil
+  { id: 'controle-contabil', nome: 'Controle Forestry', icone: 'checklist', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Controle Forestry' },
   ] },
   // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
   // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
@@ -317,7 +319,7 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
     (a.id !== 'shadersci' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
-    (a.id !== 'controle-contabil' || ((op.admin || op.departamento === 'contabil') && (novidadeLigada('controle-contabil') || t.controleContabilLiberadoPara(op.nome)))) &&
+    (a.id !== 'controle-contabil' || usuarios.nivelDeDiretor(op.nivel) || t.controleContabilLiberadoPara(op.nome)) &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&

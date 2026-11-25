@@ -224,7 +224,7 @@ export function useControleDoContabil() {
         r.codigo, r.nome, r.regime, r.responsavel, r.linha.feitaAte ? t.rotuloDoMesFeito(r.linha.feitaAte) : '-', r.rotulo, r.linha.observacao, r.linha.pausada,
         r.linha.atualizadoPor || '', r.linha.atualizadoEm ? new Date(r.linha.atualizadoEm).toLocaleString('pt-BR') : '',
       ]);
-      return { bytes: t.planilhaXlsx('Controle contábil ' + ano, cabecalho, valores), nome: 'Controle contábil ' + ano + '.xlsx' };
+      return { bytes: t.planilhaXlsx('Controle Forestry ' + ano, cabecalho, valores), nome: 'Controle Forestry ' + ano + '.xlsx' };
     },
     /** o nome para mostrar de uma empresa do Cadastro (a janela da prévia) */
     nomeDe,
