@@ -1695,7 +1695,8 @@ const MULTA_OU_PARCELAMENTO = /\bMULTAS?\b|DANOS AMBIENTAIS|AUTO DE INFRACAO|PAR
 const MULTA_DO_DETRAN = /DETRAN[\s\S]{0,400}(AUTO DE INFRACAO|INFRACAO DE TRANSITO|NOTIFICACAO DE (AUTUACAO|PENALIDADE)|\bMULTAS?\b)|(AUTO DE INFRACAO|INFRACAO DE TRANSITO|NOTIFICACAO DE (AUTUACAO|PENALIDADE))[\s\S]{0,400}DETRAN/;
 const FICA_NI_FORA = /^(EXTRATO|APLICACOES|MAQUININHAS|BALANCETE|COMPROVANTE|RECEBIMENTO DE CLIENTES|FATURA CARTAO|NF-?E|NFC-?E|NFS-?E|CT-?E|MDF-?E|XML|DESCARTE)\b/;
 function ficaNiPorDecisao(entrada, d) {
-  if (!d || FICA_NI_FORA.test(String(d.tipo || ''))) return null;
+  // (25/11/2026) a guia ambiental avulsa que o dono mandou para os pagamentos (guiaAmbientalPaga) não fica presa aqui
+  if (!d || FICA_NI_FORA.test(String(d.tipo || '')) || d.decisaoDoDono) return null;
   const t = norm((Array.isArray(entrada.texto) ? entrada.texto.slice(0, 2).join('\n') : String(entrada.texto || entrada.txt || '')).slice(0, 3000));
   const n = norm(String(entrada.nome || ''));
   if (/\bTFAMG\b|TAXA DE CONTROLE E FISCALIZACAO AMBIENTAL/.test(t + ' ' + n)) return null;
@@ -3659,6 +3660,12 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
       if (n) { ev.push('titular da conta no cabeçalho: ' + tit[1].trim()); return { cliente: n, conf: candidatos.length <= 1 || candidatos.includes(n) ? 0.95 : 0.88, como: 'nome' }; }
     }
   }
+  // (25/11/2026, decisão do dono: a NF de venda entre duas clientes "nas duas empresas") a DANFE/DACTE com o emitente (o CNPJ da chave) e o destinatário clientes: na
+  // emitente, com a cópia no destinatário (montarNotaPdf: EMITIDOS numa, RECEBIDOS na outra), como o XML entre duas clientes (23/10/2026)
+  if (candidatos.length === 2 && /^(NF-e|CT-e) PDF$/.test(regra.tipo) && campos && campos.chave && String(campos.chave).length === 44) {
+    const emit = clientesDoDoc(String(campos.chave).slice(6, 20), cad).filter(x => candidatos.includes(x));
+    if (emit.length === 1) { const outra = candidatos.find(x => x !== emit[0]); ev.push('nota entre clientes: o emitente ' + emit[0] + ' e o destinatário ' + outra + ', na pasta das duas (decisão do dono, 25/11/2026)'); return { cliente: emit[0], conf: 0.95, como: 'doc', outraDaNota: outra }; }
+  }
   if (candidatos.length > 1 && sub && candidatos.includes(sub.codigo)) { ev.push('CNPJ do documento e ' + sub.como); return { cliente: sub.codigo, conf: 0.93, como: 'doc' }; }
   if (candidatos.length > 1 && docNome) { const c = unico(clientesDoDoc(docNome, cad)); if (c && candidatos.includes(c)) { ev.push('CNPJ do nome da guia'); return { cliente: c, conf: 0.97, como: 'doc' }; } }
   if (candidatos.length > 1 && /^(DAS|PGDAS-D|DARF|DAE|DAM|FGTS|DEFIS|DEFIS ALTERDATA|ECF|DCTF|DIRF|BALANCETE|CARTAO CNPJ|CERTIDAO|LIVRO_FISCAL|RELATORIO LJ)$/.test(regra.tipo)) {
@@ -4577,7 +4584,13 @@ function pagamentoDoDono(entrada, u, bruto, ctx, ev, porHash) {
   let c = null;
   if (porHash) c = { cliente: porHash, conf: 0.97, como: 'hash' };
   else if (docs.length === 1) { c = { cliente: docs[0], conf: 0.95, como: 'doc' }; ev.push('cliente pelo CNPJ/CPF do documento'); }
-  else { const r = clienteDoPagamento(rel, bruto, cad, ev, null, false); if (r.erro) return Object.assign(base, r.erro); c = r.c; }
+  else {
+    const r = clienteDoPagamento(rel, bruto, cad, ev, null, false);
+    // (25/11/2026) a proposta de seguro no nome do sócio (pessoa física, não cliente): o e-mail da empresa escrito nela ("…@florestaexemplo.com.br") de UM cliente só
+    const pe = r.erro ? clientePeloEmail(u, cad) : null;
+    if (pe != null) { c = { cliente: pe, conf: 0.85, como: 'nome' }; ev.push('cliente pelo domínio do e-mail da empresa escrito no documento (25/11/2026)'); }
+    else if (r.erro) return Object.assign(base, r.erro); else c = r.c;
+  }
   // o mês: a data de pagamento da Solides; a pasta de origem; o nome do zip/pasta ("OV 10.2026.zip"); o vencimento
   let comp = null;
   const pg = solides ? dataBr(linhaApos(u, /DATA DE PAGAMENTO\s*:/, 40)) : null;
@@ -4592,6 +4605,59 @@ function pagamentoDoDono(entrada, u, bruto, ctx, ev, porHash) {
   ev.push('fornecedor: ' + fornecedor);
   return Object.assign(base, { acao: 'ARQUIVAR', cliente: c.cliente, comoCliente: c.como, confianca: Math.min(c.conf, 0.93), competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], nomeFinal: nome });
 }
+/** O cliente pelo domínio do e-mail escrito no documento ("CONTROLADORIA@FLORESTAEXEMPLO.COM.BR" = FLORESTA EXEMPLO LTDA, sem LTDA/ME/EIRELI/S.A.): de UM cliente só; senão null. */
+function clientePeloEmail(u, cad) {
+  // (o e-mail quebrado na linha: "controladoria@florestaexemplo.\ncom.br")
+  const doms = new Set([...String(u || '').matchAll(/[A-Z0-9._-]+@([A-Z0-9-]{4,})\.\s*(?:COM|NET|ORG|AGR|IND)(?:\.BR)?\b/g)].map(m => m[1].replace(/-/g, '')));
+  if (!doms.size) return null;
+  const semSufixo = s => chaveNome(String(s || '').replace(/\b(LTDA|ME|EPP|EIRELI|S\.?\s?A\.?|CIA)\b\.?/gi, ' '));
+  const achados = [...cad.porCod.values()].filter(c => c.ativo !== false && [c.razao, c.fantasia].filter(Boolean).some(n => doms.has(semSufixo(n)))).map(c => c.codigo);
+  return achados.length === 1 ? achados[0] : null;
+}
+/**
+ * (25/11/2026, decisão do dono) O contrato de compra e venda (ou de fornecimento) entre DUAS empresas clientes ("CONTRATO DE COMPRA E VENDA DE MUDAS", a vendedora e a
+ * compradora com o CNPJ no preâmbulo): SOCIETÁRIO\CONTRATOS\ANO nas duas, nome original. O ano é o da data por extenso do texto (a assinatura), senão o do zip/pasta de
+ * origem. Com o CNPJ de um cliente só, continuam as regras de sempre.
+ */
+function contratoEntreClientes(entrada, u, bruto, ctx, ev) {
+  if (!/^[\s\S]{0,300}\bCONTRATO DE (COMPRA E VENDA|VENDA|FORNECIMENTO)\b/.test(u)) return null;
+  // a venda de ativo (veículo, trator, máquina, imóvel) tem a regra dela (VENDA DE ATIVOS) e continua como estava (40.6, a venda do trator entre duas clientes)
+  if (/\b(VEICULOS?|TRATOR(ES)?|CAMINH(AO|OES)|MAQUINAS?|IMOVE(L|IS)|CHASSI|RENAVAM)\b/.test(u.slice(0, 600))) return null;
+  const cad = ctx.cadastro, rel = entrada.rel || entrada.nome || '';
+  const ordem = [];
+  for (const d of documentosDoTexto(bruto.slice(0, 4000))) for (const c of clientesDoDoc(d.doc, cad)) if (!ordem.includes(c)) ordem.push(c);
+  if (ordem.length !== 2) return null;
+  const anos = [...u.matchAll(/\b\d{1,2}\s+DE\s+(?:JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)\s+DE\s+(20\d{2})\b/g)].map(m => +m[1]).filter(anoOk);
+  const z = mesNumericoDaPasta(rel) || mesDoNomeDaPasta(rel) || anoDaPasta(rel);
+  const ano = anos.length ? anos[anos.length - 1] : z && z.ano;
+  if (!ano) return null;
+  ev.push('contrato de compra e venda entre duas clientes (' + ordem.join(' e ') + ', o CNPJ das duas no preâmbulo): SOCIETÁRIO\\CONTRATOS\\' + ano + ' nas duas (decisão do dono, 25/11/2026)');
+  return { acao: 'ARQUIVAR', tipo: 'CONTRATO', setor: 'FOLHA_SOCIETARIO', cliente: ordem[0], comoCliente: 'doc', confianca: 0.93, competencia: { ano }, caminho: ['SOCIETÁRIO', 'CONTRATOS', String(ano)], nomeFinal: entrada.nome,
+    copias: [{ cliente: ordem[1], comoCliente: 'doc' }], fonte: 'contrato entre clientes (decisão do dono, 25/11/2026)' };
+}
+/**
+ * (25/11/2026, decisão do dono) A guia DAE estadual de um órgão ambiental que NÃO é parcela (a multa avulsa da FEAM, a taxa de reposição florestal do IEF):
+ * CONTÁBIL\PAGAMENTOS DE FORNECEDORES\AAAA\MM\<ÓRGÃO>, nome original; o cliente pelo caminho do pagamento (a pasta, o CNPJ inteiro ou mascarado de um cliente só); o
+ * mês pelo vencimento, senão pelo zip/pasta. A parcela ("DAE : 2/30") segue a regra do DAE (08. PARCELAMENTOS, Vitor, 30/10/2026).
+ */
+function guiaAmbientalPaga(entrada, u, bruto, ctx, ev, porHash) {
+  if (!/DOCUMENTO DE ARRECADACAO ESTADUAL/.test(u.slice(0, 600))) return null;
+  const orgao = (/ORGAO EMISSOR\s*:\s*(SEMAD|FEAM|IEF|IGAM)\b/.exec(u) || [])[1] || (/\bCODIGO IEF\b|REPOSICAO FLORESTAL/.test(u) ? 'IEF' : null);
+  if (!orgao) return null;
+  const parc = /\bDAE\s*:?\s*(\d+)\s*\/\s*(\d+)/.exec(u) || /\bPARCELA\s*:\s*(\d+)\s*\/\s*(\d+)/.exec(u);
+  if (parc && +parc[2] > 1) return null;
+  const rel = entrada.rel || entrada.nome || '';
+  const base = { tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', decisaoDoDono: true, fonte: 'guia ambiental avulsa em pagamentos de fornecedores (decisão do dono, 25/11/2026)' };
+  ev.push('guia DAE de órgão ambiental (' + orgao + ') que não é parcela: pagamento ao órgão (decisão do dono, 25/11/2026)');
+  const r = clienteDoPagamento(rel, bruto, ctx.cadastro, ev, porHash, false);
+  if (r.erro) return Object.assign(base, r.erro);
+  let comp = null;
+  const v = dataBr(linhaApos(u, /\bVENCIMENTO\b/, 40));
+  if (v) { comp = { mes: +v.slice(3, 5), ano: +v.slice(6) }; ev.push('mês pelo vencimento (' + v + ')'); }
+  if (!comp) { const z = anoDaPasta(rel) && anoDaPasta(rel).mes ? anoDaPasta(rel) : (mesDoNomeDaPasta(rel) || mesNumericoDaPasta(rel)); if (z && z.mes) { comp = { mes: z.mes, ano: z.ano }; ev.push('mês pela pasta/zip de origem (' + mesAno(comp) + ')'); } }
+  if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: r.c.cliente });
+  return Object.assign(base, { acao: 'ARQUIVAR', cliente: r.c.cliente, comoCliente: r.c.como, confianca: Math.min(r.c.conf, 0.9), competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), orgao], nomeFinal: entrada.nome });
+}
 function decidirPdf(entrada, ctx, ev, porHash) {
   const paginas = Array.isArray(entrada.texto) ? entrada.texto : [String(entrada.texto || '')];
   const bruto = paginas.slice(0, 3).join('\n');
@@ -4599,6 +4665,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   // (25/11/2026, decisões do dono) o extrato do Aegro (EXTRATOS do mês, pela conta) e os pagamentos da Solides e de seguro (PAGAMENTOS DE FORNECEDORES)
   { const ag = relatorioAegro(u, entrada.nome); if (ag) return decidirAegro(ag, entrada, ctx, ev); }
   { const pd = pagamentoDoDono(entrada, u, bruto, ctx, ev, porHash); if (pd) return pd; }
+  { const ct = contratoEntreClientes(entrada, u, bruto, ctx, ev); if (ct) return ct; }
+  { const ga = guiaAmbientalPaga(entrada, u, bruto, ctx, ev, porHash); if (ga) return ga; }
   // 27/10/2026 (Vitor): o pagamento de fornecedor vale pelo nome e pela pasta de origem, mesmo sem texto (escaneado)
   // o pró-labore (Vitor, 27/10/2026): DEPARTAMENTO PESSOAL\MM\PRÓ-LABORE\, nome original — antes do pagamento de fornecedor
   if (/\bPRO\s?-?\s?LABORE|PROLABORE/.test(norm(entrada.nome))) {
@@ -4626,7 +4694,10 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   if (/^CARTA DE (INVENTARIO|BALANCO)\b/.test(norm(entrada.nome)) || /^[\s\S]{0,400}\bCARTA DE BALANCO\b[\s\S]{0,40}A EMPRESA/.test(u)) {
     return decidirSimples(entrada, u, bruto, ctx, ev, porHash, { tipo: 'PAPEL DE TRABALHO', setor: 'CONTABIL', mes: false, caminho: comp => ['CONTÁBIL', 'PAPÉIS DE TRABALHO', String(comp.ano)] });
   }
-  const pg = entrada.semPagamento ? null : pagamentoDeFornecedor(entrada);
+  // (25/11/2026) a guia DAE da PARCELA de multa ambiental ("BOLETO - MULTA R$ 406,95.pdf", "DAE : 2/30", na pasta de pagamentos) não é pagamento de fornecedor:
+  // segue a regra do DAE (08. PARCELAMENTOS, Vitor, 30/10/2026)
+  const parcelaAmbiental = /DOCUMENTO DE ARRECADACAO ESTADUAL/.test(u.slice(0, 600)) && ORGAO_AMBIENTAL.test(u) && /\bDAE\s*:?\s*\d+\s*\/\s*(?:[2-9]|\d{2,})\b/.test(u);
+  const pg = entrada.semPagamento || parcelaAmbiental ? null : pagamentoDeFornecedor(entrada);
   // (Vitor, 01/11/2026, decisão 6) a NFS-e de honorários da Nilma achada numa pasta de pagamentos ("NFSE 2505 NILMA CONTADOR SPIROU R$400,00.pdf"): vai como NFS-e (a 284 e a
   // cópia no tomador, como decidido em 28/10); só quando a NFS-e não se resolve pelo conteúdo, o caminho de sempre do pagamento
   if (pg && /^NFS-?E\b/.test(norm(entrada.nome)) && /\bNILMA\b/.test(norm(entrada.nome))) {
@@ -4818,7 +4889,16 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       const nm = (mesAno(ini) === mesAno(f) ? mesAno(f) : mesAno(ini) + ' A ' + mesAno(f)) + ' - ' + campos.livro + '.pdf';
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: f, fiscal: ['LIVROS', String(f.ano)], nomeFinal: nm });
     }
-    case 'NFC-e PDF': case 'NF-e PDF': case 'CT-e PDF': return montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev);
+    case 'NFC-e PDF': case 'NF-e PDF': case 'CT-e PDF': {
+      // (25/11/2026) a nota entre duas clientes: a cópia no destinatário, no lado dele (RECEBIDOS), com o mesmo nome
+      const base0 = Object.assign({}, base);
+      const r = montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev);
+      if (r.acao === 'ARQUIVAR' && c.outraDaNota != null) {
+        const r2 = montarNotaPdf(regra, campos, u, bruto, Object.assign({}, base0, { cliente: c.outraDaNota }), { cliente: c.outraDaNota, conf: c.conf, como: 'doc' }, ctx, []);
+        if (r2.acao === 'ARQUIVAR') r.copias = (r.copias || []).concat(r2.caminho ? { cliente: c.outraDaNota, comoCliente: 'doc', caminho: r2.caminho } : { cliente: c.outraDaNota, comoCliente: 'doc', fiscal: r2.fiscal });
+      }
+      return r;
+    }
     case 'NFS-e PDF': {
       if (!campos.lidoAntes) { const ev2 = ev.slice(); const px = pdfPeloXmlDaChave(entrada, u, ctx, ev2); if (px) return Object.assign({ evidencias: ev2 }, px); }
       return montarNfsePdf(Object.assign(campos, { rel: entrada.rel || entrada.nome }), u, bruto, base, c, ctx, ev);
@@ -5608,7 +5688,7 @@ function tipoDoDestino(destino) {
 module.exports = {
   pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, periodoPelasDatas, ehFoto, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
-  cnpjValido, cpfValido, documentosDoTexto, docNoBlocoDoTitular, titularImpresso, titularEntre, relatorioAegro, mesNumericoDaPasta, raizesDoTexto, mascarasDoTexto,
+  cnpjValido, cpfValido, documentosDoTexto, docNoBlocoDoTitular, titularImpresso, titularEntre, relatorioAegro, mesNumericoDaPasta, clientePeloEmail, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,
   confirmado, pastaParecida, bancoDoTexto, bancoDoNome, lerXml, classificarXml, camposDaGuia,
   contasDoTexto, clientePelaConta, numeroDeConta, mesmaConta, bancoDoCadastro, contasDoDocumento, contasDoNome, clientesPelasContas, decidir, decidir0, descarteDaImagem, pelaPastaENome, perfilDoDocumento, tipoDoDestino,
