@@ -115,10 +115,14 @@ export interface PrazoNaCompetencia {
   multa: boolean;
 }
 
-/** O prazo legal, o interno e a multa de uma etapa na competência; null = sem prazo cadastrado (ou competência torta). */
-export function prazoDaEtapa(departamento: DepartamentoDoPrazo, etapa: string, competencia: string): PrazoNaCompetencia | null {
-  const p = linhaDoPrazo(departamento, etapa);
-  if (!p) return null;
+/**
+ * O prazo legal, o interno e a multa de uma etapa na competência; null = sem prazo cadastrado (ou competência torta).
+ * dia: o dia do prazo só daquela empresa (Cadastro › Obrigações, ficha E08), no lugar do da tabela.
+ */
+export function prazoDaEtapa(departamento: DepartamentoDoPrazo, etapa: string, competencia: string, dia?: number): PrazoNaCompetencia | null {
+  const linha = linhaDoPrazo(departamento, etapa);
+  if (!linha) return null;
+  const p = dia ? { ...linha, dia } : linha;
   const legal = prazoLegal(p, competencia);
   if (!legal) return null;
   return { legal, interno: diasUteisAntes(legal, p.diasAntes, p.esfera, !!p.sabadoUtil), multa: p.multa };

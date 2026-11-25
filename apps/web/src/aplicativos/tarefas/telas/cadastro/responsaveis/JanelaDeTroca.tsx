@@ -11,8 +11,12 @@
 import { animacoesPedidas, BotaoFechar, Icone, MenuSuspenso, useJanela } from '@nads/ui';
 import { animate, spring, stagger } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useNovidade } from '../../../../../comum/novidades';
 import { PessoaComFoto } from './FotoDaPessoa';
 import type { Dep, VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
+import { usePendenciasNaTroca } from './usePendenciasNaTroca';
+
+type Pendencias = ReturnType<typeof usePendenciasNaTroca>;
 
 type Empresa = { chave: string; nome: string; codigo: number | null; dep: Dep };
 const n = (q: number, um: string, varios: string) => q + ' ' + (q === 1 ? um : varios);
@@ -20,8 +24,8 @@ const menosMovimento = () => !animacoesPedidas();
 /** as primeiras linhas da lista (as que aparecem): só elas animam */
 const linhasVisiveis = (raiz: Element | null | undefined, quantas = 14) => Array.from(raiz?.querySelectorAll('.troca-lista > li') || []).slice(0, quantas);
 
-function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opcional }: {
-  vm: VmEmpresasPorResponsavel; rotulo: string; pessoa: string; setPessoa: (p: string) => void; outra: string;
+function Lado({ vm, pend, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opcional }: {
+  vm: VmEmpresasPorResponsavel; pend: Pendencias; rotulo: string; pessoa: string; setPessoa: (p: string) => void; outra: string;
   marcadas: ReadonlySet<string>; setMarcadas: (s: Set<string>) => void; opcional?: boolean;
 }) {
   const [busca, setBusca] = useState('');
@@ -92,6 +96,7 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opc
                   <span className="num fraco">{e.codigo ?? ''}</span>
                   <span className="troca-nome" title={e.nome}>{e.nome}</span>
                   {e.dep === 'contabil' && <span className="badge badge-neutral">Contábil</span>}
+                  <SeloDasPendencias lista={pend.de(e.nome, e.codigo, e.dep)} />
                 </label>
               </li>
             ))}
@@ -103,7 +108,19 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opc
   );
 }
 
+/** As pendências da empresa (ficha M02): o número no selo; os nomes ao passar o mouse. */
+function SeloDasPendencias({ lista }: { lista: readonly { nome: string; tipo: string }[] }) {
+  if (!lista.length) return null;
+  const atrasada = lista.some(p => p.tipo === 'atrasada');
+  return (
+    <span className={'badge ' + (atrasada ? 'badge-bad' : 'badge-warn')} title={'Pendente: ' + lista.map(p => p.nome).join(', ')}>
+      {lista.length + (lista.length === 1 ? ' pendente' : ' pendentes')}
+    </span>
+  );
+}
+
 export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorResponsavel; pessoa: string; fechar: () => void }) {
+  const pend = usePendenciasNaTroca(useNovidade('pendencias-na-troca'));
   const [a, setA] = useState(pessoa);
   const [b, setB] = useState('');
   const [daA, setDaA] = useState<Set<string>>(new Set());
@@ -166,6 +183,9 @@ export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorRespons
     : !daA.size ? 'Marque as empresas de ' + a + ' que vão para o outro lado.'
     : !b ? n(daA.size, 'empresa', 'empresas') + ' de ' + a + '. Agora escolha para quem vão.'
     : n(daA.size, 'empresa', 'empresas') + ' de ' + a + (daA.size === 1 ? ' vai' : ' vão') + ' para ' + b + (daB.size ? ', e ' + n(daB.size, 'empresa', 'empresas') + ' de ' + b + (daB.size === 1 ? ' vem' : ' vêm') + ' para ' + a : '') + '.';
+  // o que vai junto (ficha M02): as pendências das empresas marcadas passam para a pessoa nova
+  const pendentes = a && b ? [...escolhidas(a, daA), ...escolhidas(b, daB)].flatMap(x => pend.de(x.nome, x.codigo, x.dep)) : [];
+  const vaoJunto = pend.resumo(pendentes);
   return (
     <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget && !saindo) sair(); }}>
       <div ref={janela} className="pessoal-janela troca-janela" role="dialog" aria-modal="true" aria-label="Trocar empresas">
@@ -177,17 +197,17 @@ export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorRespons
           <BotaoFechar onClick={() => sair()} />
         </header>
         <div className="troca-corpo">
-          <Lado vm={vm} rotulo="De" pessoa={a} setPessoa={setA} outra={b} marcadas={daA} setMarcadas={setDaA} />
+          <Lado vm={vm} pend={pend} rotulo="De" pessoa={a} setPessoa={setA} outra={b} marcadas={daA} setMarcadas={setDaA} />
           {/* no meio, o que vai (de A para B) e o que volta (de B para A) */}
           <div className="troca-meio" aria-hidden="true">
             <span ref={vai} className={'troca-fluxo' + (daA.size ? ' on' : '')}>{daA.size}<Icone nome="chevronRight" /></span>
             <span className="troca-meio-icone"><Icone nome="repeat" /></span>
             <span ref={volta} className={'troca-fluxo' + (daB.size ? ' on' : '')}><Icone nome="chevronLeft" />{daB.size}</span>
           </div>
-          <Lado vm={vm} rotulo="Para" pessoa={b} setPessoa={setB} outra={a} marcadas={daB} setMarcadas={setDaB} opcional />
+          <Lado vm={vm} pend={pend} rotulo="Para" pessoa={b} setPessoa={setB} outra={a} marcadas={daB} setMarcadas={setDaB} opcional />
         </div>
         <footer className="usuario-pe troca-pe">
-          <span className="troca-frase">{frase}</span>
+          <span className="troca-frase">{frase}{vaoJunto && <> <b>Vão junto: {vaoJunto}.</b></>}</span>
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" disabled={saindo} onClick={() => sair()}>Cancelar</button>
           <button type="button" className="btn btn-primary" disabled={!a || !b || !daA.size || saindo} onClick={pedir}><Icone nome="repeat" />Pedir troca</button>
