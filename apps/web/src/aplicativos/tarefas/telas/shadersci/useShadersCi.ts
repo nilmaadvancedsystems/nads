@@ -182,7 +182,11 @@ export function useShadersCi() {
   const ano = new Date().getFullYear();
 
   // o app aberto (?m=): os Lançamentos, o Extratudo ou nenhum (a tela dos apps); sem empresa, nenhum
-  const app = entrada.empresa ? appDoEndereco(entrada.doEndereco('m')) : null;
+  // na versão final, só os Lançamentos (e o Visualizar lançamentos, que abre dele); o Extratudo só no modo desenvolvedor
+  // (25/11/2026: "pode publicar o minimum para a versao final do usuario, liberando apenas a aba lancamentos, irei trabalhar no extratudo")
+  const apps: readonly AppDoMinimum[] = dev ? ['lancamentos', 'extratudo', 'razao'] : ['lancamentos', 'razao'];
+  const pedido = entrada.empresa ? appDoEndereco(entrada.doEndereco('m')) : null;
+  const app = pedido && apps.includes(pedido) ? pedido : null;
 
   const guardar = useCallback((muda: (g: Guardado) => Guardado) => {
     setGuardado(g => { const novo = muda(g); if (chave) gravarGuardado(chave, novo); return novo; });
@@ -375,6 +379,8 @@ export function useShadersCi() {
       },
     },
     dev,
+    /** os apps que a pessoa abre: o Extratudo só no modo desenvolvedor */
+    apps,
     // o plano e o CNPJ da empresa (o que vai na coluna CNPJ da planilha)
     planos: sci.PLANOS_DO_SCI,
     plano: idDoPlano,

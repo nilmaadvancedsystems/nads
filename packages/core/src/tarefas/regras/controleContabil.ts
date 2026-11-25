@@ -7,8 +7,9 @@
 import * as XLSX from 'xlsx';
 
 /**
- * Quem do Contábil usa o Controle (o Controle Forestry), além dos diretores e dos donos, pelo primeiro nome (23/11/2026: "Fernando
- * primeiro"; 25/11/2026: "O unico contabil que vai ter acesso a esse controle vai ser o usuario fernando").
+ * Quem usa o Controle (o Controle Forestry), pelo primeiro nome, e mais ninguém: nem os diretores e os donos (23/11/2026:
+ * "Fernando primeiro"; 25/11/2026: "O unico contabil que vai ter acesso a esse controle vai ser o usuario fernando";
+ * "Controle forestry somente para fernando, depois peco para liberar para algum usuario"). Para liberar, o nome entra aqui.
  */
 export const CONTROLE_CONTABIL_LIBERADO_PARA: readonly string[] = ['fernando'];
 
