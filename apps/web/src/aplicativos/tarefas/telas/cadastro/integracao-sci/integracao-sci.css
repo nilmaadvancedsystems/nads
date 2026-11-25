@@ -4,3 +4,6 @@
 .sci-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 14px; }
 .sci-grade .input { max-width: 110px; font-variant-numeric: tabular-nums; text-transform: uppercase; }
 .sci-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+.sci-ok { color: var(--ok, #2e7d32); }
+.sci-bad { color: var(--bad, #c62828); }
+.sci-warn { color: var(--warn, #b26a00); }

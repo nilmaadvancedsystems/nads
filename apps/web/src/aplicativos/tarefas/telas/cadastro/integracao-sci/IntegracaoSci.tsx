@@ -32,6 +32,27 @@ export function IntegracaoSci() {
         ))}
       </div>
 
+      {/* o RH NET (25/11/2026): o teste só de leitura de cada empresa ligada (o robô busca os cadastros e as admissões) */}
+      {vm.rhNet && (
+        <div className="card cad-secao">
+          <div className="cad-secao-topo">
+            <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="usuario" /></span>
+            <h3>RH NET
+              <Dica texto="O RH NET usa o token de cada empresa (gerado no SCI WEB por um usuário dela), que fica no robô, não no nads. O Testar só lê: busca os cadastros da empresa e quantas admissões há." />
+            </h3>
+          </div>
+          {vm.rhNet.length ? vm.rhNet.map(e => (
+            <div key={e.codigo} className="cad-chave">
+              <div className="cad-chave-texto">
+                <b>Empresa {e.codigo}</b>
+                <span className={'hint' + (e.tom ? ' sci-' + e.tom : '')}>{e.situacao}</span>
+              </div>
+              <button type="button" className="btn" disabled={e.pedindo} onClick={() => vm.testarRhNet(e.codigo)}>{e.pedindo ? 'Pedindo…' : 'Testar'}</button>
+            </div>
+          )) : <p className="hint">Ponha a empresa de teste na lista abaixo e grave.</p>}
+        </div>
+      )}
+
       <div className="card cad-secao">
         <div className="cad-secao-topo">
           <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="pasta" /></span>

@@ -15,6 +15,7 @@ A documentação da SCI está no portal-dev.sci.com.br. É pública, em arquivos
 | Ler de volta | De hora em hora, das 8h às 20h, lê se o cliente viu cada guia publicada e se informou o pagamento | O robô da nuvem (`robo/sci.js`) |
 | Mandar os XMLs ao Integra NET | Depois de cada "Baixar XMLs" do SIEG, manda as notas do mês que ainda não foram | O robô do PC (`robo/sieg.js` → `robo/sci.js`) |
 | Conferir as notas com o SCI | Compara o mês do SIEG com o do Integra NET; o Fiscal › SIEG mostra quantas notas faltam no SCI | O robô do PC |
+| RH NET (folha) | O robô atende os pedidos do nads ao RH NET: buscar os cadastros da empresa (o Testar da tela), cadastrar admissões sem liberar, liberar, e lançamentos da planilha | O robô da nuvem (`robo/rhnet.js`, pela fila `solicitacoesEmail` tipo `rhnet`) |
 
 A configuração também guarda:
 - **As empresas com o SCI ligado:** os códigos do nads. Só essas empresas vão à SCI.
@@ -53,6 +54,35 @@ O `npm run verificar` confere se essas cópias estão em dia.
    - O site do cliente: `npm run sites -- cliente`.
    - A função.
    - O robô da nuvem: troque o metadado `robo-versao`.
+
+## RH NET (25/11/2026)
+
+O RH NET **não aceita o token do escritório**. Ele só funciona com o Token de Cliente gerado por **um usuário da própria empresa** (Módulo Cliente do SCI WEB), e cada token só vale para aquela empresa. Por isso o robô guarda um token por empresa.
+
+**Onde ficam os tokens**
+
+| Onde | Como |
+| :--- | :--- |
+| Robô da nuvem | O metadado `segredo-sci-rhnet` da VM, com `{ "583": { "token": "..." } }` |
+| Robô do PC (e o teste) | A chave `"rhnet"` no `robo/sci_credenciais.json`, no mesmo formato. Só para o teste, vale também `"empresa": "<token>"` |
+
+O Token de Parceiro é o mesmo das outras APIs. Se o token da empresa não trouxer o número dela no RH NET, acrescente `"empresaId"` ao lado do token; para liberar a planilha, também `"clienteId"`. O `node robo/rhnet.js testar <código>` diz se esses números vieram.
+
+**O teste só de leitura**, quando os tokens chegarem:
+
+```bash
+node robo/rhnet.js testar 583
+```
+
+Ele entra no RH NET, mostra o número da empresa e quantos cadastros e admissões existem. Não grava nada e não mostra nome de funcionário nem CPF.
+
+**Pela tela:** ligue "RH NET (folha)" em Integração SCI, ponha a empresa na lista e grave. Aparece o cartão RH NET, com o botão **Testar**.
+
+**Cuidados do RH NET**
+- Cadastrar uma admissão a deixa **não liberada**. Só a liberação manda para a folha do SCI, e ela exige o cadastro completo.
+- Os dados pessoais do pedido (CPF, salário) ficam no banco só até o robô atender, dando certo ou não.
+- A SCI marca o RH NET como **beta**: pode mudar sem aviso.
+- O formulário de admissão do DP no nads ainda não existe. A regra e a fila estão prontas; falta decidir quais campos o DP preenche.
 
 ## Cuidados
 

@@ -20,7 +20,7 @@ const S = require('./gerado/sci');
 const META = 'http://metadata.google.internal/computeMetadata/v1/instance/attributes/';
 const ARQUIVO = path.join(__dirname, 'sci_credenciais.json');
 // o robô só fala com a SCI; o PUT do Integra NET vai para a URL pré-assinada da AWS que a própria SCI devolve
-const ENDERECOS_DA_SCI = ['https://api-auth.sci.com.br/', 'https://api-relatorio.sci.com.br/', 'https://api-integranet.sci.com.br/'];
+const ENDERECOS_DA_SCI = ['https://api-auth.sci.com.br/', 'https://api-relatorio.sci.com.br/', 'https://api-integranet.sci.com.br/', 'https://api2.rhnetsocial.com.br/'];
 const S3_DA_SCI = /^https:\/\/[a-z0-9.-]+\.s3[a-z0-9.-]*\.amazonaws\.com\//;
 const CONFIG_MS = 60 * 1000;
 const SEGREDOS_MS = 10 * 60 * 1000;
@@ -209,4 +209,4 @@ function iniciarLeituraDeVolta(db, log = () => {}) {
   log('SCI: leitura de volta do SCI Report ligada (só age com config/sci.lerDeVolta)');
 }
 
-module.exports = { publicarGuias, enviarAoIntegra, lerDeVoltaUmaVez, iniciarLeituraDeVolta, config, segredos, buscar, ENDERECOS_DA_SCI };
+module.exports = { publicarGuias, enviarAoIntegra, lerDeVoltaUmaVez, iniciarLeituraDeVolta, config, segredos, buscar, lerMetadado, ARQUIVO, ENDERECOS_DA_SCI };

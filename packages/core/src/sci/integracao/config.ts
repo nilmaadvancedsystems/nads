@@ -6,7 +6,8 @@
 //   publicarGuias      — no Fiscal › Enviar guias, a via "SCI Report" publica de verdade (SCI Report 24h, publicação manual);
 //   lerDeVolta         — o robô lê das guias publicadas se o cliente viu e se informou o pagamento;
 //   enviarXmls         — depois de cada "Baixar XMLs" do SIEG, o robô manda as notas ao Integra NET;
-//   conferirXmls       — e compara o mês do Integra NET com o do SIEG (o que falta no SCI).
+//   conferirXmls       — e compara o mês do Integra NET com o do SIEG (o que falta no SCI);
+//   rhNet              — o robô atende os pedidos do nads ao RH NET (cadastros, admissões e lançamentos; 25/11/2026).
 // `empresas`: os códigos do nads com o SCI ligado (a licença do Integra NET é por empresa, e a empresa de teste entra
 // sozinha primeiro). Vazia: nenhuma. `relatorios`: o código do relatório (modelo de imposto) do SCI Report de cada guia.
 // Os tokens NUNCA ficam aqui: metadado da VM, arquivo do PC fora do git e Secret Manager da função.
@@ -32,6 +33,7 @@ export interface ConfigDoSci {
   lerDeVolta: boolean;
   enviarXmls: boolean;
   conferirXmls: boolean;
+  rhNet: boolean;
   /** códigos do nads com o SCI ligado */
   empresas: number[];
   /** chave da guia → código do relatório no SCI Report (4 posições, maiúsculo) */
@@ -41,7 +43,7 @@ export interface ConfigDoSci {
 }
 
 export const CONFIG_DO_SCI_DESLIGADA: ConfigDoSci = {
-  areaCliente: false, publicarGuias: false, lerDeVolta: false, enviarXmls: false, conferirXmls: false, empresas: [], relatorios: {}, atualizadoEm: '', atualizadoPor: '',
+  areaCliente: false, publicarGuias: false, lerDeVolta: false, enviarXmls: false, conferirXmls: false, rhNet: false, empresas: [], relatorios: {}, atualizadoEm: '', atualizadoPor: '',
 };
 
 const CHAVES = new Set<string>(GUIAS_DO_SCI.map(g => g.chave));
@@ -63,7 +65,7 @@ export function configDoSci(doc: unknown): ConfigDoSci {
   for (const [k, v] of Object.entries(r)) { const c = codigoDoRelatorio(v); if (CHAVES.has(k) && c) relatorios[k as ChaveDaGuiaNoSci] = c; }
   return {
     areaCliente: sim('areaCliente'), publicarGuias: sim('publicarGuias'), lerDeVolta: sim('lerDeVolta') && sim('publicarGuias'),
-    enviarXmls: sim('enviarXmls'), conferirXmls: sim('conferirXmls'), empresas, relatorios,
+    enviarXmls: sim('enviarXmls'), conferirXmls: sim('conferirXmls'), rhNet: sim('rhNet'), empresas, relatorios,
     atualizadoEm: typeof d.atualizadoEm === 'string' ? d.atualizadoEm : '', atualizadoPor: typeof d.atualizadoPor === 'string' ? d.atualizadoPor : '',
   };
 }
@@ -72,7 +74,7 @@ export function configDoSci(doc: unknown): ConfigDoSci {
 export function documentoDaConfigDoSci(c: ConfigDoSci, por: string, agora: Date): Record<string, unknown> {
   const limpa = configDoSci({ ...c, atualizadoEm: '', atualizadoPor: '' });
   return {
-    areaCliente: limpa.areaCliente, publicarGuias: limpa.publicarGuias, lerDeVolta: limpa.lerDeVolta, enviarXmls: limpa.enviarXmls, conferirXmls: limpa.conferirXmls,
+    areaCliente: limpa.areaCliente, publicarGuias: limpa.publicarGuias, lerDeVolta: limpa.lerDeVolta, enviarXmls: limpa.enviarXmls, conferirXmls: limpa.conferirXmls, rhNet: limpa.rhNet,
     empresas: limpa.empresas, relatorios: limpa.relatorios, atualizadoEm: agora.toISOString(), atualizadoPor: por,
   };
 }

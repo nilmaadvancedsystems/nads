@@ -12,7 +12,7 @@ describe('Configurações › Integração SCI', () => {
   it('começa desligada; ligar, dizer as empresas e o relatório e gravar', async () => {
     render(<RetornoProvider><IntegracaoSci /></RetornoProvider>);
     const chaves = screen.getAllByRole('switch');
-    expect(chaves).toHaveLength(5);
+    expect(chaves).toHaveLength(6);
     expect(chaves.every(c => c.getAttribute('aria-checked') === 'false')).toBe(true);
     expect(screen.getByText('Nenhuma empresa: nada vai ao SCI.')).toBeTruthy();
     const gravar = screen.getByRole('button', { name: 'Gravar' }) as HTMLButtonElement;
@@ -36,5 +36,18 @@ describe('Configurações › Integração SCI', () => {
     expect(screen.getByRole('switch', { name: 'Guias do SCI Report na Área do Cliente' }).getAttribute('aria-checked')).toBe('false');
     expect((screen.getByLabelText('Códigos das empresas com o SCI ligado') as HTMLInputElement).value).toBe('583, 602');
     expect((screen.getByLabelText('Código do relatório: DAS (Simples Nacional)') as HTMLInputElement).value).toBe('001A');
+  });
+
+  it('o RH NET: ligado e gravado, cada empresa da lista ganha o Testar, que mostra os cadastros', async () => {
+    render(<RetornoProvider><IntegracaoSci /></RetornoProvider>);
+    // o cartão só aparece com a chave gravada (o robô lê o que está gravado)
+    expect(screen.queryByText('Empresa 583')).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: 'RH NET (folha)' }));
+    fireEvent.change(screen.getByLabelText('Códigos das empresas com o SCI ligado'), { target: { value: '583' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gravar' })); });
+    expect(screen.getByText('Empresa 583')).toBeTruthy();
+    expect(screen.getByText('Ainda não testada')).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Testar' })); });
+    expect(screen.getByText(/Departamentos 2 · Funções 1/)).toBeTruthy();
   });
 });

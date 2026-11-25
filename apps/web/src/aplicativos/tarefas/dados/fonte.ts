@@ -55,6 +55,8 @@ import { criarControleContabilFirestore } from './controleContabil.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarConfigSciMemoria, type RepoConfigSci } from './configSci';
 import { criarConfigSciFirestore } from './configSci.firestore';
+import { criarRhNetMemoria, type RepoRhNet } from './rhNet';
+import { criarRhNetFirestore } from './rhNet.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
 import { criarArquivoFisicoMemoria, type RepoArquivoFisico } from './arquivoFisico';
 import { criarArquivoFisicoFirestore } from './arquivoFisico.firestore';
@@ -705,6 +707,14 @@ let configSci: RepoConfigSci | null = null;
 export function repoDaConfigSci(): RepoConfigSci {
   if (!configSci) configSci = noBanco ? criarConfigSciFirestore(() => quemPede()?.nome || '') : criarConfigSciMemoria();
   return configSci;
+}
+
+let rhNet: RepoRhNet | null = null;
+
+/** Os pedidos ao RH NET da SCI (25/11/2026): no banco, a fila do robô (solicitacoesEmail tipo 'rhnet'); nos exemplos, na memória. */
+export function repoDoRhNet(): RepoRhNet {
+  if (!rhNet) rhNet = noBanco ? criarRhNetFirestore(() => quemPede()?.nome || '') : criarRhNetMemoria();
+  return rhNet;
 }
 
 let insights: RepoInsights | null = null;

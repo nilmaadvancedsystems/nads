@@ -4,3 +4,5 @@ export * from './config';
 export * from './integraNet';
 export * from './integraNetCliente';
 export * from './publicar';
+export * from './rhNet';
+export * from './rhNetCliente';
