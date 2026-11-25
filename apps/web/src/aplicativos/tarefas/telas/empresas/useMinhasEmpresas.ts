@@ -98,6 +98,8 @@ export function useMinhasEmpresas() {
     filtrando: !!situacao || !!busca.trim(),
     limparFiltros: () => { setBusca(''); a.mudar('situacao', ''); },
     carregando: a.carregando,
+    /** a coluna Responsável, para o dono, o diretor e o sênior */
+    verResponsavel: a.verResponsavel,
     // quando mexeram por último ("há 5 horas", "ontem"), e a data e hora completas para o título
     linhas: linhas.slice(0, LIMITE).map(l => ({
       ...l,

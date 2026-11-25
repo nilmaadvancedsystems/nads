@@ -93,6 +93,8 @@ export function useEmpresasDoOperador(op: Operador | null) {
       const r = responsavelDe(emp, dep);
       return !!r && (nomes.some(n => igual(n, r)) || (veOsDeBaixo(dep) && DE_BAIXO.includes(nivelDe(r) || '')));
     },
+    /** a própria pessoa é a responsável do setor (sem contar a regra do diretor e do sênior, que veem também as dos de baixo) */
+    minha: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
     /** quem o Cadastro diz que é o responsável do setor ('' = ninguém), para o aviso dizer o que foi conferido */
     responsavel: responsavelDe,
     /** quantas empresas o Cadastro trouxe (0 com a leitura certa quer dizer que ela veio vazia) */
@@ -169,7 +171,15 @@ export function useAndamento() {
   const filtrar = escopo === 'minhas' && temResponsavel;
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
-  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => !filtrar || daPessoa.e(emp, dep as 'fiscal' | 'contabil')).map(emp => {
+  // o responsável na lista, para o dono, o diretor e o sênior (Vitor, 25/11/2026: "para donos, diretores e seniores, coloca a coluna
+  // responsavel, se caso for o propio usuario deixa vazio sem o nome, as que ele nao for responsavel deixe levemente ofuscado"); e,
+  // no Contábil, o diretor e o sênior não veem a empresa sem responsável ("as empresas que nao tem responsavel contabil, pode
+  // ocultar tambem para eles"; o sênior já não via: useEmpresasDoOperador)
+  const setorDoResponsavel = temResponsavel ? (dep as 'fiscal' | 'contabil') : null;
+  const verResponsavel = !!setorDoResponsavel && (usuarios.nivelDeDiretor(op.nivel) || op.nivel === 'senior');
+  const semResponsavelFora = setorDoResponsavel === 'contabil' && (op.nivel === 'diretor' || op.nivel === 'senior');
+  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => (!filtrar || daPessoa.e(emp, dep as 'fiscal' | 'contabil'))
+    && (!semResponsavelFora || !!daPessoa.responsavel(emp, 'contabil'))).map(emp => {
     const ex = porNome.get(emp.nome) || null;
     // a rotina da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) conta 1 etapa só
     const rotina = t.rotinaDaEmpresa(dep, emp.codigo) || rotinaDoDep;
@@ -179,7 +189,12 @@ export function useAndamento() {
     // a última vez que quem está trabalhando mexeu nesta empresa (para 'Minhas recentes' do Iniciar)
     const minhas = ex ? Object.values(ex.etapas).filter(e => e.por === op.nome).map(e => e.em) : [];
     const mexiEm = minhas.length ? minhas.reduce((x, y) => (y > x ? y : x)) : null;
+    const minha = !setorDoResponsavel || daPessoa.minha(emp, setorDoResponsavel);
     return {
+      /** quem é o responsável do setor, em branco quando é a própria pessoa (só para quem vê a coluna) */
+      responsavel: verResponsavel && !minha ? daPessoa.responsavel(emp, setorDoResponsavel as 'fiscal' | 'contabil') : '',
+      /** a empresa não é da pessoa (a linha fica apagada para quem vê a coluna) */
+      deOutro: verResponsavel && !minha,
       empresa: emp, chave: (emp.codigo ?? '') + emp.nome, codigo: emp.codigo, nome: emp.nome, nomeNaTela: empresas.nomeParaMostrar(emp), rota: empresas.rotaDaEmpresa(emp),
       concluidas: p.concluidas, total: p.total, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
       proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,
@@ -208,6 +223,8 @@ export function useAndamento() {
     params, setParams, mudar,
     carregando: !carregada || (filtrar && !daPessoa.carregada),
     linhas,
+    /** a coluna Responsável (o dono, o diretor e o sênior) */
+    verResponsavel,
     /** se o setor tem responsável por empresa, e se quem vê é o admin ou o diretor (vê todas) */
     podeVerTodas: podeVerTodas && temResponsavel,
     escopo,

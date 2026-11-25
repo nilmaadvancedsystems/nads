@@ -1389,6 +1389,10 @@ td.fraco{color:var(--ink-muted);}
 .codigo-num{min-width:4ch;text-align:right;}
 /* Minhas empresas: a coluna do código só da largura dela, sobra espaço para as outras */
 .tabela-empresas th:first-child,.tabela-empresas td:first-child{width:1%;white-space:nowrap;padding-right:8px;}
+/* a empresa que não é da pessoa (o dono, o diretor e o sênior veem a coluna Responsável; 25/11/2026: "as que ele nao for responsavel
+   deixe levemente ofuscado"): a linha apagada, que volta ao passar o mouse */
+.tabela-empresas tbody tr.linha-de-outro td{opacity:.55;}
+.tabela-empresas tbody tr.linha-de-outro:hover td,.tabela-empresas tbody tr.linha-de-outro:focus-visible td{opacity:1;}
 
 /* ---------------------------------- Tarefas: página da empresa ---------------------------------- */
 tr.linha-abre:hover{background:var(--surface-3);}
