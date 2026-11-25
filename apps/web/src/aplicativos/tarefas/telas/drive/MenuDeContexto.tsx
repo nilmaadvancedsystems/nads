@@ -1,7 +1,7 @@
 // O menu do botão direito do Explorador (como o do Windows 11): a lista, com atalho à direita e ✓ nas opções marcadas
 // (a fileira de ícones em cima saiu em 06/10/2026: repetia a lista). Abre onde o mouse está (sem sair da tela),
 // fecha ao clicar fora, com Esc, ao rolar ou ao mudar o tamanho da janela; setas ↑ ↓ andam pelas opções.
-import { Icone, type NomeIcone } from '@nads/ui';
+import { Icone, zoomDaPagina, type NomeIcone } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 export interface OpcaoDoMenu {
@@ -19,12 +19,14 @@ export interface MenuAberto { x: number; y: number; linhas: LinhaDoMenu[] }
 
 export function MenuDeContexto({ menu, onFechar }: { menu: MenuAberto; onFechar: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ x: menu.x, y: menu.y });
+  // o clique vem na escala da tela; o left/top, divididos pelo zoom da página (zoomDaPagina, 25/11/2026)
+  const [pos, setPos] = useState(() => ({ x: menu.x / zoomDaPagina(), y: menu.y / zoomDaPagina() }));
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setPos({ x: Math.max(4, Math.min(menu.x, window.innerWidth - r.width - 4)), y: Math.max(4, Math.min(menu.y, window.innerHeight - r.height - 4)) });
+    const z = zoomDaPagina();
+    setPos({ x: Math.max(4, Math.min(menu.x, window.innerWidth - r.width - 4)) / z, y: Math.max(4, Math.min(menu.y, window.innerHeight - r.height - 4)) / z });
     el.querySelector<HTMLButtonElement>('.ctx-lista button:not(:disabled)')?.focus();
   }, [menu]);
   useEffect(() => {
