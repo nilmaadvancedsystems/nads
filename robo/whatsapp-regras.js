@@ -150,7 +150,35 @@ function podeComandar(usuario) {
   return !!usuario && usuario.ativo !== false && Array.isArray(usuario.roles) && usuario.roles.includes('admin');
 }
 
+// ---------- as guias pelo WhatsApp (plano do Acessórias, ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo") ----------
+// No lote do Fiscal com a via "WhatsApp", o robô manda a mensagem (só de ida) com o link da Área do Cliente, onde a guia
+// já está (ficha todas-as-guias); não vai o PDF anexo. Com a trava fechada, a mensagem vai para o WhatsApp do escritório,
+// marcada como TESTE e dizendo para quem iria: dá para conferir o texto sem mandar nada a cliente.
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const NUMERO_DO_ESCRITORIO = '553891383638';
+
+/** O texto da mensagem das guias do mês (competencia 'aaaa-mm'). */
+function mensagemDasGuias({ cliente, competencia, link }) {
+  const c = texto(competencia);
+  const mes = /^\d{4}-\d{2}$/.test(c) ? MESES[Number(c.slice(5)) - 1] + ' de ' + c.slice(0, 4) : 'do mês';
+  return 'Olá, ' + (texto(cliente).trim() || 'cliente') + '! As guias de ' + mes + ' já estão na sua Área do Cliente' + (texto(link) ? ': ' + link : '.') +
+    '\n\nEste número só envia avisos e não lê respostas. Qualquer dúvida, fale com o escritório pelo WhatsApp ' + numeroFormatado(NUMERO_DO_ESCRITORIO) + '.';
+}
+
+/**
+ * O pedido de WhatsApp das guias: { para, texto } ou null (sem telefone no cadastro). Trava fechada: para o escritório,
+ * com o aviso de teste e o número que receberia.
+ */
+function pedidoDasGuias({ telefone, cliente, competencia, link }, { liberado = LIBERADO_PARA_CLIENTES } = {}) {
+  const para = numeroDoWhatsApp(telefone);
+  if (!para) return null;
+  const msg = mensagemDasGuias({ cliente, competencia, link });
+  if (liberado) return { para, texto: msg };
+  return { para: NUMERO_DO_ESCRITORIO, texto: '[TESTE: iria para ' + (texto(cliente).trim() || 'o cliente') + ', ' + numeroFormatado(para) + ']\n\n' + msg };
+}
+
 module.exports = {
+  mensagemDasGuias, pedidoDasGuias, NUMERO_DO_ESCRITORIO,
   LIBERADO_PARA_CLIENTES, NUMEROS_DE_TESTE, LIMITE_POR_HORA, LIMITE_POR_DIA, INTERVALO_MIN_MS, INTERVALO_MAX_MS, MAX_LETRAS, SITUACOES,
   numeroDoWhatsApp, jidDe, variantesDoNumero, motivoDoAnexo, marcasDaEntrega, rastreioQueConta, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
 };
