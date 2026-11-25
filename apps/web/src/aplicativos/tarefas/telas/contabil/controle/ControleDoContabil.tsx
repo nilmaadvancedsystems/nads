@@ -79,8 +79,7 @@ export function ControleDoContabil() {
   return (
     <section className="dp-painel cc">
       <div className="tarefas-barra-topo dp-filtros-linha">
-        <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={String(vm.ano)} titulo="Ano" dica="Trocar o ano"
-          itens={vm.anos.map(a => ({ rotulo: String(a), marcado: a === vm.ano, onClick: () => vm.setAno(a) }))} />
+        <span className="btn btn-primary cc-ano" title="O Controle Forestry é o de 2026"><Icone nome="calendar" />{vm.ano}</span>
         <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
         <MenuDeFiltro rotulo="Situação" valor={f.situacao} mudar={f.setSituacao} opcoes={f.situacoes} todos="Todas" />
         <MenuDeFiltro rotulo="Regime" valor={f.regime} mudar={f.setRegime} opcoes={f.regimes} />
@@ -140,7 +139,7 @@ export function ControleDoContabil() {
             {!vm.total ? (
               <div className="hint dp-vazio cc-vazio">
                 <p>Nenhuma empresa no controle de {vm.ano}.</p>
-                {vm.podeGravar && <p>Importe a planilha, ponha as empresas pelo <b>+</b> ou <button type="button" className="btn btn-sm btn-outline" onClick={() => void vm.copiarDoAnoAnterior()}>copie a lista de {vm.ano - 1}</button></p>}
+                {vm.podeGravar && <p>Importe a planilha ou ponha as empresas pelo <b>+</b>.</p>}
               </div>
             ) : !vm.linhas.length ? <p className="hint dp-vazio">Nenhuma empresa com esses filtros.</p> : (
               <div className="fr-rola">

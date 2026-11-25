@@ -71,3 +71,5 @@
   .cc-tabela col.cc-c-resp{width:84px;}
   .cc-tabela col.cc-c-sit{width:116px;}
 }
+/* o ano: só 2026, uma etiqueta no lugar do menu */
+.cc-ano{cursor:default;}
