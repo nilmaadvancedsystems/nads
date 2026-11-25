@@ -10,5 +10,6 @@ export * from './regras/historicos';
 export * from './regras/dias';
 export * from './regras/dePara';
 export * from './regras/balancete';
+export * from './regras/consulta';
 // as APIs da SCI (24/11/2026): config/sci, o Integra NET e a publicação no SCI Report
 export * as integracao from './integracao';

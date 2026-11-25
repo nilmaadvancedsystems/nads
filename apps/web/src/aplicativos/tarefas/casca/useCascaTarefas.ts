@@ -91,7 +91,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     onPagina: (id: string) => inicioNovo ? navegar(BASE + '/inicio?aba=' + id, { replace: true }) : navegar(caminhoDaPagina(app, id === 'ferramentas' ? FERRAMENTAS_DO_FISCAL[0] : id) + search),
     // o Início já tem o item dele no alto da gaveta
     // as Configurações saem da lista: ficam no pé da gaveta, só com o ícone da engrenagem (Vitor, 28/10/2026)
-    aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio' && x.id !== 'cadastro' && x.id !== 'ferramentas').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
+    // o Lançatudo sai da gaveta (25/11/2026: "remove o lanca tudo do menu lateral"): ele mora no minimum, como o Extratudo; o link
+    // direto continua abrindo
+    aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio' && x.id !== 'cadastro' && x.id !== 'ferramentas' && x.id !== 'lancatudo').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     // a página em desenvolvimento não abre: só o aviso (21/10/2026)
     onSecao: (id: string) => {

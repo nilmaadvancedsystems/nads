@@ -12,8 +12,10 @@ export const LIMITE = 60;
 export const LIMITE_INICIAR = 30;
 
 /** As colunas da tabela que ordenam (clicando no título, como na Consulta da Conferência). */
-export type Coluna = 'codigo' | 'nome' | 'situacao';
-const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'situacao'];
+// todas as colunas ordenam no clique (25/11/2026: "coloca a funcao de ordem crescente ou descrescente nas colunas, quando a gente
+// clica, ele organiza"): o código, a empresa, o responsável, o progresso, a etapa e a última vez
+export type Coluna = 'codigo' | 'nome' | 'situacao' | 'responsavel' | 'progresso' | 'etapa' | 'quando';
+const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'situacao', 'responsavel', 'progresso', 'etapa', 'quando'];
 
 /** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
 export type AbaIniciar = 'escolher' | 'recentes' | 'lote';
@@ -49,9 +51,19 @@ export function useMinhasEmpresas() {
     codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
     nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
     situacao: (x, y) => x.rotuloSituacao.localeCompare(y.rotuloSituacao, 'pt-BR'),
+    // o responsável: o próprio (em branco) primeiro, depois os outros em ordem alfabética
+    responsavel: (x, y) => x.responsavel.localeCompare(y.responsavel, 'pt-BR'),
+    // o progresso pela porcentagem feita
+    progresso: (x, y) => t.porcentagemDe(x.concluidas, x.total) - t.porcentagemDe(y.concluidas, y.total),
+    // a etapa: as sem etapa (não começou ou terminou) no fim
+    etapa: (x, y) => (!x.etapaAtual ? 1 : 0) - (!y.etapaAtual ? 1 : 0) || x.etapaAtual.localeCompare(y.etapaAtual, 'pt-BR'),
+    // a última vez que mexeram: a mais antiga primeiro; as que ninguém mexeu, no fim
+    quando: (x, y) => (!x.ultimaVez ? 1 : 0) - (!y.ultimaVez ? 1 : 0) || (x.ultimaVez || '').localeCompare(y.ultimaVez || ''),
   };
   // texto em ordem alfabética, número do menor para o maior; sem coluna escolhida fica a ordem de sempre
-  if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
+  // no empate, as da pessoa antes das dos outros (25/11/2026: "Priorize as empresas do usuario em primeiro (quando o paramentro e
+  // de igual para igual)"), e depois o nome
+  if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || Number(x.deOutro) - Number(y.deOutro) || x.nome.localeCompare(y.nome, 'pt-BR'));
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (não faz sentido iniciar uma concluída), paradas e em
   // andamento primeiro, com filtro rápido e busca própria
@@ -98,6 +110,8 @@ export function useMinhasEmpresas() {
     filtrando: !!situacao || !!busca.trim(),
     limparFiltros: () => { setBusca(''); a.mudar('situacao', ''); },
     carregando: a.carregando,
+    /** a coluna Responsável, para o dono, o diretor e o sênior */
+    verResponsavel: a.verResponsavel,
     // quando mexeram por último ("há 5 horas", "ontem"), e a data e hora completas para o título
     linhas: linhas.slice(0, LIMITE).map(l => ({
       ...l,

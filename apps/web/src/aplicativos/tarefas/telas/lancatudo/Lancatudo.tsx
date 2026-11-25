@@ -5,7 +5,8 @@
 // trocada na própria linha; o banco fixo), a data, o histórico e o valor; clicar na linha abre o "Lançamentos (Cadastramento)".
 // A conta também sai do plano de contas em árvore, como o eContador. Nas Regras, as regras e as contas aprendidas.
 // Só desenha: tudo vem dos ViewModels.
-import { BotaoIcone, Icone, LogoBanco, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import type { empresas, sci } from '@nads/core';
+import { BotaoIcone, Icone, LogoBanco, MenuSuspenso, Segmentado, SeletorMes, useCarregando, useRetorno, Vazio } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { BotaoImportarNoAlterdata } from '../../../../comum/BotaoImportarNoAlterdata';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
@@ -23,7 +24,23 @@ type Entrada = ReturnType<typeof useLancatudo>;
 type Linha = Vm['linhas'][number];
 
 
-export function Lancatudo({ pagina }: { pagina: string }) {
+/**
+ * Aberto como o Extratudo, dentro do minimum (25/11/2026: "Entrando nesses apps, ja vai estar logado com a empresa"; "tudo que
+ * puder deixar integrado entre o tarefas e o minimum"): a empresa vem de lá (o mesmo ?e= do endereço) e a barra não tem a
+ * escolha dela; as contas saem do plano do SCI da empresa; e as linhas conciliadas vão para os Lançamentos do SCI.
+ */
+export interface LigacaoComOMinimum {
+  /** o plano do SCI da empresa, no lugar do plano do Cadastro */
+  plano: readonly empresas.cadastro.ContaDoPlano[];
+  /** manda as linhas para os Lançamentos (só as dentro da norma do SCI); devolve quantas foram, quantas ficaram de fora e por quê */
+  enviar: (banco: string, linhas: readonly sci.LinhaDoExtratoConciliada[]) => { enviadas: number; fora: number; motivo: string };
+}
+
+/**
+ * O extrato é lido pela mesma importação do Extrator do fluxo de tarefas do Contábil (a TelaDaEtapa "importacao" em
+ * ExtratoDoMes), aqui e no minimum: um leitor de PDF dos bancos só, o que se corrige num vale no outro.
+ */
+export function Lancatudo({ pagina, minimum }: { pagina: string; minimum?: LigacaoComOMinimum }) {
   const entrada = useLancatudo();
   if (!entrada.empresa) {
     return (
@@ -36,13 +53,23 @@ export function Lancatudo({ pagina }: { pagina: string }) {
       </section>
     );
   }
-  return <EmpresaAberta key={entrada.empresa.codigo + '|' + entrada.competencia} empresa={entrada.empresa} entrada={entrada} pagina={pagina} />;
+  return <EmpresaAberta key={entrada.empresa.codigo + '|' + entrada.competencia} empresa={entrada.empresa} entrada={entrada} pagina={pagina} minimum={minimum} />;
 }
 
-function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatudo; entrada: Entrada; pagina: string }) {
+function EmpresaAberta({ empresa, entrada, pagina, minimum }: { empresa: EmpresaDoLancatudo; entrada: Entrada; pagina: string; minimum?: LigacaoComOMinimum }) {
   // o Atualizar (19/11/2026: "atualizar o balancete, ele vai chamar o alterdata do servidor"): o razão do mês pelo robô
   const servidor = useRazaoDoServidor(empresa.codigo, empresa.nome, entrada.competencia);
-  const vm = useRegistroDoLancatudo(empresa, entrada.competencia, entrada.banco, servidor.lancamentos);
+  const vm = useRegistroDoLancatudo(empresa, entrada.competencia, entrada.banco, servidor.lancamentos, minimum?.plano ?? null);
+  const { aviso } = useRetorno();
+  const enviarAosLancamentos = () => {
+    if (!minimum) return;
+    const { enviadas: n, fora, motivo } = minimum.enviar(vm.banco.id, vm.linhasParaEnviar);
+    const deFora = fora ? (fora === 1 ? '1 linha ficou' : fora + ' linhas ficaram') + ' de fora, fora da norma do SCI (por exemplo: ' + motivo + '). Acerte na linha, com o histórico padrão do SCI, e envie de novo.' : '';
+    aviso(n
+      ? { tom: 'ok', titulo: n === 1 ? '1 lançamento nos Lançamentos' : n + ' lançamentos nos Lançamentos', texto: deFora || 'Todos dentro da norma do SCI.' }
+      : fora ? { tom: 'info', titulo: 'Nada foi enviado', texto: deFora }
+      : { tom: 'info', titulo: 'Nada novo para enviar', texto: 'As linhas conciliadas deste banco já estão nos Lançamentos.' });
+  };
   useCarregando(!vm.pronto);
   // as Regras numa janela (18/11/2026: a barra lateral saiu); o link antigo das Regras já abre com ela
   const [regrasAbertas, setRegrasAbertas] = useState(pagina === 'regras');
@@ -67,7 +94,7 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
       {vm.escolhendo && <JanelaDoPlano vm={vm} />}
       <div className="tarefas-barra-topo">
         <span className="lt-topo-escolhas" data-tut="lt-topo">
-        <EmpresaDaBarra vm={entrada} id="lt-empresas" />
+        {!minimum && <EmpresaDaBarra vm={entrada} id="lt-empresas" />}
         <SeletorMes valor={entrada.competencia} onMudar={entrada.setCompetencia} rotulo="Competência" />
         <MenuSuspenso className="btn btn-outline lt-banco" titulo="A conta bancária" largura={280}
           rotulo={<><span className="lt-logo"><LogoBanco banco={vm.banco.marca || 'outro'} cor /></span>{rotuloDoBanco(vm.banco)}</>}
@@ -80,6 +107,13 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
         <button type="button" className="btn btn-outline" data-tut="lt-regras" onClick={() => setRegrasAbertas(true)} title="As regras da empresa e as contas que o nads aprendeu">
           <Icone nome="settings" />Regras<span className="menu-contador">{vm.regras.length}</span>
         </button>
+        {/* no minimum, o conciliado vai para os Lançamentos do SCI (25/11/2026): a mesma linha não entra duas vezes */}
+        {minimum && (
+          <button type="button" className="btn btn-primary" disabled={!vm.contaDoBanco || !vm.linhasParaEnviar.length} onClick={enviarAosLancamentos}
+            title={!vm.contaDoBanco ? 'Falta o código contábil da conta bancária' : !vm.linhasParaEnviar.length ? 'Nenhuma linha conciliada para enviar' : 'As linhas conciliadas viram lançamentos do SCI, na aba Lançamentos'}>
+            <Icone nome="list" />Enviar aos Lançamentos{vm.linhasParaEnviar.length > 0 && <span className="menu-contador">{vm.linhasParaEnviar.length}</span>}
+          </button>
+        )}
         {/* o Tutorial por último (18/11/2026: "tutorial fica por último") */}
         {vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
       </div>
@@ -94,7 +128,8 @@ function EmpresaAberta({ empresa, entrada, pagina }: { empresa: EmpresaDoLancatu
 // ------------------------------------------------------------------------------------------------- os lançamentos
 /**
  * Sem o código contábil da conta bancária no Cadastro (18/11/2026: "tem que ter como configurar por aqui as contas"): o código
- * aqui mesmo, digitado ou escolhido no plano de contas; fica guardado no Lançatudo da empresa, para esta conta bancária.
+ * aqui mesmo, digitado ou escolhido no plano de contas; fica guardado no Lançatudo da empresa, para esta conta bancária, e no
+ * Cadastro, quando a conta bancária está lá (25/11/2026: "Linka as contas do banco").
  */
 function ContaDoBanco({ vm, rotulo }: { vm: Vm; rotulo: string }) {
   const [codigo, setCodigo] = useState('');

@@ -15,6 +15,8 @@ export const SITUACOES: readonly { valor: t.SituacaoGeral; rotulo: string }[] = 
 ];
 
 const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+/** os níveis cujas empresas o diretor e o sênior do Contábil também veem */
+const DE_BAIXO: readonly string[] = ['pleno', 'junior'];
 /**
  * Os nomes que valem para a pessoa (a mesma regra de Cadastro › Empresas por responsável): o nome e, com sufixo
  * (Gustavo.S), o nome sem ele, quando ninguém mais da equipe começa assim.
@@ -70,6 +72,12 @@ export function useEmpresasDoOperador(op: Operador | null) {
     const r = escolhido && daEquipeDoDep(dep, escolhido) ? escolhido : '';
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
+  /**
+   * No Contábil, o diretor e o sênior veem também as empresas dos plenos e dos júniores (Vitor, 25/11/2026: "para diretores e
+   * seniores, vai aparecer as empresas dos plenos e dos juniores, essa e a regra"); o pleno e o júnior, só as deles.
+   */
+  const nivelDe = (nome: string) => ativos.find(p => igual(p.nome, nome) || igual(p.nome.split('.')[0], nome))?.nivel;
+  const veOsDeBaixo = (dep: 'fiscal' | 'contabil') => dep === 'contabil' && !!op && (usuarios.nivelDeDiretor(op.nivel) || op.nivel === 'senior');
   return {
     /** o admin, o diretor (26/10/2026) e as contas liberadas pelo login podem ver todas */
     podeVerTodas: !op || !!op.admin || usuarios.nivelDeDiretor(op.nivel) || (!!op.email && LOGINS_COM_TODAS_AS_EMPRESAS.includes(op.email.trim().toLowerCase())),
@@ -81,7 +89,12 @@ export function useEmpresasDoOperador(op: Operador | null) {
     /** a leitura do Cadastro falhou e está tentando de novo */
     falhou: cadastros.falhou,
     /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
-    e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
+    e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => {
+      const r = responsavelDe(emp, dep);
+      return !!r && (nomes.some(n => igual(n, r)) || (veOsDeBaixo(dep) && DE_BAIXO.includes(nivelDe(r) || '')));
+    },
+    /** a própria pessoa é a responsável do setor (sem contar a regra do diretor e do sênior, que veem também as dos de baixo) */
+    minha: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
     /** quem o Cadastro diz que é o responsável do setor ('' = ninguém), para o aviso dizer o que foi conferido */
     responsavel: responsavelDe,
     /** quantas empresas o Cadastro trouxe (0 com a leitura certa quer dizer que ela veio vazia) */
@@ -102,16 +115,15 @@ export function useEmpresasPermitidas() {
 
 /**
  * Os setores em que a pessoa só vê as empresas de que é a responsável no Cadastro. O Fiscal voltou a ter o filtro (Vitor,
- * 09/11/2026: "eu quero somente aparecendo as empresas de cada um"); o Contábil segue com todas. A exceção do Fiscal é a
- * conta Fiscal Xereta (LOGINS_COM_TODAS_AS_EMPRESAS).
+ * 09/11/2026: "eu quero somente aparecendo as empresas de cada um"); o Contábil também, com a relação do Contábil no
+ * Cadastro (Vitor, 25/11/2026), e o diretor e o sênior vendo também as dos plenos e dos júniores (useEmpresasDoOperador).
+ * A exceção do Fiscal é a conta Fiscal Xereta (LOGINS_COM_TODAS_AS_EMPRESAS).
  */
-const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = ['fiscal'];
+const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = ['fiscal', 'contabil'];
 
 /** O mesmo, com o operador passado (os aplicativos fora da Tarefas; null = sem conta: todas). */
 export function useEmpresasPermitidasDoOperador(op: Operador | null) {
   const daPessoa = useEmpresasDoOperador(op);
-  // o Contábil com todas as empresas, para todo mundo (Vitor, 06/11/2026: "libera todas as empresas para todo mundo mexer
-  // por enquanto"); para voltar, o Contábil entra de novo em SETORES_COM_RESPONSAVEL
   const setor = op && SETORES_COM_RESPONSAVEL.includes(op.departamento as 'fiscal' | 'contabil') ? (op.departamento as 'fiscal' | 'contabil') : null;
   const filtra = !daPessoa.podeVerTodas && !!setor;
   const pode = (e: { nome: string; codigo: number | null }) => !filtra || !setor || daPessoa.e(e, setor);
@@ -155,12 +167,19 @@ export function useAndamento() {
   const escopo: EscopoDasEmpresas = podeVerTodas ? 'todas' : 'minhas';
   // o Fiscal e o Contábil filtram pelo responsável do setor no Cadastro (29/10/2026: "se não é encarregado não deve nem
   // ver"; antes o Contábil ficava com todas); o DP ainda não tem o responsável por empresa
-  // (o Contábil liberado para todos por enquanto, 06/11/2026: SETORES_COM_RESPONSAVEL)
   const temResponsavel = SETORES_COM_RESPONSAVEL.includes(dep as 'fiscal' | 'contabil');
   const filtrar = escopo === 'minhas' && temResponsavel;
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
-  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => !filtrar || daPessoa.e(emp, dep as 'fiscal' | 'contabil')).map(emp => {
+  // o responsável na lista, para o dono, o diretor e o sênior (Vitor, 25/11/2026: "para donos, diretores e seniores, coloca a coluna
+  // responsavel, se caso for o propio usuario deixa vazio sem o nome, as que ele nao for responsavel deixe levemente ofuscado"); e,
+  // no Contábil, o diretor e o sênior não veem a empresa sem responsável ("as empresas que nao tem responsavel contabil, pode
+  // ocultar tambem para eles"; o sênior já não via: useEmpresasDoOperador)
+  const setorDoResponsavel = temResponsavel ? (dep as 'fiscal' | 'contabil') : null;
+  const verResponsavel = !!setorDoResponsavel && (usuarios.nivelDeDiretor(op.nivel) || op.nivel === 'senior');
+  const semResponsavelFora = setorDoResponsavel === 'contabil' && (op.nivel === 'diretor' || op.nivel === 'senior');
+  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => (!filtrar || daPessoa.e(emp, dep as 'fiscal' | 'contabil'))
+    && (!semResponsavelFora || !!daPessoa.responsavel(emp, 'contabil'))).map(emp => {
     const ex = porNome.get(emp.nome) || null;
     // a rotina da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) conta 1 etapa só
     const rotina = t.rotinaDaEmpresa(dep, emp.codigo) || rotinaDoDep;
@@ -170,7 +189,12 @@ export function useAndamento() {
     // a última vez que quem está trabalhando mexeu nesta empresa (para 'Minhas recentes' do Iniciar)
     const minhas = ex ? Object.values(ex.etapas).filter(e => e.por === op.nome).map(e => e.em) : [];
     const mexiEm = minhas.length ? minhas.reduce((x, y) => (y > x ? y : x)) : null;
+    const minha = !setorDoResponsavel || daPessoa.minha(emp, setorDoResponsavel);
     return {
+      /** quem é o responsável do setor, em branco quando é a própria pessoa (só para quem vê a coluna) */
+      responsavel: verResponsavel && !minha ? daPessoa.responsavel(emp, setorDoResponsavel as 'fiscal' | 'contabil') : '',
+      /** a empresa não é da pessoa (a linha fica apagada para quem vê a coluna) */
+      deOutro: verResponsavel && !minha,
       empresa: emp, chave: (emp.codigo ?? '') + emp.nome, codigo: emp.codigo, nome: emp.nome, nomeNaTela: empresas.nomeParaMostrar(emp), rota: empresas.rotaDaEmpresa(emp),
       concluidas: p.concluidas, total: p.total, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
       proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,
@@ -179,7 +203,9 @@ export function useAndamento() {
       // a última vez que alguém mexeu nesta empresa na competência (de qualquer pessoa)
       ultimaVez: t.ultimaVez(ex),
     };
-  }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]) : [];
+  // na mesma situação, as da pessoa primeiro e as dos outros mais abaixo (25/11/2026: "Priorize as empresas do usuario em primeiro
+  // (quando o paramentro e de igual para igual) e deixe as dos outros mais abaixo da tabela")
+  }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao] || Number(a.deOutro) - Number(b.deOutro)) : [];
 
   /** Muda um parâmetro da URL mantendo os outros (competência, situação). */
   function mudar(chave: string, valor: string) {
@@ -199,6 +225,8 @@ export function useAndamento() {
     params, setParams, mudar,
     carregando: !carregada || (filtrar && !daPessoa.carregada),
     linhas,
+    /** a coluna Responsável (o dono, o diretor e o sênior) */
+    verResponsavel,
     /** se o setor tem responsável por empresa, e se quem vê é o admin ou o diretor (vê todas) */
     podeVerTodas: podeVerTodas && temResponsavel,
     escopo,

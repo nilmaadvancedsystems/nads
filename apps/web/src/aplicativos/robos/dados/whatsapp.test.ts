@@ -151,3 +151,25 @@ describe('quem comanda', () => {
     expect(R.podeComandar(null)).toBe(false);
   });
 });
+
+// as guias pelo WhatsApp (ficha 49 guias-pelo-whatsapp, 25/11/2026)
+const G = roboImportado as {
+  pedidoDasGuias: (p: { telefone: string; cliente: string; competencia: string; link: string }, o?: { liberado?: boolean }) => { para: string; texto: string } | null;
+  NUMERO_DO_ESCRITORIO: string;
+};
+describe('as guias pelo WhatsApp', () => {
+  const dados = { telefone: '(38) 99999-1234', cliente: 'Padaria Boa', competencia: '2026-10', link: 'https://cliente.nilmacontabilidade.com/cliente/x/guias' };
+  it('com a trava fechada vai ao escritório, marcada como teste e com o link', () => {
+    const p = G.pedidoDasGuias(dados)!;
+    expect(p.para).toBe(G.NUMERO_DO_ESCRITORIO);
+    expect(p.texto).toContain('[TESTE: iria para Padaria Boa, (38) 99999-1234]');
+    expect(p.texto).toContain('As guias de outubro de 2026');
+    expect(p.texto).toContain(dados.link);
+  });
+  it('liberada, vai ao telefone do cadastro, sem o aviso de teste; sem telefone, nada', () => {
+    const p = G.pedidoDasGuias(dados, { liberado: true })!;
+    expect(p.para).toBe('5538999991234');
+    expect(p.texto).not.toContain('TESTE');
+    expect(G.pedidoDasGuias({ ...dados, telefone: '' })).toBeNull();
+  });
+});

@@ -126,6 +126,8 @@ export function repoDaTarefas(): tarefas.RepoTarefas {
     definirEmpresasExtras(empresasNovas);
     // o regime do Cadastro › Empresa vale no lugar do da lista (13/10/2026): muda as etapas da rotina
     tarefas.usarRegimesDoCadastro(regimeNoCadastro);
+    // as etapas que cada empresa tem de diferente (Cadastro › Obrigações, ficha E08)
+    tarefas.usarAjustesDoCadastro(codigo => cadastroPorCodigo(codigo)?.etapas);
     // o "onde parou" da Tarefa também no banco (16/10/2026): no banco, sim; nos exemplos e no modo desenvolvedor, não
     if (noBanco) ligarGuardadoRemoto(criarGuardadoFirestore(() => quemPede()?.nome || ''));
     repo = r;
@@ -145,7 +147,7 @@ export function empresasNovas(): readonly empresas.EmpresaDoEscritorio[] {
   return lista;
 }
 
-let regimesCache: { ver: number; mapa: Map<number, string> } | null = null;
+let cadastrosCache: { ver: number; mapa: Map<number, empresas.cadastro.CadastroDaEmpresa> } | null = null;
 // o regime que o Entregas tem (o enquadramento e a Receita; 13/10/2026): lido uma vez, dos mesmos clientes dos bancos
 let regimesEntregas: ReadonlyMap<number, empresas.cadastro.RegimeDoEntregas> | null = null;
 let pedidoRegimes: Promise<void> | null = null;
@@ -174,28 +176,34 @@ export function regimeNoEntregas(codigo: number | null | undefined): empresas.ca
  * O regime da empresa fora da lista fixa: o escolhido no cadastro do nads; sem ele, o do Entregas (o enquadramento; sem
  * ele, a Receita quando diz Simples ou MEI). '' = vale o da lista do escritório.
  */
-function regimeNoCadastro(codigo: number): string {
-  return regimeEscolhidoNoNads(codigo) || empresas.cadastro.regimeDoEntregas(regimeNoEntregas(codigo));
+function regimeNoCadastro(codigo: number, competencia?: string): string {
+  return regimeEscolhidoNoNads(codigo, competencia) || empresas.cadastro.regimeDoEntregas(regimeNoEntregas(codigo));
 }
 
 /**
- * O regime escolhido no cadastro da empresa no nads ('' = nenhum). Pelo nome (o cadastro é por nome): os dois códigos
- * de uma empresa com o mesmo nome (ex.: 358 e 359) seguem o mesmo cadastro.
+ * O cadastro da empresa pelo código. Pelo nome (o cadastro é por nome): os dois códigos de uma empresa com o mesmo nome
+ * (ex.: 358 e 359) seguem o mesmo cadastro.
  */
-function regimeEscolhidoNoNads(codigo: number): string {
+function cadastroPorCodigo(codigo: number): empresas.cadastro.CadastroDaEmpresa | undefined {
   const c = repoDoCadastro();
   const ver = c.versao();
-  if (!regimesCache || regimesCache.ver !== ver) {
-    const porSlug = new Map<string, string>();
-    for (const [id, x] of c.todos().porId) { const r = empresas.cadastro.regimeDoCadastro(x); if (r) porSlug.set(id, r); }
-    const mapa = new Map<number, string>();
+  if (!cadastrosCache || cadastrosCache.ver !== ver) {
+    const porId = c.todos().porId;
+    const mapa = new Map<number, empresas.cadastro.CadastroDaEmpresa>();
     for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) {
-      const r = e.codigo != null ? porSlug.get(formatos.slug(e.nome)) : undefined;
-      if (r && e.codigo != null) mapa.set(e.codigo, r);
+      const x = e.codigo != null ? porId.get(formatos.slug(e.nome)) : undefined;
+      if (x && e.codigo != null) mapa.set(e.codigo, x);
     }
-    regimesCache = { ver, mapa };
+    cadastrosCache = { ver, mapa };
   }
-  return regimesCache.mapa.get(codigo) || '';
+  return cadastrosCache.mapa.get(codigo);
+}
+
+/** O regime escolhido no cadastro da empresa no nads ('' = nenhum); com a competência, o daquele mês (ficha E10). */
+function regimeEscolhidoNoNads(codigo: number, competencia?: string): string {
+  const x = cadastroPorCodigo(codigo);
+  if (!x) return '';
+  return competencia ? empresas.cadastro.regimeNaCompetencia(x, competencia) : empresas.cadastro.regimeDoCadastro(x);
 }
 
 /** Os erros do banco (salvar/ler) vão para o toast da tela. */

@@ -1,14 +1,18 @@
-/* O Controle contábil (23/11/2026): a tabela no desenho do Relatório do Fiscal (.fr-*), com a situação em etiqueta */
-.cc-tabela{min-width:1120px;}
-.cc-tabela col.cc-c-cod{width:56px;}
+/* O Controle Forestry (o Controle contábil; 23/11/2026): as barras no desenho do painel do DP e a tabela no do Relatório do Fiscal */
+/* a tabela é a de antes (25/11/2026: "curti mais o outro layout… da tabela"), a do Relatório do Fiscal (.fr-tabela), mas sem a
+   largura mínima: as colunas cabem na caixa, sem rolar para o lado. O Nº, o regime, o mês, a situação e o ⋯ têm
+   largura fixa; a Empresa e as Observações dividem o resto e a Empresa quebra a linha quando não cabe */
+.cc-tabela{min-width:0;}
+.cc-tabela col.cc-c-cod{width:52px;}
 .cc-tabela col.cc-c-nome{width:auto;}
-.cc-tabela col.cc-c-regime{width:96px;}
-.cc-tabela col.cc-c-resp{width:110px;}
-.cc-tabela col.cc-c-mes{width:118px;}
-.cc-tabela col.cc-c-sit{width:150px;}
-.cc-tabela col.cc-c-obs{width:28%;}
-.cc-tabela input[type="text"].fr-campo{text-align:left;font-variant-numeric:normal;}
+.cc-tabela col.cc-c-regime{width:92px;}
+.cc-tabela col.cc-c-mes{width:112px;}
+.cc-tabela col.cc-c-sit{width:140px;}
+.cc-tabela col.cc-c-obs{width:30%;}
 .cc-tabela col.cc-c-acoes{width:40px;}
+.cc-tabela .fr-cliente,.cc-tabela .fr-cliente span{white-space:normal;overflow-wrap:break-word;}
+.cc-tabela td.cc-texto{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc-tabela input[type="text"].fr-campo{width:100%;min-width:0;text-align:left;font-variant-numeric:normal;}
 .cc-tabela thead tr:first-child th{top:0;height:30px;font-size:var(--fs-11);letter-spacing:0;text-transform:none;}
 .cc-texto{color:var(--ink-muted);font-size:var(--fs-12);}
 /* a faixa à esquerda da linha, como o .fr-feita: verde em dia, amarelo atrasada, vermelho 2 meses ou mais, cinza não acompanhar */
@@ -17,6 +21,12 @@
 .cc-tabela tbody tr.cc-forte td:first-child{box-shadow:inset 3px 0 0 var(--danger);}
 .cc-tabela tbody tr.cc-pausada td{color:var(--ink-faint);}
 .cc-tabela tbody tr.cc-pausada .fr-cliente span{color:var(--ink-faint);font-weight:400;}
+/* a situação */
+.cc-sit{display:inline-block;max-width:100%;padding:1px 8px;border-radius:999px;font-size:var(--fs-11);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}
+.cc-sit-em-dia{background:var(--success-soft);color:var(--success-ink);}
+.cc-sit-atrasada,.cc-sit-nao-iniciada{background:var(--warn-soft);color:var(--warn);}
+.cc-sit.cc-forte{background:var(--danger-soft);color:var(--danger-ink);}
+.cc-sit-pausada{background:var(--surface-3);color:var(--ink-muted);font-weight:500;}
 /* o mês feito: o botão do menu, pequeno, e a sugestão do executor ao lado */
 .cc-mes{display:inline-flex;align-items:center;gap:6px;}
 .cc-mes-botao{display:inline-flex;align-items:center;gap:4px;min-width:52px;height:24px;padding:0 8px;border:1px solid var(--border);border-radius:6px;
@@ -27,14 +37,8 @@
   background:var(--success-soft);color:var(--success-ink);font:inherit;font-size:var(--fs-11);font-weight:600;cursor:pointer;}
 .cc-sugestao:hover{border-style:solid;}
 .cc-sugestao svg{stroke-width:3;}
-/* a situação */
-.cc-sit{display:inline-block;max-width:100%;padding:1px 8px;border-radius:999px;font-size:var(--fs-11);font-weight:600;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
-.cc-sit-em-dia{background:var(--success-soft);color:var(--success-ink);}
-.cc-sit-atrasada,.cc-sit-nao-iniciada{background:var(--warn-soft);color:var(--warn);}
-.cc-sit.cc-forte{background:var(--danger-soft);color:var(--danger-ink);}
-.cc-sit-pausada{background:var(--surface-3);color:var(--ink-muted);font-weight:500;}
 .cc-acoes{width:26px;height:26px;}
-/* o resumo no topo do cartão: um botão por situação, que filtra */
+/* o resumo, à esquerda da linha da busca: um botão por situação, que filtra */
 .cc-resumo{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-12);}
 .cc-resumo-item{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);
   color:var(--ink-muted);font:inherit;font-size:var(--fs-12);cursor:pointer;font-variant-numeric:tabular-nums;}
@@ -44,6 +48,10 @@
 .cc-resumo-item.cc-em-dia b{color:var(--success-ink);}
 .cc-resumo-item.cc-atrasada b,.cc-resumo-item.cc-nao-iniciada b{color:var(--warn);}
 .cc-esperado{margin-left:4px;}
+/* o + Empresa: o campo e os botões no menu do + */
+.cc-novo{display:flex;flex-direction:column;gap:8px;padding:4px;}
+.cc-novo input[type="text"]{width:100%;}
+.cc-novo .btn{justify-content:center;}
 .cc-vazio p{margin:0 0 8px;}
 .cc-erro{color:var(--danger-ink);}
 .cc-motivo{width:100%;margin-top:8px;}
@@ -55,7 +63,17 @@
 .cc-previa-lista ul{margin:6px 0 0;padding-left:20px;max-height:220px;overflow:auto;font-size:var(--fs-12);color:var(--ink-muted);}
 .cc-previa-aviso summary b{color:var(--warn);}
 .cc-previa-linha{margin:8px 0;font-size:var(--fs-13);}
-@media (max-width:720px){
-  .cc-tabela{min-width:760px;}
-  .cc-tabela col.cc-c-obs{width:220px;}
+/* na tela estreita (25/11/2026: a Empresa espremida, quebrando o nome letra a letra): a Empresa fica com uma parte fixa da
+   largura e o resto encolhe junto; as Observações ficam com o que sobra */
+@media (max-width:1100px){
+  .cc-tabela col.cc-c-cod{width:44px;}
+  .cc-tabela col.cc-c-nome{width:36%;}
+  .cc-tabela col.cc-c-regime{width:9%;}
+  .cc-tabela col.cc-c-mes{width:84px;}
+  .cc-tabela col.cc-c-sit{width:15%;}
+  .cc-tabela col.cc-c-obs{width:auto;}
+  .cc-tabela col.cc-c-acoes{width:36px;}
+  .cc-tabela .cc-mes-botao{min-width:0;padding:0 6px;}
 }
+/* o ano: só 2026, uma etiqueta no lugar do menu */
+.cc-ano{cursor:default;}

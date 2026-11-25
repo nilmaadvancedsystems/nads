@@ -19,6 +19,7 @@ import logoExcel from './logo-excel.webp';
 import logoInss from './logo-inss.png';
 import logoSimplesDaAba from './logo-simples.png';
 import logoSped from './logo-sped.png';
+import logoSci from './logo-sci.png';
 
 /** O endereço completo do logo da Nilma (o do e-mail), publicado junto com o site. */
 export function urlDoLogoNilma(): string {
@@ -262,6 +263,15 @@ export function LogoSieg() {
       <path fill="#fff" d="M995 216H1199V386H995ZM995 555H1199V1132H995ZM995 385H400A220.5 220.5 0 0 0 400 826H692A68 68 0 0 1 692 962H216V1132H692A237.5 237.5 0 0 0 692 657H401A51 51 0 0 1 401 555H995Z" />
     </svg>
   );
+}
+
+/**
+ * O SCI (25/11/2026: "Era essa a logo da sci que eu queria, quero ela original, sem modificacoes"): a imagem que o Vitor mandou
+ * (a elipse amarela com o contorno azul-escuro, o "SCI" e a bola azul-clara), só sem o fundo branco e recortada nas bordas
+ * (logo-sci.png; a original em originais/sci.png). Cresce na largura pela altura que receber.
+ */
+export function LogoSci({ altura = 32 }: { altura?: number }) {
+  return <img src={logoSci} alt="SCI" height={altura} style={{ height: altura, width: 'auto', display: 'block' }} draggable={false} />;
 }
 
 /** O SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o anel azul-claro aberto e o ponto azul-escuro, no quadrado claro. */

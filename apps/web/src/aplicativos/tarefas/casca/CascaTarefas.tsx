@@ -1,7 +1,9 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
 import { Casca, MenuSuspenso, type NomeIcone } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router';
 import { LugarDasAcoes, useTituloDoTopo, useTrilhaDoTopo } from '../../../comum/topo';
+import { LogoDoMinimum } from '../telas/shadersci/LogoDoMinimum';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
@@ -51,10 +53,17 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   const secoes = empresa ? empresa.paginas.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === empresa.pagina })) : vm.secoes;
   // o título que a página pôs (o <TituloDoTopo>) vale no lugar do do menu
   const tituloDaPagina = useTituloDoTopo();
-  const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : tituloDaPagina.texto || vm.titulo;
+  // o minimum sem empresa aberta fica sem título (25/11/2026: "Remova" o "minimum" do topo da tela inicial)
+  const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : tituloDaPagina.texto || (app === 'shadersci' ? '' : vm.titulo);
   const seloDoTitulo = !empresa && tituloDaPagina.texto ? tituloDaPagina.selo : undefined;
   const trocarDoTitulo = !empresa && tituloDaPagina.texto ? tituloDaPagina.trocar : undefined;
   const trilha = useTrilhaDoTopo();
+  // o minimum (25/11/2026: "Troca o nome tarefas, pela logo do minimum, deixando ela centralizada no cabeçalho"): a logo no
+  // centro; o clique volta aos apps da empresa aberta (tira o ?m=), ou fica na escolha da empresa
+  const [, setParams] = useSearchParams();
+  const marcaNoCentro = app === 'shadersci'
+    ? { conteudo: <LogoDoMinimum />, titulo: 'Início do minimum', onClick: () => setParams(p => { const n = new URLSearchParams(p); n.delete('m'); return n; }) }
+    : undefined;
   const [feedbacks, setFeedbacks] = useState(false);
   // o aviso da tarefa nova (28/10/2026); a Central virou o módulo Minhas tarefas (30/10/2026), sem o correio no pé do menu
   useCorreioDeTarefas();
@@ -64,11 +73,11 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo} seloDoTitulo={telaInteira || vm.semTitulo ? undefined : seloDoTitulo} trocarDoTitulo={telaInteira || vm.semTitulo ? undefined : trocarDoTitulo} saudacao={vm.saudacao}
+    <Casca sistema="Tarefas" marcaNoCentro={marcaNoCentro} temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo} seloDoTitulo={telaInteira || vm.semTitulo ? undefined : seloDoTitulo} trocarDoTitulo={telaInteira || vm.semTitulo ? undefined : trocarDoTitulo} saudacao={vm.saudacao}
       lateral={telaInteira || semLateral || vm.soAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || vm.semTitulo || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
-      onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao} atalhoNaGaveta="carteira"
+      onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={vm.abrirTarefas} />}
       // o pé da gaveta: Feedbacks, Ferramentas e Configurações (PeDaGaveta.tsx; o mesmo dentro da Tarefa)

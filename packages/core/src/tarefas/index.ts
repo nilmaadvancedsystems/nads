@@ -34,6 +34,8 @@ export * from './regras/protocolosDoAno';
 export * from './regras/prazosDoDp';
 // a tabela única de prazos das etapas (plano do Acessórias, 17/11/2026, ficha E02): o legal, o interno e a multa
 export * from './regras/prazos';
+// o que está pendente numa empresa quando ela muda de responsável (plano do Acessórias, ficha M02)
+export * from './regras/pendenciasNaTroca';
 export * from './regras/despesasDoBalancete';
 export * from './regras/inicio';
 export * from './regras/enviosDoDp';

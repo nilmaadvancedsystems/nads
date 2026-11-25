@@ -3,7 +3,7 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import {
-  buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
+  alterarEmLote, buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
   ladoDaPartida, participanteDoLado, pascoa, problemasDaPartida, problemasDosLancamentos, totaisDoMultiplo, planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
 } from './index';
 import { FERIADOS } from '../tarefas/regras/feriados';
@@ -49,7 +49,7 @@ describe('o lançamento', () => {
   });
 
   it('aponta o que falta', () => {
-    expect(problemasDoLancamento(LANCAMENTO_VAZIO, p113)).toEqual(['sem data', 'sem conta de débito', 'sem conta de crédito', 'sem valor', 'sem histórico', 'sem complemento', 'sem documento']);
+    expect(problemasDoLancamento(LANCAMENTO_VAZIO, p113)).toEqual(['sem data', 'sem conta de débito', 'sem conta de crédito', 'sem valor', 'sem histórico', 'sem documento']);
     expect(problemasDoLancamento({ ...base, debito: '15' }, p113)).toContain('a conta 15 é sintética (só a analítica recebe lançamento)');
     expect(problemasDoLancamento({ ...base, debito: '99999' }, p113)).toContain('a conta 99999 não está no plano');
     expect(problemasDoLancamento({ ...base, credito: '5' }, p113)).toContain('débito e crédito na mesma conta');
@@ -57,9 +57,11 @@ describe('o lançamento', () => {
     expect(problemasDoLancamento({ ...base, historico: '3' }, p113)).toContain('o histórico 3 não está no plano de históricos');
   });
 
-  // 24/11/2026: "Campos obrigatorios para o lançamento do documento: Data, Valor, debito, crédito, numero do historico, complemento, documento"
-  it('pede o complemento e o documento, menos o complemento do histórico que pula', () => {
-    expect(problemasDoLancamento({ ...base, complemento: '', documento: '' }, p113)).toEqual(['sem complemento', 'sem documento']);
+  // 24/11/2026: "Campos obrigatorios para o lançamento do documento: Data, Valor, debito, crédito, numero do historico, complemento, documento";
+  // no mesmo dia, "o complemento nao e obrigatorio"
+  it('pede o documento; o complemento é opcional', () => {
+    expect(problemasDoLancamento({ ...base, complemento: '', documento: '' }, p113)).toEqual(['sem documento']);
+    expect(problemasDoLancamento({ ...base, complemento: '' }, p113)).toEqual([]);
     // o 159 (Débito tarifa bancária cfe. extrato) pula o complemento
     expect(problemasDoLancamento({ ...base, historico: '159', complemento: '' }, p113)).toEqual([]);
   });
@@ -132,6 +134,38 @@ describe('o lançamento múltiplo', () => {
     const lsci = lancamentosDoShaderParaOSci(multiplo, p113, CNPJ);
     expect(lsci.map(l => [l.debito, l.credito, l.valor, l.problemas.length])).toEqual([['', '5', 15000, 0], ['148', '', 10000, 0], ['7', '', 5000, 0]]);
     expect(resumoDosLancamentos(multiplo, p113)).toMatchObject({ quantos: 3, prontos: 3 });
+  });
+});
+
+// 25/11/2026: "Coloca alguma funcao de alterar em lote: data, conta debito, conta credito, valor, numero do historico";
+// "Lancamentos em lote nao muda multiplos, deixe isso como regra"
+describe('alterar em lote', () => {
+  const l = (id: string, extra: Partial<CamposDoLancamento> = {}) => ({ ...base, id, ...extra });
+  const lista = [l('a'), l('b'), l('c', { debito: '', multiplo: 'M1' }), l('d')];
+
+  it('muda só os marcados e os campos preenchidos', () => {
+    const r = alterarEmLote(lista, new Set(['a', 'b']), { data: '2026-11-10', valor: 2500, historico: '159' }, p113);
+    expect(r.mudados).toBe(2);
+    expect(r.lancamentos[0]).toMatchObject({ data: '2026-11-10', valor: 2500, historico: '159', debito: '5', credito: '7', complemento: 'Depósito' });
+    expect(r.lancamentos[3]).toBe(lista[3]);
+  });
+
+  it('não mexe nos múltiplos, e conta quantos ficaram de fora', () => {
+    const r = alterarEmLote(lista, new Set(['a', 'c']), { debito: '7', credito: '5' }, p113);
+    expect(r).toMatchObject({ mudados: 1, multiplos: 1 });
+    expect(r.lancamentos[2]).toBe(lista[2]);
+  });
+
+  it('a conta que não pede participante apaga o daquele lado; a que pede mantém', () => {
+    const comFornecedor = [l('x', { debito: '148', participanteD: '45' })];
+    expect(alterarEmLote(comFornecedor, new Set(['x']), { debito: '7' }, p113).lancamentos[0].participanteD).toBe('');
+    expect(alterarEmLote(comFornecedor, new Set(['x']), { data: '2026-11-06' }, p113).lancamentos[0].participanteD).toBe('45');
+  });
+
+  it('nada a mudar: a mesma lista e zero mudados', () => {
+    const r = alterarEmLote(lista, new Set(['a']), { data: base.data }, p113);
+    expect(r.mudados).toBe(0);
+    expect(r.lancamentos[0]).toBe(lista[0]);
   });
 });
 

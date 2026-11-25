@@ -262,10 +262,11 @@ export function NumeroQueConta({ texto }: { texto: string }) {
  * Chave Sim/Não (.toggle-switch). O texto em pt-BR ((revisão da UI, 18/10/2026): era "On/Off"); as duas palavras ficam uma em cima da
  * outra e só a da vez aparece, então a largura é sempre a da maior e a chave não pula ao trocar.
  */
-export function Interruptor({ ligado, onMudar, rotulo }: { ligado: boolean; onMudar: () => void; rotulo: string }) {
+/** semTexto: só a chave, sem o "Sim"/"Não" ao lado (o múltiplo do minimum, 25/11/2026: "Tira esse sim e nao daqui") */
+export function Interruptor({ ligado, onMudar, rotulo, semTexto }: { ligado: boolean; onMudar: () => void; rotulo: string; semTexto?: boolean }) {
   return (
     <button type="button" className="toggle-switch" role="switch" aria-checked={ligado} aria-label={rotulo} onClick={onMudar}>
-      <span className="toggle-txt" aria-hidden="true"><span className={ligado ? undefined : 'toggle-txt-fora'}>Sim</span><span className={ligado ? 'toggle-txt-fora' : undefined}>Não</span></span>
+      {!semTexto && <span className="toggle-txt" aria-hidden="true"><span className={ligado ? undefined : 'toggle-txt-fora'}>Sim</span><span className={ligado ? 'toggle-txt-fora' : undefined}>Não</span></span>}
       <span className="toggle-track"><span className="toggle-knob" /></span>
     </button>
   );
@@ -564,6 +565,17 @@ export function SoltarArquivos({ aceitar, multiplo, titulo, dica, icone = 'uploa
   );
 }
 
+/**
+ * O zoom da página (25/11/2026: a Tarefas a 90% nas telas de 1100 a 1439px, "nesse monitor de 1366x768 parece ta tudo meio grande"):
+ * com o zoom, as coordenadas da tela (getBoundingClientRect, clientX) vêm na escala da tela e o left/top de um elemento fixo é
+ * multiplicado pelo zoom. Quem põe uma coisa fixa num ponto da tela divide por este número. 1 = sem zoom.
+ */
+export function zoomDaPagina(): number {
+  if (typeof document === 'undefined') return 1;
+  const z = parseFloat(getComputedStyle(document.documentElement).zoom);
+  return z > 0 && Number.isFinite(z) ? z : 1;
+}
+
 /** A altura máxima do menu flutuante e o mínimo que ele precisa embaixo do botão (três itens) para não subir. */
 const MENU_ALTURA = 420;
 const MENU_ALTURA_MINIMA = 120;
@@ -617,14 +629,18 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
     if (!aberto || !flutuante) { setLugar(null); return; }
     const medir = () => {
       const b = botao.current?.getBoundingClientRect(); if (!b) return;
-      const w = Math.min(largura || (larguraDoBotao ? b.width : 0) || pop.current?.offsetWidth || 200, window.innerWidth - 16);
+      // as contas na escala da tela; o que vai no estilo, dividido pelo zoom da página (zoomDaPagina)
+      const z = zoomDaPagina();
+      const wCss = Math.min(largura || (larguraDoBotao ? b.width / z : 0) || pop.current?.offsetWidth || 200, (window.innerWidth - 16) / z);
+      const w = wCss * z;
       const left = Math.max(8, Math.min(direita ? b.right - w : b.left, window.innerWidth - w - 8));
       // o espaço livre embaixo e em cima do botão (4px de folga dele e 8px da borda da tela)
       const embaixo = window.innerHeight - b.bottom - 12;
       const emCima = b.top - 12;
       const sobe = acima || (embaixo < MENU_ALTURA_MINIMA && emCima > embaixo);
-      const larg = larguraDoBotao ? { largura: w } : {};
-      setLugar(sobe ? { left, bottom: window.innerHeight - b.top + 4, alto: Math.min(MENU_ALTURA, emCima), ...larg } : { left, top: b.bottom + 4, alto: Math.min(MENU_ALTURA, embaixo), ...larg });
+      const larg = larguraDoBotao ? { largura: wCss } : {};
+      setLugar(sobe ? { left: left / z, bottom: (window.innerHeight - b.top + 4) / z, alto: Math.min(MENU_ALTURA, emCima / z), ...larg }
+        : { left: left / z, top: (b.bottom + 4) / z, alto: Math.min(MENU_ALTURA, embaixo / z), ...larg });
     };
     medir();
     window.addEventListener('scroll', medir, true);

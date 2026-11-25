@@ -115,8 +115,8 @@ function problemasDaConta(lado: LadoDoLancamento, codigo: string, conta: ContaDo
 
 /**
  * O que impede o lançamento de ir para o SCI (vazio = pronto). Obrigatórios (24/11/2026: "Data, Valor, debito, crédito, numero do
- * historico, complemento, documento e participantes se caso a pessoa selecionar"): o complemento só fica de fora no histórico que
- * pula o complemento. Nem sábado nem feriado nacional.
+ * historico, complemento, documento e participantes se caso a pessoa selecionar"); o complemento deixou de ser (24/11/2026: "o
+ * complemento nao e obrigatorio"). Nem sábado nem feriado nacional.
  */
 export function problemasDoLancamento(l: CamposDoLancamento, plano: PlanoSci): string[] {
   const p: string[] = [];
@@ -135,7 +135,7 @@ function problemasDaData(data: string): string[] {
   return fora ? [dataParaTexto(data) + ' é ' + fora + ': não se lança'] : [];
 }
 
-/** O valor, o histórico, o complemento e o documento: os mesmos no lançamento simples e na partida do múltiplo. */
+/** O valor, o histórico e o documento: os mesmos no lançamento simples e na partida do múltiplo (o complemento é opcional). */
 function problemasDoValorEDoTexto(l: CamposDoLancamento): string[] {
   const p: string[] = [];
   if (!(l.valor > 0)) p.push('sem valor');
@@ -143,7 +143,6 @@ function problemasDoValorEDoTexto(l: CamposDoLancamento): string[] {
   if (!l.historico) p.push('sem histórico');
   else if (!/^\d+$/.test(l.historico)) p.push('o histórico é só o número do histórico padrão');
   else if (!historico) p.push('o histórico ' + l.historico + ' não está no plano de históricos');
-  if (!l.complemento.trim() && !historico?.pulaComplemento) p.push('sem complemento');
   if (!l.documento.trim()) p.push('sem documento');
   return p;
 }
@@ -227,6 +226,44 @@ export function lancamentoLimpo<T extends CamposDoLancamento>(l: T, plano: Plano
   };
 }
 
+/** O que se troca em lote nos lançamentos marcados (vazio = não mexe nesse campo). */
+export interface MudancaEmLote {
+  /** aaaa-mm-dd */
+  data?: string;
+  debito?: string;
+  credito?: string;
+  /** em centavos */
+  valor?: number;
+  historico?: string;
+}
+
+/**
+ * Altera em lote os lançamentos marcados (25/11/2026: "Coloca alguma funcao de alterar em lote: data, conta debito, conta credito,
+ * valor, numero do historico"). A regra: o lote não muda os múltiplos ("Lancamentos em lote nao muda multiplos, deixe isso como
+ * regra"): as partidas de um múltiplo ficam como estão e são contadas à parte. A conta trocada leva o participante só se ela
+ * pede: a que não pede apaga o participante daquele lado. A conta e o histórico entram como na digitação (lancamentoLimpo).
+ */
+export function alterarEmLote<T extends LancamentoDoShader>(ls: readonly T[], ids: ReadonlySet<string>, m: MudancaEmLote, plano: PlanoSci): { lancamentos: T[]; mudados: number; multiplos: number } {
+  let mudados = 0;
+  let multiplos = 0;
+  const lancamentos = ls.map(l => {
+    if (!ids.has(l.id)) return l;
+    if (l.multiplo) { multiplos++; return l; }
+    let n: T = { ...l };
+    if (m.data) n.data = m.data;
+    if (m.valor != null && Number.isFinite(m.valor) && m.valor > 0) n.valor = m.valor;
+    if (m.historico?.trim()) n.historico = m.historico;
+    if (m.debito?.trim()) { n.debito = m.debito; if (!participanteDoLado(contaDoPlano(plano, m.debito), 'debito')) n.participanteD = ''; }
+    if (m.credito?.trim()) { n.credito = m.credito; if (!participanteDoLado(contaDoPlano(plano, m.credito), 'credito')) n.participanteC = ''; }
+    n = lancamentoLimpo(n, plano);
+    const igual = (Object.keys(n) as (keyof T)[]).every(k => n[k] === l[k]);
+    if (igual) return l;
+    mudados++;
+    return n;
+  });
+  return { lancamentos: mudados ? lancamentos : [...ls], mudados, multiplos };
+}
+
 /** Débito ↔ crédito (e os participantes junto). */
 export const invertido = <T extends CamposDoLancamento>(l: T): T => ({ ...l, debito: l.credito, credito: l.debito, participanteD: l.participanteC, participanteC: l.participanteD });
 
@@ -290,4 +327,48 @@ export function lancamentosDoTexto(texto: string, anoPadrao: number): CamposDoLa
         participanteD: c[7] || '', participanteC: c[8] || '',
       };
     });
+}
+
+// ------------------------------------------------------------------------------------------- do Extratudo para os Lançamentos
+/**
+ * Uma linha do extrato conciliada no Extratudo (o Lançatudo dentro do minimum; 25/11/2026: "tudo que puder deixar integrado entre
+ * o tarefas e o minimum"): o que basta para virar lançamento do SCI. O valor em centavos, + entrou, − saiu.
+ */
+export interface LinhaDoExtratoConciliada {
+  chave: string;
+  /** aaaa-mm-dd */
+  data: string;
+  valor: number;
+  historico: string;
+  /** o número do histórico padrão escolhido na linha (no minimum, o do SCI) */
+  codHistorico?: string;
+  documento: string;
+  /** a contrapartida (null = sem conta: não vai) */
+  conta: string | null;
+  contaDoBanco: string;
+}
+
+/** O id do lançamento que veio de uma linha do extrato: o mesmo a cada envio, para a linha não entrar duas vezes. */
+export const idDoExtrato = (banco: string, chave: string) => 'extrato|' + banco + '|' + chave;
+
+/**
+ * As linhas conciliadas do extrato viram lançamentos simples do SCI: o que entrou debita o banco e credita a contrapartida; o
+ * que saiu, ao contrário. O histórico do SCI é o número do histórico padrão escolhido na linha; o texto do banco vai no
+ * complemento. Devolve só as novas: as que já estão entre os lançamentos (pelo id) não voltam. Quem chama confere a norma.
+ */
+export function lancamentosDoExtrato(banco: string, linhas: readonly LinhaDoExtratoConciliada[], existentes: readonly LancamentoDoShader[]): LancamentoDoShader[] {
+  const ja = new Set(existentes.map(l => l.id));
+  const novos: LancamentoDoShader[] = [];
+  for (const l of linhas) {
+    if (!l.conta || !l.contaDoBanco.trim() || !l.valor) continue;
+    const id = idDoExtrato(banco, l.chave);
+    if (ja.has(id)) continue;
+    ja.add(id);
+    const entrou = l.valor > 0;
+    novos.push({
+      id, data: l.data, debito: entrou ? l.contaDoBanco : l.conta, credito: entrou ? l.conta : l.contaDoBanco, valor: Math.abs(l.valor),
+      historico: (l.codHistorico || '').trim(), complemento: l.historico.trim(), documento: l.documento || '', participanteD: '', participanteC: '',
+    });
+  }
+  return novos;
 }

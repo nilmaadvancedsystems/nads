@@ -6,7 +6,7 @@
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
 import { carteira, tarefas as t, usuarios, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
-import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
+import { PAGINAS_NO_MENU } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
 import { novidadeLigada } from '../../../comum/novidades';
 import { modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
@@ -33,7 +33,7 @@ export interface Pagina {
 export interface Aplicacao {
   id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
   /** o grupo na gaveta ☰ (14/10/2026: "melhore, atualize ícones") e a logo da marca no lugar do ícone (o Drive, o Gmail) */
-  grupo: 'Rotinas' | 'Comunicação' | 'Escritório'; marca?: 'drive' | 'gmail';
+  grupo: 'Rotinas' | 'Comunicação' | 'Escritório'; marca?: 'drive' | 'gmail' | 'minimum';
 }
 
 export const APLICACOES: readonly Aplicacao[] = [
@@ -65,15 +65,18 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // o ShadersCI (23/11/2026: "Quero fazer uma aba de lançamento mais clean, a do meu sistema SCI é horrivel"): os lançamentos digitados
   // para o SCI, pelos planos padrão 90113 e 90011, e a planilha do gerador do SCI; uma tela só, sem a barra lateral. O Contábil e o
-  // admin, no modo desenvolvedor até o Vitor aprovar (a novidade 'shadersci'); 24/11/2026: "ShadersCI troca para minimum, o nome"
-  { id: 'shadersci', nome: 'minimum', icone: 'list', grupo: 'Rotinas', pronta: true, paginas: [
+  // admin; 24/11/2026: "ShadersCI troca para minimum, o nome"; na versão final desde 25/11/2026, só com os Lançamentos (o Extratudo
+  // fica no modo desenvolvedor: useShadersCi)
+  // o m da logo do minimum no lugar do ícone, na gaveta (25/11/2026: "Coloca o m de minimum, na logo do menu lateral")
+  { id: 'shadersci', nome: 'minimum', icone: 'list', marca: 'minimum', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'minimum' },
   ] },
   // o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando virou módulo): até que mês a contabilidade
-  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. O Contábil e o admin, no
-  // modo desenvolvedor (a novidade 'controle-contabil'); fora dele, só quem está em t.CONTROLE_CONTABIL_LIBERADO_PARA ("Fernando primeiro")
-  { id: 'controle-contabil', nome: 'Controle contábil', icone: 'checklist', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Controle contábil' },
+  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. Na versão final só para o
+  // Fernando (25/11/2026: "Controle forestry somente para fernando, depois peco para liberar para algum usuario")
+  // o nome (25/11/2026: "O nome da aplicacao será Controle Forestry"); o id e o banco continuam controle-contabil
+  { id: 'controle-contabil', nome: 'Controle Forestry', icone: 'checklist', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Controle Forestry' },
   ] },
   // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
   // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
@@ -230,9 +233,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): os Usuários (as pessoas e a proteção
     // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
     { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
-    ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
-    // a releitura dos extratos de todas as empresas (10/11/2026): só aqui, onde o leitor de PDF e o OCR rodam
-    { id: 'releitura', rotulo: 'Releitura dos extratos', icone: 'fileSearch', titulo: 'Releitura dos extratos', secao: 'Admin', soAdmin: true },
+    // a Visão geral, o Robô, a Saúde dos robôs, o Uso do sistema, o Sistema e agentes e a Releitura dos extratos saíram do menu
+    // (25/11/2026: "remove isso"); as telas continuam no código
+    ...PAGINAS_NO_MENU.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
   ] },
   // as Ferramentas (30/10/2026: "um botão de Ferramentas ao lado da engrenagem"): utilitários de documentos que rodam no
   // navegador (PDF: separar, juntar, girar, tirar páginas, virar imagem ou texto; planilhas). Sem entrada na gaveta: o botão
@@ -304,7 +307,7 @@ export const ehDiretor = (op: Operador | null) => !!op && (op.admin || usuarios.
 
 /** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
 export const abasDoCadastroDe = (op: Operador | null) =>
-  ABAS_DO_CADASTRO.filter(a => a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil');
+  ABAS_DO_CADASTRO.filter(a => (a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil') && (a.id !== 'obrigacoes' || novidadeLigada('obrigacoes-por-empresa')));
 
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
@@ -316,7 +319,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
     (a.id !== 'shadersci' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
-    (a.id !== 'controle-contabil' || ((op.admin || op.departamento === 'contabil') && (novidadeLigada('controle-contabil') || t.controleContabilLiberadoPara(op.nome)))) &&
+    // o Controle Forestry só para quem está liberado (25/11/2026: "Controle forestry somente para fernando, depois peco para
+    // liberar para algum usuario pra nao ficar muito poluido"): nem o diretor, nem o admin
+    (a.id !== 'controle-contabil' || t.controleContabilLiberadoPara(op.nome)) &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
@@ -493,6 +498,8 @@ export function paginasDaEmpresa(dep: string): Pagina[] {
 // por setor, no estilo das configurações do Notion (14/10/2026: "contas padrão e bancárias irão ficar em contábil")
 export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone; grupo: string }[] = [
   { id: 'empresa', rotulo: 'Dados da empresa', icone: 'briefcase', grupo: 'Empresa' },
+  // o que a empresa tem de diferente da rotina (plano do Acessórias, ficha E08; novidade em teste)
+  { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', grupo: 'Empresa' },
   { id: 'contabil', rotulo: 'Parâmetros', icone: 'settings', grupo: 'Contábil' },
   { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark', grupo: 'Contábil' },
   { id: 'plano', rotulo: 'Plano de contas', icone: 'list', grupo: 'Contábil' },

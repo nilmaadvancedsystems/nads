@@ -65,6 +65,11 @@ function lerLateral(): boolean {
 
 export function Casca(p: {
   sistema: string;
+  /**
+   * a marca no centro do cabeçalho, no lugar do nome do sistema (o minimum, 25/11/2026: "Troca o nome tarefas, pela logo do
+   * minimum, deixando ela centralizada no cabeçalho"); o clique faz o que ela pedir
+   */
+  marcaNoCentro?: { conteudo: ReactNode; titulo: string; onClick: () => void };
   /** a empresa aberta na trilha (null: nenhuma — a Tarefas fora de uma empresa) */
   empresa: { codigo: string; nome: string } | null;
   versao: string;
@@ -74,7 +79,7 @@ export function Casca(p: {
   /** a cápsula antes do título (o código da empresa no minimum, 24/11/2026: "Nao gosto desse pontinho, coloca outra coisa, usa capsula") */
   seloDoTitulo?: string;
   /** o botão de setas logo depois do título (o trocar a empresa do minimum, 24/11/2026: "um botao de setas para mudar do lado do nome da empresa") */
-  trocarDoTitulo?: { titulo: string; onClick: () => void };
+  trocarDoTitulo?: { titulo: string; onClick: () => void; menu?: { rotulo: string; icone?: NomeIcone; separado?: boolean; onClick: () => void }[] };
   /** o título é a saudação do Início novo (13/11/2026): maior, digitado letra a letra e na mesma linha da fileira de ações */
   saudacao?: boolean;
   /** uma linha embaixo do título (cinza) */
@@ -100,7 +105,7 @@ export function Casca(p: {
   aplicativos?: {
     id: string; nome: string; icone: NomeIcone; ativo?: boolean; contador?: string;
     /** a logo da marca no lugar do ícone (14/10/2026: "no Drive, coloca a logo do Drive") */
-    marca?: 'drive' | 'gmail';
+    marca?: 'drive' | 'gmail' | 'minimum';
     /** o nome do grupo na gaveta (Rotinas, Comunicação, Escritório), quando muda */
     grupo?: string;
   }[];
@@ -146,6 +151,18 @@ export function Casca(p: {
     return () => window.removeEventListener('nads-lateral', mudou);
   }, []);
   const [gaveta, setGaveta] = useState(false);
+  // o menu do título (o minimum, 25/11/2026): abre no clique, fecha no clique fora e no Esc; sem menu, o clique troca direto
+  const [menuDoTitulo, setMenuDoTitulo] = useState(false);
+  const menuDoTituloRef = useRef<HTMLDivElement>(null);
+  const cliqueNoTitulo = () => { if (p.trocarDoTitulo?.menu?.length) setMenuDoTitulo(a => !a); else p.trocarDoTitulo?.onClick(); };
+  useEffect(() => {
+    if (!menuDoTitulo) return;
+    const fora = (e: MouseEvent) => { if (!menuDoTituloRef.current?.contains(e.target as Node)) setMenuDoTitulo(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuDoTitulo(false); };
+    document.addEventListener('mousedown', fora);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
+  }, [menuDoTitulo]);
   // a gaveta sai por onde entrou (animejs, 01/10/2026): desliza para a esquerda e o fundo apaga; só então desmonta.
   // Pelo Esc (teclado) fecha na hora: atalho de teclado não anima.
   const gavetaEl = useRef<HTMLElement>(null);
@@ -223,11 +240,36 @@ export function Casca(p: {
       {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
       <header className={'topbar' + (p.saudacao ? ' topbar-saudacao' : '')} hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
-          {p.seloDoTitulo || p.trocarDoTitulo
+          {/* com o trocar, o selo, o título e as setas numa caixa só, que se clica inteira (o minimum, 25/11/2026: "Coloca isso em uma
+              box, que de para entender que ao clicar, da pra trocar de empresa") */}
+          {/* com o menu, o clique abre os itens embaixo do título no lugar de trocar direto (o minimum, 25/11/2026: os outros apps
+              e o Trocar de empresa) */}
+          {p.trocarDoTitulo
+            ? <div className="page-title-menu-wrap" ref={menuDoTituloRef}>
+                <div className={'page-title-linha page-title-caixa' + (menuDoTitulo ? ' aberto' : '')} role="button" tabIndex={0} title={p.trocarDoTitulo.titulo}
+                  aria-label={p.trocarDoTitulo.titulo + ': ' + p.titulo} aria-haspopup={p.trocarDoTitulo.menu ? 'menu' : undefined} aria-expanded={p.trocarDoTitulo.menu ? menuDoTitulo : undefined}
+                  onClick={cliqueNoTitulo} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cliqueNoTitulo(); } }}>
+                  {p.seloDoTitulo && <span className="page-title-selo">{p.seloDoTitulo}</span>}
+                  <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
+                  <span className="page-title-trocar" aria-hidden="true"><Icone nome="chevronDown" /></span>
+                </div>
+                {menuDoTitulo && p.trocarDoTitulo.menu && (
+                  <div className="popover menu-pop page-title-menu" role="menu" aria-label={p.trocarDoTitulo.titulo}>
+                    {p.trocarDoTitulo.menu.map(i => (
+                      <Fragment key={i.rotulo}>
+                        {i.separado && <hr className="popover-sep" />}
+                        <button type="button" className="popover-item" role="menuitem" onClick={() => { setMenuDoTitulo(false); i.onClick(); }}>
+                          {i.icone && <Icone nome={i.icone} />}<span className="popover-texto">{i.rotulo}</span>
+                        </button>
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
+              </div>
+            : p.seloDoTitulo
             ? <div className="page-title-linha">
-                {p.seloDoTitulo && <span className="page-title-selo">{p.seloDoTitulo}</span>}
+                <span className="page-title-selo">{p.seloDoTitulo}</span>
                 <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
-                {p.trocarDoTitulo && <button type="button" className="icon-btn page-title-trocar" title={p.trocarDoTitulo.titulo} aria-label={p.trocarDoTitulo.titulo} onClick={p.trocarDoTitulo.onClick}><Icone nome="trocar" /></button>}
               </div>
             : <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>}
           {p.descricao && <p className="page-desc">{p.descricao}</p>}
@@ -265,7 +307,7 @@ export function Casca(p: {
             </>
           )}
           <nav className="gh-crumbs" aria-label="Local">
-            {!noOutro && (
+            {!noOutro && !p.marcaNoCentro && (
               <>
                 <button className="gh-crumb" type="button" title="Voltar para a tela inicial" onClick={p.onInicio}>{p.sistema}</button>
                 {p.empresa && <span className="gh-sep">/</span>}
@@ -281,6 +323,9 @@ export function Casca(p: {
               </span>
             ))}
           </nav>
+          {p.marcaNoCentro && !noOutro && (
+            <button type="button" className="gh-marca-centro" title={p.marcaNoCentro.titulo} aria-label={p.marcaNoCentro.titulo} onClick={p.marcaNoCentro.onClick}>{p.marcaNoCentro.conteudo}</button>
+          )}
           {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
         </div>
         <nav ref={abasInd} className="menu com-indicador" id="menu" aria-label="Páginas da seção" hidden={!(abasDaEtapa || p.paginas).some(x => !x.oculta)}>
@@ -322,8 +367,9 @@ export function Casca(p: {
                   {a.grupo && a.grupo !== p.aplicativos![i - 1]?.grupo && <span className="drawer-label drawer-grupo">{a.grupo}</span>}
                   <button className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined} data-app={a.id}
                     onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}>
-                    <span className={'drawer-app-icone' + (a.marca ? ' marca' : '')} aria-hidden="true">
-                      {a.marca === 'drive' ? <LogoDrive cor /> : a.marca === 'gmail' ? <LogoGmail /> : <Icone nome={a.icone} />}
+                    {/* o minimum com o m da logo dele, na serifada pesada (25/11/2026: "Coloca o m de minimum, na logo do menu lateral") */}
+                    <span className={'drawer-app-icone' + (a.marca === 'minimum' ? ' minimum' : a.marca ? ' marca' : '')} aria-hidden="true">
+                      {a.marca === 'drive' ? <LogoDrive cor /> : a.marca === 'gmail' ? <LogoGmail /> : a.marca === 'minimum' ? <span className="logo-minimum drawer-app-m">m</span> : <Icone nome={a.icone} />}
                     </span>
                     {a.nome}{a.contador && <span className="menu-contador drawer-contador">{a.contador}</span>}
                   </button>

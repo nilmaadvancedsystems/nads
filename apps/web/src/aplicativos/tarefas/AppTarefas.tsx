@@ -58,6 +58,9 @@ export function AppTarefas() {
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
   // as tabelas compactas (Minha página › Aparência e telas), se a pessoa escolheu neste navegador
   useEffect(() => { aplicarTabelasCompactas(); }, []);
+  // a Tarefas marca a página para o zoom das telas médias (25/11/2026: "nesse monitor de 1366x768 parece ta tudo meio grande, ajuste
+  // isso"): o CSS põe a página a 90% de 1100 a 1439px de largura (html[data-tarefas], nads.css); os outros sites do nads não mudam
+  useEffect(() => { document.documentElement.setAttribute('data-tarefas', ''); return () => document.documentElement.removeAttribute('data-tarefas'); }, []);
 
   // no banco: sem conta (ou conta sem departamento), só a entrada
   const operador = sessao?.usuario ? operadorDaConta(sessao.usuario) : null;

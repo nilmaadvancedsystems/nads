@@ -289,6 +289,18 @@ export function ParametrosFiscais({ rota }: { rota: string }) {
         <MenuSuspenso rotulo={vm.regime ?? (vm.regimePadrao || 'Escolher')} className="btn btn-ghost" titulo="Regime tributário" direita largura={200}
           itens={vm.regimes.map(r => ({ rotulo: r, marcado: (vm.regime ?? vm.regimePadrao) === r, onClick: () => { if (vm.regime !== r) vm.definirRegime(r); } }))} />
       </ConfigLinha>
+      {vm.regimeComData && (
+        <ConfigLinha titulo="A troca de regime vale a partir de" descricao="Os meses antes continuam com o regime anterior, na rotina e no Executor.">
+          <MenuSuspenso rotulo={vm.opcoesRegimeDesde.find(o => o.valor === vm.regimeDesde)?.rotulo || vm.regimeDesde} className="btn btn-ghost" titulo="A partir de qual competência" direita largura={200}
+            itens={vm.opcoesRegimeDesde.map(o => ({ rotulo: o.rotulo, marcado: o.valor === vm.regimeDesde, onClick: () => vm.setRegimeDesde(o.valor) }))} />
+        </ConfigLinha>
+      )}
+      {vm.regimeComData && vm.trocasDeRegime.length > 1 && (
+        <ConfigLinha titulo="Regimes por período" descricao={vm.trocasDeRegime.map(t => t.texto).join(' → ')}>
+          <MenuSuspenso rotulo="Desfazer" className="btn btn-ghost" titulo="Desfazer uma troca de regime" direita largura={240}
+            itens={vm.trocasDeRegime.filter(t => t.desde).map(t => ({ rotulo: 'Desfazer: ' + t.texto, onClick: () => vm.tirarTrocaDeRegime(t.desde) }))} />
+        </ConfigLinha>
+      )}
       <ConfigLinha titulo="Presta serviços">
         <Interruptor ligado={vm.prestaServico === true} rotulo="Presta serviços" onMudar={() => vm.definirPrestaServico(vm.prestaServico !== true)} />
       </ConfigLinha>

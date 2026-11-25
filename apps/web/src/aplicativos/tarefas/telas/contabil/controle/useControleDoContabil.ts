@@ -1,13 +1,12 @@
-// ViewModel do Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando no nads): as empresas
+// ViewModel do Controle Forestry (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando no nads; só 2026): as empresas
 // acompanhadas no ano, cada uma com o mês até onde a contabilidade está feita, a situação calculada (em dia, atrasada, não
 // iniciada, não acompanhar) e a pendência. O código, o nome, o regime e o responsável vêm do Cadastro; a rotina do Contábil
 // concluída no executor (os dois últimos meses esperados) vira sugestão do mês. As empresas entram pelo + Empresa, pelo
-// Trazer as minhas (o responsável do Contábil no Cadastro), pela cópia do ano anterior ou pela planilha (.xlsx), com a
+// Trazer as minhas (o responsável do Contábil no Cadastro) ou pela planilha (.xlsx), com a
 // prévia antes de gravar. Grava o Contábil e o admin; o resto só vê. As regras são as de t.*Contabil (core).
 import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
 import { caminhoDaEmpresa } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { useControleContabil, useExecucoesDoPeriodo } from '../../../dados/repo';
@@ -17,6 +16,9 @@ import { useEmpresasDaPessoa } from '../../empresas/andamento';
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const mesmoConteudo = (a: t.LinhaDoControleContabil, b: t.LinhaDoControleContabil) =>
   a.feitaAte === b.feitaAte && a.observacao === b.observacao && a.pausada === b.pausada;
+/** o único ano do Controle Forestry */
+export const ANO_DO_FORESTRY = 2026;
+
 const comp = (ano: number, mes: number) => ano + '-' + String(mes).padStart(2, '0');
 
 /** O que a importação vai fazer, mostrado na janela antes de gravar */
@@ -34,11 +36,9 @@ export function useControleDoContabil() {
   const { toast } = useRetorno();
   const op = useOperador().operador;
   const podeGravar = !!op && (op.admin || op.departamento === 'contabil');
-  const [params, setParams] = useSearchParams();
   const hoje = new Date();
-  const anoDeTrabalho = t.anoDeTrabalhoContabil(hoje);
-  const anos = [anoDeTrabalho, anoDeTrabalho - 1];
-  const ano = anos.includes(Number(params.get('ano'))) ? Number(params.get('ano')) : anoDeTrabalho;
+  // o Controle Forestry é só o de 2026 (25/11/2026: "apenas 2026 nos forestry"): sem trocar de ano
+  const ano = ANO_DO_FORESTRY;
   const esperado = t.mesEsperadoContabil(ano, hoje);
   const repo = useControleContabil();
   const doAno = repo.doAno(ano);
@@ -51,7 +51,6 @@ export function useControleDoContabil() {
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState('');
   const [regime, setRegime] = useState('');
-  const [responsavel, setResponsavel] = useState('');
   const [previa, setPrevia] = useState<PreviaDaImportacao | null>(null);
   const [importando, setImportando] = useState(false);
 
@@ -105,8 +104,7 @@ export function useControleDoContabil() {
 
   const q = semAcento(busca.trim());
   const linhas = todas.filter(r => (!q || semAcento(r.nome).includes(q) || String(r.codigo).startsWith(q) || semAcento(r.linha.observacao).includes(q))
-    && (!situacao || r.situacao === situacao) && (!regime || r.regime === regime)
-    && (!responsavel || (responsavel === '-' ? !r.responsavel : r.responsavel === responsavel)));
+    && (!situacao || r.situacao === situacao) && (!regime || r.regime === regime));
   const contar = (s: t.SituacaoContabil) => todas.filter(r => r.situacao === s).length;
 
   async function gravar(l: t.LinhaDoControleContabil) {
@@ -132,7 +130,6 @@ export function useControleDoContabil() {
   // as do Cadastro que ainda não estão no controle (para o + Empresa) e as da pessoa (o Trazer as minhas)
   const foraDoControle = lista.linhas.filter(l => l.codigo != null && !codigosNoControle.has(l.codigo));
   const minhasFora = op ? foraDoControle.filter(l => daPessoa.e({ nome: l.nome, codigo: l.codigo }, 'contabil')) : [];
-  const responsaveis = [...new Set(todas.map(r => r.responsavel).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const regimes = [...new Set(todas.map(r => r.regime).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   return {
@@ -140,15 +137,14 @@ export function useControleDoContabil() {
     falhou: doAno.falhou,
     exemplos: repo.exemplos,
     podeGravar,
-    ano, anos, setAno: (a: number) => { const n = new URLSearchParams(params); n.set('ano', String(a)); setParams(n); },
+    ano,
     esperado, rotuloEsperado: esperado ? t.rotuloDoMesFeito(esperado) : '',
     meses: t.MESES_DO_CONTROLE.map((m, i) => ({ valor: i + 1, rotulo: m })),
     filtros: {
-      busca, setBusca, situacao, setSituacao, regime, setRegime, responsavel, setResponsavel,
+      busca, setBusca, situacao, setSituacao, regime, setRegime,
       situacoes: t.SITUACOES_CONTABEIS, regimes,
-      responsaveis: [...responsaveis.map(r => ({ valor: r, rotulo: r })), { valor: '-', rotulo: 'Sem responsável' }],
-      algum: !!(busca || situacao || regime || responsavel),
-      limpar: () => { setBusca(''); setSituacao(''); setRegime(''); setResponsavel(''); },
+      algum: !!(busca || situacao || regime),
+      limpar: () => { setBusca(''); setSituacao(''); setRegime(''); },
     },
     total: todas.length, linhas,
     resumo: { emDia: contar('em-dia'), atrasadas: contar('atrasada'), naoIniciadas: contar('nao-iniciada'), pausadas: contar('pausada') },
@@ -181,15 +177,6 @@ export function useControleDoContabil() {
     async trazerMinhas() {
       if (!minhasFora.length) return;
       if (await gravarVarias(minhasFora.map(l => t.linhaContabilEmBranco(ano, l.codigo as number)))) toast(minhasFora.length + (minhasFora.length === 1 ? ' empresa entrou' : ' empresas entraram') + ' no controle');
-    },
-    /** o ano vazio: copiar as empresas do ano anterior (sem os meses; a pendência e o não acompanhar vêm junto) */
-    async copiarDoAnoAnterior() {
-      try {
-        const antes = await repo.lerAno(ano - 1);
-        if (!antes.length) { toast('O controle de ' + (ano - 1) + ' está vazio'); return; }
-        const novas = antes.filter(l => !codigosNoControle.has(l.codigo)).map(l => ({ ...t.linhaContabilEmBranco(ano, l.codigo), observacao: l.observacao, pausada: l.pausada }));
-        if (novas.length && await gravarVarias(novas)) toast(novas.length + ' empresas copiadas de ' + (ano - 1));
-      } catch { toast('Não deu para ler o controle de ' + (ano - 1)); }
     },
 
     // ---- a importação da planilha ----
@@ -224,7 +211,7 @@ export function useControleDoContabil() {
         r.codigo, r.nome, r.regime, r.responsavel, r.linha.feitaAte ? t.rotuloDoMesFeito(r.linha.feitaAte) : '-', r.rotulo, r.linha.observacao, r.linha.pausada,
         r.linha.atualizadoPor || '', r.linha.atualizadoEm ? new Date(r.linha.atualizadoEm).toLocaleString('pt-BR') : '',
       ]);
-      return { bytes: t.planilhaXlsx('Controle contábil ' + ano, cabecalho, valores), nome: 'Controle contábil ' + ano + '.xlsx' };
+      return { bytes: t.planilhaXlsx('Controle Forestry ' + ano, cabecalho, valores), nome: 'Controle Forestry ' + ano + '.xlsx' };
     },
     /** o nome para mostrar de uma empresa do Cadastro (a janela da prévia) */
     nomeDe,

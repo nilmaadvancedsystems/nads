@@ -69,7 +69,7 @@ export const NOVIDADES = {
   /** o ShadersCI (23/11/2026: "Vamos buildar um aplicativo chamado ShadersCI … uma abinha de lançamentos onde o usuario lance, adicione,
    *  remova, edite … copie e cole com o botao direito"): a aba de lançamentos do SCI, com os planos padrão 90113 e 90011; só o Contábil
    *  e o admin; os lançamentos ficam só no navegador */
-  shadersci: { desde: '23/11/2026', aprovada: false },
+  shadersci: { desde: '23/11/2026', aprovada: true },
   /** o Está no SCI e o plano de contas do SCI em Cadastro › Dados da empresa (24/11/2026); aprovada para todos no mesmo dia, à
    *  parte do minimum, que segue no modo desenvolvedor ("Publica em cadastros na versao final a parte de estar no SCI") */
   'sci-no-cadastro': { desde: '24/11/2026', aprovada: true },
@@ -84,7 +84,13 @@ export const NOVIDADES = {
   sci: { desde: '23/11/2026', aprovada: false },
   /** o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando no nads): o mês feito de cada empresa no ano,
    *  a situação e a pendência; o Contábil e o admin no modo desenvolvedor, e o Fernando também fora dele ("Fernando primeiro") */
-  'controle-contabil': { desde: '23/11/2026', aprovada: false },
+  'controle-contabil': { desde: '23/11/2026', aprovada: true },
+  /** Cadastro › Obrigações (25/11/2026, plano do Acessórias, ficha E08): ligar, desligar e mudar o dia do prazo de uma etapa só
+   *  numa empresa, a partir de uma competência; e o regime com "a partir de" (ficha E10) em Fiscal › Parâmetros */
+  'obrigacoes-por-empresa': { desde: '25/11/2026', aprovada: false },
+  /** a troca de responsável mostra o que está pendente em cada empresa (25/11/2026, plano do Acessórias, ficha M02): o selo na
+   *  janela Trocar empresas, o "Vão junto" na frase e o "Vêm pendentes" no cartão de aceite */
+  'pendencias-na-troca': { desde: '25/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

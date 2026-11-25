@@ -1,7 +1,7 @@
 // ViewModel do Lançatudo aberto numa empresa: as linhas do extrato do mês (o que o Extrator já leu) com a contrapartida,
 // as regras da empresa e a saída para o Alterdata. As regras do negócio são do core (lancatudo); aqui só junta os dados
 // (Extrator, Cadastro e o próprio Lançatudo no banco), guarda o que a pessoa faz e prepara o que a View mostra.
-import { creditor, extrator, formatos, lancatudo as lt, type tarefas } from '@nads/core';
+import { creditor, extrator, formatos, lancatudo as lt, type empresas, type tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
@@ -34,7 +34,12 @@ const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' +
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const rotuloDoMes = (c: string) => MESES[Number(c.slice(5, 7)) - 1] + ' de ' + c.slice(0, 4);
 
-export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia: string, bancoEscolhido: string | null, razaoDoServidor: readonly tarefas.LancamentoDoRobo[] | null = null) {
+/**
+ * planoDeFora: o plano no lugar do plano do Cadastro (o Extratudo dentro do minimum: o plano do SCI da empresa, 25/11/2026), para
+ * as contas serem as mesmas dos Lançamentos do SCI
+ */
+export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia: string, bancoEscolhido: string | null, razaoDoServidor: readonly tarefas.LancamentoDoRobo[] | null = null,
+  planoDeFora: readonly empresas.cadastro.ContaDoPlano[] | null = null) {
   const { operador } = useOperador();
   const quem = operador?.nome || '';
   const { aviso } = useRetorno();
@@ -53,7 +58,7 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
   // o código contábil da conta bancária: o do Cadastro; sem ele, o escolhido aqui (18/11/2026: "tem que ter como configurar por aqui as contas")
   const contaDoCadastro = cad.cadastro.bancos?.find(b => b.id === banco.id)?.contaContabil || '';
   const contaDoBanco = lt.contaDoBancoNaConfig(cfg.config, banco.id, contaDoCadastro);
-  const plano = useMemo(() => cad.plano?.contas.length ? cad.plano.contas : null, [cad.plano]);
+  const plano = useMemo(() => planoDeFora?.length ? planoDeFora : cad.plano?.contas.length ? cad.plano.contas : null, [planoDeFora, cad.plano]);
   const contasDoPlano = useMemo((): { codigo: string; nome: string }[] => (plano || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [plano]);
   const nomeDaConta = (codigo: string) => plano?.find(c => c.codigo === codigo)?.nome || '';
 
@@ -215,7 +220,19 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
     const alvo = [...chaves];
     setEscolhendo({ conta: uma?.conta || null, quantas: alvo.length, aoEscolher: c => escolherConta(alvo, c) });
   };
-  const gravarContaDoBanco = (codigo: string) => { if (pronto) salvarConfig(lt.definirContaDoBanco(cfg.config, banco.id, codigo)); };
+  /**
+   * A conta contábil do banco (25/11/2026: "Linka as contas do banco"): fica no Lançatudo e, quando a conta bancária está no
+   * Cadastro, nele também. O Cadastro vale mais que a do Lançatudo, então sem isso a escolha daqui não mudava nada numa conta
+   * que já tinha código lá; e o Extrator, o Creditor e as etapas do Contábil passam a ver o mesmo código.
+   */
+  const gravarContaDoBanco = (codigo: string) => {
+    if (!pronto) return;
+    salvarConfig(lt.definirContaDoBanco(cfg.config, banco.id, codigo));
+    const doCadastro = cad.cadastro.bancos;
+    if (doCadastro?.some(b => b.id === banco.id && (b.contaContabil || '') !== codigo)) {
+      void cad.salvar({ ...cad.cadastro, bancos: doCadastro.map(b => (b.id === banco.id ? { ...b, contaContabil: codigo } : b)) });
+    }
+  };
   const abrirPlanoDoBanco = () => setEscolhendo({ conta: contaDoBanco || null, quantas: 0, aoEscolher: gravarContaDoBanco });
   const abrirPlanoDaRegra = () => setEscolhendo({ conta: regra?.conta || null, quantas: 0, aoEscolher: c => setRegra(r => (r ? { ...r, conta: c } : r)) });
   const escolherNoPlano = (codigo: string) => { const alvo = escolhendo; setEscolhendo(null); alvo?.aoEscolher(codigo); };
@@ -294,6 +311,8 @@ export function useRegistroDoLancatudo(empresa: EmpresaDoLancatudo, competencia:
     /** o nome do banco no plano sem o "C/ MOVIMENTO" (18/11/2026: "tira o C/ movimento"); sem plano, o do cadastro */
     nomeDoBanco: nomeCurtoDoBanco(nomeDaConta(contaDoBanco), banco.nome), regra, setRegra, problemaDaRegra, casamDaRegra, exemplosDaRegra, novaRegra, editarRegra, salvarRegra, excluirRegra,
     lembradas, esquecer,
+    /** as linhas que iriam para o Alterdata (conciliadas e, com a opção, as sugeridas): o Extratudo as manda para os Lançamentos do SCI */
+    linhasParaEnviar: lt.linhasParaExportar(linhas, comSugeridas),
     comSugeridas, setComSugeridas, paraExportar: paraExportar.length, motivoSemExportar, baixarArquivo, baixarConferencia, planilhaParaOAlterdata, lote, exportacoes,
     dataBR, valor: (c: number) => extrator.valorBR(Math.abs(c)),
     /** a classificação da conta no plano (1.1.1.03), como o Registro Contábil do Mister mostra */

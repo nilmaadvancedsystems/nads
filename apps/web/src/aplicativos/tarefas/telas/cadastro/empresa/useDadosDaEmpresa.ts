@@ -2,19 +2,24 @@
 // (Vitor, 30/09/2026: a regra fica no Cadastro): decide a aba Prestados na Importação e os serviços prestados
 // na Conferência. Grava na hora, com o registro no histórico.
 import { empresas, tarefas } from '@nads/core';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
 import { useNovidade } from '../../../../../comum/novidades';
 import { useOperador } from '../../../casca/operador';
 import { empresasNovas, regimeNoEntregas } from '../../../dados/fonte';
 import { useAcesso, useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
-import { useCadastroAberto } from '../useCadastroAberto';
+import { competenciaDeHoje, rotuloCompetencia, useCadastroAberto } from '../useCadastroAberto';
+import { somarMeses } from '../obrigacoes/useObrigacoesDaEmpresa';
 import { useConsultaNaReceita } from './useConsultaNaReceita';
 
 export function useDadosDaEmpresa(rota: string) {
   const c = useCadastroAberto(rota);
   const operador = useOperador().operador;
   const comSci = useNovidade('sci-no-cadastro');
+  // o regime com "a partir de" (plano do Acessórias, ficha E10; novidade em teste, junto com as Obrigações)
+  const regimeComData = useNovidade('obrigacoes-por-empresa');
+  const hoje = competenciaDeHoje();
+  const [regimeDesde, setRegimeDesde] = useState(hoje);
   useRegimesDoEntregas();
   const codigo = c.empresa?.codigo ?? null;
   const doEntregas = regimeNoEntregas(codigo);
@@ -130,8 +135,31 @@ export function useDadosDaEmpresa(rota: string) {
     regimes: empresas.cadastro.REGIMES,
     definirRegime(regime: empresas.cadastro.Regime) {
       if (c.carregando) return;
+      // com a data (ficha E10): o regime novo vale da competência escolhida em diante; os meses antes ficam no anterior
+      if (regimeComData && c.cadastro.regime !== regime) {
+        const novo = empresas.cadastro.mudarRegime(c.cadastro, regime, regimeDesde, regimeQueVale, c.por, new Date());
+        if (novo !== c.cadastro) c.salvar(novo);
+        return;
+      }
       // clicar no que já está marcado volta para o da lista
       const novo = empresas.cadastro.definirRegime(c.cadastro, c.cadastro.regime === regime ? null : regime, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
+    /** o regime com data (ficha E10): a competência em que a troca passa a valer e as trocas gravadas */
+    regimeComData,
+    regimeDesde,
+    setRegimeDesde,
+    opcoesRegimeDesde: [-3, -2, -1, 0, 1, 2, 3].map(n => {
+      const v = somarMeses(hoje, n);
+      return { valor: v, rotulo: rotuloCompetencia(v) + (n === 0 ? ' (este mês)' : '') };
+    }),
+    trocasDeRegime: (c.cadastro.regimes || []).map((x, i, l) => ({
+      desde: x.desde,
+      texto: x.regime + (x.desde ? ' desde ' + rotuloCompetencia(x.desde) : '') + (l[i + 1] ? ' até ' + rotuloCompetencia(somarMeses(l[i + 1].desde, -1)) : ''),
+    })),
+    tirarTrocaDeRegime(desde: string) {
+      if (c.carregando) return;
+      const novo = empresas.cadastro.tirarMudancaDeRegime(c.cadastro, desde, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
     /** true, false ou null (não informado) */

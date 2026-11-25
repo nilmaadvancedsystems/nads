@@ -26,6 +26,17 @@ export const PAGINAS_DO_ADMIN: readonly PaginaAdmin[] = [
   { id: 'sci', rotulo: 'Integração SCI', titulo: 'Integração SCI', icone: 'link' },
 ];
 
+/**
+ * As que saíram do menu (25/11/2026: "remove isso 'uso do sistema' esses 2 robos e a visao geral", e o "Sistema e agentes"):
+ * as telas continuam no código e abrem pelo endereço (os links de dentro, como o "Painel do robô" da Saúde do banco), mas
+ * não aparecem no menu do site do admin nem nas Configurações.
+ */
+export const FORA_DO_MENU: readonly IdPaginaAdmin[] = ['visao-geral', 'robo', 'saude-robos', 'uso', 'sistema'];
+/** as páginas do menu (o site do admin e as Configurações da Tarefas) */
+export const PAGINAS_NO_MENU: readonly PaginaAdmin[] = PAGINAS_DO_ADMIN.filter(p => !FORA_DO_MENU.includes(p.id));
+/** a primeira página do site do admin (era a Visão geral, que saiu do menu) */
+export const PAGINA_INICIAL: IdPaginaAdmin = PAGINAS_NO_MENU[0].id;
+
 export const paginaDoAdmin = (id: string) => PAGINAS_DO_ADMIN.find(p => p.id === id);
 /**
  * O endereço da página: no site do admin, /admin/<página>; dentro da Tarefas, onde as mesmas telas moram nas Configurações
