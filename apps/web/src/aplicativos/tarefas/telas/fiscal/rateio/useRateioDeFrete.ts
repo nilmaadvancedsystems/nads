@@ -8,7 +8,11 @@
 // Os NCMs do ST (24/11/2026, a planilha do COMPL. ST): pelo CT-e, o ICMS-ST e o Monofásico e ST ficam sempre abertos pelos
 // NCMs; à mão, a segunda parte "NCMs do ST" reparte o frete do ST pelos NCMs digitados; nos dois, a alíquota de cada NCM
 // (4% sem escolha, editável) e o ICMS = base × alíquota (core icmsDosNcms). A base é valor + IPI + frete em todos.
+// Exportar planilha e Imprimir (25/11/2026): o que está na tela, pelo CT-e ou digitado (core relatorioDoRateio; a planilha
+// pelo planilhaDoRateio e baixarBytes, a folha A4 pelo htmlDoRateio e imprimirHtml).
 import { empresas as emp, formatos, tarefas as t } from '@nads/core';
+import { baixarBytes, logoNilmaParaImprimir, useRetorno } from '@nads/ui';
+import { imprimirHtml } from '../../dp/imprimirHtml';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -34,6 +38,7 @@ const LINHAS_INICIAIS: LinhaDigitada[] = [{ rotulo: '', valor: '', ipi: '' }, { 
 export function useRateioDeFrete() {
   const repo = useRepo();
   const sieg = useSieg();
+  const { toast } = useRetorno();
   const [fonte, setFonte] = useState<Fonte>('cte');
   // a empresa aberta em Minhas empresas (27/10/2026) chega já escolhida, pelo endereço (?empresa=código)
   const [params] = useSearchParams();
@@ -108,6 +113,20 @@ export function useRateioDeFrete() {
   const linhasDosNcms = ncmsDigitados.map((l, i) => ({ rotulo: l.rotulo.trim() || 'NCM ' + (i + 1), valor: numero(l.valor), ipi: numero(l.ipi) })).filter(l => l.valor > 0);
   const ncmsDoSt = fonte === 'manual' && linhasDosNcms.length ? r.icmsDosNcms(r.ratear({ frete: freteDoSt, linhas: linhasDosNcms }), aliquotas) : null;
 
+  // o que vai para a planilha e para a folha: o que a tela mostra (pelo CT-e, só depois de ter notas; à mão, com uma linha)
+  const temRelatorio = rateio.linhas.length > 0 && (fonte === 'manual' || !!doCte?.notas.length);
+  const relatorio = () => r.relatorioDoRateio({
+    empresa: empresa ? { codigo: empresa.codigo as number, nome: empresa.nome } : null,
+    competencia,
+    cte: cte ? { numero: cte.numero + (cte.serie ? '/' + cte.serie : ''), transportadora: cte.emitente.nome, data: cte.data, valor: cte.valor } : null,
+    agrupar, rateio,
+    detalhes: linhas.map(l => l.detalhe),
+    notas: doCte?.notas,
+    ncms: fonte === 'cte'
+      ? cartoesDeNcm.map(c => ({ titulo: c.titulo, linhas: c.linhas, icms: c.icms }))
+      : ncmsDoSt ? [{ titulo: 'ICMS-ST', ...ncmsDoSt }] : [],
+  });
+
   // a lista para marcar as notas (todas as NF-e de entrada do mês, as marcadas primeiro)
   const marcada = new Set(chavesDasNotas);
   const qn = buscaDaNota.trim().toLowerCase();
@@ -181,6 +200,18 @@ export function useRateioDeFrete() {
     cartoesDeNcm,
     aliquotaPadrao: r.ALIQUOTA_PADRAO_DO_NCM,
     mudarAliquota: (ncm: string, texto: string) => setAliquotas(a => ({ ...a, [ncm]: numero(texto) })),
+    // Exportar planilha e Imprimir (25/11/2026)
+    temRelatorio,
+    exportar() {
+      if (!temRelatorio) return;
+      const rel = relatorio();
+      baixarBytes(r.planilhaDoRateio(rel), rel.nome + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    },
+    imprimir() {
+      if (!temRelatorio) return;
+      imprimirHtml(r.htmlDoRateio(relatorio(), { logo: logoNilmaParaImprimir('colorida'), emitidoEm: new Date() }));
+      toast('Rateio pronto: escolha a impressora');
+    },
     // à mão
     digitadas,
     mudarDigitada: (i: number, k: keyof LinhaDigitada, v: string) => setDigitadas(ls => ls.map((l, j) => (j === i ? { ...l, [k]: v } : l))),

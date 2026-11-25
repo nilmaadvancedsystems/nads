@@ -743,6 +743,7 @@ const PROVA_FORTE = new Set(['conta', 'doc', 'hash', 'pastaConferida']);
 async function clienteDosIrmaos(filhos, lista, ctx) {
   const fortes = filhos.filter(f => f.acao === 'ARQUIVAR' && f.cliente != null && PROVA_FORTE.has(f.comoCliente));
   const clientes = new Set(fortes.map(f => +f.cliente));
+  await contaDosIrmaos(filhos, lista, ctx, fortes, clientes);
   if (fortes.length < 2 || clientes.size !== 1) return;
   const cod = [...clientes][0];
   const cli = ctx.cadastro && ctx.cadastro.porCod && ctx.cadastro.porCod.get(cod);
@@ -757,6 +758,34 @@ async function clienteDosIrmaos(filhos, lista, ctx) {
     novo.rel = f.rel;
     novo.comoCliente = 'irmaos';
     novo.evidencias = (novo.evidencias || []).concat('o cliente ' + cod + ' pelos irmãos do zip: ' + fortes.length + ' arquivos do mesmo zip acharam o cliente ' + cod + ' por prova forte (' + [...new Set(fortes.map(x => x.comoCliente))].join(', ') + ') e nenhum achou outro (Vitor, 05/11/2026)');
+    filhos[i] = novo;
+  }
+}
+/**
+ * (25/11/2026) A conta em dois clientes do cadastro (quase sempre a que o robô aprendeu de um extrato posto na pasta errada) e os irmãos do zip:
+ * o zip de movimento de um cliente trazia o OFX e o extrato de uma conta que o cadastro tem em dois clientes, e trazia também os comprovantes da
+ * mesma conta com o CNPJ de um deles (arquivados nele); o OFX e o extrato ficavam "Duas empresas possíveis". Quando, dos clientes possíveis da
+ * conta, só UM aparece entre os irmãos decididos por prova forte (os outros clientes possíveis não aparecem), o membro é decidido de novo como
+ * se estivesse na pasta desse cliente (a pasta de origem desempata a conta em dois clientes); vale só se agora ARQUIVA nele. Os irmãos de
+ * outros clientes (o mesmo zip trazia documentos de uma terceira empresa) não atrapalham: só contam os que são clientes possíveis da conta.
+ */
+async function contaDosIrmaos(filhos, lista, ctx, fortes, clientes) {
+  for (let i = 0; i < filhos.length; i++) {
+    const f = filhos[i], m = lista[i];
+    if (f.acao !== 'NAO_IDENTIFICADO' || f.motivo !== 'CLIENTE_AMBIGUO' || !f.contaAmbigua || !Array.isArray(f.candidatos) || f.candidatos.length < 2 || !m || !m.buffer) continue;
+    const nosIrmaos = f.candidatos.map(Number).filter(c => clientes.has(c));
+    if (nosIrmaos.length !== 1) continue;
+    const cod = nosIrmaos[0];
+    const cli = ctx.cadastro && ctx.cadastro.porCod && ctx.cadastro.porCod.get(cod);
+    if (!cli || !cli.razao) continue;
+    let novo;
+    try { novo = await decidirUm(f.nome, String(cod).padStart(4, '0') + ' - ' + cli.razao + '\\' + f.rel, m.buffer, ctx); } catch (e) { continue; }
+    // a cópia idêntica no mesmo zip ("Extrato… (22).ofx" e "(32).ofx") sai como já arquivada neste lote: também vale
+    if (!['ARQUIVAR', 'JA_ARQUIVADO'].includes(novo.acao) || +novo.cliente !== cod) continue;
+    const provas = fortes.filter(x => +x.cliente === cod);
+    novo.rel = f.rel;
+    novo.comoCliente = 'irmaos';
+    novo.evidencias = (novo.evidencias || []).concat('a conta está em ' + f.candidatos.length + ' clientes do cadastro (' + f.candidatos.join(', ') + '); no mesmo zip, ' + provas.length + ' arquivo(s) acharam o cliente ' + cod + ' por prova forte (' + [...new Set(provas.map(x => x.comoCliente))].join(', ') + ') e nenhum achou ' + f.candidatos.filter(c => +c !== cod).join(', ') + ': a ' + cod + ' (25/11/2026; corrigir a conta errada no Cadastro)');
     filhos[i] = novo;
   }
 }
@@ -783,6 +812,8 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
     anoRaiz: d.anoRaiz || null, raiz: d.raiz || null, pelaMigracao: d.pelaMigracao || null, comoCliente: d.comoCliente || null };
   // (Vitor, 09/11/2026, decisão 6) o banco/conta lido no extrato do cliente que ainda não o tinha no cadastro: o aplicar grava (só em PRODUÇÃO, depois de arquivar)
   if (d.acao === 'ARQUIVAR' && d.cadastrarBanco) item.cadastrarBanco = d.cadastrarBanco;
+  // (25/11/2026) a conta em dois clientes do cadastro: os clientes possíveis vão junto, para os irmãos do zip desempatarem (contaDosIrmaos)
+  if (d.acao === 'NAO_IDENTIFICADO' && d.contaAmbigua) { item.contaAmbigua = true; item.candidatos = Array.isArray(d.candidatos) ? d.candidatos.slice() : null; }
   if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   // (09/11/2026) o OCR que falhou fica anotado só neste arquivo; o reprocesso não o dá por decidido e lê de novo na próxima rodada
@@ -1188,7 +1219,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { textoIlegivel, semArquivarSemLeitura, versaoDasRegras,pastaDoFornecedorQueJaExiste, fotoRepetida, indiceDasFotosDoNi, pastaDeDocumentosQueJaExiste, cadastrarBancosDosExtratos, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { clienteDosIrmaos, textoIlegivel,semArquivarSemLeitura, versaoDasRegras,pastaDoFornecedorQueJaExiste, fotoRepetida, indiceDasFotosDoNi, pastaDeDocumentosQueJaExiste, cadastrarBancosDosExtratos, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);

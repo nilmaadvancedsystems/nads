@@ -719,7 +719,10 @@ const j19c = CAD19.juntar({ entregas: [
 ] });
 const cad19c = R.montarCadastro(j19c.linhas, ['413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', '363 - OUTRA EMPRESA LTDA']);
 cad19c.mapaMigracao = MIG.carregar({});
-igual('conta em dois clientes (413 e 363), na pasta da 413: a 413 (a pasta é de um só deles); fora das pastas: CLIENTE_AMBIGUO', [R.decidir({ nome: 'BB 02.2025.pdf', rel: P413_19 + 'BB 02.2025.pdf', texto: [EXT19('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).cliente, R.decidir({ nome: 'BB 02.2025.pdf', rel: 'CLIENTES\BB 02.2025.pdf', texto: [EXT19('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).motivo], [413, 'CLIENTE_AMBIGUO']);
+// (25/11/2026) fora das pastas, o titular impresso pelo banco ("Cliente: BRAZILIAN FORESTRY …") desempata a conta em dois clientes; com um titular que não é de
+// nenhum dos dois, continua CLIENTE_AMBIGUO
+const EXT19b = c => EXT19(c).replace('Cliente: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', 'Cliente: FULANO DE TAL');
+igual('conta em dois clientes (413 e 363), na pasta da 413: a 413 (a pasta é de um só deles); fora das pastas, o titular impresso (413); com um titular de nenhum dos dois: CLIENTE_AMBIGUO', [R.decidir({ nome: 'BB 02.2025.pdf', rel: P413_19 + 'BB 02.2025.pdf', texto: [EXT19('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).cliente, R.decidir({ nome: 'BB 02.2025.pdf', rel: 'CLIENTES\BB 02.2025.pdf', texto: [EXT19('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).cliente, R.decidir({ nome: 'BB 02.2025.pdf', rel: 'CLIENTES\BB 02.2025.pdf', texto: [EXT19b('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).motivo], [413, 413, 'CLIENTE_AMBIGUO']);
 // o .txt do BB
 igual('extrato do BB em .txt com a conta da filial: a 418', cli19(d19('EXTRATO BB.txt', { txt: 'Extrato conta corrente\r\n----\r\nCliente - Cliente atual\r\n----\r\nAgência                       183-X\r\nConta corrente                40000-1 BRAZILIAN FORESTRY\r\nPeríodo do extrato            02/2025\r\n----\r\nLançamentos\r\n   03/02/2025   Saldo Anterior   100,00 C\r\n' }, P413_19)), ['ARQUIVAR', 418, null]);
 
@@ -2281,6 +2284,76 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     const lidos = await CAD19.atualizar(dbRs, path.join(os.tmpdir(), 'nads-teste-razao-social-' + process.pid + '.json'));
     igual('13/11 razão: atualizar() lê a razaoSocial do cadastro (e não a pede ao Entregas)', [pediu.sort(), lidos.nads[0].razaoSocial.atual], [[['cadastro', true], ['clientes', false]], NOVO]);
     igual('13/11 razão: ... o ouvinte guarda o campo (soOsCampos com os campos do cadastro)', Object.keys(CAD19.soOsCampos({ codigo: 292, nome: VELHO, razaoSocial: {}, historico: [] }, CAD19.CAMPOS_CADASTRO)), ['codigo', 'nome', 'razaoSocial']);
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // 25/11/2026, os NÃO IDENTIFICADOS da conta em dois clientes (teste-arquivador-casos-38.json, dados fictícios): o BB Rende Fácil
+  // sai do pdf.js com o resumo e os lançamentos primeiro e o bloco "Dados do Cliente" (com o CNPJ) no fim da página, depois dos 800
+  // caracteres que valiam como cabeçalho; sem o CNPJ, a conta aprendida nos dois clientes deixava "Duas empresas possíveis"
+  // ---------------------------------------------------------------------------------------------------------------------
+  {
+    const C38 = JSON.parse(fs.readFileSync(path.join(__dirname, 'teste-arquivador-casos-38.json'), 'utf8'));
+    const cad38 = R.montarCadastro(C38._cadastro.map(c => ({ codigo: c.codigo, razao: c.razao, fantasia: c.fantasia, doc: c.doc, regime: c.regime, contas: c.contas })), C38._cadastro.map(x => x.codigo + ' - ' + x.razao));
+    const ctx38 = { cadastro: cad38, hoje: new Date(2026, 10, 25) };
+    const k = C38.rendeFacilContaEmDois;
+    const d38 = texto => R.decidir({ nome: k.nome, rel: k.rel, texto }, ctx38);
+    const s38 = d => [d.acao, d.cliente, d.destinoRelativo ? d.destinoRelativo.replace(/^\d+ - [^\\]+\\/, '') : d.motivo, d.nomeFinal];
+    const troca = (de, para) => k.texto.map(p => p.replace(de, para));
+    igual('25/11: o CNPJ do caso está depois dos 800 caracteres (o bloco "Dados do Cliente" no fim da página)', k.texto[0].indexOf('98.765.432/0001-98') > 800, true);
+    igual('25/11: BB Rende Fácil da conta aprendida em dois clientes, com o CNPJ no bloco "Dados do Cliente" depois da tabela: o CNPJ decide (901), APLICAÇÕES do mês do resumo',
+      s38(d38(k.texto.slice())), ['ARQUIVAR', 901, 'CONTÁBIL\\EXTRATOS\\2026\\10\\APLICAÇÕES\\BANCO DO BRASIL', '10-2026.pdf']);
+    igual('25/11: ... o mesmo com o CNPJ do outro cliente da conta: a 902', s38(d38(troca('98.765.432/0001-98', '87.654.321/0001-98'))).slice(0, 2), ['ARQUIVAR', 902]);
+    igual('25/11: ... o CNPJ com o rótulo "CPF/CNPJ:" na mesma linha também vale', s38(d38(troca('CNPJ\n98.765.432/0001-98', 'CPF/CNPJ: 98.765.432/0001-98'))).slice(0, 2), ['ARQUIVAR', 901]);
+    igual('25/11: ... o CNPJ no fim da página SEM o rótulo do titular acima (o de um favorecido): não decide, continua "Duas empresas possíveis"',
+      s38(d38(k.texto.map(p => p.replace('Dados do Cliente\n', 'Dados da transferência\n').replace('Cliente\nFLORESTA', 'Favorecido\nFLORESTA')))).slice(0, 3), ['NAO_IDENTIFICADO', undefined, 'CLIENTE_AMBIGUO']);
+    igual('25/11: ... o CNPJ sem o rótulo "CNPJ" logo antes (solto no fim): não decide', s38(d38(troca('CNPJ\n98.765.432/0001-98', 'Observação\n98.765.432/0001-98')))[0], 'NAO_IDENTIFICADO');
+    igual('25/11: ... o CNPJ de outro cliente numa linha de lançamento depois do bloco não muda o titular', s38(d38(k.texto.map((p, i) => i === 1 ? p + '30/10/2026 PIX ENVIADO VIVEIRO MODELO LTDA\nCNPJ\n87.654.321/0001-98\n' : p))).slice(0, 2), ['ARQUIVAR', 901]);
+    igual('25/11: docNoBlocoDoTitular: o rótulo do titular até 5 linhas acima do "CNPJ"; o "CNPJ" depois de um PIX, não', [R.docNoBlocoDoTitular('Cliente\nX LTDA\nCNPJ\n98.765.432/0001-98', 20), R.docNoBlocoDoTitular('PIX ENVIADO\nCNPJ\n98.765.432/0001-98', 17)], [true, false]);
+    // o mesmo extrato sem o CNPJ: o titular impresso pelo banco, abreviado ("FLORESTA E LTDA"), desempata a conta em dois clientes
+    const semCnpj = k.texto.map(p => p.replace('CNPJ\n98.765.432/0001-98\n', '').replace('Cliente\nFLORESTA EXEMPLO LTDA', 'Cliente: FLORESTA E LTDA'));
+    igual('25/11: ... sem o CNPJ, com o titular abreviado pelo banco ("Cliente: FLORESTA E LTDA"): o titular decide entre os dois clientes da conta (901)', s38(d38(semCnpj)).slice(0, 2), ['ARQUIVAR', 901]);
+    igual('25/11: titularEntre: só escolhe ENTRE os clientes da conta; a 1ª palavra igual quando a abreviação não bate ("FLORESTA X Y" → 901); nome de nenhum dos dois: null',
+      [R.titularEntre('CLIENTE: FLORESTA E LTDA', [901, 902], cad38), R.titularEntre('CLIENTE: FLORESTA X Y EIRELI', [901, 902], cad38), R.titularEntre('CLIENTE: FULANO DE TAL', [901, 902], cad38), R.titularEntre('CLIENTE: FLORESTA E LTDA', [902], cad38)], [901, 901, null, null]);
+    // o comprovante do aplicativo do BB ("Entre contas correntes BB" / "TED"): COMPROVANTE, o banco é o BB (não o do favorecido), a data da transação
+    const dk = (key, extra) => { const x = C38[key]; return R.decidir(Object.assign({ nome: x.nome, rel: x.rel, texto: x.texto.slice() }, extra || {}), ctx38); };
+    igual('25/11: "Entre contas correntes BB" (o aplicativo, "Data: Nesta data"), conta em dois clientes, titular "FLORESTA E LTDA": COMPROVANTE da 901, BB, o mês da data e hora da transação',
+      s38(dk('entreContasAppBB')).slice(0, 3), ['ARQUIVAR', 901, 'CONTÁBIL\\EXTRATOS\\2026\\10\\COMPROVANTES\\BANCO DO BRASIL']);
+    igual('25/11: ... "Data15/10/2026" (agendada) no lugar de "Nesta data", com a transação em 30/09: o mês da data agendada (10)', s38(dk('entreContasAppBB', { texto: C38.entreContasAppBB.texto.map(p => p.replace('23/10/2026 09:10:50', '30/09/2026 09:10:50').replace('DataNesta data', 'Data15/10/2026')) }))[2], 'CONTÁBIL\\EXTRATOS\\2026\\10\\COMPROVANTES\\BANCO DO BRASIL');
+    igual('25/11: TED do aplicativo do BB para o Itaú ("TRANSF. BB PARA ITAU" no nome, "ITAU UNIBANCO" no Creditado): o banco é o BB, o mês da "Data transferência"; a conta aprendida na 902 e posta no nads na 901: a 901',
+      s38(dk('tedAppBB')).slice(0, 3), ['ARQUIVAR', 901, 'CONTÁBIL\\EXTRATOS\\2026\\10\\COMPROVANTES\\BANCO DO BRASIL']);
+    igual('25/11: bancoDoNome: "X PARA Y" é o banco de antes do "PARA"; sem banco antes, o nome todo', [R.bancoDoNome('05-10 TRANSF. BB PARA ITAU R$32.000.pdf'), R.bancoDoNome('TRANSF. BB FILIAL PARA BNB.pdf'), R.bancoDoNome('PAGAMENTO PARA ITAU.pdf'), R.bancoDoNome('Itau 10.2026.pdf')], ['BANCO DO BRASIL', 'BANCO DO BRASIL', 'ITAU', 'ITAU']);
+    // a conta aprendida (Entregas, origem drive) e posta (Cadastro do nads) no mesmo cliente: fica a posta, que desempata contra o outro que só a aprendeu
+    igual('25/11: montarCadastro: a mesma conta aprendida e posta no 901 é posta (desempata); na 902 só aprendida', cad38.contas.filter(c => c.conta.base === '77777').map(c => [c.codigo, c.aprendida]), [[901, false], [902, true]]);
+    // o OFX do Itaú sem <BRANCHID>: a agência grudada no <ACCTID>
+    igual('25/11: OFX do Itaú com a agência grudada na conta (<ACCTID>4321123456, sem <BRANCHID>): ag. 4321 c/c 12345-6 da 901', s38(R.decidir({ nome: 'Itau 10.2026.ofx', rel: 'Exemplo 10.2026.zip\\Itau 10.2026.ofx', ofx: C38.ofxItau }, ctx38)).slice(0, 3), ['ARQUIVAR', 901, 'CONTÁBIL\\EXTRATOS\\2026\\10\\BANCÁRIOS\\ITAU']);
+    // o recibo de pró-labore sem o mês no nome: a "Referência: 09/2026" do recibo
+    igual('25/11: recibo de pró-labore sem o mês no nome: DEPARTAMENTO PESSOAL\\09 pela "Referência: 09/2026"', s38(dk('proLabore')).slice(0, 3), ['ARQUIVAR', 901, 'DEPARTAMENTO PESSOAL\\09\\PRÓ-LABORE']);
+    // o OFX da conta em dois clientes, sozinho, continua "Duas empresas possíveis" (o OFX não traz CNPJ nem titular); os irmãos do zip resolvem (teste-arquivador-zip.js)
+    const dOfx = Object.assign(R.decidir({ nome: 'Extrato12345998871.ofx', rel: 'Exemplo 10.2026.zip\\Extrato12345998871.ofx', ofx: C38.ofxContaEmDois }, ctx38), { nome: 'Extrato12345998871.ofx', rel: 'Exemplo 10.2026.zip\\Extrato12345998871.ofx' });
+    igual('25/11: OFX da conta em dois clientes, sozinho: CLIENTE_AMBIGUO com os candidatos e contaAmbigua (o que os irmãos do zip usam)', [dOfx.motivo, dOfx.candidatos, dOfx.contaAmbigua], ['CLIENTE_AMBIGUO', [901, 902], true]);
+    // os irmãos do zip: o OFX da conta em dois clientes, com irmãos decididos por prova forte só na 901 (e outro cliente qualquer no zip)
+    const A38 = require('./arquivador-novo');
+    // o contexto do lote (o decidirUm confere o destino): a raiz dos clientes numa pasta temporária vazia, sem manifesto
+    const ctxLote38 = Object.assign({}, ctx38, { clientes: path.join(os.tmpdir(), 'nads-teste-irmaos-' + process.pid, '2026'), manifesto: new Map(), reservados: new Map(), existe: new Map(), hashes: new Map() });
+    const filhos = [dOfx, { acao: 'ARQUIVAR', cliente: 901, comoCliente: 'doc' }, { acao: 'ARQUIVAR', cliente: 777, comoCliente: 'conta' }];
+    await A38.clienteDosIrmaos(filhos, [{ nome: 'Extrato12345998871.ofx', buffer: Buffer.from(C38.ofxContaEmDois, "latin1") }, null, null], ctxLote38);
+    igual('25/11: irmãos do zip: o OFX da conta em 901 e 902, com um irmão da 901 por CNPJ (e um de outro cliente): a 901, BANCÁRIOS\\BANCO DO BRASIL, o rel do zip', [filhos[0].acao, filhos[0].cliente, filhos[0].comoCliente, (filhos[0].destinoRelativo || '').replace(/^\d+ - [^\\]+\\/, ''), filhos[0].rel], ['ARQUIVAR', 901, 'irmaos', 'CONTÁBIL\\EXTRATOS\\2026\\10\\BANCÁRIOS\\BANCO DO BRASIL', 'Exemplo 10.2026.zip\\Extrato12345998871.ofx']);
+    const filhos2 = [Object.assign({}, dOfx), { acao: 'ARQUIVAR', cliente: 901, comoCliente: 'doc' }, { acao: 'ARQUIVAR', cliente: 902, comoCliente: 'conta' }];
+    await A38.clienteDosIrmaos(filhos2, [{ nome: 'Extrato12345998871.ofx', buffer: Buffer.from(C38.ofxContaEmDois, "latin1") }, null, null], ctxLote38);
+    igual('25/11: ... com irmãos das DUAS empresas da conta no zip: continua "Duas empresas possíveis"', [filhos2[0].acao, filhos2[0].motivo], ['NAO_IDENTIFICADO', 'CLIENTE_AMBIGUO']);
+    // (decisão do dono, 25/11/2026) o extrato do Aegro vai para EXTRATOS: o cliente pela conta do filtro (o cabeçalho é de quem tem a licença), o mês do período, o nome original
+    const dx = key => { const x = C38[key]; return R.decidir(Object.assign({ nome: x.nome, rel: x.rel }, x.texto ? { texto: x.texto.slice() } : {}, x.planilha ? { planilha: x.planilha } : {}), ctx38); };
+    const s38n = d => s38(d).concat(d.comoCliente);
+    igual('25/11 Aegro: o PDF com a conta no filtro ("Exemplo - BB - Viveiro - CC: 11223-4"): a 901 pela conta, BANCÁRIOS\\BANCO DO BRASIL do mês do período, nome original', s38n(dx('aegroPdf')), ['ARQUIVAR', 901, 'CONTÁBIL\\EXTRATOS\\2026\\10\\BANCÁRIOS\\BANCO DO BRASIL', C38.aegroPdf.nome, 'conta']);
+    igual('25/11 Aegro: a planilha ("…_Aegro.xlsx"): o mesmo destino', s38n(dx('aegroPlanilha')), ['ARQUIVAR', 901, 'CONTÁBIL\\EXTRATOS\\2026\\10\\BANCÁRIOS\\BANCO DO BRASIL', C38.aegroPlanilha.nome, 'conta']);
+    igual('25/11 Aegro: sem o número da conta ("FLORESTA - BB"; a sigla "FE - BB"): o único cliente com conta no BB cujo nome começa por FLORESTA / tem as iniciais FE', [s38n(dx('aegroPdfSemNumero')).slice(0, 2).concat(dx('aegroPdfSemNumero').comoCliente), s38n(dx('aegroPdfSigla')).slice(0, 2)], [['ARQUIVAR', 901, 'nome'], ['ARQUIVAR', 901]]);
+    igual('25/11 Aegro: a conta em dois clientes (99887-1): CLIENTE_AMBIGUO; o período de dois meses: COMPETENCIA_AUSENTE', [R.decidir({ nome: 'x.pdf', rel: 'x.pdf', texto: C38.aegroPdf.texto.map(p => p.split('11223-4').join('99887-1')) }, ctx38).motivo, R.decidir({ nome: 'x.pdf', rel: 'x.pdf', texto: C38.aegroPdf.texto.map(p => p.replace('a 31/10/2026', 'a 30/11/2026')) }, ctx38).motivo], ['CLIENTE_AMBIGUO', 'COMPETENCIA_AUSENTE']);
+    igual('25/11 Aegro: relatorioAegro não pega o extrato do banco nem a planilha sem "Aegro" no nome', [R.relatorioAegro(R.norm(C38.rendeFacilContaEmDois.texto.join('\n')), 'x.pdf'), R.relatorioAegro('PERIODO: 01/10/2026 AS 31/10/2026\nCONTA BANCARIA: X - BB - CC: 1-1', 'Categoria.xlsx')], [null, null]);
+    // (decisão do dono, 25/11/2026) Solides e seguros: PAGAMENTOS DE FORNECEDORES do mês, nome original
+    igual('25/11 Solides: a nota de débito de benefícios: a 901 pelo CNPJ do cliente, PAGAMENTOS DE FORNECEDORES\\2026\\10\\SOLIDES (o mês da data de pagamento)', s38n(dx('solides')), ['ARQUIVAR', 901, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\SOLIDES', C38.solides.nome, 'doc']);
+    igual('25/11 seguro: o boleto da proteção veicular (o nome traz a placa, não a seguradora): a seguradora lida no conteúdo, o cliente pelo CNPJ, o mês do zip', s38n(dx('boletoSeguro')), ['ARQUIVAR', 901, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\APVS TRUCK', C38.boletoSeguro.nome, 'doc']);
+    igual('25/11 seguro: o valor no nome ("SEGURO 76,44.pdf"), sem o vencimento: o mês do nome do zip ("Exemplo 10.2026.zip")', s38n(dx('seguroValor')), ['ARQUIVAR', 902, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\BRADESCO SEGUROS', 'SEGURO 76,44.pdf', 'doc']);
+    igual('25/11 seguro: a apólice sem o valor no nome continua fora dos pagamentos (a regra de SEGUROS\\ANO do Vitor)', /PAGAMENTOS DE FORNECEDORES/.test(String(R.decidir({ nome: 'APOLICE SEGURO ABC1D23.pdf', rel: C38.seguroValor.rel.replace('SEGURO 76,44.pdf', 'APOLICE SEGURO ABC1D23.pdf'), texto: C38.seguroValor.texto.slice() }, ctx38).destinoRelativo || '')), false);
   }
 
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
