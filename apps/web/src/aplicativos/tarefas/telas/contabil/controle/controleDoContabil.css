@@ -1,12 +1,11 @@
 /* O Controle Forestry (o Controle contábil; 23/11/2026): as barras no desenho do painel do DP e a tabela no do Relatório do Fiscal */
 /* a tabela é a de antes (25/11/2026: "curti mais o outro layout… da tabela"), a do Relatório do Fiscal (.fr-tabela), mas sem a
-   largura mínima: as colunas cabem na caixa, sem rolar para o lado. O Nº, o regime, o responsável, o mês, a situação e o ⋯ têm
+   largura mínima: as colunas cabem na caixa, sem rolar para o lado. O Nº, o regime, o mês, a situação e o ⋯ têm
    largura fixa; a Empresa e as Observações dividem o resto e a Empresa quebra a linha quando não cabe */
 .cc-tabela{min-width:0;}
 .cc-tabela col.cc-c-cod{width:52px;}
 .cc-tabela col.cc-c-nome{width:auto;}
 .cc-tabela col.cc-c-regime{width:92px;}
-.cc-tabela col.cc-c-resp{width:104px;}
 .cc-tabela col.cc-c-mes{width:112px;}
 .cc-tabela col.cc-c-sit{width:140px;}
 .cc-tabela col.cc-c-obs{width:30%;}
@@ -68,9 +67,8 @@
    largura e o resto encolhe junto; as Observações ficam com o que sobra */
 @media (max-width:1100px){
   .cc-tabela col.cc-c-cod{width:44px;}
-  .cc-tabela col.cc-c-nome{width:30%;}
+  .cc-tabela col.cc-c-nome{width:36%;}
   .cc-tabela col.cc-c-regime{width:9%;}
-  .cc-tabela col.cc-c-resp{width:10%;}
   .cc-tabela col.cc-c-mes{width:84px;}
   .cc-tabela col.cc-c-sit{width:15%;}
   .cc-tabela col.cc-c-obs{width:auto;}
