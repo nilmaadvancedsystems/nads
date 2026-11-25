@@ -21,7 +21,7 @@ Legenda: ✅ protegido · 🔧 corrigido nesta auditoria · ⏳ correção pront
 | 11 | Mandar a IA ignorar | 🔧 | A IA lia o banco inteiro, e dois robôs davam ao Claude mais poder do que precisava |
 | 12 | Script no usuário (XSS) | ✅ | Todo texto de fora é escapado; há melhorias de manutenção |
 | 13 | Senhas no GitHub | ✅ | Nenhum segredo real no histórico |
-| 14 | Abrir teu banco de dados | ⚠️ | O banco do Entregas está fechado; o `conferencia-nilma` está aberto |
+| 14 | Abrir teu banco de dados | 🔧 | O banco do Entregas está fechado; o `conferencia-nilma` foi fechado (sem uso) |
 
 ---
 
@@ -184,19 +184,16 @@ liberado.
   chaves web do Firebase.
 - Os arquivos de credencial estão no `.gitignore` e nunca entraram no histórico.
 
-## 14. Abrir teu banco de dados ⚠️
+## 14. Abrir teu banco de dados 🔧
 
 - **Entregas (`entregas-2e5e2`):**
   - toda coleção tem regra;
   - a que não tem nasce trancada (`match /{document=**} { allow read, write: if false; }`);
   - `logado()` sozinho não abre nada: precisa ser da equipe.
-- **`conferencia-nilma`: ABERTO.** A regra é `allow read, write: if true`. Qualquer pessoa da internet que saiba o nome do
-  projeto lê, troca e apaga os dados do Extrator, da Conferência, do Creditor e do Lançatudo. O nome do projeto está no
-  site. Esse projeto não tem login, por isso não basta trocar a regra.
-  - **Proposta:** o nads pede ao robô da nuvem um login do `conferencia-nilma` para quem é da equipe (custom token), e a
-    regra de lá passa a exigir esse login.
-  - É trabalho próprio: login no projeto, permissão da conta do robô, as telas e o site antigo `conferencia-nilma.web.app`.
-  - Até lá, os dados de clientes desse banco estão expostos.
+- **`conferencia-nilma`: fechado em 25/11/2026.** A regra era `allow read, write: if true`: qualquer pessoa da internet lia,
+  trocava e apagava os dados do Extrator, da Conferência, do Creditor e do Lançatudo. Sem uso desde 19/11, o banco passou a
+  `allow read, write: if false` (ninguém pelo navegador; os robôs usam o Admin SDK). O site antigo `conferencia-nilma.web.app`
+  (a Conferência sem login) leva para a Tarefas. Os dados continuam lá, trancados; apagar é decisão à parte.
 - **Storage:** nenhum dos três projetos publica regra de Storage; os arquivos ficam no Firestore em pedaços.
   `lcdpr-b7f69` não tem banco publicado.
 
@@ -208,5 +205,5 @@ liberado.
 2. **Robôs:** as mudanças em `robo/` só valem depois do push na `desenvolvimento` e da troca do `robo-versao`.
    - Antes, testar no PC o FGTS sem `bypassPermissions` e o suporte com as proibições de leitura.
    3. **Site:** o aviso das comissões entra na próxima publicação do nads.
-4. **`conferencia-nilma`:** decidir e fazer o login por custom token (item 14).
+4. ~~`conferencia-nilma`~~: **fechado em 25/11/2026** (item 14).
 5. **GitHub:** proteção de branch e 2FA (item 11).
