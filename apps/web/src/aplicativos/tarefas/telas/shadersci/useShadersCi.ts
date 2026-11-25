@@ -7,6 +7,7 @@ import { baixarBytes, useCarregando, useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useDadosDaEmpresaNoEntregas, useTodosOsCadastros } from '../../dados/repo';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
@@ -114,15 +115,20 @@ export function useShadersCi() {
   const [dev] = useModoDesenvolvedor();
   // só as empresas que estão no SCI (24/11/2026: "Apenas empresas que estão na sci"): o "Está no SCI" do Cadastro e, no
   // modo desenvolvedor, as marcadas pelo ⚡ Dados de teste
+  // e, delas, só as liberadas para a pessoa (25/11/2026: "minimum tbm segue a regra de empresas liberadas para cada usuario que
+  // tenha a opcao sci marcada"): a mesma regra das outras telas (useEmpresasPermitidas: no Contábil, as de que ela é a responsável
+  // e, para o diretor e o sênior, também as dos plenos e júniores; o admin e o diretor, todas)
   const cadastros = useTodosOsCadastros();
-  useCarregando(!cadastros.carregada);
+  const permitidas = useEmpresasPermitidas();
+  const carregada = cadastros.carregada && permitidas.carregada;
+  useCarregando(!carregada);
   const [testeSci, setTesteSci] = useState<number[]>(lerTesteSci);
-  const doSci = useMemo(() => {
-    const s = new Set<number>();
-    for (const c of cadastros.porId.values()) if (c.noSci && c.codigo != null) s.add(c.codigo);
-    if (dev) for (const c of testeSci) s.add(c);
-    return s;
-  }, [cadastros.porId, testeSci, dev]);
+  // a lista pelos códigos (o pode() é novo a cada render): o conjunto só muda quando as empresas mudam
+  const codigosDoSci: number[] = [];
+  if (carregada) for (const c of cadastros.porId.values()) if (c.noSci && c.codigo != null && permitidas.pode({ nome: c.nome, codigo: c.codigo })) codigosDoSci.push(c.codigo);
+  if (dev) for (const c of testeSci) codigosDoSci.push(c);
+  const chaveDoSci = codigosDoSci.sort((a, b) => a - b).join(',');
+  const doSci = useMemo(() => new Set(chaveDoSci ? chaveDoSci.split(',').map(Number) : []), [chaveDoSci]);
   const entrada = useLancatudo(doSci);
   const chave = entrada.empresa ? String(entrada.empresa.codigo) : null;
   // a empresa fica lembrada neste navegador (25/11/2026: "pessoa logou no minimum, deixa a empresa dele logada, para nao precisar
@@ -131,10 +137,10 @@ export function useShadersCi() {
   const semEmpresaNoEndereco = !entrada.doEndereco('e');
   const { mudarNoEndereco } = entrada;
   useEffect(() => {
-    if (!cadastros.carregada || !semEmpresaNoEndereco) return;
+    if (!carregada || !semEmpresaNoEndereco) return;
     const ultima = Number(empresaLembrada());
     if (ultima && doSci.has(ultima)) mudarNoEndereco({ e: String(ultima) }, true);
-  }, [cadastros.carregada, semEmpresaNoEndereco, doSci, mudarNoEndereco]);
+  }, [carregada, semEmpresaNoEndereco, doSci, mudarNoEndereco]);
   const [guardado, setGuardado] = useState<Guardado>(() => lerGuardado(chave));
   const [daChave, setDaChave] = useState(chave);
   // trocou de empresa: o que é dela
@@ -631,6 +637,32 @@ export function useShadersCi() {
       if (editando && s.has(editando)) { setEditando(null); setForm(FORMULARIO_VAZIO); }
       toast((s.size === 1 ? '1 lançamento excluído' : s.size + ' lançamentos excluídos') + '. Ctrl+Z desfaz.');
     },
+    /**
+     * Altera em lote os marcados (25/11/2026: "Coloca alguma funcao de alterar em lote: data, conta debito, conta credito, valor,
+     * numero do historico"): o campo vazio fica como está; os múltiplos não mudam (a regra, sci.alterarEmLote). Devolve o erro
+     * do que foi digitado, ou '' quando aplicou. O Ctrl+Z desfaz.
+     */
+    alterarEmLote(t: { data: string; debito: string; credito: string; valor: string; historico: string }): string {
+      const marcadosAgora = new Set(marcados);
+      if (!marcadosAgora.size) return 'Marque os lançamentos.';
+      const m: sci.MudancaEmLote = {};
+      if (t.data.trim()) { m.data = sci.dataDoTexto(t.data, ano); if (!m.data) return 'A data ' + t.data.trim() + ' não é válida.'; }
+      if (t.valor.trim()) { const v = sci.valorDoTexto(t.valor); if (isNaN(v) || v <= 0) return 'O valor ' + t.valor.trim() + ' não é válido.'; m.valor = Math.abs(v); }
+      if (t.debito.trim()) { if (!sci.contaDoPlano(plano, t.debito)) return 'A conta ' + t.debito.trim() + ' não está no plano.'; m.debito = t.debito; }
+      if (t.credito.trim()) { if (!sci.contaDoPlano(plano, t.credito)) return 'A conta ' + t.credito.trim() + ' não está no plano.'; m.credito = t.credito; }
+      if (t.historico.trim()) { if (!sci.historicoDoSci(t.historico)) return 'O histórico ' + t.historico.trim() + ' não está no plano de históricos.'; m.historico = t.historico; }
+      if (!Object.keys(m).length) return 'Preencha o que vai mudar.';
+      const r = sci.alterarEmLote(guardado.lancamentos, marcadosAgora, m, plano);
+      const fora = r.multiplos ? ' Os múltiplos não mudam em lote.' : '';
+      if (!r.mudados) { toast('Nada mudou.' + fora); return ''; }
+      mudarLista(() => r.lancamentos);
+      toast((r.mudados === 1 ? '1 lançamento alterado.' : r.mudados + ' lançamentos alterados.') + fora + ' Ctrl+Z desfaz.');
+      return '';
+    },
+    /** a conta do plano pelo código ou apelido (para mostrar o nome no lote) */
+    contaNoPlano: (texto: string) => (texto.trim() ? sci.contaDoPlano(plano, texto) : null),
+    /** o histórico padrão pelo número (para mostrar o nome no lote) */
+    historicoNoSci: (texto: string) => (texto.trim() ? sci.historicoDoSci(texto) : null),
     podeDesfazer: anterior !== null,
     desfazer() {
       if (anterior === null) return;
@@ -653,7 +685,7 @@ export function useShadersCi() {
     },
     /** a tela inicial: as empresas do SCI, por nome, e se a lista já chegou do banco */
     empresasDoSci: entrada.lista,
-    carregada: cadastros.carregada,
+    carregada,
     // o ⚡ Dados de teste (só no modo desenvolvedor; fica só neste navegador)
     teste: {
       temSciDeTeste: testeSci.length > 0,

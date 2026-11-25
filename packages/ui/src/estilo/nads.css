@@ -8457,7 +8457,7 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-tabela .sci-conta-nome.sci-conta-c{color:light-dark(#b42318,#ff8f86);}
 .sci-tabela .sci-conta-cod{font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 /* o resumo da seleção, no canto de baixo à esquerda, com mais de um lançamento marcado (24/11/2026) */
-.sci-selecao{position:fixed;left:24px;bottom:24px;z-index:40;width:260px;padding:12px 14px 10px;border-radius:10px;
+.sci-selecao{position:fixed;left:24px;bottom:24px;z-index:40;width:280px;padding:12px 14px 10px;border-radius:10px;
   background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg);animation:popIn .18s ease;}
 .sci-selecao-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
 .sci-selecao-total{display:block;margin:2px 0 8px;font-size:22px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2;}
@@ -8467,6 +8467,17 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-selecao-dados dd{margin:0;color:var(--ink);font-weight:500;text-align:right;}
 /* o excluir em lote, no pé da caixa (25/11/2026): a largura toda; a cor é a do btn-danger, o vermelho padrão de excluir */
 .btn.sci-selecao-excluir{width:100%;justify-content:center;margin-top:10px;}
+/* alterar em lote (25/11/2026): o botão acima do excluir e, aberto, os campos em duas colunas */
+.btn.sci-selecao-lote{width:100%;justify-content:center;margin-top:10px;}
+.sci-lote{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.sci-lote-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sci-lote-campo{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:var(--fs-11);color:var(--ink-muted);}
+.sci-lote-campo:last-child{grid-column:1 / -1;}
+.sci-lote-campo input{width:100%;min-width:0;height:28px;font-size:var(--fs-12);}
+.sci-lote-campo small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-11);}
+.sci-lote-nota{margin:8px 0 0;font-size:var(--fs-11);}
+.sci-lote-erro{margin:6px 0 0;font-size:var(--fs-12);color:var(--danger);}
+.sci-lote-botoes{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;}
 .sci-selecao-alerta dt,.sci-selecao-alerta dd{color:var(--danger);}
 @media (max-width:640px){.sci-selecao{left:12px;right:12px;bottom:12px;width:auto;}}
 .sci-tabela td.sci-valor{font-weight:700;font-variant-numeric:tabular-nums;}
