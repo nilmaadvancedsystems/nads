@@ -11,6 +11,36 @@ import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
 
+/** Os apps do minimum, depois de escolher a empresa: os Lançamentos do SCI e o Extratudo (o Lançatudo, o extrato que vira lançamento). */
+export type AppDoMinimum = 'lancamentos' | 'extratudo' | 'razao';
+const appDoEndereco = (m: string | null): AppDoMinimum | null => (m === 'lancamentos' || m === 'extratudo' || m === 'razao' ? m : null);
+
+/** As colunas da tabela que ordenam e filtram (o clique no cabeçalho). */
+export type ColunaDosLancamentos = 'data' | 'debito' | 'credito' | 'valor' | 'historico' | 'documento' | 'participanteD' | 'participanteC';
+interface LinhaParaColuna { data: string; debito: string; credito: string; nomeD: string; nomeC: string; valor: number; historico: string; nomeH: string; complemento: string; documento: string; participanteD: string; participanteC: string }
+/** o texto da coluna, o que o filtro procura (o código e o nome) */
+function textoDaColuna(l: LinhaParaColuna, c: ColunaDosLancamentos): string {
+  switch (c) {
+    case 'data': return sci.dataParaTexto(l.data);
+    case 'debito': return l.debito + ' ' + l.nomeD;
+    case 'credito': return l.credito + ' ' + l.nomeC;
+    case 'valor': return sci.valorParaTexto(l.valor);
+    case 'historico': return l.historico + ' ' + l.nomeH + ' ' + l.complemento;
+    default: return l[c];
+  }
+}
+/** o que ordena o lançamento (o múltiplo pelo total dos débitos e pela primeira conta de cada lado) */
+function chaveDaColuna(g: readonly LinhaParaColuna[], c: ColunaDosLancamentos): string | number {
+  const multiplo = g.length > 1;
+  if (c === 'valor') return multiplo ? g.filter(l => l.debito).reduce((t, l) => t + l.valor, 0) : g[0].valor;
+  if (c === 'data') return g[0].data;
+  if (c === 'debito') { const l = g.find(x => x.debito) || g[0]; return l.nomeD || l.debito; }
+  if (c === 'credito') { const l = g.find(x => x.credito) || g[0]; return l.nomeC || l.credito; }
+  if (c === 'historico') return [g[0].nomeH, g[0].complemento].filter(Boolean).join(' ') || g[0].historico;
+  return g.find(l => l[c])?.[c] || '';
+}
+
+
 /**
  * O Salvar do Novo lançamento (24/11/2026: "as vezes ela nao quer lancar e so salva, mas nao e pra colocar na tabela, e pra deixar
  * prenchido quando ela coloca novo lancamento"): o formulário como estava, simples ou múltiplo; não entra na lista.
@@ -32,6 +62,12 @@ function lerGuardado(chave: string | null): Guardado {
 function gravarGuardado(chave: string, g: Guardado) {
   try { localStorage.setItem(PREFIXO + chave, JSON.stringify(g)); } catch { /* sem espaço: fica só na tela */ }
 }
+
+// a última empresa aberta no minimum, neste navegador
+const CHAVE_ULTIMA_EMPRESA = 'nads-minimum-ultima-empresa';
+const lembrarEmpresa = (codigo: string) => { try { localStorage.setItem(CHAVE_ULTIMA_EMPRESA, codigo); } catch { /* sem espaço */ } };
+const empresaLembrada = () => { try { return localStorage.getItem(CHAVE_ULTIMA_EMPRESA); } catch { return null; } };
+const esquecerEmpresa = () => { try { localStorage.removeItem(CHAVE_ULTIMA_EMPRESA); } catch { /* sem armazenamento */ } };
 
 // as empresas marcadas no SCI pelo ⚡ Dados de teste: só neste navegador, só no modo desenvolvedor
 const CHAVE_TESTE_SCI = 'nads-minimum-sci-teste';
@@ -60,6 +96,13 @@ export interface PartidaDoFormulario { chave: string; lado: sci.LadoDoLancamento
 export interface MultiploDoFormulario { id: string; editando: boolean; data: string; documento: string; partidas: PartidaDoFormulario[] }
 type CampoDaPartida = Exclude<keyof PartidaDoFormulario, 'chave'>;
 const partidaVazia = (lado: sci.LadoDoLancamento, valor = ''): PartidaDoFormulario => ({ chave: idNovo(), lado, conta: '', participante: '', valor, historico: '', complemento: '' });
+/** põe a partida no bloco do lado dela: o débito logo depois do último débito, o crédito no fim (os débitos em cima) */
+function noBlocoDoLado(ps: PartidaDoFormulario[], pt: PartidaDoFormulario): PartidaDoFormulario[] {
+  if (pt.lado === 'credito') return [...ps, pt];
+  let i = -1;
+  ps.forEach((x, k) => { if (x.lado === 'debito') i = k; });
+  return [...ps.slice(0, i + 1), pt, ...ps.slice(i + 1)];
+}
 
 const doLancamento = (l: sci.CamposDoLancamento): Formulario => ({
   data: sci.dataParaTexto(l.data), debito: l.debito, credito: l.credito, valor: l.valor ? sci.valorParaTexto(l.valor) : '', historico: l.historico,
@@ -82,6 +125,16 @@ export function useShadersCi() {
   }, [cadastros.porId, testeSci, dev]);
   const entrada = useLancatudo(doSci);
   const chave = entrada.empresa ? String(entrada.empresa.codigo) : null;
+  // a empresa fica lembrada neste navegador (25/11/2026: "pessoa logou no minimum, deixa a empresa dele logada, para nao precisar
+  // selecionar toda vez"): abrir o minimum sem empresa no endereço entra na última, se ela ainda está no SCI; o Trocar a esquece
+  useEffect(() => { if (chave) lembrarEmpresa(chave); }, [chave]);
+  const semEmpresaNoEndereco = !entrada.doEndereco('e');
+  const { mudarNoEndereco } = entrada;
+  useEffect(() => {
+    if (!cadastros.carregada || !semEmpresaNoEndereco) return;
+    const ultima = Number(empresaLembrada());
+    if (ultima && doSci.has(ultima)) mudarNoEndereco({ e: String(ultima) }, true);
+  }, [cadastros.carregada, semEmpresaNoEndereco, doSci, mudarNoEndereco]);
   const [guardado, setGuardado] = useState<Guardado>(() => lerGuardado(chave));
   const [daChave, setDaChave] = useState(chave);
   // trocou de empresa: o que é dela
@@ -93,6 +146,12 @@ export function useShadersCi() {
   const [janela, setJanela] = useState(false);
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
   const [busca, setBusca] = useState('');
+  const [ordem, setOrdem] = useState<{ coluna: ColunaDosLancamentos; desc: boolean } | null>(null);
+  const [filtrosDasColunas, setFiltrosDasColunas] = useState<Partial<Record<ColunaDosLancamentos, string>>>({});
+  // o mês da Data (25/11/2026: "No filtro da data, coloca a opcao de filtrar por meses") e a faixa do Valor, em centavos (25/11/2026:
+  // "No valor, filtros de valores, acima e abaixo de")
+  const [mesDaData, setMesDaData] = useState<string | null>(null);
+  const [faixaDoValor, setFaixaDoValor] = useState<{ acima: string; abaixo: string }>({ acima: '', abaixo: '' });
   // a lupa (F2): a conta de um dos lados ou o histórico
   const [pesquisa, setPesquisa] = useState<'debito' | 'credito' | 'historico' | null>(null);
   // a lupa de uma partida do múltiplo (a chave dela); null = a do lançamento simples
@@ -109,6 +168,8 @@ export function useShadersCi() {
   }, [cadastros.porId, entrada.empresa]);
   const idDoPlano: sci.IdDoPlanoSci = planoDoCadastro ?? guardado.plano;
   const plano = sci.planoDoSci(idDoPlano);
+  // o mesmo plano no Extratudo (no formato do plano do Cadastro): as contas do extrato são as dos Lançamentos
+  const planoDoExtratudo = useMemo(() => sci.planoDoSci(idDoPlano).contas.map((c, ordem) => ({ codigo: c.codigo, nome: c.nome, classificacao: c.classificacao, sintetica: !c.analitica, ordem })), [idDoPlano]);
   // o CNPJ da planilha (24/11/2026: o campo do topo saiu, "remove isso"): o do Cadastro da empresa; sem ele, o do Entregas; sem
   // nenhum, o digitado antes aqui (ou o dos dados de teste)
   const cnpjDoEntregas = useDadosDaEmpresaNoEntregas(entrada.empresa?.codigo ?? null).dados?.documento || '';
@@ -119,6 +180,9 @@ export function useShadersCi() {
   }, [cadastros.porId, entrada.empresa]);
   const cnpj = cnpjDoCadastro || cnpjDoEntregas || guardado.cnpj;
   const ano = new Date().getFullYear();
+
+  // o app aberto (?m=): os Lançamentos, o Extratudo ou nenhum (a tela dos apps); sem empresa, nenhum
+  const app = entrada.empresa ? appDoEndereco(entrada.doEndereco('m')) : null;
 
   const guardar = useCallback((muda: (g: Guardado) => Guardado) => {
     setGuardado(g => { const novo = muda(g); if (chave) gravarGuardado(chave, novo); return novo; });
@@ -142,12 +206,37 @@ export function useShadersCi() {
       ...l,
       nomeD: sci.contaDoPlano(plano, l.debito)?.nome || '',
       nomeC: sci.contaDoPlano(plano, l.credito)?.nome || '',
+      nomeH: sci.historicoDoSci(l.historico)?.nome || '',
       problemas: problemas[i],
     }));
   }, [guardado.lancamentos, plano]);
+  // o filtro geral do topo saiu (25/11/2026: "Remove esse filtro"): os filtros ficam nas colunas
   const q = sci.semAcento(busca.trim());
-  const visiveis = q ? linhas.filter(l => [sci.dataParaTexto(l.data), l.debito, l.credito, l.nomeD, l.nomeC, sci.valorParaTexto(l.valor), l.historico, l.complemento, l.documento, l.participanteD, l.participanteC]
-    .some(v => sci.semAcento(v).includes(q))) : linhas;
+  const filtradas = linhas.filter(l => (!q || [sci.dataParaTexto(l.data), l.debito, l.credito, l.nomeD, l.nomeC, sci.valorParaTexto(l.valor), l.historico, l.nomeH, l.complemento, l.documento, l.participanteD, l.participanteC]
+    .some(v => sci.semAcento(v).includes(q))));
+  // ordenar e filtrar pela coluna (25/11/2026: "Coloca funcoes de ordenar e filtros quando voce clica na coluna"): o múltiplo anda
+  // inteiro, e passa no filtro da coluna quando alguma partida passa; a ordem vale por lançamento, e o empate fica na ordem de antes
+  const visiveis = useMemo(() => {
+    const grupos = new Map<string, typeof filtradas>();
+    for (const l of filtradas) { const k = l.multiplo || l.id; const g = grupos.get(k); if (g) g.push(l); else grupos.set(k, [l]); }
+    const filtros = (Object.entries(filtrosDasColunas) as [ColunaDosLancamentos, string][]).map(([c, v]) => [c, sci.semAcento(v.trim())] as const).filter(([, v]) => v);
+    const centavos = (t: string) => { const n = sci.valorDoTexto(t); return Number.isFinite(n) ? n : null; };
+    const acima = centavos(faixaDoValor.acima);
+    const abaixo = centavos(faixaDoValor.abaixo);
+    let lista = [...grupos.values()].filter(g => filtros.every(([c, v]) => g.some(l => sci.semAcento(textoDaColuna(l, c)).includes(v)))
+      && (!mesDaData || g.some(l => l.data.startsWith(mesDaData)))
+      && (acima == null || (chaveDaColuna(g, 'valor') as number) >= acima) && (abaixo == null || (chaveDaColuna(g, 'valor') as number) <= abaixo));
+    if (ordem) {
+      const chave = (g: typeof filtradas) => chaveDaColuna(g, ordem.coluna);
+      lista = lista.map((g, i) => ({ g, i, k: chave(g) })).sort((a, b) => {
+        const d = typeof a.k === 'number' && typeof b.k === 'number' ? a.k - b.k : String(a.k).localeCompare(String(b.k), 'pt-BR', { numeric: true, sensitivity: 'base' });
+        return (ordem.desc ? -d : d) || a.i - b.i;
+      }).map(x => x.g);
+    }
+    return lista.flat();
+  }, [filtradas, filtrosDasColunas, ordem, mesDaData, faixaDoValor]);
+  // os meses que têm lançamento, do mais novo ao mais antigo
+  const mesesDasDatas = useMemo(() => [...new Set(linhas.map(l => l.data.slice(0, 7)).filter(m => /^\d{4}-\d{2}$/.test(m)))].sort().reverse(), [linhas]);
   const resumo = sci.resumoDosLancamentos(guardado.lancamentos, plano);
   const cnpjOk = (() => { const d = cnpj.replace(/\D/g, ''); return d.length === 14 || d.length === 11; })();
 
@@ -216,8 +305,19 @@ export function useShadersCi() {
     catch { aviso({ tom: 'erro', titulo: 'Não consegui copiar', texto: 'O navegador não deixou usar a área de transferência. Tente o Ctrl+C.' }); }
   }
   function colarTexto(texto: string, depoisDe?: string) {
-    const novos = sci.lancamentosDoTexto(texto, ano).map(l => ({ ...sci.lancamentoLimpo(l, plano), id: idNovo() }));
-    if (!novos.length) { toast('Nada para colar: copie linhas da tabela ou do Excel (Data, Débito, Crédito, Valor, Histórico...).'); return; }
+    const lidos = sci.lancamentosDoTexto(texto, ano).map(l => ({ ...sci.lancamentoLimpo(l, plano), id: idNovo() }));
+    if (!lidos.length) { toast('Nada para colar: copie linhas da tabela ou do Excel (Data, Débito, Crédito, Valor, Histórico...).'); return; }
+    // só entra o que está na norma do SCI (25/11/2026: "Nao existe lancamentos com problema, todos tem que estar dentro da norma"):
+    // a linha fora fica de fora (o múltiplo, inteiro) e o aviso diz o porquê
+    const problemas = sci.problemasDosLancamentos(lidos, plano);
+    const multiplosFora = new Set(lidos.filter((l, i) => l.multiplo && problemas[i].length).map(l => l.multiplo as string));
+    const novos = lidos.filter((l, i) => !problemas[i].length && !(l.multiplo && multiplosFora.has(l.multiplo)));
+    const fora = lidos.length - novos.length;
+    if (fora) {
+      const motivo = problemas.find(p => p.length)?.[0] || 'fora da norma do SCI';
+      aviso({ tom: 'info', titulo: fora === 1 ? '1 linha ficou de fora' : fora + ' linhas ficaram de fora', texto: 'Só entra lançamento dentro da norma do SCI. Por exemplo: ' + motivo + '.' });
+    }
+    if (!novos.length) return;
     mudarLista(ls => {
       const i = depoisDe ? ls.findIndex(l => l.id === depoisDe) : -1;
       return i < 0 ? [...ls, ...novos] : [...ls.slice(0, i + 1), ...novos, ...ls.slice(i + 1)];
@@ -231,10 +331,12 @@ export function useShadersCi() {
     empresa: entrada.empresa,
     /**
      * As setas ao lado do nome (24/11/2026: "deixe o aviso, que ao trocar de empresa, os lancamentos serao perdidos"; o dono
-     * escolheu que trocar apaga): com lançamentos, pergunta antes; confirmado, apaga os desta empresa (e o salvo) e volta à escolha
+     * escolheu que trocar apaga): com lançamentos, pergunta antes; confirmado, apaga os desta empresa (e o salvo) e volta à escolha.
+     * Só no app Lançamentos (25/11/2026: "A popup de trocar e apagar e somente no app lancamentos, somente la, o extratudo vai ser
+     * diferente"): na tela dos apps e no Extratudo, troca direto e os lançamentos da empresa ficam guardados.
      */
     async trocarEmpresa() {
-      const n = guardado.lancamentos.length;
+      const n = app === 'lancamentos' ? guardado.lancamentos.length : 0;
       if (n) {
         const sim = await modal<boolean>({
           icone: 'alert', titulo: 'Trocar de empresa?',
@@ -246,7 +348,31 @@ export function useShadersCi() {
         setAnterior(null);
         setMarcados(new Set());
       }
-      entrada.trocarEmpresa();
+      // sai também do app aberto: a próxima empresa abre na tela dos apps; e esquece a lembrada, para não voltar sozinha
+      esquecerEmpresa();
+      entrada.mudarNoEndereco({ e: null, b: null, m: null });
+    },
+    /**
+     * Os apps da empresa (25/11/2026: "vai ter os apps, lancamentos e extratudo (Atual lancatudo). Entrando nesses apps, ja vai
+     * estar logado com a empresa"): o aberto vai no endereço (?m=), para o Voltar do navegador e o link levarem direto; sem
+     * empresa, nenhum
+     */
+    app,
+    abrirApp: (m: AppDoMinimum | null) => entrada.mudarNoEndereco({ m }),
+    /** o Extratudo ligado aos Lançamentos (25/11/2026: "tudo que puder deixar integrado entre o tarefas e o minimum") */
+    extratudo: {
+      plano: planoDoExtratudo,
+      /**
+       * as linhas conciliadas do extrato entram nos Lançamentos (com o Desfazer), só as dentro da norma do SCI (25/11/2026): as
+       * outras ficam no Extratudo, com o motivo da primeira
+       */
+      enviar: (banco: string, linhas: readonly sci.LinhaDoExtratoConciliada[]) => {
+        const novas = sci.lancamentosDoExtrato(banco, linhas, guardado.lancamentos);
+        const problemas = sci.problemasDosLancamentos(novas, plano);
+        const boas = novas.filter((_, i) => !problemas[i].length);
+        if (boas.length) mudarLista(ls => [...ls, ...boas.filter(b => !ls.some(l => l.id === b.id))]);
+        return { enviadas: boas.length, fora: novas.length - boas.length, motivo: problemas.find(p => p.length)?.[0] || '' };
+      },
     },
     dev,
     // o plano e o CNPJ da empresa (o que vai na coluna CNPJ da planilha)
@@ -344,13 +470,36 @@ export function useShadersCi() {
       setMultiplo(null);
     },
     mudarDoMultiplo: (campo: 'data' | 'documento', v: string) => mudarMultiplo(m => ({ ...m, [campo]: v })),
+    /** trocar o lado leva a partida para o bloco dele: os débitos em cima, os créditos embaixo (24/11/2026: "Priorize deixar o debito na parte superior e credito na parte inferior") */
     mudarPartida: (chave: string, campo: CampoDaPartida, v: string) =>
-      mudarMultiplo(m => ({ ...m, partidas: m.partidas.map(pt => (pt.chave === chave ? { ...pt, [campo]: v } : pt)) })),
-    /** a partida nova já vem no lado que falta, com o valor que falta para bater */
-    adicionarPartida: () => mudarMultiplo(m => {
+      mudarMultiplo(m => {
+        const pt = m.partidas.find(x => x.chave === chave);
+        if (!pt) return m;
+        const nova = { ...pt, [campo]: v };
+        if (campo !== 'lado' || pt.lado === v) return { ...m, partidas: m.partidas.map(x => (x.chave === chave ? nova : x)) };
+        return { ...m, partidas: noBlocoDoLado(m.partidas.filter(x => x.chave !== chave), nova) };
+      }),
+    /**
+     * a partida nova já vem no lado que falta, com o valor que falta para bater, no bloco do lado dela (o débito depois do
+     * último débito, o crédito no fim); devolve a chave dela (o foco vai para a conta)
+     */
+    adicionarPartida: () => {
+      if (!multiplo) return null;
       const d = totaisDoMultiplo.diferenca;
-      const lado: sci.LadoDoLancamento = d > 0 ? 'credito' : d < 0 ? 'debito' : m.partidas[m.partidas.length - 1]?.lado || 'debito';
-      return { ...m, partidas: [...m.partidas, partidaVazia(lado, d ? sci.valorParaTexto(Math.abs(d)) : '')] };
+      const lado: sci.LadoDoLancamento = d > 0 ? 'credito' : d < 0 ? 'debito' : multiplo.partidas[multiplo.partidas.length - 1]?.lado || 'debito';
+      const nova = partidaVazia(lado, d ? sci.valorParaTexto(Math.abs(d)) : '');
+      mudarMultiplo(m => ({ ...m, partidas: noBlocoDoLado(m.partidas, nova) }));
+      return nova.chave;
+    },
+    /** arrastar uma partida para o lugar de outra (24/11/2026: "De a opcao do usuario organizar as linhas arrastando") */
+    moverPartida: (de: string, para: string) => mudarMultiplo(m => {
+      const i = m.partidas.findIndex(x => x.chave === de);
+      const j = m.partidas.findIndex(x => x.chave === para);
+      if (i < 0 || j < 0 || i === j) return m;
+      const ps = [...m.partidas];
+      const [pt] = ps.splice(i, 1);
+      ps.splice(j, 0, pt);
+      return { ...m, partidas: ps };
     }),
     removerPartida: (chave: string) => mudarMultiplo(m => ({ ...m, partidas: m.partidas.filter(pt => pt.chave !== chave) })),
     /** o que a tela mostra de cada partida: o nome da conta, o participante que ela pede e o histórico */
@@ -408,6 +557,17 @@ export function useShadersCi() {
     },
     // a tabela
     busca, setBusca,
+    /** a ordem e os filtros das colunas (o clique no cabeçalho) */
+    ordem, ordenar: (coluna: ColunaDosLancamentos, desc: boolean) => setOrdem({ coluna, desc }), semOrdem: () => setOrdem(null),
+    filtrosDasColunas, filtrarColuna: (coluna: ColunaDosLancamentos, texto: string) => setFiltrosDasColunas(f => ({ ...f, [coluna]: texto })),
+    limparColuna: (coluna: ColunaDosLancamentos) => {
+      setFiltrosDasColunas(f => { const n = { ...f }; delete n[coluna]; return n; });
+      setOrdem(o => (o?.coluna === coluna ? null : o));
+      if (coluna === 'data') setMesDaData(null);
+      if (coluna === 'valor') setFaixaDoValor({ acima: '', abaixo: '' });
+    },
+    mesesDasDatas, mesDaData, setMesDaData,
+    faixaDoValor, mudarFaixaDoValor: (lado: 'acima' | 'abaixo', texto: string) => setFaixaDoValor(f => ({ ...f, [lado]: texto })),
     linhas: visiveis.map(l => ({ ...l, dataTexto: sci.dataParaTexto(l.data), valorTexto: l.valor ? sci.valorParaTexto(l.valor) : '' })),
     total: linhas.length,
     resumo: { ...resumo, totalTexto: sci.valorParaTexto(resumo.total), totalProntoTexto: sci.valorParaTexto(resumo.totalPronto) },
@@ -506,7 +666,6 @@ export function useShadersCi() {
           { ...sci.LANCAMENTO_VAZIO, data: d(2), debito: banco, credito: caixa, valor: 500000, historico: '367', complemento: 'dinheiro do caixa', documento: '1' },
           { ...sci.LANCAMENTO_VAZIO, data: d(5), debito: banco, credito: clientes, valor: 123456, historico: '2000', complemento: 'NF 1001', documento: '1001', participanteC: '120' },
           { ...sci.LANCAMENTO_VAZIO, data: d(8), debito: fornecedores, credito: banco, valor: 89000, historico: '1000', complemento: 'NF 555', documento: '555', participanteD: '45' },
-          { ...sci.LANCAMENTO_VAZIO, data: d(10), debito: clientes, credito: caixa, valor: 1000, historico: 'Tarifa', complemento: 'Lançamento com problema, para testar' },
         ];
         // e um múltiplo: o caixa paga o fornecedor e deposita o resto no banco (um crédito, dois débitos)
         const m = idNovo();

@@ -5,7 +5,7 @@
 // árvore, como o eContador (17/11/2026: "quero que abra o plano de contas assim como no econtador"), a mesma árvore da
 // janela do plano (as linhas marcadas e a regra). Só desenham: tudo vem dos ViewModels.
 import { BotaoFechar, Icone, LogoBanco, MenuSuspenso, useJanela } from '@nads/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useJanelaDaLinha } from './useJanelaDaLinha';
 import { useJanelaDoPlano } from './useJanelaDoPlano';
 import { ROTULO_ORIGEM, ROTULO_SITUACAO, type useRegistroDoLancatudo } from './useRegistroDoLancatudo';
@@ -28,7 +28,11 @@ function Campo({ rotulo, para, className, children }: { rotulo: string; para?: s
   );
 }
 
-export function Janela({ titulo, caminho, selo, fechar, children, pe, className = '', classeDoFundo = '', app = 'Lançatudo', topo }: {
+/** O nome no começo do caminho das janelas: o Lançatudo e, dentro do minimum, o Extratudo (25/11/2026). */
+const NomeDoApp = createContext('Lançatudo');
+export const NomeDoAppDasJanelas = NomeDoApp.Provider;
+
+export function Janela({ titulo, caminho, selo, fechar, children, pe, className = '', classeDoFundo = '', app: appPedido, topo }: {
   titulo: string; caminho?: ReactNode; selo?: ReactNode; fechar: () => void; children: ReactNode; pe?: ReactNode; className?: string; classeDoFundo?: string;
   /** o nome do aplicativo no começo do caminho (o ShadersCI usa a mesma janela) */
   app?: string;
@@ -40,6 +44,8 @@ export function Janela({ titulo, caminho, selo, fechar, children, pe, className 
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useJanela(ref, fechar);
+  const doContexto = useContext(NomeDoApp);
+  const app = appPedido ?? doContexto;
   return (
     <div className={'modal-overlay lt-fundo ' + classeDoFundo} onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={ref} className={'modal registro-novo lt-janela ' + className} role="dialog" aria-modal="true" aria-label={titulo}>

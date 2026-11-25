@@ -17,7 +17,7 @@ export { atualizarVersao, iniciarAtualizacaoPorInatividade, useVersaoNova, Trava
 export { aplicarTabelasCompactas, definirLateralOculta, definirTabelasCompactas, lerLateralOculta, lerTabelasCompactas } from './preferencias';
 export { iniciarContinuidade, atualizarSemPerder, estamosAtualizando } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
-export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoEcontador, LogoExcel, LogoFgts, LogoGmail, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped, LogoSciReport, LogoSimplesNacional, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
+export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoEcontador, LogoExcel, LogoFgts, LogoGmail, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped, LogoSci, LogoSciReport, LogoSimplesNacional, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
 export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, MapaDeCalor, Variacao, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
 export { destacarNaTela } from './destaque';

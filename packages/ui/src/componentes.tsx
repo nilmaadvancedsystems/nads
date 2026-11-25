@@ -262,10 +262,11 @@ export function NumeroQueConta({ texto }: { texto: string }) {
  * Chave Sim/Não (.toggle-switch). O texto em pt-BR ((revisão da UI, 18/10/2026): era "On/Off"); as duas palavras ficam uma em cima da
  * outra e só a da vez aparece, então a largura é sempre a da maior e a chave não pula ao trocar.
  */
-export function Interruptor({ ligado, onMudar, rotulo }: { ligado: boolean; onMudar: () => void; rotulo: string }) {
+/** semTexto: só a chave, sem o "Sim"/"Não" ao lado (o múltiplo do minimum, 25/11/2026: "Tira esse sim e nao daqui") */
+export function Interruptor({ ligado, onMudar, rotulo, semTexto }: { ligado: boolean; onMudar: () => void; rotulo: string; semTexto?: boolean }) {
   return (
     <button type="button" className="toggle-switch" role="switch" aria-checked={ligado} aria-label={rotulo} onClick={onMudar}>
-      <span className="toggle-txt" aria-hidden="true"><span className={ligado ? undefined : 'toggle-txt-fora'}>Sim</span><span className={ligado ? 'toggle-txt-fora' : undefined}>Não</span></span>
+      {!semTexto && <span className="toggle-txt" aria-hidden="true"><span className={ligado ? undefined : 'toggle-txt-fora'}>Sim</span><span className={ligado ? 'toggle-txt-fora' : undefined}>Não</span></span>}
       <span className="toggle-track"><span className="toggle-knob" /></span>
     </button>
   );

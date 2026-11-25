@@ -3,6 +3,7 @@
 // Do mesmo jeito, <TrilhaDoTopo> põe os pedaços do caminho na barra de cima ("Tarefas / Vitor / Minhas empresas / 292 …"):
 // a navegação fica lá, sem "← Voltar" no meio da página (Vitor, 02/10/2026).
 // É de todos os aplicativos (a casca é a mesma).
+import type { NomeIcone } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -15,7 +16,9 @@ const Ctx = createContext<{
 } | null>(null);
 
 /** O título que a página põe na casca: o texto e, se tiver, a cápsula antes dele (o código da empresa). */
-export type TituloDaPagina = { texto: string; selo?: string; trocar?: { titulo: string; onClick: () => void } };
+export type TituloDaPagina = { texto: string; selo?: string; trocar?: { titulo: string; onClick: () => void; menu?: ItemDoMenuDoTitulo[] } };
+/** Um item do menu que o título abre (o minimum: os outros apps e o Trocar de empresa); separado: com a linha antes. */
+export type ItemDoMenuDoTitulo = { rotulo: string; icone?: NomeIcone; separado?: boolean; onClick: () => void };
 const SEM_TITULO: TituloDaPagina = { texto: '' };
 
 export function TopoProvider({ children }: { children: ReactNode }) {
@@ -35,18 +38,26 @@ export function useTituloDoTopo(): TituloDaPagina {
  * está aberta ('' volta ao do menu); o selo vai numa cápsula antes dele. O minimum põe a empresa aberta (24/11/2026: "troque o
  * titulo minimum pelo nome da empresa numero e nome"; "Nao gosto desse pontinho, coloca outra coisa, usa capsula").
  */
-export function TituloDoTopo({ titulo, selo, aoTrocar, dicaDoTrocar = 'Trocar' }: { titulo: string; selo?: string; aoTrocar?: () => void; dicaDoTrocar?: string }) {
+/**
+ * menu: o clique no título abre um menu com estes itens, no lugar de chamar o aoTrocar (o minimum, 25/11/2026: "Clicando nessa tela
+ * ele pode sair, que vai voltar para tela inicial de selecao de empresa. Ou aparece o nome dos outros aplicativos").
+ */
+export function TituloDoTopo({ titulo, selo, aoTrocar, dicaDoTrocar = 'Trocar', menu }: { titulo: string; selo?: string; aoTrocar?: () => void; dicaDoTrocar?: string; menu?: ItemDoMenuDoTitulo[] }) {
   const ctx = useContext(Ctx);
   const setTitulo = ctx?.setTitulo;
-  // o aoTrocar muda a cada desenho da página: a casca recebe um que não muda e chama o mais novo
+  // o aoTrocar e o menu mudam a cada desenho da página: a casca recebe os que não mudam e chama os mais novos
   const trocarAgora = useRef(aoTrocar);
-  useEffect(() => { trocarAgora.current = aoTrocar; });
+  const menuAgora = useRef(menu);
+  useEffect(() => { trocarAgora.current = aoTrocar; menuAgora.current = menu; });
   const trocar = useCallback(() => trocarAgora.current?.(), []);
   const temTrocar = !!aoTrocar;
+  // o menu só muda para a casca quando mudam os itens (o rótulo, o ícone, a linha), não a cada desenho
+  const chaveDoMenu = menu?.map(i => i.rotulo + '|' + (i.icone || '') + '|' + (i.separado ? 1 : 0)).join('¦') || '';
   useEffect(() => {
-    setTitulo?.(titulo ? { texto: titulo, selo, ...(temTrocar ? { trocar: { titulo: dicaDoTrocar, onClick: trocar } } : {}) } : SEM_TITULO);
+    const itens = chaveDoMenu ? (menuAgora.current || []).map((i, k) => ({ rotulo: i.rotulo, icone: i.icone, separado: i.separado, onClick: () => menuAgora.current?.[k]?.onClick() })) : undefined;
+    setTitulo?.(titulo ? { texto: titulo, selo, ...(temTrocar ? { trocar: { titulo: dicaDoTrocar, onClick: trocar, ...(itens ? { menu: itens } : {}) } } : {}) } : SEM_TITULO);
     return () => setTitulo?.(SEM_TITULO);
-  }, [setTitulo, titulo, selo, temTrocar, dicaDoTrocar, trocar]);
+  }, [setTitulo, titulo, selo, temTrocar, dicaDoTrocar, trocar, chaveDoMenu]);
   return null;
 }
 

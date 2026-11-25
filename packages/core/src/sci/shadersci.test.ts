@@ -49,7 +49,7 @@ describe('o lançamento', () => {
   });
 
   it('aponta o que falta', () => {
-    expect(problemasDoLancamento(LANCAMENTO_VAZIO, p113)).toEqual(['sem data', 'sem conta de débito', 'sem conta de crédito', 'sem valor', 'sem histórico', 'sem complemento', 'sem documento']);
+    expect(problemasDoLancamento(LANCAMENTO_VAZIO, p113)).toEqual(['sem data', 'sem conta de débito', 'sem conta de crédito', 'sem valor', 'sem histórico', 'sem documento']);
     expect(problemasDoLancamento({ ...base, debito: '15' }, p113)).toContain('a conta 15 é sintética (só a analítica recebe lançamento)');
     expect(problemasDoLancamento({ ...base, debito: '99999' }, p113)).toContain('a conta 99999 não está no plano');
     expect(problemasDoLancamento({ ...base, credito: '5' }, p113)).toContain('débito e crédito na mesma conta');
@@ -57,9 +57,11 @@ describe('o lançamento', () => {
     expect(problemasDoLancamento({ ...base, historico: '3' }, p113)).toContain('o histórico 3 não está no plano de históricos');
   });
 
-  // 24/11/2026: "Campos obrigatorios para o lançamento do documento: Data, Valor, debito, crédito, numero do historico, complemento, documento"
-  it('pede o complemento e o documento, menos o complemento do histórico que pula', () => {
-    expect(problemasDoLancamento({ ...base, complemento: '', documento: '' }, p113)).toEqual(['sem complemento', 'sem documento']);
+  // 24/11/2026: "Campos obrigatorios para o lançamento do documento: Data, Valor, debito, crédito, numero do historico, complemento, documento";
+  // no mesmo dia, "o complemento nao e obrigatorio"
+  it('pede o documento; o complemento é opcional', () => {
+    expect(problemasDoLancamento({ ...base, complemento: '', documento: '' }, p113)).toEqual(['sem documento']);
+    expect(problemasDoLancamento({ ...base, complemento: '' }, p113)).toEqual([]);
     // o 159 (Débito tarifa bancária cfe. extrato) pula o complemento
     expect(problemasDoLancamento({ ...base, historico: '159', complemento: '' }, p113)).toEqual([]);
   });

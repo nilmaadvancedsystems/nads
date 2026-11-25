@@ -10,3 +10,4 @@ export * from './regras/historicos';
 export * from './regras/dias';
 export * from './regras/dePara';
 export * from './regras/balancete';
+export * from './regras/consulta';

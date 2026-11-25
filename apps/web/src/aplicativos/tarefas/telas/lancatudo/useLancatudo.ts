@@ -33,11 +33,12 @@ export function useLancatudo(soAs?: ReadonlySet<number> | null) {
   const competencia = /^\d{4}-\d{2}$/.test(params.get('c') || '') ? (params.get('c') as string) : mesPassado();
   const banco = params.get('b') || null;
 
-  const mudar = (novos: Record<string, string | null>) => setParams(p => {
+  /** substituir: troca o endereço sem criar um passo no Voltar do navegador */
+  const mudar = (novos: Record<string, string | null>, substituir = false) => setParams(p => {
     const n = new URLSearchParams(p);
     for (const [k, v] of Object.entries(novos)) { if (v) n.set(k, v); else n.delete(k); }
     return n;
-  });
+  }, { replace: substituir });
   const escolher = (e: { codigo: number | string | null }) => { if (e.codigo == null) return; setBusca(''); setAtivo(0); mudar({ e: String(e.codigo), b: null }); };
 
   return {
@@ -52,5 +53,9 @@ export function useLancatudo(soAs?: ReadonlySet<number> | null) {
     trocarEmpresa: () => mudar({ e: null, b: null }),
     setCompetencia: (c: string) => { if (c) mudar({ c }); },
     setBanco: (b: string) => mudar({ b }),
+    /** muda vários do endereço de uma vez (o minimum: a empresa e o app aberto juntos) */
+    mudarNoEndereco: mudar,
+    /** o que está no endereço (o minimum: o app aberto, ?m=) */
+    doEndereco: (k: string) => params.get(k),
   };
 }
