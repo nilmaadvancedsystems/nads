@@ -6,7 +6,7 @@
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
 import { carteira, tarefas as t, usuarios, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
-import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
+import { PAGINAS_NO_MENU } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
 import { novidadeLigada } from '../../../comum/novidades';
 import { modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
@@ -233,9 +233,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): os Usuários (as pessoas e a proteção
     // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
     { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
-    ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
-    // a releitura dos extratos de todas as empresas (10/11/2026): só aqui, onde o leitor de PDF e o OCR rodam
-    { id: 'releitura', rotulo: 'Releitura dos extratos', icone: 'fileSearch', titulo: 'Releitura dos extratos', secao: 'Admin', soAdmin: true },
+    // a Visão geral, o Robô, a Saúde dos robôs, o Uso do sistema, o Sistema e agentes e a Releitura dos extratos saíram do menu
+    // (25/11/2026: "remove isso"); as telas continuam no código
+    ...PAGINAS_NO_MENU.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
   ] },
   // as Ferramentas (30/10/2026: "um botão de Ferramentas ao lado da engrenagem"): utilitários de documentos que rodam no
   // navegador (PDF: separar, juntar, girar, tirar páginas, virar imagem ou texto; planilhas). Sem entrada na gaveta: o botão
