@@ -70,7 +70,6 @@ export function ControleDoContabil() {
     <section className="dp-painel cc">
       <div className="tarefas-barra-topo dp-filtros-linha">
         <span className="btn btn-primary cc-ano" title="O Controle Forestry é o de 2026"><Icone nome="calendar" />{vm.ano}</span>
-        <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
         <MenuDeFiltro rotulo="Situação" valor={f.situacao} mudar={f.setSituacao} opcoes={f.situacoes} todos="Todas" />
         <MenuDeFiltro rotulo="Regime" valor={f.regime} mudar={f.setRegime} opcoes={f.regimes} />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}

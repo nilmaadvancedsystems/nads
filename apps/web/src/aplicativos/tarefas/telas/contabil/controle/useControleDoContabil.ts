@@ -51,7 +51,6 @@ export function useControleDoContabil() {
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState('');
   const [regime, setRegime] = useState('');
-  const [responsavel, setResponsavel] = useState('');
   const [previa, setPrevia] = useState<PreviaDaImportacao | null>(null);
   const [importando, setImportando] = useState(false);
 
@@ -105,8 +104,7 @@ export function useControleDoContabil() {
 
   const q = semAcento(busca.trim());
   const linhas = todas.filter(r => (!q || semAcento(r.nome).includes(q) || String(r.codigo).startsWith(q) || semAcento(r.linha.observacao).includes(q))
-    && (!situacao || r.situacao === situacao) && (!regime || r.regime === regime)
-    && (!responsavel || (responsavel === '-' ? !r.responsavel : r.responsavel === responsavel)));
+    && (!situacao || r.situacao === situacao) && (!regime || r.regime === regime));
   const contar = (s: t.SituacaoContabil) => todas.filter(r => r.situacao === s).length;
 
   async function gravar(l: t.LinhaDoControleContabil) {
@@ -132,7 +130,6 @@ export function useControleDoContabil() {
   // as do Cadastro que ainda não estão no controle (para o + Empresa) e as da pessoa (o Trazer as minhas)
   const foraDoControle = lista.linhas.filter(l => l.codigo != null && !codigosNoControle.has(l.codigo));
   const minhasFora = op ? foraDoControle.filter(l => daPessoa.e({ nome: l.nome, codigo: l.codigo }, 'contabil')) : [];
-  const responsaveis = [...new Set(todas.map(r => r.responsavel).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const regimes = [...new Set(todas.map(r => r.regime).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   return {
@@ -144,11 +141,10 @@ export function useControleDoContabil() {
     esperado, rotuloEsperado: esperado ? t.rotuloDoMesFeito(esperado) : '',
     meses: t.MESES_DO_CONTROLE.map((m, i) => ({ valor: i + 1, rotulo: m })),
     filtros: {
-      busca, setBusca, situacao, setSituacao, regime, setRegime, responsavel, setResponsavel,
+      busca, setBusca, situacao, setSituacao, regime, setRegime,
       situacoes: t.SITUACOES_CONTABEIS, regimes,
-      responsaveis: [...responsaveis.map(r => ({ valor: r, rotulo: r })), { valor: '-', rotulo: 'Sem responsável' }],
-      algum: !!(busca || situacao || regime || responsavel),
-      limpar: () => { setBusca(''); setSituacao(''); setRegime(''); setResponsavel(''); },
+      algum: !!(busca || situacao || regime),
+      limpar: () => { setBusca(''); setSituacao(''); setRegime(''); },
     },
     total: todas.length, linhas,
     resumo: { emDia: contar('em-dia'), atrasadas: contar('atrasada'), naoIniciadas: contar('nao-iniciada'), pausadas: contar('pausada') },
