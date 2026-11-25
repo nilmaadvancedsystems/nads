@@ -432,9 +432,10 @@ export function DepartamentoPessoal(props: DaCasca) {
       {/* a equipe na largura toda; a ficha abre numa janela flutuante (12/11/2026: "prefiro janela flutuante do que essa
           lateral") */}
       {vm.aba === 'equipe' && <section className="card cli-reg-equipe">
-        {vm.temFuncionarios ? (
+        {vm.temFuncionarios || vm.temRhNet ? (
           <>
-            <div className="cli-reg-equipe-topo">
+            {/* os filtros e a busca só com funcionário pelas guias (só com o sócio do RH NET, não há o que filtrar) */}
+            {vm.temFuncionarios && <div className="cli-reg-equipe-topo">
               <div className="cli-sol-filtros" role="tablist" aria-label="Equipe">
                 <button type="button" role="tab" aria-selected={!vm.mostrarSaidas} className={'cli-sol-filtro' + (!vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verAtivos}>Ativos<b>{vm.ativosN}</b></button>
                 <button type="button" role="tab" aria-selected={vm.mostrarSaidas} className={'cli-sol-filtro' + (vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verSaidas}>Inativos<b>{vm.saidas}</b></button>
@@ -443,8 +444,8 @@ export function DepartamentoPessoal(props: DaCasca) {
                 <Icone nome="search" width={16} height={16} />
                 <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Nome, CPF ou matrícula" aria-label="Buscar funcionário" />
               </label>
-            </div>
-            {vm.funcionarios.length ? (
+            </div>}
+            {vm.funcionarios.length || vm.rhnet.length ? (
               <ul className="cli-eq-grade">
                 {vm.funcionarios.map(f => (
                   <li key={f.id}>
@@ -468,28 +469,29 @@ export function DepartamentoPessoal(props: DaCasca) {
                     </button>
                   </li>
                 ))}
+                {/* (25/11/2026: "integra isso mais bonito") quem está no sistema de folha da SCI (RH NET): o mesmo cartão,
+                    sem salário; o tipo embaixo do nome (o sócio do pró-labore), o selo só enquanto não está na folha e, no pé,
+                    a entrada e o tempo na empresa (ou o CPF mascarado, enquanto aguarda) */}
+                {vm.rhnet.map(c => (
+                  <li key={c.id}>
+                    <div className="cli-eq-cartao cli-rg2 cli-rg2-fixo">
+                      <span className="cli-rg2-topo">
+                        <Avatar nome={c.nome} tamanho={44} />
+                        <span className="cli-rg2-quem"><b>{c.nome}</b><span className="hint">{c.tipo}</span></span>
+                        {c.selo && <span className={'cli-eq-ferias t-' + c.selo.tom}>{c.selo.rotulo}</span>}
+                      </span>
+                      <span className="cli-rg2-pe">
+                        <span className="cli-rg2-dado"><small>Entrada</small><b>{c.pe.entrada}</b></span>
+                        <span className="cli-rg2-dado"><small>{c.pe.rotulo}</small><b>{c.pe.valor}</b></span>
+                      </span>
+                    </div>
+                  </li>
+                ))}
               </ul>
             ) : vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
               : <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Nenhum funcionário inativo.' : 'Nenhum funcionário ativo.'}</p>}
           </>
-        ) : vm.rhnet.length ? null : <Vazio icone="equipe" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
-        {/* o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): o nome, o tipo, o CPF
-            mascarado, a entrada e a situação, sem salário */}
-        {vm.rhnet.length > 0 && (
-          <div className="cli-rh">
-            <h4 className="cli-rh-titulo">No RH NET (SCI)</h4>
-            <ul className="cli-rh-lista">
-              {vm.rhnet.map(c => (
-                <li key={c.id} className="cli-rh-linha">
-                  <Avatar nome={c.nome} tamanho={36} />
-                  <span className="cli-rh-quem"><b>{c.nome}</b><span className="hint">{[c.tipo, c.cpf].filter(Boolean).join(' · ')}</span></span>
-                  <span className="cli-rh-entrada hint">{c.entrada ? 'Desde ' + c.entrada : ''}</span>
-                  <span className={'cli-eq-ferias t-' + c.tom}>{c.situacao}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        ) : <Vazio icone="equipe" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
       </section>}
 
       {/* as férias de cada um (13/11/2026: os avisos de férias): a vencida primeiro, com o Programar férias */}

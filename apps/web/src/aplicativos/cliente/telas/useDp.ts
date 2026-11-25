@@ -91,6 +91,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
     podeBaixar: d.partes > 0 || !!d.sobPedido,
   });
   const b = sem(busca.trim());
+  // o RH NET da SCI (25/11/2026): quem não está já pelas guias do FGTS (o mesmo CPF mascarado)
+  const doRh = (area.pessoal?.rhnet ?? []).filter(c => !c.cpf || !funcionarios.some(f => f.cpf === c.cpf))
+    .map(c => ({ ...c, naFolha: c.situacao === 'Na folha', socio: /^Sócio/.test(c.tipo) }));
   // a equipe: os ativos ou quem saiu (um ou outro), com a busca
   const visiveis = funcionarios.filter(f => (mostrarSaidas ? !f.ativo : f.ativo) && (!b || sem(f.nome + ' ' + f.cpf + ' ' + f.matricula).includes(b)))
     .sort((x, y) => nomeDaPessoa(x.nome).localeCompare(nomeDaPessoa(y.nome)));
@@ -149,7 +152,7 @@ export function useDp({ token, area, hoje }: DaCasca) {
     // (16/11/2026: "muita informação") a nota do pé das férias numa frase; os três cartões de número viram dois fatos
     // curtos embaixo do título
     notaDasFerias: notaDasFerias(feriasFonte),
-    resumo: resumoDoRegistro({ ativos: funcionarios.filter(f => f.ativo).length, paraTirar: feriasParaTirar, urgentes: feriasUrgentes }),
+    resumo: resumoDoRegistro({ ativos: funcionarios.filter(f => f.ativo).length + doRh.filter(c => c.naFolha && !c.socio).length, paraTirar: feriasParaTirar, urgentes: feriasUrgentes, socios: doRh.filter(c => c.naFolha && c.socio).length }),
     feriasDoFuncionario: (id: string) => { const x = feriasDe.get(id); return x ? { rotulo: ROTULO_DAS_FERIAS[x.situacao], tom: TOM_DAS_FERIAS[x.situacao], texto: x.texto } : null; },
     // o custo da folha
     // as colunas do custo, no mesmo gráfico do Faturamento
@@ -188,9 +191,18 @@ export function useDp({ token, area, hoje }: DaCasca) {
     competencia: mesBr(area.pessoal?.competencia ?? ''),
     temFuncionarios: funcionarios.length > 0,
     // o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): sem salário, o CPF mascarado
-    rhnet: (area.pessoal?.rhnet ?? []).map(c => ({
-      id: c.id, nome: nomeDaPessoa(c.nome), tipo: c.tipo, cpf: c.cpf, entrada: c.entrada ? dataBr(c.entrada) : '', situacao: c.situacao,
-      tom: c.situacao === 'Na folha' ? 'ok' : c.situacao === 'Recusado' ? 'bad' : 'warn',
+    // o cadastro no RH NET da SCI (25/11/2026; "integra isso mais bonito"): no mesmo cartão da equipe, sem salário. Quem
+    // já está pelas guias do FGTS (o mesmo CPF mascarado) não aparece duas vezes
+    temRhNet: doRh.length > 0,
+    rhnet: mostrarSaidas ? [] : doRh.filter(c => !b || sem(c.nome).includes(b) || c.cpf.includes(busca.trim())).map(c => ({
+      id: c.id, nome: nomeDaPessoa(c.nome), tipo: c.tipo || 'Funcionário',
+      // o selo só quando pede atenção: ainda não está na folha
+      selo: c.naFolha ? null : c.situacao === 'Recusado' ? { rotulo: 'Recusada', tom: 'ruim' } : c.situacao === 'Indo para a folha' ? { rotulo: 'Liberada', tom: 'neutro' } : { rotulo: 'Em admissão', tom: 'atencao' },
+      pe: {
+        entrada: c.entrada ? dataBr(c.entrada) : '—',
+        rotulo: c.naFolha ? 'Na empresa há' : 'CPF',
+        valor: c.naFolha ? (c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '—') : c.cpf || '—',
+      },
     })),
     funcionarios: visiveis.map(f => ({
       id: f.id, nome: nomeDaPessoa(f.nome), iniciais: iniciais(nomeDaPessoa(f.nome)), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),

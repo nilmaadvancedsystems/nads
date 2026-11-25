@@ -114,11 +114,6 @@
 @media (min-width:760px){.modal.modal-centro .cli-pd .cli-dm-motivos{grid-template-columns:repeat(3,minmax(0,1fr));}}
 .modal.modal-centro > .cli-app.cli-pedido.cli-pd{scrollbar-gutter:auto;}
 
-/* o cadastro no RH NET da SCI na aba Equipe (25/11/2026) */
-.cli-rh { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line, rgba(127, 127, 127, .2)); }
-.cli-rh-titulo { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
-.cli-rh-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.cli-rh-linha { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 12px; }
-.cli-rh-quem { display: flex; flex-direction: column; min-width: 0; }
-.cli-rh-quem b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 560px) { .cli-rh-linha { grid-template-columns: auto 1fr auto; } .cli-rh-entrada { display: none; } }
+/* o cartão do RH NET da SCI na grade da equipe (25/11/2026: "integra isso mais bonito"): o mesmo cartão, sem clique */
+.cli-app .cli-eq-cartao.cli-rg2.cli-rg2-fixo{cursor:default;}
+.cli-app .cli-eq-cartao.cli-rg2.cli-rg2-fixo:hover{border-color:var(--cli-linha);box-shadow:none;transform:none;}

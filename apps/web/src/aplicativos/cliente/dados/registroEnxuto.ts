@@ -9,10 +9,15 @@ export type TrechoDoRegistro = { valor: string; depois: string; tom?: 'atencao';
  * O resumo do Registro, no máximo dois fatos: quantos estão ativos e, das férias, a mais urgente (as que vencem logo ou
  * já venceram) ou, sem urgência, quantas dá para tirar. Sem ninguém ativo, só o primeiro.
  */
-export function resumoDoRegistro(n: { ativos: number; paraTirar: number; urgentes: number }): TrechoDoRegistro[] {
-  const trechos: TrechoDoRegistro[] = [{ valor: String(n.ativos), depois: n.ativos === 1 ? 'funcionário ativo' : 'funcionários ativos' }];
+export function resumoDoRegistro(n: { ativos: number; paraTirar: number; urgentes: number; socios?: number }): TrechoDoRegistro[] {
+  // (25/11/2026) o sócio do pró-labore (do RH NET) conta à parte; com sócio e sem funcionário, só ele aparece
+  const socios = n.socios ?? 0;
+  const trechos: TrechoDoRegistro[] = n.ativos > 0 || !socios ? [{ valor: String(n.ativos), depois: n.ativos === 1 ? 'funcionário ativo' : 'funcionários ativos' }] : [];
+  const doSocio: TrechoDoRegistro | null = socios ? { valor: String(socios), depois: socios === 1 ? 'sócio no pró-labore' : 'sócios no pró-labore' } : null;
   if (n.urgentes > 0) trechos.push({ valor: String(n.urgentes), depois: 'com férias para tirar logo', tom: 'atencao', aba: 'ferias' });
   else if (n.paraTirar > 0) trechos.push({ valor: String(n.paraTirar), depois: 'com férias para tirar', aba: 'ferias' });
+  // no máximo dois fatos (16/11/2026): o sócio entra se sobrar lugar
+  if (doSocio && trechos.length < 2) trechos.push(doSocio);
   return trechos;
 }
 
