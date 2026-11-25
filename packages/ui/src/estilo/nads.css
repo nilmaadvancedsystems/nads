@@ -8844,3 +8844,11 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .registro-topo .sci-busca-plano{margin-bottom:0;}
 .sci-plano{max-height:50vh;overflow:auto;}
 @media (max-width:900px){.sci-form{grid-template-columns:1fr 1fr;}.sci-form .sci-largo{grid-column:1/-1;}}
+/* a Tarefas a 90% nas telas médias (25/11/2026: "nesse monitor de 1366x768 parece ta tudo meio grande, ajuste isso"): de 1100 a
+   1439px de largura, a página inteira encolhe junto. O que se põe num ponto da tela pelo JavaScript divide pelo zoom
+   (zoomDaPagina: o menu flutuante, o do botão direito e o arrastar das colunas) */
+@media (min-width:1100px) and (max-width:1439px){
+  html[data-tarefas]{zoom:.9;}
+  /* o 100vh também encolhe com o zoom: a casca volta a ocupar a tela inteira, sem a faixa vazia embaixo do rodapé */
+  html[data-tarefas] body,html[data-tarefas] #app{min-height:calc(100vh / .9);min-height:calc(100dvh / .9);}
+}
