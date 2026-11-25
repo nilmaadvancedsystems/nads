@@ -38,8 +38,11 @@ export function useGuiasDoSci(token: string, mes: string) {
   }
 
   return {
-    /** o card aparece quando a empresa tem alguma guia no SCI Report (em qualquer mês da janela) ou quando deu erro */
-    mostra: todas.length > 0 || r?.estado === 'erro',
+    /**
+     * o card aparece só quando a empresa tem alguma guia no SCI Report (em qualquer mês da janela). Erro não mostra o card
+     * (25/11/2026): com a função ainda não publicada, ou a SCI fora do ar, o cliente não vê um cartão de erro à toa
+     */
+    mostra: todas.length > 0,
     erro: r?.estado === 'erro' ? r.mensagem : '',
     guias: todas.filter(g => mesDaData(g.vencimento) === mes),
     abrindo, abrir: (id: string) => void abrir(id),
