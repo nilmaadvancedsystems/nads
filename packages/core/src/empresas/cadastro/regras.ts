@@ -9,6 +9,7 @@ import { receitaDoDocumento } from './receitaNoCadastro';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaDoRazao, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
+  type AjusteDaEtapa, type AjustesDasEtapas, type RegimeDesde, type SetorDoAjuste,
   type LembreteDaEmpresa, type PlanoDoSci, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
 } from './tipos';
 
@@ -303,6 +304,8 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...lembreteDoDocumento(doc.lembreteVencimento),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
+    ...regimesDoDocumento(doc.regimes),
+    ...ajustesDoDocumento(doc.etapas),
     ...(/^(\d{11}|\d{14})$/.test(texto(doc.cnpj)) ? { cnpj: texto(doc.cnpj) } : {}),
     ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
@@ -334,6 +337,8 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.lembreteVencimento ? { lembreteVencimento: c.lembreteVencimento } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
+    ...(c.regimes?.length ? { regimes: c.regimes } : {}),
+    ...(c.etapas && Object.values(c.etapas).some(d => d && Object.keys(d).length) ? { etapas: c.etapas } : {}),
     ...(c.cnpj ? { cnpj: c.cnpj } : {}),
     ...(c.contato && (c.contato.email || c.contato.whatsapp || c.contato.outrosEmails?.length) ? { contato: c.contato } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
@@ -1122,13 +1127,153 @@ export function regimeDoCadastro(c: Pick<CadastroDaEmpresa, 'regime' | 'nova'>):
   return c.regime || c.nova?.regime || '';
 }
 
-/** Escolhe o regime (null = volta para o da lista do escritório). Registra no histórico. */
+/**
+ * Escolhe o regime (null = volta para o da lista do escritório). Registra no histórico. Com as trocas datadas (ficha
+ * E10), escolher um regime vale a partir deste mês (os meses passados não mudam); voltar para o da lista tira as datas.
+ */
 export function definirRegime(c: CadastroDaEmpresa, regime: Regime | null, por: string, agora: Date): CadastroDaEmpresa {
-  if ((c.regime ?? null) === regime) return c;
+  if (regime != null && c.regimes?.length) return mudarRegime(c, regime, competenciaDoMes(agora), c.regime || '', por, agora);
+  if ((c.regime ?? null) === regime && !c.regimes) return c;
   const resto: CadastroDaEmpresa = { ...c };
   delete resto.regime;
+  delete resto.regimes;
   const novo = regime == null ? resto : { ...resto, regime };
   return registrar(novo, por, agora, 'Regime', (c.regime || 'Da lista') + ' → ' + (regime || 'Da lista'));
+}
+
+// ─── o regime com data de início (plano do Acessórias, ficha E10) ───────────────────────────────────────────────────
+
+const COMPETENCIA = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** A competência ('aaaa-mm') de uma data, no horário local. */
+export function competenciaDoMes(d: Date): string {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/** 'aaaa-mm' → 'mm/aaaa' ('' = desde o início). */
+export function competenciaLegivel(competencia: string): string {
+  return competencia ? competencia.slice(5, 7) + '/' + competencia.slice(0, 4) : 'desde o início';
+}
+
+function regimesDoDocumento(v: unknown): { regimes?: RegimeDesde[] } {
+  if (!Array.isArray(v)) return {};
+  const l = (v as Record<string, unknown>[])
+    .map(x => ({ regime: texto(x?.regime), desde: texto(x?.desde) }))
+    .filter(x => REGIMES.includes(x.regime as Regime) && (x.desde === '' || COMPETENCIA.test(x.desde)))
+    .sort((a, b) => a.desde.localeCompare(b.desde));
+  return l.length ? { regimes: l } : {};
+}
+
+/**
+ * O regime da empresa numa competência: o da última troca até ela; antes de todas as trocas (ou sem trocas), o do
+ * cadastro. '' = o cadastro não diz (vale o da lista do escritório).
+ */
+export function regimeNaCompetencia(c: Pick<CadastroDaEmpresa, 'regime' | 'regimes' | 'nova'>, competencia: string): string {
+  let r = '';
+  for (const x of c.regimes || []) if (x.desde <= competencia) r = x.regime;
+  return r || regimeDoCadastro(c);
+}
+
+/**
+ * Troca o regime a partir de uma competência (os meses antes dela seguem no regime anterior). anterior: o regime que
+ * valia até agora (o do cadastro, do Entregas ou da lista do escritório), guardado como "desde o início" na primeira
+ * troca, para os meses passados não mudarem. Quando a troca já vale (mês atual ou anterior), `regime` passa a ser o novo.
+ */
+export function mudarRegime(c: CadastroDaEmpresa, regime: Regime, desde: string, anterior: string, por: string, agora: Date): CadastroDaEmpresa {
+  if (!COMPETENCIA.test(desde)) throw new Error('A competência "' + desde + '" está fora do formato aaaa-mm.');
+  const base: RegimeDesde[] = c.regimes?.length ? c.regimes.filter(x => x.desde !== desde)
+    : anterior && anterior !== regime && REGIMES.includes(anterior as Regime) ? [{ regime: anterior, desde: '' }] : [];
+  const lista = juntarRegimes([...base, { regime, desde }]);
+  const hoje = regimeNaCompetencia({ regimes: lista }, competenciaDoMes(agora));
+  const novo: CadastroDaEmpresa = { ...c, regimes: lista, ...(hoje ? { regime: hoje } : {}) };
+  if (JSON.stringify(c.regimes || []) === JSON.stringify(lista) && c.regime === novo.regime) return c;
+  return registrar(novo, por, agora, 'Regime', (anterior || 'Da lista') + ' → ' + regime + ', a partir de ' + competenciaLegivel(desde));
+}
+
+/** Desfaz uma troca de regime (pela competência). Sobrando uma só, a lista some (vale `regime`). */
+export function tirarMudancaDeRegime(c: CadastroDaEmpresa, desde: string, por: string, agora: Date): CadastroDaEmpresa {
+  const saiu = c.regimes?.find(x => x.desde === desde);
+  if (!saiu || !c.regimes) return c;
+  const lista = juntarRegimes(c.regimes.filter(x => x !== saiu));
+  const hoje = regimeNaCompetencia({ regimes: lista }, competenciaDoMes(agora));
+  const novo: CadastroDaEmpresa = { ...c, ...(hoje ? { regime: hoje } : {}) };
+  if (lista.length > 1) novo.regimes = lista; else delete novo.regimes;
+  return registrar(novo, por, agora, 'Regime', 'Desfeita a troca para ' + saiu.regime + ' de ' + competenciaLegivel(desde));
+}
+
+/** Em ordem, sem duas seguidas do mesmo regime (a segunda não muda nada). */
+function juntarRegimes(l: readonly RegimeDesde[]): RegimeDesde[] {
+  const ordem = [...l].sort((a, b) => a.desde.localeCompare(b.desde));
+  return ordem.filter((x, i) => i === 0 || ordem[i - 1].regime !== x.regime);
+}
+
+// ─── as etapas de cada empresa (plano do Acessórias, ficha E08) ─────────────────────────────────────────────────────
+
+export const SETORES_DO_AJUSTE: readonly SetorDoAjuste[] = ['fiscal', 'contabil'];
+const NOME_DO_SETOR: Record<SetorDoAjuste, string> = { fiscal: 'Fiscal', contabil: 'Contábil' };
+
+function ajusteDoDocumento(v: unknown): AjusteDaEtapa | null {
+  if (!v || typeof v !== 'object') return null;
+  const x = v as Record<string, unknown>;
+  const a: AjusteDaEtapa = {};
+  if (typeof x.ligada === 'boolean') a.ligada = x.ligada;
+  if (typeof x.dia === 'number' && Number.isInteger(x.dia) && x.dia >= 1 && x.dia <= 31) a.dia = x.dia;
+  if (a.ligada === undefined && a.dia === undefined) return null;
+  if (COMPETENCIA.test(texto(x.desde))) a.desde = texto(x.desde);
+  return a;
+}
+
+function ajustesDoDocumento(v: unknown): { etapas?: AjustesDasEtapas } {
+  if (!v || typeof v !== 'object') return {};
+  const etapas: AjustesDasEtapas = {};
+  for (const setor of SETORES_DO_AJUSTE) {
+    const dentro = (v as Record<string, unknown>)[setor];
+    if (!dentro || typeof dentro !== 'object') continue;
+    const m: Record<string, AjusteDaEtapa> = {};
+    for (const [etapa, a] of Object.entries(dentro as Record<string, unknown>)) {
+      const ok = ajusteDoDocumento(a);
+      if (ok && etapa) m[etapa] = ok;
+    }
+    if (Object.keys(m).length) etapas[setor] = m;
+  }
+  return Object.keys(etapas).length ? { etapas } : {};
+}
+
+/** O ajuste de uma etapa que vale na competência (o `desde` ainda não chegou = não vale); null = vale a rotina. */
+export function ajusteQueVale(etapas: AjustesDasEtapas | undefined, setor: string, etapa: string, competencia: string): AjusteDaEtapa | null {
+  const a = etapas?.[setor as SetorDoAjuste]?.[etapa];
+  if (!a || (a.desde && competencia < a.desde)) return null;
+  return a;
+}
+
+/** "não tem, desde 11/2026" / "tem · prazo dia 15" / "como a rotina". */
+export function ajusteLegivel(a: AjusteDaEtapa | null | undefined): string {
+  if (!a) return 'como a rotina';
+  const partes = [a.ligada === true ? 'tem' : a.ligada === false ? 'não tem' : '', a.dia ? 'prazo dia ' + a.dia : ''].filter(Boolean);
+  return partes.join(' · ') + (a.desde ? ', desde ' + competenciaLegivel(a.desde) : '');
+}
+
+/**
+ * Ajusta uma etapa nesta empresa (null ou sem `ligada` e sem `dia` = volta para a rotina). nome: o nome da etapa, para o
+ * histórico ("Fiscal › ISS: não tem, desde 11/2026"). A tela só oferece as etapas da rotina do setor.
+ */
+export function ajustarEtapa(c: CadastroDaEmpresa, setor: SetorDoAjuste, etapa: string, ajuste: AjusteDaEtapa | null, nome: string, por: string, agora: Date): CadastroDaEmpresa {
+  if (!SETORES_DO_AJUSTE.includes(setor)) throw new Error('O setor "' + setor + '" não tem ajuste de etapa.');
+  if (!etapa) throw new Error('Falta a etapa.');
+  if (ajuste?.dia !== undefined && (!Number.isInteger(ajuste.dia) || ajuste.dia < 1 || ajuste.dia > 31)) throw new Error('O dia do prazo vai de 1 a 31.');
+  if (ajuste?.desde && !COMPETENCIA.test(ajuste.desde)) throw new Error('A competência "' + ajuste.desde + '" está fora do formato aaaa-mm.');
+  const limpo: AjusteDaEtapa | null = ajuste && (ajuste.ligada !== undefined || ajuste.dia !== undefined)
+    ? { ...(ajuste.ligada !== undefined ? { ligada: ajuste.ligada } : {}), ...(ajuste.dia !== undefined ? { dia: ajuste.dia } : {}), ...(ajuste.desde ? { desde: ajuste.desde } : {}) }
+    : null;
+  const antes = c.etapas?.[setor]?.[etapa] || null;
+  if (JSON.stringify(antes) === JSON.stringify(limpo)) return c;
+  const doSetor = { ...(c.etapas?.[setor] || {}) };
+  if (limpo) doSetor[etapa] = limpo; else delete doSetor[etapa];
+  const etapas: AjustesDasEtapas = { ...(c.etapas || {}), [setor]: doSetor };
+  if (!Object.keys(doSetor).length) delete etapas[setor];
+  const novo: CadastroDaEmpresa = { ...c, etapas };
+  if (!Object.keys(etapas).length) delete novo.etapas;
+  return registrar(novo, por, agora, 'Obrigação', NOME_DO_SETOR[setor] + ' › ' + (nome || etapa) + ': ' + ajusteLegivel(limpo));
 }
 
 /**

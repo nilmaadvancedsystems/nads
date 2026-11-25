@@ -85,6 +85,12 @@ export const NOVIDADES = {
   /** o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando no nads): o mês feito de cada empresa no ano,
    *  a situação e a pendência; o Contábil e o admin no modo desenvolvedor, e o Fernando também fora dele ("Fernando primeiro") */
   'controle-contabil': { desde: '23/11/2026', aprovada: true },
+  /** Cadastro › Obrigações (25/11/2026, plano do Acessórias, ficha E08): ligar, desligar e mudar o dia do prazo de uma etapa só
+   *  numa empresa, a partir de uma competência; e o regime com "a partir de" (ficha E10) em Fiscal › Parâmetros */
+  'obrigacoes-por-empresa': { desde: '25/11/2026', aprovada: false },
+  /** a troca de responsável mostra o que está pendente em cada empresa (25/11/2026, plano do Acessórias, ficha M02): o selo na
+   *  janela Trocar empresas, o "Vão junto" na frase e o "Vêm pendentes" no cartão de aceite */
+  'pendencias-na-troca': { desde: '25/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

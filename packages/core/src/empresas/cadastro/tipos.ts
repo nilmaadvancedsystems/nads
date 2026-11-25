@@ -165,6 +165,27 @@ export type ReceitaNoCadastro = Partial<Omit<RetratoDaReceita, 'consultadoEm'>> 
 /** Os planos de contas padrão do SCI (os mesmos do minimum). */
 export type PlanoDoSci = '90113' | '90011';
 
+/** Um regime e a competência em que ele passou a valer (ficha E10). */
+export interface RegimeDesde {
+  regime: string;
+  /** 'aaaa-mm' */
+  desde: string;
+}
+
+/** O ajuste de uma etapa numa empresa (plano do Acessórias, ficha E08). Sem = vale a rotina do código. */
+export interface AjusteDaEtapa {
+  /** true = a empresa tem a etapa mesmo fora do regime ou do mês; false = não tem; sem = o padrão */
+  ligada?: boolean;
+  /** outro dia do prazo legal, só desta empresa (1 a 31) */
+  dia?: number;
+  /** a partir de qual competência vale ('aaaa-mm'); sem = sempre */
+  desde?: string;
+}
+
+/** Os setores que têm ajuste de etapa por empresa (o DP usa as Configurações do DP). */
+export type SetorDoAjuste = 'fiscal' | 'contabil';
+export type AjustesDasEtapas = Partial<Record<SetorDoAjuste, Record<string, AjusteDaEtapa>>>;
+
 export interface CadastroDaEmpresa {
   /** o nome de sempre: é a CHAVE da empresa (nunca muda). Para mostrar, vale a razão social (razaoSocialDoCadastro) */
   nome: string;
@@ -232,6 +253,17 @@ export interface CadastroDaEmpresa {
    * Presumido e no Real). Sem = o da lista.
    */
   regime?: string;
+  /**
+   * O regime com data de início (plano do Acessórias, ficha E10): cada troca com a competência em que passa a valer
+   * ('aaaa-mm'), em ordem. A rotina de cada mês usa o regime daquele mês (regimeNaCompetencia); `regime` continua sendo o
+   * de hoje. Sem lista = vale `regime` em qualquer mês.
+   */
+  regimes?: RegimeDesde[];
+  /**
+   * As etapas que esta empresa tem de diferente da rotina (plano do Acessórias, ficha E08), por setor e pelo id da etapa.
+   * Sem = vale a rotina do código (pelo regime e pelo mês). O DP fica de fora: ele já tem as Configurações do DP.
+   */
+  etapas?: AjustesDasEtapas;
   /**
    * o CNPJ (só os números), quando a empresa foi cadastrada pela consulta da Receita (13/10/2026), ou digitado nas
    * Configurações do DP (20/10/2026); do cliente pessoa física, o CPF (11 números)
