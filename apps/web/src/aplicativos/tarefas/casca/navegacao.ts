@@ -65,15 +65,15 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // o ShadersCI (23/11/2026: "Quero fazer uma aba de lançamento mais clean, a do meu sistema SCI é horrivel"): os lançamentos digitados
   // para o SCI, pelos planos padrão 90113 e 90011, e a planilha do gerador do SCI; uma tela só, sem a barra lateral. O Contábil e o
-  // admin, no modo desenvolvedor até o Vitor aprovar (a novidade 'shadersci'); 24/11/2026: "ShadersCI troca para minimum, o nome"
+  // admin; 24/11/2026: "ShadersCI troca para minimum, o nome"; na versão final desde 25/11/2026, só com os Lançamentos (o Extratudo
+  // fica no modo desenvolvedor: useShadersCi)
   // o m da logo do minimum no lugar do ícone, na gaveta (25/11/2026: "Coloca o m de minimum, na logo do menu lateral")
   { id: 'shadersci', nome: 'minimum', icone: 'list', marca: 'minimum', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'minimum' },
   ] },
   // o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando virou módulo): até que mês a contabilidade
-  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. Na versão final para os
-  // diretores e os donos e, do Contábil, só o Fernando, sem o acesso padrão do departamento (25/11/2026: "esse pode lancar na versao
-  // final para diretores e donos. O unico contabil que vai ter acesso a esse controle vai ser o usuario fernando")
+  // de cada empresa está feita no ano, a situação e a pendência; uma tela só, sem a barra lateral. Na versão final só para o
+  // Fernando (25/11/2026: "Controle forestry somente para fernando, depois peco para liberar para algum usuario")
   // o nome (25/11/2026: "O nome da aplicacao será Controle Forestry"); o id e o banco continuam controle-contabil
   { id: 'controle-contabil', nome: 'Controle Forestry', icone: 'checklist', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Controle Forestry' },
@@ -319,7 +319,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
     (a.id !== 'shadersci' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
-    (a.id !== 'controle-contabil' || usuarios.nivelDeDiretor(op.nivel) || t.controleContabilLiberadoPara(op.nome)) &&
+    // o Controle Forestry só para quem está liberado (25/11/2026: "Controle forestry somente para fernando, depois peco para
+    // liberar para algum usuario pra nao ficar muito poluido"): nem o diretor, nem o admin
+    (a.id !== 'controle-contabil' || t.controleContabilLiberadoPara(op.nome)) &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&

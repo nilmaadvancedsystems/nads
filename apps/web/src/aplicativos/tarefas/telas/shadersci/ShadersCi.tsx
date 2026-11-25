@@ -30,7 +30,7 @@ export function ShadersCi() {
         // o clique no nome abre os outros apps e o Trocar de empresa, que volta para a escolha (25/11/2026: "Clicando nessa tela ele
         // pode sair, que vai voltar para tela inicial de selecao de empresa. Ou aparece o nome dos outros aplicativos")
         menu={vm.empresa ? [
-          ...(['lancamentos', 'extratudo', 'razao'] as const).filter(a => a !== vm.app).map(a => ({
+          ...vm.apps.filter(a => a !== vm.app).map(a => ({
             rotulo: a === 'lancamentos' ? 'Lançamentos' : a === 'extratudo' ? 'Extratudo' : 'Visualizar lançamentos',
             icone: a === 'lancamentos' ? 'list' as const : a === 'extratudo' ? 'landmark' as const : 'olho' as const, onClick: () => vm.abrirApp(a),
           })),
@@ -159,12 +159,16 @@ function AppsDaEmpresa({ vm }: { vm: VmShadersCi }) {
         <span className="sci-app-nome">Lançamentos<span className="sci-app-seta" aria-hidden="true">→</span></span>
         <span className="sci-app-desc">Digite e baixe a planilha do SCI</span>
       </button>
-      <span className="sci-apps-divisor" aria-hidden="true" />
-      <button type="button" className="sci-app" onClick={() => vm.abrirApp('extratudo')}>
-        <span className="sci-app-num">02</span>
-        <span className="sci-app-nome">Extratudo<span className="sci-app-seta" aria-hidden="true">→</span></span>
-        <span className="sci-app-desc">Conciliação bancária</span>
-      </button>
+      {vm.apps.includes('extratudo') && (
+        <>
+          <span className="sci-apps-divisor" aria-hidden="true" />
+          <button type="button" className="sci-app" onClick={() => vm.abrirApp('extratudo')}>
+            <span className="sci-app-num">02</span>
+            <span className="sci-app-nome">Extratudo<span className="sci-app-seta" aria-hidden="true">→</span></span>
+            <span className="sci-app-desc">Conciliação bancária</span>
+          </button>
+        </>
+      )}
     </nav>
   );
 }
