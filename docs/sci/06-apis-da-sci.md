@@ -66,7 +66,7 @@ O RH NET **não aceita o token do escritório**. Ele só funciona com o Token de
 | Robô da nuvem | O metadado `segredo-sci-rhnet` da VM, com `{ "583": { "token": "..." } }` |
 | Robô do PC (e o teste) | A chave `"rhnet"` no `robo/sci_credenciais.json`, no mesmo formato. Só para o teste, vale também `"empresa": "<token>"` |
 
-O Token de Parceiro é o mesmo das outras APIs. Se o token da empresa não trouxer o número dela no RH NET, acrescente `"empresaId"` ao lado do token; para liberar a planilha, também `"clienteId"`. O `node robo/rhnet.js testar <código>` diz se esses números vieram.
+O Token de Parceiro é o mesmo das outras APIs. O número da empresa no RH NET é o **código da empresa no SCI** (o mesmo do nads), e não o número do SCI WEB que vem dentro do token. O primeiro teste (25/11/2026, empresa 590) confirmou isso: com o número do token, o RH NET respondeu "Usuário não está vinculado a essa empresa"; com o código, respondeu os dados. Se o código no SCI for diferente do nads, acrescente `"empresaId"` ao lado do token. A contabilidade (`clienteId`, 17157) vem dentro do token, em `usuario.dados`.
 
 **O teste só de leitura**, quando os tokens chegarem:
 

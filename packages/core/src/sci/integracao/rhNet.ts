@@ -120,12 +120,28 @@ export function informacoesDoJwt(jwt: string): Record<string, unknown> {
 const numeroDoJwt = (jwt: string, chaves: string[]) => { const o = informacoesDoJwt(jwt); for (const k of chaves) { const n = inteiro(o[k]); if (n) return n; } return 0; };
 
 /**
- * O empresa_id que vem no JWT do Token de Cliente da empresa (as chaves mudam de nome conforme a SCI). 0 quando não tem: aí o
- * escritório informa o número na configuração do robô.
+ * Os dados do usuário dentro do JWT, como a SCI manda de verdade (visto no primeiro login, 25/11/2026):
+ * usuario: { tipo, usuarioId, dados: { clienteId, empresasVinculadas: [empresaId], acessos } }.
  */
-export const empresaIdDoJwt = (jwt: string) => numeroDoJwt(jwt, ['empresa_id', 'empresaId', 'empresa', 'emp_id']);
-/** O cliente_id (o código da contabilidade na SCI; a liberação da planilha pede) que vem no JWT; 0 quando não tem. */
-export const clienteIdDoJwt = (jwt: string) => numeroDoJwt(jwt, ['cliente_id', 'clienteId', 'cliente']);
+function dadosDoUsuarioNoJwt(jwt: string): Solto {
+  return objeto(objeto(informacoesDoJwt(jwt).usuario)?.dados) || {};
+}
+
+/**
+ * O empresa_id do Token de Cliente da empresa: o de usuario.dados.empresasVinculadas quando há uma só (com mais de uma, fica a
+ * dúvida e o escritório informa), senão as chaves soltas. 0 quando não tem: aí o escritório informa na configuração do robô.
+ */
+export function empresaIdDoJwt(jwt: string): number {
+  const vinculadas = dadosDoUsuarioNoJwt(jwt).empresasVinculadas;
+  if (Array.isArray(vinculadas)) {
+    const ids = [...new Set(vinculadas.map(inteiro).filter(Boolean))];
+    if (ids.length === 1) return ids[0];
+    if (ids.length > 1) return 0;
+  }
+  return numeroDoJwt(jwt, ['empresa_id', 'empresaId', 'empresa', 'emp_id']);
+}
+/** O cliente_id (o código da contabilidade na SCI; a liberação da planilha pede): o de usuario.dados, senão as chaves soltas; 0 quando não tem. */
+export const clienteIdDoJwt = (jwt: string) => inteiro(dadosDoUsuarioNoJwt(jwt).clienteId) || numeroDoJwt(jwt, ['cliente_id', 'clienteId', 'cliente']);
 
 // ---------------------------------- a admissão ----------------------------------
 
@@ -171,9 +187,11 @@ export function erroDaAdmissao(a: AdmissaoParaRhNet): string {
 export function corpoDaAdmissao(empresaId: number, a: AdmissaoParaRhNet): Record<string, unknown> {
   const digitos = (v?: string) => String(v ?? '').replace(/\D/g, '');
   const cel = digitos(a.celular);
+  // o RH NET só aceita o CPF formatado (o primeiro teste, 25/11/2026: só os números voltou "não possui o formato válido de CPF")
+  const cpf = digitos(a.cpf).replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
   return {
     empresa_id: empresaId, tipo_colaborador: 'funcionario',
-    nome: texto(a.nome).toUpperCase(), cpf: digitos(a.cpf), admissao_data: a.admissao,
+    nome: texto(a.nome).toUpperCase(), cpf, admissao_data: a.admissao,
     nascimento_data: a.nascimento || null, sexo: a.sexo ?? null, email: texto(a.email) || null,
     ddd_celular: cel.length >= 10 ? cel.slice(0, 2) : null, celular: cel.length >= 10 ? cel.slice(2) : null,
     mae_nome: texto(a.maeNome).toUpperCase() || null, pis_numero: digitos(a.pis) || null,

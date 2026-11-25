@@ -19,7 +19,7 @@
 // Os tokens NUNCA ficam no git nem no banco:
 //   - o de Parceiro: SCI_TOKEN_PARCEIRO, ou o metadado segredo-sci-parceiro da VM, ou "parceiro" em robo/sci_credenciais.json;
 //   - os das empresas: o metadado segredo-sci-rhnet da VM, ou "rhnet" em robo/sci_credenciais.json, no formato
-//     { "583": { "token": "...", "empresaId": 900001, "clienteId": 1234 } } (empresaId e clienteId só se o token não trouxer);
+//     { "583": { "token": "..." } } (o número da empresa no RH NET é o código; "empresaId" só se o código no SCI for outro);
 //     para o teste, também vale "empresa": "<token>" (a empresa do comando testar).
 const fs = require('fs');
 const S = require('./gerado/sci');
@@ -54,7 +54,10 @@ function clienteDa(codigo, { aceitarAvulso = false } = {}) {
         const t = await lerTokens();
         const e = t.empresas[String(codigo)] || {};
         const token = String(e.token || '').trim() || (aceitarAvulso ? t.avulso : '');
-        return { parceiro: t.parceiro, empresa: token, empresaId: Number(e.empresaId) || undefined, clienteId: Number(e.clienteId) || undefined };
+        // o número da empresa no RH NET é o CÓDIGO da empresa no SCI (o primeiro teste, 25/11/2026: o 566483 que vem no token
+        // é o do SCI WEB e o RH NET responde "Usuário não está vinculado a essa empresa"; com 590, o código, respondeu os dados).
+        // O código do nads é o mesmo do SCI; se algum dia não for, "empresaId" no arquivo dos tokens manda
+        return { parceiro: t.parceiro, empresa: token, empresaId: Number(e.empresaId) || Number(codigo) || undefined, clienteId: Number(e.clienteId) || undefined };
       },
     }));
   }
