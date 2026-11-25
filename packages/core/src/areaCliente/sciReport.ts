@@ -112,6 +112,8 @@ export interface PublicacaoDoSci {
   /** destinada a um funcionário (holerite e afins): não é guia da empresa */
   individual: boolean;
   visualizado: boolean;
+  /** 'dd/mm/aaaa' da primeira vez que alguém da empresa abriu, ou '' */
+  vistoEm: string;
   /** 'dd/mm/aaaa' ou '' */
   pagamentoEm: string;
   valorPago: number;
@@ -143,6 +145,7 @@ export function lerPublicacaoDoSci(x: unknown): PublicacaoDoSci | null {
     valor: Number.isFinite(valor) ? valor : 0,
     individual: sim(p.individual),
     visualizado: sim(p.visualizado),
+    vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
     pagamentoEm: dataDoSci(p.dataPagamento),
     valorPago: Number.isFinite(valorPago) ? valorPago : 0,
   };

@@ -193,12 +193,23 @@ describe('SCI Report: o atendimento da Área do Cliente', () => {
       lerPublicacaoDoSci(linha({ publicadosId: 102, empresaId, dataPagamento: '2026-11-19' })) as PublicacaoDoSci,
     ].filter(p => !publicadosId || p.publicadosId === publicadosId),
     urlDoPdf: async (id: number) => { pdfs.push(String(id)); return 'https://s3.exemplo/' + id + '.pdf'; },
+    publicar: async () => 1,
   });
-  const deps = (link: { existe: boolean; exigeSenha?: boolean } | null, pdfs?: string[]) => ({
+  const deps = (link: { existe: boolean; exigeSenha?: boolean } | null, pdfs?: string[], config?: { ligado: boolean; empresas: number[] }) => ({
     sci: sci(pdfs),
     lerLink: async () => link,
-    lerDocumentos: async () => [CNPJ, '98765432000110'],
+    lerEmpresas: async () => [{ codigo: 583, cnpj: CNPJ }, { codigo: 602, cnpj: '98765432000110' }],
     lerLogin: async (id: string) => (id === 'login-bom' ? { cliente: true, a: [TOKEN] } : null),
+    ...(config ? { config: async () => config } : {}),
+  });
+
+  it('com o SCI desligado na configuração, não pergunta nada à SCI; só as empresas ligadas vão', async () => {
+    expect(await criarAtendimentoDaArea(deps({ existe: true }, [], { ligado: false, empresas: [583] })).guias(TOKEN, '', HOJE))
+      .toEqual({ acesso: 'liberado', guias: [], semEmpresaNoSci: 0, desligado: true });
+    // só a 602 ligada: o CNPJ dela não está no SCI (o falso só conhece o da 583)
+    expect(await criarAtendimentoDaArea(deps({ existe: true }, [], { ligado: true, empresas: [602] })).guias(TOKEN, '', HOJE))
+      .toEqual({ acesso: 'liberado', guias: [], semEmpresaNoSci: 1 });
+    expect(await criarAtendimentoDaArea(deps({ existe: true }, [], { ligado: true, empresas: [602] })).pdf(TOKEN, '', '101', HOJE)).toEqual({ acesso: 'guia de outra empresa' });
   });
 
   it('devolve as guias das empresas do link e conta as que não estão no SCI', async () => {

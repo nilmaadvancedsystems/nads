@@ -19,7 +19,7 @@ import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ModeloDoEnvio } from './enviosDp';
 import { arquivoDoBanco, loteDoBanco } from './loteDp.firestore';
-import { guiasDoDocumento, viaDaGuia, type EnvioDasGuias, type GuiaDoLote, type LoteFiscal, type RepoLoteFiscal } from './loteFiscal';
+import { guiasDoDocumento, viaDaGuia, type EnvioDasGuias, type GuiaDoLote, type LoteFiscal, type RepoLoteFiscal, type ResultadoDoLoteFiscal } from './loteFiscal';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
@@ -41,6 +41,13 @@ function guiaDoBanco(id: string, d: Record<string, unknown>): GuiaDoLote {
     escolha: a.escolha ? { ...a.escolha, ...(typeof es.coluna === 'string' ? { coluna: es.coluna } : {}) } : null,
   };
 }
+/** o resultado da publicação no SCI Report (24/11/2026, robo/sci.js); sem ele, nada */
+function sciReportDoBanco(v: unknown): { sciReport?: ResultadoDoLoteFiscal['sciReport'] } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const falhas = Array.isArray(o.falhas) ? o.falhas.flatMap(f => (f && typeof f === 'object' ? [{ nome: texto((f as Record<string, unknown>).nome), erro: texto((f as Record<string, unknown>).erro) }] : [])) : [];
+  return { sciReport: { publicadas: Number(o.publicadas) || 0, falhas, erro: texto(o.erro) } };
+}
 function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
   const l = loteDoBanco(id, d);
   const r = (d.resultados || {}) as Record<string, Record<string, unknown>>;
@@ -49,6 +56,7 @@ function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
     resultados: l.resultados.map(x => ({
       ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio),
       via: viaDaGuia(r[x.chave]?.via), entregaId: texto(r[x.chave]?.entregaId), jaNaRota: textos(r[x.chave]?.jaNaRota),
+      ...sciReportDoBanco(r[x.chave]?.sciReport),
     })),
     vias: Object.fromEntries(Object.entries((d.vias || {}) as Record<string, unknown>).map(([k, v]) => [k, viaDaGuia(v)] as const)),
   };

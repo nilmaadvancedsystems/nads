@@ -3,7 +3,7 @@
 //   - pedidosSieg: o pedido {status: 'pendente', codigo, competencia, criadoEm, criadoPor, criadoPorUid} (só essas
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
 //   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
-import { escutasDoBanco, tarefas as t } from '@nads/core';
+import { escutasDoBanco, sci, tarefas as t } from '@nads/core';
 import { addDoc as addDocBruto, collection, doc, getDoc, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, PedidoSituacao, RepoSieg, SituacaoNaSefaz } from './sieg';
@@ -205,6 +205,8 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
               recebidas: Array.isArray(d.recebidas) ? (d.recebidas as t.sieg.NotaDoSieg[]) : [],
               // a conferência do IBS/CBS pela calculadora da Receita (21/11/2026): o robô grava no mesmo documento
               ibsCbs: t.sieg.lerConferenciaIbsCbs(d.ibsCbs),
+              // o Integra NET da SCI (24/11/2026): o robô do PC grava no mesmo documento
+              sci: sci.integracao.lerResumoDoIntegra(d.sci),
             } : null,
           });
           mudou();

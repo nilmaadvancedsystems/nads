@@ -8,9 +8,17 @@ import {
   type AcessoDaArea, type GuiaDoSciReport, type LinkDaArea, type LoginDaArea, type PublicacaoDoSci, type SessaoDoSci,
 } from './sciReport';
 
+/** O publicadosId da resposta da publicação manual ({ publicados: [{ publicadosId }] }); 0 se não veio. */
+export function publicadosIdDaResposta(resposta: unknown): number {
+  const lista = resposta && typeof resposta === 'object' ? (resposta as { publicados?: unknown }).publicados : null;
+  const primeiro = Array.isArray(lista) && lista[0] && typeof lista[0] === 'object' ? (lista[0] as { publicadosId?: unknown }).publicadosId : 0;
+  const n = Number(primeiro);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
 export type MetodoDoSci = 'GET' | 'POST' | 'PUT';
 /** O fetch, do tamanho que o cliente usa (o da função é o fetch do Node). */
-export type BuscarNoSci = (url: string, init: { method: MetodoDoSci; headers: Record<string, string> }) => Promise<{ status: number; json: () => Promise<unknown> }>;
+export type BuscarNoSci = (url: string, init: { method: MetodoDoSci; headers: Record<string, string>; body?: string | Uint8Array | FormData }) => Promise<{ status: number; json: () => Promise<unknown> }>;
 /** Os dois tokens: o de Parceiro (a SCI emite) e o de Cliente (gerado no SCI WEB com um usuário da contabilidade). */
 export interface SegredosDoSci { parceiro: string; cliente: string }
 
@@ -29,6 +37,11 @@ export interface ClienteSciReport {
   publicacoes(empresaId: number, de: string, ate: string, publicadosId?: number): Promise<PublicacaoDoSci[]>;
   /** a URL temporária do PDF (com o token da contabilidade não marca como visto no SCI) */
   urlDoPdf(publicadosId: number, empresaId: number): Promise<string>;
+  /**
+   * Publica um PDF na empresa (POST /publicacao-manual, BETA na SCI: pode mudar). `campos` sai de camposDaPublicacao; devolve
+   * o publicadosId. Erro de validação (422) vira ErroDoSci com a mensagem da SCI.
+   */
+  publicar(campos: Record<string, string>, pdf: Uint8Array, nomeDoArquivo: string): Promise<number>;
 }
 
 export function criarClienteSciReport(deps: { buscar: BuscarNoSci; segredos: () => SegredosDoSci | Promise<SegredosDoSci>; agora?: () => number }): ClienteSciReport {
@@ -62,10 +75,11 @@ export function criarClienteSciReport(deps: { buscar: BuscarNoSci; segredos: () 
   }
 
   /** uma chamada ao SCI Report com o JWT; o 401 (sessão caiu) entra de novo uma vez */
-  async function chamar(metodo: MetodoDoSci, caminho: string): Promise<unknown> {
+  async function chamar(metodo: MetodoDoSci, caminho: string, montarCorpo?: () => FormData): Promise<unknown> {
     for (let vez = 0; vez < 2; vez++) {
       const s = sessaoDoSciVale(sessao, agora()) ? sessao : await entrar();
-      const r = await deps.buscar(SCI_RELATORIO + caminho, { method: metodo, headers: { Authorization: 'Bearer ' + s.token, Accept: 'application/json' } });
+      // o FormData é montado de novo a cada tentativa (o corpo não se reaproveita depois de enviado)
+      const r = await deps.buscar(SCI_RELATORIO + caminho, { method: metodo, headers: { Authorization: 'Bearer ' + s.token, Accept: 'application/json' }, ...(montarCorpo ? { body: montarCorpo() } : {}) });
       if (r.status === 401 && vez === 0) { sessao = null; continue; }
       const corpo = await json(r);
       if (r.status >= 200 && r.status < 300) return corpo;
@@ -99,6 +113,17 @@ export function criarClienteSciReport(deps: { buscar: BuscarNoSci; segredos: () 
       if (!url) throw new ErroDoSci(0, 'o SCI Report não devolveu o PDF');
       return url;
     },
+    async publicar(campos, pdf, nomeDoArquivo) {
+      const resposta = await chamar('POST', '/api/v1/publicacao-manual', () => {
+        const f = new FormData();
+        for (const [k, v] of Object.entries(campos)) f.append(k, v);
+        f.append('arquivo', new Blob([new Uint8Array(pdf)], { type: 'application/pdf' }), nomeDoArquivo.replace(/[^\w.-]+/g, '_') || 'guia.pdf');
+        return f;
+      });
+      const id = publicadosIdDaResposta(resposta);
+      if (!id) throw new ErroDoSci(0, 'o SCI Report não devolveu o número da publicação');
+      return id;
+    },
   };
 }
 
@@ -108,13 +133,18 @@ export interface DepsDaArea {
   sci: ClienteSciReport;
   /** areasCliente/{token} pelo Admin SDK (existe, exigeSenha); null se não existe */
   lerLink(token: string): Promise<LinkDaArea | null>;
-  /** os CNPJs/CPFs das empresas do link (o resumo que o robô grava) */
-  lerDocumentos(token: string): Promise<string[]>;
+  /** as empresas do link com o CNPJ/CPF (o resumo que o robô grava) */
+  lerEmpresas(token: string): Promise<{ codigo: number; cnpj: string }[]>;
+  /**
+   * A chave da Área e as empresas com o SCI ligado (config/sci: areaCliente e empresas). Sem ela (teste antigo), tudo ligado.
+   * Desligada: a Área não pergunta nada à SCI e não mostra o cartão.
+   */
+  config?(): Promise<{ ligado: boolean; empresas: number[] }>;
   /** as permissões do login do cliente pelo idToken (verifyIdToken); null sem login ou com login inválido */
   lerLogin(idToken: string): Promise<LoginDaArea | null>;
 }
 
-export type RespostaDasGuias = { acesso: 'liberado'; guias: GuiaDoSciReport[]; semEmpresaNoSci: number } | { acesso: Exclude<AcessoDaArea, 'liberado'> };
+export type RespostaDasGuias = { acesso: 'liberado'; guias: GuiaDoSciReport[]; semEmpresaNoSci: number; desligado?: true } | { acesso: Exclude<AcessoDaArea, 'liberado'> };
 export type RespostaDoPdf = { acesso: 'liberado'; url: string } | { acesso: Exclude<AcessoDaArea, 'liberado'> | 'guia de outra empresa' };
 
 export interface AtendimentoDaArea {
@@ -129,8 +159,13 @@ export function criarAtendimentoDaArea(deps: DepsDaArea): AtendimentoDaArea {
     const login = link?.exigeSenha === true && idToken ? await deps.lerLogin(idToken) : null;
     return acessoDaArea(token, link, login);
   }
-  async function empresasDoLink(token: string): Promise<{ ids: number[]; semEmpresaNoSci: number }> {
-    const documentos = [...new Set((await deps.lerDocumentos(token)).map(d => d.replace(/\D/g, '')).filter(Boolean))];
+  /** as empresas do link que podem ir à SCI; null = a Área está com o SCI desligado */
+  async function empresasDoLink(token: string): Promise<{ ids: number[]; semEmpresaNoSci: number } | null> {
+    const cfg = deps.config ? await deps.config() : null;
+    if (cfg && !cfg.ligado) return null;
+    const ligadas = cfg ? new Set(cfg.empresas) : null;
+    const empresas = (await deps.lerEmpresas(token)).filter(e => !ligadas || ligadas.has(Number(e.codigo)));
+    const documentos = [...new Set(empresas.map(e => String(e.cnpj ?? '').replace(/\D/g, '')).filter(Boolean))];
     const ids: number[] = [];
     let semEmpresaNoSci = 0;
     for (const d of documentos) {
@@ -143,7 +178,9 @@ export function criarAtendimentoDaArea(deps: DepsDaArea): AtendimentoDaArea {
     async guias(token, idToken, hoje) {
       const acesso = await conferir(token, idToken);
       if (acesso !== 'liberado') return { acesso };
-      const { ids, semEmpresaNoSci } = await empresasDoLink(token);
+      const doLink = await empresasDoLink(token);
+      if (!doLink) return { acesso, guias: [], semEmpresaNoSci: 0, desligado: true };
+      const { ids, semEmpresaNoSci } = doLink;
       const { de, ate } = janelaDoSci(hoje);
       const publicacoes: PublicacaoDoSci[] = [];
       for (const id of ids) publicacoes.push(...await deps.sci.publicacoes(id, de, ate));
@@ -157,7 +194,7 @@ export function criarAtendimentoDaArea(deps: DepsDaArea): AtendimentoDaArea {
       // o PDF só sai se a guia é de uma empresa DESTE link e está na janela que a Área mostra (o token da contabilidade
       // enxerga o escritório inteiro: sem esta conferência, um link abriria a guia de outro cliente)
       const { de, ate } = janelaDoSci(hoje);
-      for (const empresaId of (await empresasDoLink(token)).ids) {
+      for (const empresaId of (await empresasDoLink(token))?.ids ?? []) {
         const achou = (await deps.sci.publicacoes(empresaId, de, ate, id)).some(p => p.publicadosId === id && !p.individual);
         if (achou) return { acesso, url: await deps.sci.urlDoPdf(id, empresaId) };
       }

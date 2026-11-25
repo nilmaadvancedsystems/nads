@@ -110,6 +110,7 @@ function lerPublicacaoDoSci(x) {
 		valor: Number.isFinite(valor) ? valor : 0,
 		individual: sim(p.individual),
 		visualizado: sim(p.visualizado),
+		vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
 		pagamentoEm: dataDoSci(p.dataPagamento),
 		valorPago: Number.isFinite(valorPago) ? valorPago : 0
 	};
@@ -194,6 +195,12 @@ function acessoDaArea(token, link, login) {
 
 //#endregion
 //#region packages/core/src/areaCliente/sciReportCliente.ts
+function publicadosIdDaResposta(resposta) {
+	const lista = resposta && typeof resposta === "object" ? resposta.publicados : null;
+	const primeiro = Array.isArray(lista) && lista[0] && typeof lista[0] === "object" ? lista[0].publicadosId : 0;
+	const n = Number(primeiro);
+	return Number.isInteger(n) && n > 0 ? n : 0;
+}
 var ErroDoSci = class extends Error {
 	status;
 	constructor(status, mensagem) {
@@ -239,7 +246,7 @@ function criarClienteSciReport(deps) {
 		if (!nova) throw new ErroDoSci(r.status, r.status === 401 ? "a SCI recusou os tokens (o de Parceiro ou o de Cliente)" : "o login na SCI não deu certo (" + r.status + ")");
 		return sessao = nova;
 	}
-	async function chamar(metodo, caminho) {
+	async function chamar(metodo, caminho, montarCorpo) {
 		for (let vez = 0; vez < 2; vez++) {
 			const s = sessaoDoSciVale(sessao, agora()) ? sessao : await entrar();
 			const r = await deps.buscar(SCI_RELATORIO + caminho, {
@@ -247,7 +254,8 @@ function criarClienteSciReport(deps) {
 				headers: {
 					Authorization: "Bearer " + s.token,
 					Accept: "application/json"
-				}
+				},
+				...montarCorpo ? { body: montarCorpo() } : {}
 			});
 			if (r.status === 401 && vez === 0) {
 				sessao = null;
@@ -291,6 +299,16 @@ function criarClienteSciReport(deps) {
 			const url = urlDoPdfDoSci(await chamar("PUT", "/api/v1/publicados/visualiza?" + q.toString()));
 			if (!url) throw new ErroDoSci(0, "o SCI Report não devolveu o PDF");
 			return url;
+		},
+		async publicar(campos, pdf, nomeDoArquivo) {
+			const id = publicadosIdDaResposta(await chamar("POST", "/api/v1/publicacao-manual", () => {
+				const f = new FormData();
+				for (const [k, v] of Object.entries(campos)) f.append(k, v);
+				f.append("arquivo", new Blob([new Uint8Array(pdf)], { type: "application/pdf" }), nomeDoArquivo.replace(/[^\w.-]+/g, "_") || "guia.pdf");
+				return f;
+			}));
+			if (!id) throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
+			return id;
 		}
 	};
 }
@@ -302,7 +320,11 @@ function criarAtendimentoDaArea(deps) {
 		return acessoDaArea(token, link, login);
 	}
 	async function empresasDoLink(token) {
-		const documentos = [...new Set((await deps.lerDocumentos(token)).map((d) => d.replace(/\D/g, "")).filter(Boolean))];
+		const cfg = deps.config ? await deps.config() : null;
+		if (cfg && !cfg.ligado) return null;
+		const ligadas = cfg ? new Set(cfg.empresas) : null;
+		const empresas = (await deps.lerEmpresas(token)).filter((e) => !ligadas || ligadas.has(Number(e.codigo)));
+		const documentos = [...new Set(empresas.map((e) => String(e.cnpj ?? "").replace(/\D/g, "")).filter(Boolean))];
 		const ids = [];
 		let semEmpresaNoSci = 0;
 		for (const d of documentos) {
@@ -319,7 +341,14 @@ function criarAtendimentoDaArea(deps) {
 		async guias(token, idToken, hoje) {
 			const acesso = await conferir(token, idToken);
 			if (acesso !== "liberado") return { acesso };
-			const { ids, semEmpresaNoSci } = await empresasDoLink(token);
+			const doLink = await empresasDoLink(token);
+			if (!doLink) return {
+				acesso,
+				guias: [],
+				semEmpresaNoSci: 0,
+				desligado: true
+			};
+			const { ids, semEmpresaNoSci } = doLink;
 			const { de, ate } = janelaDoSci(hoje);
 			const publicacoes = [];
 			for (const id of ids) publicacoes.push(...await deps.sci.publicacoes(id, de, ate));
@@ -335,7 +364,7 @@ function criarAtendimentoDaArea(deps) {
 			const id = Number(publicadosId);
 			if (!Number.isInteger(id) || id <= 0) return { acesso: "guia de outra empresa" };
 			const { de, ate } = janelaDoSci(hoje);
-			for (const empresaId of (await empresasDoLink(token)).ids) if ((await deps.sci.publicacoes(empresaId, de, ate, id)).some((p) => p.publicadosId === id && !p.individual)) return {
+			for (const empresaId of (await empresasDoLink(token))?.ids ?? []) if ((await deps.sci.publicacoes(empresaId, de, ate, id)).some((p) => p.publicadosId === id && !p.individual)) return {
 				acesso,
 				url: await deps.sci.urlDoPdf(id, empresaId)
 			};

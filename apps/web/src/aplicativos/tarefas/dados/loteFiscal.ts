@@ -42,6 +42,18 @@ export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** como foi: pelo Gmail ou impresso (a entrega na rota do Entregas, entregaId) */
   via: ViaDaGuia;
   entregaId: string;
+  /** a via SCI Report com a publicação ligada (24/11/2026, config/sci): quantas guias foram para o SCI Report e as que não foram */
+  sciReport?: { publicadas: number; falhas: { nome: string; erro: string }[]; erro: string };
+}
+
+/** "publicada no SCI Report" / "2 publicadas; 1 não foi: DAS (falta o código do relatório)"; '' sem a publicação ligada. */
+export function fraseDoSciReport(r: ResultadoDoLoteFiscal['sciReport']): string {
+  if (!r) return '';
+  if (r.erro) return 'não foi ao SCI Report: ' + r.erro;
+  const partes: string[] = [];
+  if (r.publicadas) partes.push(r.publicadas === 1 ? 'publicada no SCI Report' : r.publicadas + ' publicadas no SCI Report');
+  if (r.falhas.length) partes.push((r.falhas.length === 1 ? '1 não foi: ' : r.falhas.length + ' não foram: ') + r.falhas.map(f => f.nome + ' (' + f.erro + ')').join('; '));
+  return partes.join('; ');
 }
 /** Uma guia do Fiscal já arquivada no Drive (fiscalArquivos/{mês}.clientes.<código>.arquivos[]) (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir"). */
 export interface GuiaNaPasta {

@@ -28,6 +28,8 @@ const ORIGENS = ['https://cliente.nilmacontabilidade.com', 'https://nilma-client
 // o resumo do link (os CNPJs) muda pouco: guardado na memória da instância por 10 minutos; o link é lido a cada pedido
 // (revogado, para na hora)
 const RESUMO_MS = 10 * 60 * 1000;
+const CONFIG_MS = 5 * 60 * 1000;
+let configGuardada = null;
 
 initializeApp();
 const db = getFirestore();
@@ -49,14 +51,22 @@ const area = criarAtendimentoDaArea({
     const x = d.data() || {};
     return { existe: true, exigeSenha: x.exigeSenha === true, codigos: Array.isArray(x.codigos) ? x.codigos : [] };
   },
-  async lerDocumentos(token) {
+  async lerEmpresas(token) {
     const guardado = resumos.get(token);
-    if (guardado && Date.now() - guardado.em < RESUMO_MS) return guardado.documentos;
+    if (guardado && Date.now() - guardado.em < RESUMO_MS) return guardado.empresas;
     const d = await db.collection('areasCliente').doc(token).collection('resumo').doc('atual').get();
-    const empresas = d.exists && Array.isArray(d.get('empresas')) ? d.get('empresas') : [];
-    const documentos = empresas.map(e => String((e && e.cnpj) || '')).filter(Boolean);
-    resumos.set(token, { em: Date.now(), documentos });
-    return documentos;
+    const lista = d.exists && Array.isArray(d.get('empresas')) ? d.get('empresas') : [];
+    const empresas = lista.map(e => ({ codigo: Number(e && e.codigo) || 0, cnpj: String((e && e.cnpj) || '') })).filter(e => e.cnpj);
+    resumos.set(token, { em: Date.now(), empresas });
+    return empresas;
+  },
+  // config/sci (a chave da Área e as empresas ligadas), na memória da instância por 5 minutos: desligar vale em até 5 min
+  async config() {
+    if (configGuardada && Date.now() - configGuardada.em < CONFIG_MS) return configGuardada.valor;
+    const d = (await db.collection('config').doc('sci').get()).data() || {};
+    const valor = { ligado: d.areaCliente === true, empresas: Array.isArray(d.empresas) ? d.empresas.map(Number).filter(n => n > 0) : [] };
+    configGuardada = { em: Date.now(), valor };
+    return valor;
   },
   async lerLogin(idToken) {
     try {

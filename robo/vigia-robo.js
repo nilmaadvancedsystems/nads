@@ -1137,6 +1137,10 @@ async function iniciar() {
         getDrive: () => require('./drive-indice').getDrive(),
       }));
     } catch (err) { log('lote do Fiscal desligado:', err.message); }
+    // e o que o cliente fez com as guias publicadas no SCI Report (24/11/2026, sci.js): só age com config/sci.lerDeVolta
+    try {
+      tarefa('sci-de-volta', () => require('./sci').iniciarLeituraDeVolta(db, log));
+    } catch (err) { log('leitura de volta do SCI Report desligada:', err.message); }
     // e os boletos de honorários (10/11/2026, nads › Financeiro › Boletos): um e-mail por boleto, só depois do disparo do Diretor
     try {
       tarefa('boletos-financeiro', () => require('./boletos-financeiro').iniciarBoletosFinanceiro(db, {
