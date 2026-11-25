@@ -8493,7 +8493,7 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 /* a busca é a última da linha dos botões, na extrema direita (25/11/2026: "Busca na extrema direita, perdao, o ultimo da fila") */
 .sci-barra{display:inline-flex;align-items:center;gap:8px;}
 /* o Novo lançamento e a Planilha do SCI só com o ícone, quadrados (25/11/2026: "deixa so os icones") */
-.btn.sci-btn-icone{width:32px;padding:0;justify-content:center;}
+.btn.sci-btn-icone{width:32px;height:32px;min-height:32px;padding:0;justify-content:center;flex:none;}
 .btn.sci-btn-icone svg{width:16px;height:16px;margin:0;}
 /* o botão que pulsa para guiar (25/11/2026): o + sem lançamento nenhum e o Importar a consulta do Razão sem consulta; um anel da cor
    do botão que cresce e some, a cada 1,6s */
@@ -8626,7 +8626,11 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 @media (max-width:980px){.sci-razao-painel{grid-template-columns:1fr;}.sci-razao-saldos{align-items:flex-start;padding-top:0;}}
 /* os botões, o filtro e a busca no fim da linha, alinhados com a borda da tabela, mesmo quando descem para baixo do nome
    (25/11/2026: "Deixa mais pro final da linha") */
-.topbar:has(.sci-barra) #topbarActions{flex:1 1 auto;justify-content:flex-end;}
+.topbar:has(.sci-barra) #topbarActions{flex:1 1 auto;justify-content:flex-end;align-items:center;}
+/* os botões do minimum não esticam na altura da barra (25/11/2026: no monitor de 1366, o +, o olho e o Excel ficavam com 46px de
+   altura e 32 de largura): todos com 32 de altura, centrados, como a busca e o plano */
+.topbar:has(.sci-barra) #topbarActions .sci-guia{align-self:center;}
+.topbar:has(.sci-barra) #topbarActions .steps{height:32px;margin:0;align-self:center;}
 /* todas as linhas da mesma altura, o simples e o múltiplo (25/11/2026): nada quebra linha; o histórico longo vira "…" */
 .sci-tabela tbody td{height:48px;white-space:nowrap;}
 /* a caixa da tabela sem o vão em cima: o cabeçalho encosta na borda, nos cantos redondos, num tom próprio (o azul da marca bem
