@@ -8568,6 +8568,48 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-razao-tipo span{font-variant-numeric:tabular-nums;font-size:var(--fs-12);opacity:.8;}
 .sci-razao-nada{text-align:center;padding:24px;}
 .sci-razao-pe{margin:10px 2px 0;font-size:var(--fs-12);}
+/* o Extrato → SCI (25/11/2026): a conta bancária, o lote, o selo do saldo do banco, os avisos e a grade com a contrapartida na linha */
+.sci-ext-select{height:32px;min-width:220px;max-width:320px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-13);}
+.sci-ext-lote{height:32px;width:120px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-13);
+  font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.sci-ext-saldo{margin-left:auto;align-items:flex-end;}
+.sci-ext-selo{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:var(--fs-13);font-weight:600;border:1px solid transparent;}
+.sci-ext-selo svg{width:15px;height:15px;}
+.sci-ext-selo.fecha{color:var(--success-ink);background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 35%,transparent);}
+.sci-ext-selo.nao-fecha{color:var(--destructive);background:var(--destructive-soft);border-color:color-mix(in srgb,var(--destructive) 35%,transparent);cursor:help;}
+.sci-ext-selo.sem{color:var(--ink-muted);background:var(--surface-2);}
+.sci-ext-saldo-numeros{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 14px;font-size:var(--fs-12);color:var(--ink-muted);}
+.sci-ext-saldo-numeros b{color:var(--ink);font-weight:600;}
+.sci-ext-entrou{color:light-dark(#1d5fb3,#8ab8ff) !important;}
+.sci-ext-saiu{color:light-dark(#b42318,#ff8f86) !important;}
+.sci-ext-avisos{list-style:none;margin:-4px 0 12px;padding:0;display:flex;flex-direction:column;gap:4px;}
+.sci-ext-avisos li{display:flex;align-items:center;gap:6px;font-size:var(--fs-13);color:var(--danger-ink);}
+.sci-ext-avisos svg{width:14px;height:14px;flex:none;}
+.sci-ext-barra{align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sci-ext-busca{flex:0 1 320px;}
+.sci-ext-busca input[type="text"]{width:100%;}
+.sci-ext-tabela td.sci-ext-hist-banco{max-width:320px;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-13);color:var(--ink);}
+.sci-ext-contra{display:inline-flex;align-items:center;max-width:260px;margin:0 -8px;padding:4px 8px;border:1px dashed transparent;border-radius:8px;background:none;cursor:pointer;
+  font:inherit;text-align:left;color:inherit;transition:background .15s,border-color .15s;}
+.sci-ext-contra:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-border);}
+.sci-ext-contra.vazia{border-color:color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger-ink);font-size:var(--fs-13);font-weight:600;}
+.sci-ext-contra:disabled{cursor:default;}
+.sci-ext-contra .sci-conta-cel{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.sci-ext-acoes{text-align:right;white-space:nowrap;}
+.sci-ext-acoes .icon-btn{width:28px;height:28px;}
+.sci-ext-ok,.sci-ext-problema{display:inline-grid;place-items:center;width:28px;height:28px;vertical-align:middle;}
+.sci-ext-ok svg,.sci-ext-problema svg{width:16px;height:16px;}
+.sci-ext-ok{color:var(--success);}
+.sci-ext-problema{color:var(--danger);cursor:help;}
+.sci-tabela tr.sci-ext-linha-fora > td:not(:last-child){opacity:.45;text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink) 40%,transparent);}
+.sci-ext-regras{margin-top:14px;}
+.sci-ext-regras > .btn{gap:6px;}
+.sci-ext-regras-lista{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.sci-ext-regras-lista li{display:grid;grid-template-columns:minmax(0,1.4fr) auto minmax(0,1.6fr) auto;align-items:center;gap:12px;padding:6px 10px;border-radius:8px;font-size:var(--fs-13);}
+.sci-ext-regras-lista li:nth-child(odd){background:var(--surface-2);}
+.sci-ext-regra-exp{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sci-ext-regras-vazio{margin:6px 12px 0;}
+@media (max-width:980px){.sci-ext-saldo{margin-left:0;align-items:flex-start;}.sci-ext-saldo-numeros{justify-content:flex-start;}}
 /* o lançamento clicado: a linha marcada e os dados dele embaixo da tabela, com a última alteração (25/11/2026) */
 .sci-tabela tr.sci-razao-linha{cursor:pointer;}
 /* o lançamento on-line do fiscal levemente apagado; volta ao normal no hover e quando clicado (25/11/2026) */

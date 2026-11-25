@@ -12,9 +12,12 @@ import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
 
-/** Os apps do minimum, depois de escolher a empresa: os Lançamentos do SCI e o Extratudo (o Lançatudo, o extrato que vira lançamento). */
-export type AppDoMinimum = 'lancamentos' | 'extratudo' | 'razao';
-const appDoEndereco = (m: string | null): AppDoMinimum | null => (m === 'lancamentos' || m === 'extratudo' || m === 'razao' ? m : null);
+/**
+ * Os apps do minimum, depois de escolher a empresa: os Lançamentos do SCI, o Extratudo (o Lançatudo, o extrato que vira lançamento),
+ * o Visualizar lançamentos (o razão do SCI) e o Extrato → SCI (25/11/2026: o PDF do extrato direto na planilha do SCI, só no navegador).
+ */
+export type AppDoMinimum = 'lancamentos' | 'extratudo' | 'razao' | 'extrato';
+const appDoEndereco = (m: string | null): AppDoMinimum | null => (m === 'lancamentos' || m === 'extratudo' || m === 'razao' || m === 'extrato' ? m : null);
 
 /** As colunas da tabela que ordenam e filtram (o clique no cabeçalho). */
 export type ColunaDosLancamentos = 'data' | 'debito' | 'credito' | 'valor' | 'historico' | 'documento' | 'participanteD' | 'participanteC';
@@ -190,7 +193,8 @@ export function useShadersCi() {
   // o app aberto (?m=): os Lançamentos, o Extratudo ou nenhum (a tela dos apps); sem empresa, nenhum
   // na versão final, só os Lançamentos (e o Visualizar lançamentos, que abre dele); o Extratudo só no modo desenvolvedor
   // (25/11/2026: "pode publicar o minimum para a versao final do usuario, liberando apenas a aba lancamentos, irei trabalhar no extratudo")
-  const apps: readonly AppDoMinimum[] = dev ? ['lancamentos', 'extratudo', 'razao'] : ['lancamentos', 'razao'];
+  // o Extrato → SCI também só no modo desenvolvedor até o teste da importação no SCI (25/11/2026)
+  const apps: readonly AppDoMinimum[] = dev ? ['lancamentos', 'extratudo', 'extrato', 'razao'] : ['lancamentos', 'razao'];
   const pedido = entrada.empresa ? appDoEndereco(entrada.doEndereco('m')) : null;
   // fora do modo desenvolvedor só há os Lançamentos: a empresa escolhida já abre neles, sem a tela dos apps (25/11/2026: "O minumum
   // pode abrir na aba de lancamento direto, apos selecionar a empresa na versao final")
