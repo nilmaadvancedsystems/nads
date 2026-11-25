@@ -118,7 +118,8 @@ function EscolhaDaEmpresa({ vm }: { vm: VmShadersCi }) {
   }, []);
   return (
     <div className="sci-escolha">
-      <h1 className="sci-inicio-titulo">Escolha sua empresa</h1>
+      {/* o "Escolha sua empresa" sai da tela (25/11/2026) e fica só para o leitor de tela */}
+      <h1 className="sr-only">Escolha sua empresa</h1>
       {/* sem o "Apenas empresas que estão no SCI" (25/11/2026: "Remove isso, nao achei que ficou bom") */}
       {lista.length > 0 ? (
         // sem a lupa (25/11/2026: "Tira esse icone")
