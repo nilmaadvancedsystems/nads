@@ -113,34 +113,71 @@ async function atenderPedido(db, p) {
   } catch (err) { throw new Error(motivo(err)); }
 }
 
-// ---------- a Área do Cliente (o robô do PC, area-cliente.js) ----------
+// ---------- a Área do Cliente ----------
+// (25/11/2026; o dono: "pode ser") Os tokens ficam SÓ na nuvem: o robô da nuvem busca no RH NET de hora em hora e grava a
+// lista pronta (sem token e sem salário) em rhnetArea/{codigo}; o robô do servidor (area-cliente.js) só lê essa lista e copia
+// para a aba Departamento pessoal. Assim o NILMA-SERVER nunca precisa dos tokens da SCI.
 
-const NA_AREA_MS = 60 * 60 * 1000;
-const naArea = new Map();
+const COLECAO_DA_AREA = 'rhnetArea';
+const HORA_MS = 60 * 60 * 1000;
+const LEITURA_MS = 15 * 60 * 1000;
+
+const gravadoNaNuvem = new Map();
+/** Uma passada do robô da nuvem: a lista de cada empresa ligada; grava só o que mudou; tira a das empresas que saíram. */
+async function atualizarListasDaArea(db, log = () => {}) {
+  const cfg = await SCI.config(db);
+  const t = await lerTokens().catch(() => null);
+  const ligadas = cfg.rhNet && t && t.parceiro ? cfg.empresas.filter(c => (t.empresas[String(c)] || {}).token) : [];
+  let gravadas = 0;
+  for (const codigo of ligadas) {
+    try {
+      const lista = await clienteDa(codigo).cadastrosParaArea();
+      const marca = JSON.stringify(lista);
+      if (gravadoNaNuvem.get(codigo) === marca) continue;
+      await db.collection(COLECAO_DA_AREA).doc(String(codigo)).set({ codigo, lista, em: new Date().toISOString() });
+      gravadoNaNuvem.set(codigo, marca);
+      gravadas++;
+    } catch (err) { log('RH NET: não consegui ler as pessoas da empresa', codigo, 'para a Área do Cliente -', motivo(err)); }
+  }
+  // a empresa que saiu da lista (ou o RH NET desligado): a lista dela some do banco
+  const antes = (await db.collection(COLECAO_DA_AREA).select().get()).docs.map(d => d.id);
+  for (const id of antes) if (!ligadas.includes(Number(id))) { await db.collection(COLECAO_DA_AREA).doc(id).delete().catch(() => {}); gravadoNaNuvem.delete(Number(id)); }
+  if (gravadas) log('RH NET: a lista da Área do Cliente de', gravadas, 'empresa(s) mudou');
+  return gravadas;
+}
+
+/** O robô da nuvem: uma passada um minuto depois de ligar e depois de hora em hora (só age com config/sci.rhNet). */
+function iniciarListasDaArea(db, log = () => {}) {
+  const rodar = () => atualizarListasDaArea(db, log).catch(err => log('RH NET: a lista da Área do Cliente deu erro -', motivo(err)));
+  setTimeout(rodar, 60 * 1000);
+  setInterval(rodar, HORA_MS);
+  log('RH NET: a lista da Área do Cliente ligada (só age com config/sci.rhNet)');
+}
+
+const lidoNoServidor = new Map();
 /**
- * As pessoas do RH NET das empresas do link, para a aba Departamento pessoal da Área do Cliente (25/11/2026; o dono: "pode
- * mostrar do jeito que sugeriu"): o nome, o CPF mascarado, o tipo, a entrada e a situação, sem salário. null = desligado
- * (config/sci.rhNet, a empresa fora da lista ou sem o token dela). Guardado 1 hora por empresa; nunca joga erro.
+ * O robô do servidor (area-cliente.js): as pessoas do RH NET das empresas do link, lidas de rhnetArea/{codigo} (o que o robô
+ * da nuvem grava): o nome, o CPF mascarado, o tipo, a entrada e a situação, sem salário. null = desligado (config/sci.rhNet
+ * ou nenhuma empresa do link na lista). Uma leitura por empresa a cada 15 minutos; nunca joga erro.
  */
 async function cadastrosParaArea(db, codigos, log = () => {}) {
   let cfg;
   try { cfg = await SCI.config(db); } catch (e) { return null; }
   if (!cfg.rhNet) return null;
-  const t = await lerTokens().catch(() => null);
-  if (!t || !t.parceiro) return null;
   const todos = [];
   let algum = false;
   for (const codigo of codigos || []) {
-    if (!S.empresaNoSci(cfg, codigo) || !(t.empresas[String(codigo)] || {}).token) continue;
+    if (!S.empresaNoSci(cfg, codigo)) continue;
     algum = true;
-    const guardado = naArea.get(String(codigo));
-    if (guardado && Date.now() - guardado.em < NA_AREA_MS) { todos.push(...guardado.lista); continue; }
+    const guardado = lidoNoServidor.get(Number(codigo));
+    if (guardado && Date.now() - guardado.em < LEITURA_MS) { todos.push(...guardado.lista); continue; }
     try {
-      const lista = await clienteDa(codigo).cadastrosParaArea();
-      naArea.set(String(codigo), { em: Date.now(), lista });
+      const d = await db.collection(COLECAO_DA_AREA).doc(String(codigo)).get();
+      const lista = d.exists && Array.isArray(d.get('lista')) ? d.get('lista') : [];
+      lidoNoServidor.set(Number(codigo), { em: Date.now(), lista });
       todos.push(...lista);
     } catch (err) {
-      log('RH NET: não consegui ler as pessoas da empresa', codigo, 'para a Área do Cliente -', motivo(err));
+      log('RH NET: não consegui ler a lista da empresa', codigo, 'para a Área do Cliente -', motivo(err));
       if (guardado) todos.push(...guardado.lista);
     }
   }
@@ -179,4 +216,4 @@ if (require.main === module) {
   testar(codigo).then(c => process.exit(c), err => { console.log('erro: ' + motivo(err)); process.exit(1); });
 }
 
-module.exports = { atenderPedido, cadastrosParaArea, testar, lerTokens };
+module.exports = { atenderPedido, cadastrosParaArea, atualizarListasDaArea, iniciarListasDaArea, testar, lerTokens };

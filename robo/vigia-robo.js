@@ -1145,6 +1145,10 @@ async function iniciar() {
     try {
       tarefa('sci-de-volta', () => require('./sci').iniciarLeituraDeVolta(db, log));
     } catch (err) { log('leitura de volta do SCI Report desligada:', err.message); }
+    // e a lista do RH NET para a Área do Cliente (25/11/2026, robo/rhnet.js): os tokens ficam só aqui na nuvem; o servidor só lê a lista
+    try {
+      tarefa('rhnet-area', () => require('./rhnet').iniciarListasDaArea(db, log));
+    } catch (err) { log('lista do RH NET para a Área desligada:', err.message); }
     // e os boletos de honorários (10/11/2026, nads › Financeiro › Boletos): um e-mail por boleto, só depois do disparo do Diretor
     try {
       tarefa('boletos-financeiro', () => require('./boletos-financeiro').iniciarBoletosFinanceiro(db, {

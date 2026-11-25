@@ -68,6 +68,8 @@ O RH NET **não aceita o token do escritório**. Ele só funciona com o Token de
 
 O Token de Parceiro é o mesmo das outras APIs. O número da empresa no RH NET é o **código da empresa no SCI** (o mesmo do nads), e não o número do SCI WEB que vem dentro do token. O primeiro teste (25/11/2026, empresa 590) confirmou isso: com o número do token, o RH NET respondeu "Usuário não está vinculado a essa empresa"; com o código, respondeu os dados. Se o código no SCI for diferente do nads, acrescente `"empresaId"` ao lado do token. A contabilidade (`clienteId`, 17157) vem dentro do token, em `usuario.dados`.
 
+**Na Área do Cliente:** quem fala com o RH NET é só o **robô da nuvem**, que tem os tokens nos metadados. De hora em hora, ele grava a lista pronta de cada empresa (nome, tipo, CPF mascarado, entrada e situação, sem salário) em `rhnetArea/{código}`. O robô do servidor só lê essa lista e copia para a aba RH, então o NILMA-SERVER não precisa dos tokens.
+
 **O teste só de leitura**, quando os tokens chegarem:
 
 ```bash
