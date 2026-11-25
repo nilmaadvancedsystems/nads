@@ -6,7 +6,7 @@ import { NaEspera, pedaco } from '../../comum/pedaco';
 import { TopoProvider } from '../../comum/topo';
 import { AppAdmin } from './AppAdmin';
 import { CascaAdmin } from './casca/CascaAdmin';
-import { BASE, caminhoDoAdmin, paginaDoAdmin, type IdPaginaAdmin } from './casca/navegacao';
+import { BASE, PAGINA_INICIAL, caminhoDoAdmin, paginaDoAdmin, type IdPaginaAdmin } from './casca/navegacao';
 
 const VisaoGeral = pedaco(() => import('./telas/visao-geral/VisaoGeral'), 'VisaoGeral');
 const SaudeDosRobos = pedaco(() => import('./telas/saude-robos/SaudeDosRobos'), 'SaudeDosRobos');
@@ -37,7 +37,7 @@ function Tela({ pagina }: { pagina: IdPaginaAdmin }) {
 function PaginaDoAdmin() {
   const { pagina = '' } = useParams();
   const p = paginaDoAdmin(pagina);
-  if (!p) return <Navigate to={caminhoDoAdmin('visao-geral')} replace />;
+  if (!p) return <Navigate to={caminhoDoAdmin(PAGINA_INICIAL)} replace />;
   return (
     <TopoProvider>
       <CascaAdmin pagina={p.id}>
@@ -52,9 +52,9 @@ export const rotasAdmin: RouteObject[] = [
     path: BASE,
     element: <AppAdmin />,
     children: [
-      { index: true, element: <Navigate to={caminhoDoAdmin('visao-geral')} replace /> },
+      { index: true, element: <Navigate to={caminhoDoAdmin(PAGINA_INICIAL)} replace /> },
       { path: ':pagina', element: <PaginaDoAdmin /> },
-      { path: '*', element: <Navigate to={caminhoDoAdmin('visao-geral')} replace /> },
+      { path: '*', element: <Navigate to={caminhoDoAdmin(PAGINA_INICIAL)} replace /> },
     ],
   },
 ];
