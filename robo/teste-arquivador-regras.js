@@ -2353,6 +2353,13 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     igual('25/11 Solides: a nota de débito de benefícios: a 901 pelo CNPJ do cliente, PAGAMENTOS DE FORNECEDORES\\2026\\10\\SOLIDES (o mês da data de pagamento)', s38n(dx('solides')), ['ARQUIVAR', 901, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\SOLIDES', C38.solides.nome, 'doc']);
     igual('25/11 seguro: o boleto da proteção veicular (o nome traz a placa, não a seguradora): a seguradora lida no conteúdo, o cliente pelo CNPJ, o mês do zip', s38n(dx('boletoSeguro')), ['ARQUIVAR', 901, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\APVS TRUCK', C38.boletoSeguro.nome, 'doc']);
     igual('25/11 seguro: o valor no nome ("SEGURO 76,44.pdf"), sem o vencimento: o mês do nome do zip ("Exemplo 10.2026.zip")', s38n(dx('seguroValor')), ['ARQUIVAR', 902, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\BRADESCO SEGUROS', 'SEGURO 76,44.pdf', 'doc']);
+    // (decisão do dono, 25/11/2026) a conta de consumo sem o mês no nome nem o vencimento legível: o mês do nome do zip ("Exemplo 10.2026.zip")
+    const AGUA = 'DOCUMENTO AUXILIAR DE NOTA FISCAL DE ÁGUA E SANEAMENTO ELETRÔNICA\nCOMPANHIA DE SANEAMENTO EXEMPLO\nFLORESTA EXEMPLO LTDA 000000-0 09/2026 24/09/2026 R$ 100,00\nCNPJ: 98.765.432/0001-98\nVENCIMENTO\nRUA EXEMPLO, 1 - CENTRO - CIDADE EXEMPLO - MG | CEP 00000-000 13/10/2026\n';
+    const dAgua = rel => R.decidir({ nome: 'COPASA 100,00 FE MATRIZ.pdf', rel, texto: [AGUA] }, ctx38);
+    igual('25/11 consumo: a conta de água sem o mês no nome nem o vencimento legível: o mês do zip "10.2026", PAGAMENTOS DE FORNECEDORES\\2026\\10\\COPASA; num zip sem o mês: não arquiva',
+      [s38(dAgua('Exemplo 10.2026.zip\\Comprovantes e NFs\\COPASA 100,00 FE MATRIZ.pdf')).slice(0, 3), dAgua('Exemplo.zip\\Comprovantes e NFs\\COPASA 100,00 FE MATRIZ.pdf').acao],
+      [['ARQUIVAR', 901, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\COPASA'], 'NAO_IDENTIFICADO']);
+    igual('25/11: mesNumericoDaPasta: "10.2026" no nome do zip; dois meses diferentes nas pastas: null', [R.mesNumericoDaPasta('Exemplo 10.2026.zip\\x.pdf'), R.mesNumericoDaPasta('A 10.2026.zip\\B 11-2026\\x.pdf'), R.mesNumericoDaPasta('10.2026.pdf')], [{ mes: 10, ano: 2026 }, null, null]);
     igual('25/11 seguro: a apólice sem o valor no nome continua fora dos pagamentos (a regra de SEGUROS\\ANO do Vitor)', /PAGAMENTOS DE FORNECEDORES/.test(String(R.decidir({ nome: 'APOLICE SEGURO ABC1D23.pdf', rel: C38.seguroValor.rel.replace('SEGURO 76,44.pdf', 'APOLICE SEGURO ABC1D23.pdf'), texto: C38.seguroValor.texto.slice() }, ctx38).destinoRelativo || '')), false);
   }
 
