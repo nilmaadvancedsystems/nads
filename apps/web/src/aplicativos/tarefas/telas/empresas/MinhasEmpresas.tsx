@@ -65,10 +65,9 @@ export function MinhasEmpresas() {
         {vm.perguntarCompetencia && <JanelaDaCompetencia competencias={vm.competencias} competencia={vm.competencia} onSeguir={vm.setCompetencia} />}
         <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
-        {/* as abas do Contábil: as empresas do Alterdata e as do SCI (25/11/2026), com quantas cada uma tem */}
+        {/* as abas do Contábil: as empresas do Alterdata e as do SCI (25/11/2026), sem o número ("Remove 58 e 14") */}
         {vm.abasDoSistema && (
-          <Segmentado<SistemaContabil> valor={vm.sistema} onMudar={vm.setSistema}
-            opcoes={vm.abasDoSistema.map(x => ({ valor: x.valor, rotulo: x.rotulo + (vm.carregando ? '' : ' · ' + x.n) }))} />
+          <Segmentado<SistemaContabil> valor={vm.sistema} onMudar={vm.setSistema} opcoes={vm.abasDoSistema.map(x => ({ valor: x.valor, rotulo: x.rotulo }))} />
         )}
         {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
 

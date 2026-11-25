@@ -130,10 +130,10 @@ export function useMinhasEmpresas() {
     total: linhas.length,
     /** as empresas por situação: as da pessoa (ou todas), sem a busca e a situação */
     resumo: t.resumoDoProgresso(doSistema),
-    /** as abas Alterdata e SCI (só no Contábil), com quantas empresas cada uma tem */
+    /** as abas Alterdata e SCI (só no Contábil) */
     abasDoSistema: comAbas ? [
-      { valor: 'alterdata' as SistemaContabil, rotulo: 'Alterdata', n: a.linhas.filter(l => !l.noSci).length },
-      { valor: 'sci' as SistemaContabil, rotulo: 'SCI', n: a.linhas.filter(l => l.noSci).length },
+      { valor: 'alterdata' as SistemaContabil, rotulo: 'Alterdata' },
+      { valor: 'sci' as SistemaContabil, rotulo: 'SCI' },
     ] : null,
     sistema,
     setSistema: (s: SistemaContabil) => a.mudar('sistema', s === 'sci' ? 'sci' : ''),
