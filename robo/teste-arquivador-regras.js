@@ -2359,6 +2359,15 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     igual('25/11 consumo: a conta de água sem o mês no nome nem o vencimento legível: o mês do zip "10.2026", PAGAMENTOS DE FORNECEDORES\\2026\\10\\COPASA; num zip sem o mês: não arquiva',
       [s38(dAgua('Exemplo 10.2026.zip\\Comprovantes e NFs\\COPASA 100,00 FE MATRIZ.pdf')).slice(0, 3), dAgua('Exemplo.zip\\Comprovantes e NFs\\COPASA 100,00 FE MATRIZ.pdf').acao],
       [['ARQUIVAR', 901, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\COPASA'], 'NAO_IDENTIFICADO']);
+    // (decisão do dono, 25/11/2026) a conta de energia com só o nome do grupo (matriz + filial, a mesma raiz) e o CNPJ mascarado, fora da pasta do grupo: a matriz
+    const cadG = R.montarCadastro([{ codigo: 911, razao: 'GRUPO EXEMPLO MINERACAO LTDA', fantasia: 'GRUPO EXEMPLO MINERACAO E FLORESTAS', doc: '76543210000198', regime: 'Presumido' },
+      { codigo: 912, razao: 'GRUPO EXEMPLO MINERACAO LTDA - FILIAL 02', fantasia: 'GRUPO EXEMPLO MINERACAO E FLORESTAS', doc: R.so('76.543.210/0002-79'), regime: 'Presumido' }], ['911 - GRUPO EXEMPLO MINERACAO LTDA', '912 - GRUPO EXEMPLO MINERACAO LTDA - FILIAL 02']);
+    const LUZ = 'CONCESSIONARIA DE ENERGIA EXEMPLO S.A. CNPJ 00.000.000/0001-91\nGRUPO EXEMPLO MINERACAO E FLORESTAS EIRELI\nFAZENDA EXEMPLO 9999\nCNPJ 76.54*.***/****-**\nSET/2026 05/10/2026 47,99\n';
+    const dLuz = (rel, texto) => R.decidir({ nome: 'CEMIG 47,99.pdf', rel, texto: [texto || LUZ] }, { cadastro: cadG, hoje: new Date(2026, 10, 25) });
+    igual('25/11 consumo: a conta de energia com o nome do grupo (matriz e filial, a mesma raiz) e o CNPJ mascarado, num zip sem o cliente: a matriz 911, PAGAMENTOS DE FORNECEDORES\\2026\\10\\CEMIG',
+      s38(dLuz('Grupo 10.2026.zip\\Comprovantes e NFs\\CEMIG 47,99.pdf')).slice(0, 3), ['ARQUIVAR', 911, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\CEMIG']);
+    igual('25/11 consumo: ... o CNPJ inteiro da filial no documento continua valendo (a filial 912)', s38(dLuz('Grupo 10.2026.zip\\CEMIG 47,99.pdf', LUZ.replace('76.54*.***/****-**', '76.543.210/0002-79')))[1], 912);
+    igual('25/11 consumo: ... o nome de um cliente só (sem grupo) não é o caso: continua como antes', s38(dLuz('Grupo 10.2026.zip\\CEMIG 47,99.pdf', LUZ.replace('GRUPO EXEMPLO MINERACAO E FLORESTAS EIRELI', 'FULANO DE TAL'))).slice(0, 1), ['NAO_IDENTIFICADO']);
     igual('25/11: mesNumericoDaPasta: "10.2026" no nome do zip; dois meses diferentes nas pastas: null', [R.mesNumericoDaPasta('Exemplo 10.2026.zip\\x.pdf'), R.mesNumericoDaPasta('A 10.2026.zip\\B 11-2026\\x.pdf'), R.mesNumericoDaPasta('10.2026.pdf')], [{ mes: 10, ano: 2026 }, null, null]);
     igual('25/11 seguro: a apólice sem o valor no nome continua fora dos pagamentos (a regra de SEGUROS\\ANO do Vitor)', /PAGAMENTOS DE FORNECEDORES/.test(String(R.decidir({ nome: 'APOLICE SEGURO ABC1D23.pdf', rel: C38.seguroValor.rel.replace('SEGURO 76,44.pdf', 'APOLICE SEGURO ABC1D23.pdf'), texto: C38.seguroValor.texto.slice() }, ctx38).destinoRelativo || '')), false);
   }

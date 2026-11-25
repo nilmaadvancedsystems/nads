@@ -2434,6 +2434,13 @@ function pelaPastaENome(entrada, ctx, d) {
     const qc = quemDaContaDeConsumoNoGrupo(rel, nome, bruto, u, cad);
     if (qc && qc.cliente == null) { d.evidencias = (d.evidencias || []).concat(qc.porque + ': fica em NÃO IDENTIFICADOS (Vitor, 02/11/2026)'); return null; }
     if (qc) { c = { cliente: qc.cliente, conf: 0.9, como: qc.como }; ev.push(qc.porque); }
+    // (25/11/2026, decisão do dono: "CEMIG vai para a matriz") FORA da pasta do grupo, sem o CNPJ inteiro nem outra pista do cliente: a conta que traz só o nome da
+    // empresa (e o CNPJ mascarado, "12.3**.***/****-**") que bate com a matriz e as filiais de UMA raiz de CNPJ vai para a matriz dessa raiz
+    if (!qc && !cliente()) {
+      const nomes = clientesPeloNomeNoTexto(bruto.slice(0, 3000), cad);
+      const mz = nomes.length > 1 ? matrizDaRaiz(nomes, cad, rel) : null;
+      if (mz != null) { c = { cliente: mz, conf: 0.85, como: 'nome' }; ev.push('conta de consumo com o nome da matriz e das filiais (' + nomes.join(', ') + ', a mesma raiz de CNPJ) e sem o CNPJ inteiro: a matriz ' + mz + ' (decisão do dono, 25/11/2026)'); }
+    }
     return fim({ tipo: 'CONTA DE CONSUMO', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(m.ano), dois(m.mes), conc[1]], competencia: { mes: m.mes, ano: m.ano } }, 'conta de consumo (' + conc[1] + ', o mês pelo nome, pela pasta ou pelo vencimento)');
   }
   // (lote 6, e) o DAJE (custas do cartório): PAGAMENTOS DE FORNECEDORES\ANO\MÊS\DAJE; a DCF: FISCAL\<regime>\03. DOCUMENTOS FISCAIS
