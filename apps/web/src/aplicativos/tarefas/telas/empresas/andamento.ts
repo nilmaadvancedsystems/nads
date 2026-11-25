@@ -156,6 +156,12 @@ export function useAndamento() {
   const { dep } = useDepartamentoDaTela();
   const rotinaDoDep = t.rotinaDo(dep);
   const { execucoes, carregada } = useExecucoes(competencia, dep);
+  // está no SCI? (o "Está no SCI" do Cadastro), para as abas Alterdata e SCI de Minhas empresas do Contábil (25/11/2026)
+  const todosOsCadastros = useTodosOsCadastros();
+  const sciPorCodigo = new Set<number>();
+  const sciPorNome = new Set<string>();
+  for (const [chave, c] of todosOsCadastros.porId) if (c.noSci) { sciPorNome.add(chave); if (c.codigo != null) sciPorCodigo.add(c.codigo); }
+  const noSci = (emp: { nome: string; codigo: number | null }) => sciPorNome.has(formatos.slug(emp.nome)) || (emp.codigo != null && sciPorCodigo.has(emp.codigo));
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 
   // só as empresas da pessoa (26/10/2026: "o minhas empresas tem que aparecer só as empresas da pessoa e tem que mudar
@@ -195,6 +201,8 @@ export function useAndamento() {
       responsavel: verResponsavel && !minha ? daPessoa.responsavel(emp, setorDoResponsavel as 'fiscal' | 'contabil') : '',
       /** a empresa não é da pessoa (a linha fica apagada para quem vê a coluna) */
       deOutro: verResponsavel && !minha,
+      /** a empresa está no SCI (a aba SCI de Minhas empresas); as outras são do Alterdata */
+      noSci: noSci(emp),
       empresa: emp, chave: (emp.codigo ?? '') + emp.nome, codigo: emp.codigo, nome: emp.nome, nomeNaTela: empresas.nomeParaMostrar(emp), rota: empresas.rotaDaEmpresa(emp),
       concluidas: p.concluidas, total: p.total, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
       proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,

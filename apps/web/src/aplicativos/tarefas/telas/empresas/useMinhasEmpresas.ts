@@ -29,6 +29,8 @@ type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'] | 'todas';
 const RECENTE_MS = 3 * 24 * 60 * 60 * 1000;
 
 type Linha = ReturnType<typeof useAndamento>['linhas'][number];
+/** A aba de Minhas empresas do Contábil: as empresas do Alterdata ou as do SCI. */
+export type SistemaContabil = 'alterdata' | 'sci';
 
 export function useMinhasEmpresas() {
   const a = useAndamento();
@@ -45,8 +47,15 @@ export function useMinhasEmpresas() {
   const coluna: Coluna = escolhida ? (a.params.get('ordem') as Coluna) : 'situacao';
   const dir: 'asc' | 'desc' = a.params.get('dir') === 'desc' ? 'desc' : 'asc';
 
-  const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(a.linhas.map(l => l.empresa), busca)) : null;
-  const linhas = a.linhas.filter(l => (!situacao || l.situacao === situacao) && (!achadas || achadas.has(l.empresa)));
+  // as abas do Contábil (25/11/2026: "Coloca duas abas em minhas empresas de cada contábil, aba de alterdata e aba das empresas do
+  // sci"): a do Alterdata, as que não estão no SCI; a do SCI, as com "Está no SCI" no Cadastro. Na URL (?sistema=sci); sem nada,
+  // o Alterdata. Os números, a lista, o Iniciar e as recentes seguem a aba
+  const { dep, comDep } = useDepartamentoDaTela();
+  const comAbas = dep === 'contabil';
+  const sistema: SistemaContabil = comAbas && a.params.get('sistema') === 'sci' ? 'sci' : 'alterdata';
+  const doSistema = comAbas ? a.linhas.filter(l => l.noSci === (sistema === 'sci')) : a.linhas;
+  const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(doSistema.map(l => l.empresa), busca)) : null;
+  const linhas = doSistema.filter(l => (!situacao || l.situacao === situacao) && (!achadas || achadas.has(l.empresa)));
   const comparar: Record<Coluna, (x: Linha, y: Linha) => number> = {
     codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
     nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
@@ -67,22 +76,21 @@ export function useMinhasEmpresas() {
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (não faz sentido iniciar uma concluída), paradas e em
   // andamento primeiro, com filtro rápido e busca própria
-  const abertas = a.linhas.filter(l => l.situacao !== 'concluida');
+  const abertas = doSistema.filter(l => l.situacao !== 'concluida');
   const doFiltro = abertas.filter(l => filtroIniciar === 'todas' || l.situacao === filtroIniciar);
   const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
   const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
-  const { comDep } = useDepartamentoDaTela();
   const abrir = (rota: string) => navegar(comDep(caminhoDoExecutor(rota, a.competencia)));
 
   // Minhas recentes: onde quem está trabalhando mexeu nesta competência nos últimos 3 dias, a mais recente primeiro
-  const minhas = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
+  const minhas = doSistema.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
   const agora = Date.now();
   const recentes = minhas.filter(l => agora - Date.parse(l.mexiEm as string) <= RECENTE_MS);
   const ultimaAberta = minhas.find(l => l.situacao !== 'concluida') || null;
   // a fila: as linhas já vêm paradas → em andamento → não iniciadas
   const proximaDaFila = abertas[0] || null;
-  const paradas = a.linhas.filter(l => l.situacao === 'parada').length;
+  const paradas = doSistema.filter(l => l.situacao === 'parada').length;
 
   return {
     temRotina: a.temRotina,
@@ -121,7 +129,14 @@ export function useMinhasEmpresas() {
     })),
     total: linhas.length,
     /** as empresas por situação: as da pessoa (ou todas), sem a busca e a situação */
-    resumo: t.resumoDoProgresso(a.linhas),
+    resumo: t.resumoDoProgresso(doSistema),
+    /** as abas Alterdata e SCI (só no Contábil), com quantas empresas cada uma tem */
+    abasDoSistema: comAbas ? [
+      { valor: 'alterdata' as SistemaContabil, rotulo: 'Alterdata', n: a.linhas.filter(l => !l.noSci).length },
+      { valor: 'sci' as SistemaContabil, rotulo: 'SCI', n: a.linhas.filter(l => l.noSci).length },
+    ] : null,
+    sistema,
+    setSistema: (s: SistemaContabil) => a.mudar('sistema', s === 'sci' ? 'sci' : ''),
     abrir,
     /** a página da empresa (insights dela) */
     abrirEmpresa: (rota: string) => navegar(comDep(caminhoDaEmpresa(rota, a.competencia))),
