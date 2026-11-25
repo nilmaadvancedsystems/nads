@@ -7,7 +7,7 @@ import { baixarBytes, useCarregando, useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useDadosDaEmpresaNoEntregas, useTodosOsCadastros } from '../../dados/repo';
-import { useEmpresasPermitidas } from '../empresas/andamento';
+import { useEmpresasDaPessoa } from '../empresas/andamento';
 import { useLancatudo } from '../lancatudo/useLancatudo';
 
 type Lancamento = sci.LancamentoDoShader;
@@ -115,17 +115,17 @@ export function useShadersCi() {
   const [dev] = useModoDesenvolvedor();
   // só as empresas que estão no SCI (24/11/2026: "Apenas empresas que estão na sci"): o "Está no SCI" do Cadastro e, no
   // modo desenvolvedor, as marcadas pelo ⚡ Dados de teste
-  // e, delas, só as liberadas para a pessoa (25/11/2026: "minimum tbm segue a regra de empresas liberadas para cada usuario que
-  // tenha a opcao sci marcada"): a mesma regra das outras telas (useEmpresasPermitidas: no Contábil, as de que ela é a responsável
-  // e, para o diretor e o sênior, também as dos plenos e júniores; o admin e o diretor, todas)
+  // e, delas, só as de que a pessoa é a responsável do Contábil no Cadastro, para todo mundo, o diretor também (25/11/2026: "minimum
+  // tbm segue a regra de empresas liberadas para cada usuario que tenha a opcao sci marcada"; "no minimum ta aparecendo todas as
+  // empresas que eu nao sou responsavel, o minimum e apenas cada um responsavel com sua empresa por enquanto")
   const cadastros = useTodosOsCadastros();
-  const permitidas = useEmpresasPermitidas();
-  const carregada = cadastros.carregada && permitidas.carregada;
+  const daPessoa = useEmpresasDaPessoa();
+  const carregada = cadastros.carregada && daPessoa.carregada;
   useCarregando(!carregada);
   const [testeSci, setTesteSci] = useState<number[]>(lerTesteSci);
-  // a lista pelos códigos (o pode() é novo a cada render): o conjunto só muda quando as empresas mudam
+  // a lista pelos códigos (o minha() é novo a cada render): o conjunto só muda quando as empresas mudam
   const codigosDoSci: number[] = [];
-  if (carregada) for (const c of cadastros.porId.values()) if (c.noSci && c.codigo != null && permitidas.pode({ nome: c.nome, codigo: c.codigo })) codigosDoSci.push(c.codigo);
+  if (carregada) for (const c of cadastros.porId.values()) if (c.noSci && c.codigo != null && daPessoa.minha({ nome: c.nome, codigo: c.codigo }, 'contabil')) codigosDoSci.push(c.codigo);
   if (dev) for (const c of testeSci) codigosDoSci.push(c);
   const chaveDoSci = codigosDoSci.sort((a, b) => a - b).join(',');
   const doSci = useMemo(() => new Set(chaveDoSci ? chaveDoSci.split(',').map(Number) : []), [chaveDoSci]);
