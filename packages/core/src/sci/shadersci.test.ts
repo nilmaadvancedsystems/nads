@@ -16,7 +16,10 @@ const base: CamposDoLancamento = { ...LANCAMENTO_VAZIO, data: '2026-11-05', debi
 
 describe('os planos', () => {
   it('lê os dois planos e marca as analíticas (sem filhas)', () => {
-    expect(p113.contas.length).toBe(714);
+    // 25/11/2026: o 90113 ganhou o Nubank (765, sintética, e 766, analítica)
+    expect(p113.contas.length).toBe(716);
+    expect(contaDoPlano(p113, '766')).toMatchObject({ classificacao: '01.1.1.02.008.001', nome: 'Nubank S.A', analitica: true });
+    expect(contaDoPlano(p113, '765')?.analitica).toBe(false);
     expect(p011.contas.length).toBe(573);
     expect(contaDoPlano(p113, '16')).toMatchObject({ classificacao: '01.1.2.01.001', nome: 'Clientes nacionais', analitica: true });
     expect(contaDoPlano(p011, '159')).toMatchObject({ nome: 'Clientes nacionais', analitica: true });
