@@ -121,8 +121,8 @@ function EscolhaDaEmpresa({ vm }: { vm: VmShadersCi }) {
       <h1 className="sci-inicio-titulo">Escolha sua empresa</h1>
       <p className="sci-inicio-sub">Apenas empresas que estão no SCI</p>
       {lista.length > 0 ? (
+        // sem a lupa (25/11/2026: "Tira esse icone")
         <button type="button" className="sci-escolher" onClick={() => setAberta(true)} aria-haspopup="dialog">
-          <Icone nome="search" width={18} height={18} />
           <span className="sci-escolher-rotulo">Selecionar empresa</span>
         </button>
       ) : (
