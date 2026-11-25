@@ -156,6 +156,9 @@ function podeComandar(usuario) {
 // marcada como TESTE e dizendo para quem iria: dá para conferir o texto sem mandar nada a cliente.
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const NUMERO_DO_ESCRITORIO = '553891383638';
+/** A chave do envio das guias pelo WhatsApp (25/11/2026: "ainda nao ativa isso ta? a area do cliente nao ta em uso ainda"):
+ * desligada, o lote não manda nada (nem o teste ao escritório). Ligar é mudar para true, com o OK do dono, e atualizar o robô. */
+const GUIAS_PELO_WHATSAPP_LIGADO = false;
 
 /** O texto da mensagem das guias do mês (competencia 'aaaa-mm'). */
 function mensagemDasGuias({ cliente, competencia, link }) {
@@ -178,7 +181,7 @@ function pedidoDasGuias({ telefone, cliente, competencia, link }, { liberado = L
 }
 
 module.exports = {
-  mensagemDasGuias, pedidoDasGuias, NUMERO_DO_ESCRITORIO,
+  mensagemDasGuias, pedidoDasGuias, NUMERO_DO_ESCRITORIO, GUIAS_PELO_WHATSAPP_LIGADO,
   LIBERADO_PARA_CLIENTES, NUMEROS_DE_TESTE, LIMITE_POR_HORA, LIMITE_POR_DIA, INTERVALO_MIN_MS, INTERVALO_MAX_MS, MAX_LETRAS, SITUACOES,
   numeroDoWhatsApp, jidDe, variantesDoNumero, motivoDoAnexo, marcasDaEntrega, rastreioQueConta, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
 };

@@ -451,7 +451,8 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
   // a via WhatsApp (ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo"): o robô manda a mensagem com o link da Área
   // do Cliente (a guia já vai para lá no disparo), só de ida; com a trava fechada, vai ao escritório como TESTE. Sem link ou
   // sem telefone, fica como antes (a pessoa manda pelo "Abrir no WhatsApp")
-  if (via === 'zap' && doc) {
+  // desligado até a Área do Cliente entrar em uso (25/11/2026): a chave GUIAS_PELO_WHATSAPP_LIGADO em whatsapp-regras.js
+  if (via === 'zap' && doc && require('./whatsapp-regras').GUIAS_PELO_WHATSAPP_LIGADO) {
     try {
       const W = require('./whatsapp-regras');
       const ponteiro = await db.collection('areasClientePorEmpresa').doc(String(codigo)).get();
