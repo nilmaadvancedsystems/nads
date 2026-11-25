@@ -99,6 +99,8 @@ function TelaInicial({ vm }: { vm: VmShadersCi }) {
       <span className="sci-inicio-marca">
         <LogoDoMinimum className="sci-inicio-logo" />
         <span className="sci-collab"><LogoSci altura={20} /></span>
+        {/* o slogan, embaixo do nome (25/11/2026: "Na verdade o slogan do minimum e esse, deixa abaixo do nome nessa tela de inicio") */}
+        <span className="sci-slogan">O mínimo que nem todos fazem</span>
       </span>
       <div className="sci-inicio-corpo">
         {vm.empresa ? <AppsDaEmpresa key="apps" vm={vm} /> : <EscolhaDaEmpresa key="escolha" vm={vm} />}

@@ -8750,6 +8750,8 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-inicio-logo{display:block;font-size:56px;color:var(--ink);}
 /* a logo e, presa nela, a do SCI: o conjunto entra junto e não se mexe com ou sem empresa */
 .sci-inicio-marca{position:relative;display:block;margin-bottom:20px;}
+/* o slogan do minimum, embaixo do nome (25/11/2026) */
+.sci-slogan{display:block;margin-top:6px;font-size:var(--fs-13);font-style:italic;letter-spacing:.02em;color:var(--ink-muted);}
 .sci-inicio > .sci-inicio-marca{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
 /* a collab com o SCI (25/11/2026): a logo original do SCI pequena, centrada em cima do minimum ("Bota esse mesmo tamanho, mas centralizado acima") */
 .sci-collab{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);user-select:none;}
