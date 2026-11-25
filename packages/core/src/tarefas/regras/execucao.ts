@@ -1,5 +1,6 @@
 // O andamento das etapas de uma empresa numa competência: o que está feito, o que é a próxima,
 // e as ações da tela (fazer, dispensar, interromper), cada uma devolvendo a execução nova e o evento.
+import type { AjusteDaEtapa, AjustesDasEtapas } from '../../empresas/cadastro/tipos';
 import { clienteDoDp, SO_DO_DP } from '../../empresas/dp';
 import { EMPRESAS } from '../../empresas/lista';
 import type { EmpresaDoEscritorio } from '../../empresas/tipos';
@@ -19,13 +20,28 @@ const CONCILIACAO_CAIXA_DESDE = '2026-11-10T14:00:00.000Z';
 const RESTRITAS = new Map([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas, ...ROTINA_DP.etapas].filter(e => e.regimes || e.meses || e.obrigacaoDp).map(e => [e.id, e]));
 const REGIME_POR_CODIGO = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo, e.regime]));
 
-let doCadastro: (codigo: number) => string = () => '';
-/** O regime que está no cadastro da empresa (13/10/2026): o aplicativo liga aqui a leitura do Cadastro. */
-export function usarRegimesDoCadastro(f: (codigo: number) => string): void { doCadastro = f; }
+let doCadastro: (codigo: number, competencia?: string) => string = () => '';
+/**
+ * O regime que está no cadastro da empresa (13/10/2026): o aplicativo liga aqui a leitura do Cadastro. Com a competência
+ * (ficha E10), o regime daquele mês (a empresa que saiu do Simples em janeiro segue no Simples em dezembro).
+ */
+export function usarRegimesDoCadastro(f: (codigo: number, competencia?: string) => string): void { doCadastro = f; }
 
-/** O regime da empresa: o do cadastro; sem ele, o da lista de empresas; '' quando não se sabe. */
-export function regimeDaEmpresa(codigo: number | null | undefined): string {
-  return codigo == null ? '' : doCadastro(codigo) || REGIME_POR_CODIGO.get(codigo) || '';
+/** O regime da empresa (na competência, quando dada): o do cadastro; sem ele, o da lista de empresas; '' quando não se sabe. */
+export function regimeDaEmpresa(codigo: number | null | undefined, competencia?: string): string {
+  return codigo == null ? '' : doCadastro(codigo, competencia) || REGIME_POR_CODIGO.get(codigo) || '';
+}
+
+let ajustesDoCadastro: (codigo: number) => AjustesDasEtapas | undefined = () => undefined;
+/** As etapas que cada empresa tem de diferente da rotina (Cadastro › Obrigações, ficha E08): o aplicativo liga aqui. */
+export function usarAjustesDoCadastro(f: (codigo: number) => AjustesDasEtapas | undefined): void { ajustesDoCadastro = f; }
+
+/** O ajuste da etapa nesta execução (empresa, setor e competência); null = vale a rotina. */
+export function ajusteDaEtapa(ex: Pick<Execucao, 'codigo' | 'departamento' | 'competencia'> | null, etapa: string): AjusteDaEtapa | null {
+  if (!ex || ex.codigo == null) return null;
+  const a = ajustesDoCadastro(ex.codigo)?.[ex.departamento as 'fiscal' | 'contabil']?.[etapa];
+  if (!a || (a.desde && ex.competencia < a.desde)) return null;
+  return a;
 }
 
 /** O regime da lista do escritório (sem o do cadastro): o que vale quando o cadastro não escolhe. */
@@ -42,9 +58,13 @@ export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
   // o mês que já tinha passado da etapa final quando a Conciliação caixa virou um check não reabre
   if (etapa === 'conciliacao-caixa' && ex?.etapas.despesas && concluida(ex.etapas.despesas.situacao) && ex.etapas.despesas.em < CONCILIACAO_CAIXA_DESDE) return false;
   if (ex?.retiradas?.includes(etapa)) return false;
+  // o ajuste da empresa (ficha E08): "não tem" tira; "tem" põe mesmo fora do regime e do mês
+  const ajuste = ajusteDaEtapa(ex, etapa);
+  if (ajuste?.ligada === false) return false;
+  if (ajuste?.ligada === true) return true;
   const e = RESTRITAS.get(etapa);
   if (e && ex) {
-    const regime = regimeDaEmpresa(ex.codigo);
+    const regime = regimeDaEmpresa(ex.codigo, ex.competencia);
     if (e.regimes && regime && !e.regimes.includes(regime)) return false;
     if (!etapaNoMesDoAno(e, ex.competencia)) return false;
     // o DP (06/10/2026): só as obrigações que a empresa tem na planilha do DP (fora dela, entra)

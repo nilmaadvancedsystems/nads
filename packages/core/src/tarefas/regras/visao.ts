@@ -1,24 +1,33 @@
 // Visão de cima (Contábil/Fiscal): como está cada etapa em todas as empresas da competência e quais
 // objeções mais param o trabalho. Só leitura.
 import type { Etapa, Execucao, Rotina } from '../tipos';
-import { etapaNoMes, etapaNoMesDoAno, regimeDaEmpresa, situacaoDa } from './execucao';
+import type { Departamento } from '../../usuarios/tipos';
+import { ajusteDaEtapa, etapaNoMes, etapaNoMesDoAno, regimeDaEmpresa, situacaoDa } from './execucao';
 
 /** total: as empresas que têm a etapa (a "só quando adicionada" e o LCDPR contam só nas delas; 16/10/2026) */
 export interface ResumoDaEtapa { etapa: string; nome: string; feitas: number; dispensadas: number; interrompidas: number; pendentes: number; total: number }
 
-/** A empresa tem a etapa pelo regime? (regime desconhecido: entra, como em etapaNoMes) */
-function temPeloRegime(e: Etapa, codigo: number | null): boolean {
-  const regime = regimeDaEmpresa(codigo);
+/**
+ * A empresa tem a etapa pelo regime? (regime desconhecido: entra, como em etapaNoMes) Com a competência, o regime daquele
+ * mês (ficha E10) e o ajuste da empresa no Cadastro › Obrigações (ficha E08) por cima.
+ */
+function temPeloRegime(e: Etapa, codigo: number | null, departamento: Departamento, competencia?: string): boolean {
+  if (competencia) {
+    const ajuste = ajusteDaEtapa({ codigo, departamento, competencia }, e.id);
+    if (ajuste?.ligada !== undefined) return ajuste.ligada;
+  }
+  const regime = regimeDaEmpresa(codigo, competencia);
   return !e.regimes || !regime || e.regimes.includes(regime);
 }
 
-export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, totalEmpresas: number, codigos?: readonly (number | null)[]): ResumoDaEtapa[] {
+export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, totalEmpresas: number, codigos?: readonly (number | null)[], competencia?: string): ResumoDaEtapa[] {
+  const tem = (e: Etapa, codigo: number | null) => temPeloRegime(e, codigo, rotina.departamento, competencia);
   return rotina.etapas.map(e => {
     let feitas = 0, dispensadas = 0, interrompidas = 0;
     // a etapa "só quando adicionada" (o Creditor) conta só nas empresas em que entrou
     // com os códigos, a etapa de alguns regimes conta só nas empresas deles: a Presumido não fica pendente no Simples
-    const daEtapa = e.soQuandoAdicionada ? execucoes.filter(ex => etapaNoMes(ex, e.id)) : codigos ? execucoes.filter(ex => temPeloRegime(e, ex.codigo)) : execucoes;
-    const total = e.soQuandoAdicionada ? daEtapa.length : totalEmpresas - (codigos ? codigos.filter(c => !temPeloRegime(e, c)).length : 0);
+    const daEtapa = e.soQuandoAdicionada ? execucoes.filter(ex => etapaNoMes(ex, e.id)) : codigos ? execucoes.filter(ex => tem(e, ex.codigo)) : execucoes;
+    const total = e.soQuandoAdicionada ? daEtapa.length : totalEmpresas - (codigos ? codigos.filter(c => !tem(e, c)).length : 0);
     for (const ex of daEtapa) {
       const salva = situacaoDa(ex, e.id);
       // a que saiu do mês não está parada (como em progresso), mas o que foi feito nela fica contado
@@ -51,6 +60,7 @@ export function resumoPorEtapaDasEmpresas(execucoes: readonly Execucao[], codigo
     competencia ? { ...r, etapas: r.etapas.filter(e => etapaNoMesDoAno(e, competencia)) } : r,
     g.total,
     [...g.codigos],
+    competencia,
   ));
 }
 

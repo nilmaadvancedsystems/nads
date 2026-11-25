@@ -21,6 +21,7 @@ export function TransferenciasPendentes() {
               <b className="resp-pendentes-com">Com <PessoaComFoto nome={t.outro} {...t.foto} /></b>
               {t.saem.length > 0 && <span><span className="fraco">Saem: </span>{t.saem.join(', ')}</span>}
               {t.entram.length > 0 && <span><span className="fraco">Entram: </span>{t.entram.join(', ')}</span>}
+              {t.pendentesQueEntram.length > 0 && <span><span className="fraco">Vêm pendentes: </span>{t.pendentesQueEntram.join(', ')}</span>}
             </div>
             <span className="resp-transf-botoes">
               <button type="button" className="btn btn-primary" onClick={() => t.responder(true)}><Icone nome="check" />Aceitar</button>

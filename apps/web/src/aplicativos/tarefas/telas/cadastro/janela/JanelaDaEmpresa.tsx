@@ -11,6 +11,7 @@ import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empre
 import { DocumentosDoFiscal } from '../fiscal/DocumentosDoFiscal';
 import { ParcelamentosDaEmpresa } from '../fiscal/ParcelamentosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
+import { ObrigacoesDaEmpresa } from '../obrigacoes/ObrigacoesDaEmpresa';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
 import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
@@ -22,6 +23,7 @@ function Aba({ rota, aba, simples }: { rota: string; aba: string; simples: boole
     // o código de acesso do Simples à mostra em cima dos dados (03/11/2026: "aparecer no cadastro como informação facil")
     case 'empresa': return <><CodigoDoSimplesNoCadastro rota={rota} simples={simples} /><DadosDaEmpresa rota={rota} /></>;
     case 'contabil': return <ParametrosContabeis rota={rota} />;
+    case 'obrigacoes': return <ObrigacoesDaEmpresa rota={rota} />;
     case 'fiscal': return <ParametrosFiscais rota={rota} />;
     case 'fiscal-docs': return <DocumentosDoFiscal rota={rota} />;
     case 'parcelamentos': return <ParcelamentosDaEmpresa rota={rota} />;

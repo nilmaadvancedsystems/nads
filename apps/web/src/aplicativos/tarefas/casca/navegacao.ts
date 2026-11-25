@@ -307,7 +307,7 @@ export const ehDiretor = (op: Operador | null) => !!op && (op.admin || usuarios.
 
 /** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
 export const abasDoCadastroDe = (op: Operador | null) =>
-  ABAS_DO_CADASTRO.filter(a => a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil');
+  ABAS_DO_CADASTRO.filter(a => (a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil') && (a.id !== 'obrigacoes' || novidadeLigada('obrigacoes-por-empresa')));
 
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
@@ -498,6 +498,8 @@ export function paginasDaEmpresa(dep: string): Pagina[] {
 // por setor, no estilo das configurações do Notion (14/10/2026: "contas padrão e bancárias irão ficar em contábil")
 export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone; grupo: string }[] = [
   { id: 'empresa', rotulo: 'Dados da empresa', icone: 'briefcase', grupo: 'Empresa' },
+  // o que a empresa tem de diferente da rotina (plano do Acessórias, ficha E08; novidade em teste)
+  { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', grupo: 'Empresa' },
   { id: 'contabil', rotulo: 'Parâmetros', icone: 'settings', grupo: 'Contábil' },
   { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark', grupo: 'Contábil' },
   { id: 'plano', rotulo: 'Plano de contas', icone: 'list', grupo: 'Contábil' },
