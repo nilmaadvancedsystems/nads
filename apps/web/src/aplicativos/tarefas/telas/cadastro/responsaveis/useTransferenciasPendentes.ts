@@ -15,7 +15,8 @@ export function useTransferenciasPendentes() {
   const gravar = useGravarCadastro();
   const eu = useOperador().operador?.nome || '';
   const { toast } = useRetorno();
-  const equipe = useAcesso().equipe().lista;
+  const acesso = useAcesso();
+  const equipe = acesso.equipe().lista;
   const pedidos = todos.carregada ? cad.transferenciasParaResponder(todos.porId.values(), eu) : [];
   // as pendências só com pedido para responder (sem pedido, nenhuma leitura a mais)
   const pend = usePendenciasNaTroca(useNovidade('pendencias-na-troca') && pedidos.length > 0);
@@ -36,7 +37,12 @@ export function useTransferenciasPendentes() {
         pendentesQueEntram: itens.filter(i => i.papel === 'destinatario')
           .flatMap(i => pend.de(i.cadastro.nome, i.cadastro.codigo, i.dep).map(p => i.cadastro.nome + ' › ' + p.nome + (p.tipo === 'atrasada' ? ' (atrasada)' : p.tipo === 'no-interno' ? ' (no prazo interno)' : ' (parada)'))),
         responder(aceita: boolean) {
-          for (const i of itens) void gravar(i.cadastro.nome, i.cadastro.codigo, atual => cad.responderTransferencia(atual, i.dep, eu, aceita, new Date()));
+          for (const i of itens) {
+            void gravar(i.cadastro.nome, i.cadastro.codigo, atual => cad.responderTransferencia(atual, i.dep, eu, aceita, new Date()));
+            // no Registro de alterações (ficha M02 com a E20)
+            const dep = cad.DEPARTAMENTOS_DO_RESPONSAVEL.find(d => d.id === i.dep)?.rotulo || i.dep;
+            acesso.registrarAlteracao(aceita ? 'responsavel-aceito' : 'responsavel-recusado', dep + ' · ' + i.cadastro.nome + ': ' + i.t.de + ' → ' + i.t.para);
+          }
           toast(aceita ? 'Troca aceita.' : 'Troca recusada.');
         },
       };

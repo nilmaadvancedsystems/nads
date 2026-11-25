@@ -38,7 +38,8 @@ export function useDadosDaEmpresa(rota: string) {
   const fiscal = empresas.parametrosFiscaisQueValem(codigo, c.cadastro.fiscal);
   // quem cuida da empresa no Fiscal e no Contábil (17/11/2026: trocar aqui, pelo Dados da empresa): o escolhido no
   // cadastro; no Fiscal, sem escolha, o da planilha do Checklist Folha (como em Empresas por responsável)
-  const ativos = useAcesso().equipe().lista;
+  const acesso = useAcesso();
+  const ativos = acesso.equipe().lista;
   const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   const daPlanilhaBruto = empresas.clienteDoDp(codigo)?.responsavel || '';
   const daPlanilha = daPlanilhaBruto ? ativos.find(p => p.ativo && igual(p.nome, daPlanilhaBruto))?.nome || daPlanilhaBruto.charAt(0) + daPlanilhaBruto.slice(1).toLowerCase() : '';
@@ -123,7 +124,11 @@ export function useDadosDaEmpresa(rota: string) {
     trocarResponsavel(dep: empresas.cadastro.DepartamentoDoResponsavel, nome: string) {
       if (c.carregando || !podeTrocarResponsavel) return;
       const novo = empresas.cadastro.trocarResponsavelDireto(c.cadastro, dep, nome, c.por, new Date());
-      if (novo !== c.cadastro) c.salvar(novo);
+      if (novo === c.cadastro) return;
+      c.salvar(novo);
+      // no Registro de alterações (ficha M02 com a E20)
+      const rotulo = empresas.cadastro.DEPARTAMENTOS_DO_RESPONSAVEL.find(d => d.id === dep)?.rotulo || dep;
+      acesso.registrarAlteracao('responsavel-trocado', rotulo + ' · ' + c.empresa.nome + ': ' + (c.cadastro.responsaveis?.[dep] || 'sem responsável') + ' → ' + nome);
     },
     /** o regime (13/10/2026): o escolhido no cadastro (null = vale o da lista do escritório) e o da lista */
     regime: (c.cadastro.regime as empresas.cadastro.Regime | undefined) ?? null,

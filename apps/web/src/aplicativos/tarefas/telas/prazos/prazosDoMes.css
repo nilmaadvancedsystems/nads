@@ -1,0 +1,32 @@
+/* Prazos › Prazos do mês (plano do Acessórias, ficha E04): o resumo no desenho do Controle Forestry e os selos da situação */
+.pz-resumo{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-12);}
+.pz-resumo-item{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);
+  color:var(--ink-muted);font:inherit;font-size:var(--fs-12);cursor:pointer;font-variant-numeric:tabular-nums;}
+.pz-resumo-item b{color:var(--ink);font-weight:700;}
+.pz-resumo-item:disabled{opacity:.5;cursor:default;}
+.pz-resumo-item.ativo{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);}
+.pz-resumo-item.pz-atrasada b{color:var(--danger-ink);}
+.pz-resumo-item.pz-prazo-interno b{color:var(--warn);}
+.pz-resumo-item.pz-entregue-com-atraso b{color:var(--warn);}
+.pz-resumo-item.pz-entregue-no-prazo b,.pz-resumo-item.pz-entregue-antes b{color:var(--success-ink);}
+.pz-linha{cursor:pointer;}
+.pz-linha:hover td{background:var(--surface-2);}
+.pz-prazo{white-space:nowrap;}
+.pz-confirmar{margin-left:6px;padding:0 6px;border-radius:999px;font-size:var(--fs-11);background:var(--surface-3);color:var(--ink-muted);}
+.pz-sit{display:inline-block;padding:1px 8px;border-radius:999px;font-size:var(--fs-11);font-weight:600;white-space:nowrap;}
+.pz-sit-a-fazer,.pz-sit-sem-prazo{background:var(--surface-3);color:var(--ink-muted);font-weight:500;}
+.pz-sit-prazo-interno,.pz-sit-entregue-com-atraso{background:var(--warn-soft);color:var(--warn);}
+.pz-sit-atrasada{background:var(--danger-soft);color:var(--danger-ink);}
+.pz-sit-entregue-antes,.pz-sit-entregue-no-prazo{background:var(--success-soft);color:var(--success-ink);}
+.pz-sit-dispensada{background:var(--surface-3);color:var(--ink-muted);font-weight:500;text-decoration:line-through;}
+.pz-tabela{min-width:0;}
+.pz-tabela col.pz-c-cod{width:52px;}
+.pz-tabela col.pz-c-nome{width:auto;}
+.pz-tabela col.pz-c-obr{width:150px;}
+.pz-tabela col.pz-c-prazo{width:175px;}
+.pz-tabela col.pz-c-sit{width:130px;}
+.pz-tabela col.pz-c-resp{width:100px;}
+.pz-tabela col.pz-c-feita{width:110px;}
+.pz-tabela .fr-cliente,.pz-tabela .fr-cliente span{white-space:normal;overflow-wrap:break-word;}
+.pz-tabela td.pz-texto{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pz-tabela thead tr:first-child th{top:0;height:30px;font-size:var(--fs-11);letter-spacing:0;text-transform:none;}

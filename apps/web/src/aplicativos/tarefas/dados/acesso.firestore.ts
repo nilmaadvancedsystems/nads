@@ -201,6 +201,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       await updateDoc(doc(db, 'usuarios', uid), { roles: m.roles, departamento: m.departamento ?? deleteField(), nivel: m.nivel ?? deleteField() });
       registrar('usuario-cargo', nomeDe(uid) + ': ' + (departamento || 'sem departamento') + ' · ' + (nivel || 'sem nível'));
     },
+    registrarAlteracao: registrar,
     async salvarPapeis(uid, papeis) { await updateDoc(doc(db, 'usuarios', uid), { roles: papeis }); registrar('usuario-papeis', nomeDe(uid) + ': ' + papeis.join(', ')); },
     minhaFoto: () => { ouvir(); const q = quem(); return (q && equipe.docs[q.uid]?.fotoPerfil) || null; },
     // as regras deixam o dono mexer na própria foto (usuarios/{uid}.fotoPerfil), como as Configurações do Entregas

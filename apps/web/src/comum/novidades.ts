@@ -91,6 +91,9 @@ export const NOVIDADES = {
   /** a troca de responsável mostra o que está pendente em cada empresa (25/11/2026, plano do Acessórias, ficha M02): o selo na
    *  janela Trocar empresas, o "Vão junto" na frase e o "Vêm pendentes" no cartão de aceite */
   'pendencias-na-troca': { desde: '25/11/2026', aprovada: false },
+  /** Prazos › Prazos do mês (25/11/2026, plano do Acessórias, ficha E04; o dono: "E03 + E04: Prazos do mês"): as obrigações com prazo de
+   *  todas as empresas na competência, com a situação pelo prazo; por ora só o Fiscal */
+  prazos: { desde: '25/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
