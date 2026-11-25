@@ -67,6 +67,7 @@ const Devedores = pedaco(() => import('../telas/financeiro/Devedores'), 'Devedor
 const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato'), 'ImportarExtrato');
 const ContasAPagar = pedaco(() => import('../telas/financeiro/ContasAPagar'), 'ContasAPagar');
 const Boletos = pedaco(() => import('../telas/financeiro/Boletos'), 'Boletos');
+const PrazosDoMes = pedaco(() => import('../telas/prazos/PrazosDoMes'), 'PrazosDoMes');
 const ArquivoFisico = pedaco(() => import('../telas/arquivo-fisico/ArquivoFisico'), 'ArquivoFisico');
 const Ferramentas = pedaco(() => import('../telas/ferramentas/Ferramentas'), 'Ferramentas');
 const Carteira = pedaco(() => import('../telas/carteira/Carteira'), 'Carteira');
@@ -96,6 +97,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'ferramentas': return <Ferramentas />;
     // o Arquivo físico (19/11/2026): as caixas e os envelopes do arquivo do escritório
     case 'arquivo-fisico': return <ArquivoFisico pagina={pagina} />;
+    case 'prazos': return <PrazosDoMes />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     // a Carteira (12/11/2026): por enquanto só o Vitor; os outros, a tela "em desenvolvimento"
     case 'carteira': return <Carteira pagina={pagina} />;
@@ -138,7 +140,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={(a.id === 'inicio' && !tarefasNoInicioNovo) || (a.id === 'carteira' && a.paginas.length <= 1) || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || a.id === 'desenvolvedor' || a.id === 'lancatudo' || a.id === 'shadersci' || a.id === 'controle-contabil'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={(a.id === 'inicio' && !tarefasNoInicioNovo) || (a.id === 'carteira' && a.paginas.length <= 1) || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || a.id === 'desenvolvedor' || a.id === 'lancatudo' || a.id === 'shadersci' || a.id === 'controle-contabil' || a.id === 'prazos'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

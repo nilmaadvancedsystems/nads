@@ -16,7 +16,12 @@ const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLo
 export function useEmpresasPorResponsavel() {
   const todos = useTodosOsCadastros();
   const gravar = useGravarCadastro();
-  const equipe = useAcesso().equipe();
+  const acesso = useAcesso();
+  const equipe = acesso.equipe();
+  // a troca no Registro de alterações (ficha M02 com a E20): "Fiscal · EMPRESA: Ana → Bia"
+  const rotuloDep = (dep: Dep) => cad.DEPARTAMENTOS_DO_RESPONSAVEL.find(d => d.id === dep)?.rotulo || dep;
+  const anotar = (acao: 'responsavel-pedido' | 'responsavel-aceito' | 'responsavel-recusado' | 'responsavel-trocado', nome: string, dep: Dep, texto: string) =>
+    acesso.registrarAlteracao(acao, rotuloDep(dep) + ' · ' + nome + ': ' + texto);
   const op = useOperador().operador;
   const por = op?.nome || '';
   // trocar empresas (e escolher quem cuida de uma sem responsável) é só do Diretor: Sênior, Pleno e Júnior não trocam
@@ -110,11 +115,14 @@ export function useEmpresasPorResponsavel() {
       const previa = cad.pedirTransferencia(todos.porId.get(formatos.slug(nome)) || cad.cadastroVazio(nome, codigo), dep, de, para, por, new Date());
       if (previa.erro) { toast(previa.erro); return; }
       void gravar(nome, codigo, atual => { const r = cad.pedirTransferencia(atual, dep, de, para, por, new Date()); return r.erro ? atual : r.cadastro; });
+      anotar('responsavel-pedido', nome, dep, de + ' → ' + para);
       const falta = cad.faltamAceitar(previa.cadastro.transferencias![dep]!);
       toast('Transferência pedida: ' + de + ' → ' + para + '. Falta o aceite de ' + falta.join(' e ') + '.');
     },
     responder(nome: string, codigo: number | null, dep: Dep, aceita: boolean) {
+      const t = todos.porId.get(formatos.slug(nome))?.transferencias?.[dep];
       void gravar(nome, codigo, atual => cad.responderTransferencia(atual, dep, por, aceita, new Date()));
+      if (t) anotar(aceita ? 'responsavel-aceito' : 'responsavel-recusado', nome, dep, t.de + ' → ' + t.para);
     },
     cancelar(nome: string, codigo: number | null, dep: Dep) {
       void gravar(nome, codigo, atual => cad.cancelarTransferencia(atual, dep, por, new Date()));
@@ -133,8 +141,8 @@ export function useEmpresasPorResponsavel() {
       const agora = new Date();
       const pedir = (x: { nome: string; codigo: number | null; dep: Dep }, de: string, para: string) =>
         void gravar(x.nome, x.codigo, atual => { const r = cad.pedirTransferencia(atual, x.dep, de, para, por, agora, troca); return r.erro ? atual : r.cadastro; });
-      daA.forEach(x => pedir(x, a, b));
-      daB.forEach(x => pedir(x, b, a));
+      daA.forEach(x => { pedir(x, a, b); anotar('responsavel-pedido', x.nome, x.dep, a + ' → ' + b); });
+      daB.forEach(x => { pedir(x, b, a); anotar('responsavel-pedido', x.nome, x.dep, b + ' → ' + a); });
       const quem = [a, b].filter(n => !igual(n, por));
       toast('Troca pedida' + (quem.length ? ': falta o aceite de ' + quem.join(' e ') + '.' : '.'));
     },
@@ -142,6 +150,7 @@ export function useEmpresasPorResponsavel() {
     definir(nome: string, codigo: number | null, dep: Dep, quem: string) {
       if (!todos.carregada || !podeTrocar) return;
       void gravar(nome, codigo, atual => cad.definirResponsavel(atual, dep, quem, por, new Date()));
+      anotar('responsavel-trocado', nome, dep, 'sem responsável → ' + quem);
     },
   };
 }
