@@ -203,7 +203,9 @@ export function useAndamento() {
       // a última vez que alguém mexeu nesta empresa na competência (de qualquer pessoa)
       ultimaVez: t.ultimaVez(ex),
     };
-  }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]) : [];
+  // na mesma situação, as da pessoa primeiro e as dos outros mais abaixo (25/11/2026: "Priorize as empresas do usuario em primeiro
+  // (quando o paramentro e de igual para igual) e deixe as dos outros mais abaixo da tabela")
+  }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao] || Number(a.deOutro) - Number(b.deOutro)) : [];
 
   /** Muda um parâmetro da URL mantendo os outros (competência, situação). */
   function mudar(chave: string, valor: string) {

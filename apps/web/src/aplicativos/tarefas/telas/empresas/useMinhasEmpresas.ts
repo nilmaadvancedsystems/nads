@@ -51,7 +51,9 @@ export function useMinhasEmpresas() {
     situacao: (x, y) => x.rotuloSituacao.localeCompare(y.rotuloSituacao, 'pt-BR'),
   };
   // texto em ordem alfabética, número do menor para o maior; sem coluna escolhida fica a ordem de sempre
-  if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
+  // no empate, as da pessoa antes das dos outros (25/11/2026: "Priorize as empresas do usuario em primeiro (quando o paramentro e
+  // de igual para igual)"), e depois o nome
+  if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || Number(x.deOutro) - Number(y.deOutro) || x.nome.localeCompare(y.nome, 'pt-BR'));
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (não faz sentido iniciar uma concluída), paradas e em
   // andamento primeiro, com filtro rápido e busca própria
