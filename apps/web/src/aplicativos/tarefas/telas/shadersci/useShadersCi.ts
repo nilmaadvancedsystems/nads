@@ -186,7 +186,9 @@ export function useShadersCi() {
   // (25/11/2026: "pode publicar o minimum para a versao final do usuario, liberando apenas a aba lancamentos, irei trabalhar no extratudo")
   const apps: readonly AppDoMinimum[] = dev ? ['lancamentos', 'extratudo', 'razao'] : ['lancamentos', 'razao'];
   const pedido = entrada.empresa ? appDoEndereco(entrada.doEndereco('m')) : null;
-  const app = pedido && apps.includes(pedido) ? pedido : null;
+  // fora do modo desenvolvedor só há os Lançamentos: a empresa escolhida já abre neles, sem a tela dos apps (25/11/2026: "O minumum
+  // pode abrir na aba de lancamento direto, apos selecionar a empresa na versao final")
+  const app = pedido && apps.includes(pedido) ? pedido : entrada.empresa && !dev ? 'lancamentos' : null;
 
   const guardar = useCallback((muda: (g: Guardado) => Guardado) => {
     setGuardado(g => { const novo = muda(g); if (chave) gravarGuardado(chave, novo); return novo; });
