@@ -99,6 +99,8 @@ function TelaInicial({ vm }: { vm: VmShadersCi }) {
       <span className="sci-inicio-marca">
         <LogoDoMinimum className="sci-inicio-logo" />
         <span className="sci-collab"><LogoSci altura={20} /></span>
+        {/* o slogan, embaixo do nome (25/11/2026: "Na verdade o slogan do minimum e esse, deixa abaixo do nome nessa tela de inicio") */}
+        <span className="sci-slogan">O mínimo que nem todos fazem</span>
       </span>
       <div className="sci-inicio-corpo">
         {vm.empresa ? <AppsDaEmpresa key="apps" vm={vm} /> : <EscolhaDaEmpresa key="escolha" vm={vm} />}
@@ -119,10 +121,10 @@ function EscolhaDaEmpresa({ vm }: { vm: VmShadersCi }) {
   return (
     <div className="sci-escolha">
       <h1 className="sci-inicio-titulo">Escolha sua empresa</h1>
-      <p className="sci-inicio-sub">Apenas empresas que estão no SCI</p>
+      {/* sem o "Apenas empresas que estão no SCI" (25/11/2026: "Remove isso, nao achei que ficou bom") */}
       {lista.length > 0 ? (
+        // sem a lupa (25/11/2026: "Tira esse icone")
         <button type="button" className="sci-escolher" onClick={() => setAberta(true)} aria-haspopup="dialog">
-          <Icone nome="search" width={18} height={18} />
           <span className="sci-escolher-rotulo">Selecionar empresa</span>
         </button>
       ) : (
@@ -427,7 +429,8 @@ function JanelaDoMultiplo({ vm }: { vm: VmShadersCi }) {
  * apareca uma mini popup no canto inferior esquerdo mostrando o total que estou selecionando e dados uteis"; "quando seleciona
  * mais de um lancamento apenas"): quantos, o total, o período, a média, o maior, os múltiplos e os com problema.
  */
-function ResumoDaSelecao({ selecao, limpar, excluir }: { selecao: { multiplo: boolean; ms: VmShadersCi['linhas']; valor: number }[]; limpar: () => void; excluir: () => void }) {
+function ResumoDaSelecao({ vm, selecao, limpar, excluir }: { vm: VmShadersCi; selecao: { multiplo: boolean; ms: VmShadersCi['linhas']; valor: number }[]; limpar: () => void; excluir: () => void }) {
+  const [lote, setLote] = useState(false);
   const n = selecao.length;
   const total = selecao.reduce((t, s) => t + s.valor, 0);
   const maior = Math.max(...selecao.map(s => s.valor));
@@ -449,6 +452,10 @@ function ResumoDaSelecao({ selecao, limpar, excluir }: { selecao: { multiplo: bo
         <div><dt>Maior</dt><dd className="num">R$ {sci.valorParaTexto(maior)}</dd></div>
         {multiplos.length > 0 && <div><dt>Múltiplos</dt><dd>{multiplos.length} · {partidas} partidas</dd></div>}
       </dl>
+      {lote
+        ? <AlterarEmLote vm={vm} simples={n - multiplos.length} multiplos={multiplos.length} fechar={() => setLote(false)} />
+        : <button type="button" className="btn btn-sm btn-outline sci-selecao-lote" onClick={() => setLote(true)} disabled={n === multiplos.length}
+            title={n === multiplos.length ? 'Os múltiplos não mudam em lote' : 'Mudar a data, as contas, o valor ou o histórico dos selecionados'}>Alterar em lote</button>}
       {/* excluir em lote (25/11/2026: "Deixa uma opcao de excluir em lote aqui nessa box"): o mesmo excluir do botão direito e do
           Del, que o Ctrl+Z desfaz */}
       {/* vermelho, o padrão de excluir, e sem ícone (25/11/2026: "Deixa os botoes de excluir vermelho ... remove o icone desse botao") */}
@@ -456,6 +463,46 @@ function ResumoDaSelecao({ selecao, limpar, excluir }: { selecao: { multiplo: bo
         Excluir os {n} lançamentos
       </button>
     </div>
+  );
+}
+
+/**
+ * Alterar em lote (25/11/2026: "Coloca alguma funcao de alterar em lote: data, conta debito, conta credito, valor, numero do
+ * historico"): o que ficar vazio não muda. Os múltiplos não mudam em lote ("Lancamentos em lote nao muda multiplos, deixe isso
+ * como regra"): o aviso diz quantos ficam de fora. Embaixo da conta e do histórico, o nome, para conferir antes de aplicar.
+ */
+function AlterarEmLote({ vm, simples, multiplos, fechar }: { vm: VmShadersCi; simples: number; multiplos: number; fechar: () => void }) {
+  const [t, setT] = useState({ data: '', debito: '', credito: '', valor: '', historico: '' });
+  const [erro, setErro] = useState('');
+  const muda = (k: keyof typeof t) => (e: { target: { value: string } }) => { setT(x => ({ ...x, [k]: e.target.value })); setErro(''); };
+  const nomeDa = (texto: string) => { const c = vm.contaNoPlano(texto); return !texto.trim() ? '' : c ? c.nome : 'Não está no plano'; };
+  const hist = vm.historicoNoSci(t.historico);
+  const campo = (k: keyof typeof t, rotulo: string, dica: string, nome?: string, num?: boolean) => (
+    <label className="sci-lote-campo">
+      <span>{rotulo}</span>
+      <input type="text" value={t[k]} onChange={muda(k)} placeholder={dica} aria-label={rotulo} className={num ? 'num' : undefined} autoFocus={k === 'data'} />
+      {nome && <small className="hint" title={nome}>{nome}</small>}
+    </label>
+  );
+  return (
+    <form className="sci-lote" onSubmit={e => { e.preventDefault(); const r = vm.alterarEmLote(t); if (r) setErro(r); else fechar(); }}
+      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } }}>
+      <div className="sci-lote-grade">
+        {campo('data', 'Data', 'dd/mm/aaaa')}
+        {campo('valor', 'Valor', '0,00', undefined, true)}
+        {campo('debito', 'Débito', 'Conta', nomeDa(t.debito))}
+        {campo('credito', 'Crédito', 'Conta', nomeDa(t.credito))}
+        {campo('historico', 'Nº do histórico', 'Número', t.historico.trim() ? (hist ? hist.nome : 'Não está no plano de históricos') : '')}
+      </div>
+      <p className="hint sci-lote-nota">
+        {multiplos ? (multiplos === 1 ? '1 múltiplo fica' : multiplos + ' múltiplos ficam') + ' como está: o lote não muda múltiplos. ' : ''}O vazio não muda.
+      </p>
+      {erro && <p className="sci-lote-erro" role="alert">{erro}</p>}
+      <div className="sci-lote-botoes">
+        <button type="button" className="btn btn-sm btn-ghost" onClick={fechar}>Voltar</button>
+        <button type="submit" className="btn btn-sm btn-primary">Alterar {simples === 1 ? '1 lançamento' : simples + ' lançamentos'}</button>
+      </div>
+    </form>
   );
 }
 
@@ -711,7 +758,7 @@ function Tabela({ vm }: { vm: VmShadersCi }) {
             </tbody>
           </table>
         </div>
-      {selecao.length > 1 && <ResumoDaSelecao selecao={selecao} limpar={() => vm.marcarTodas(false)} excluir={() => vm.excluir()} />}
+      {selecao.length > 1 && <ResumoDaSelecao vm={vm} selecao={selecao} limpar={() => vm.marcarTodas(false)} excluir={() => vm.excluir()} />}
       </section>
       )}
       {/* o razão do SCI por um botão no centro da tela, no lugar do olho do topo (25/11/2026: "Tira o olho e coloca um botao central
