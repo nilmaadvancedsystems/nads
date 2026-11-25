@@ -448,6 +448,26 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
     resultado.econtadorSaida = await EC.anotarSaida(db, { origem: 'lote-fiscal', codigo, competencia, empresa: nome, registro: registro ? registro.id : '', arquivos })
       .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
   }
+  // a via WhatsApp (ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo"): o robô manda a mensagem com o link da Área
+  // do Cliente (a guia já vai para lá no disparo), só de ida; com a trava fechada, vai ao escritório como TESTE. Sem link ou
+  // sem telefone, fica como antes (a pessoa manda pelo "Abrir no WhatsApp")
+  // desligado até a Área do Cliente entrar em uso (25/11/2026): a chave GUIAS_PELO_WHATSAPP_LIGADO em whatsapp-regras.js
+  if (via === 'zap' && doc && require('./whatsapp-regras').GUIAS_PELO_WHATSAPP_LIGADO) {
+    try {
+      const W = require('./whatsapp-regras');
+      const ponteiro = await db.collection('areasClientePorEmpresa').doc(String(codigo)).get();
+      const token = ponteiro.exists ? String(ponteiro.get('token') || '') : '';
+      const link = /^[0-9a-f]{40}$/.test(token) ? 'https://cliente.nilmacontabilidade.com/cliente/' + token + '/guias' : '';
+      const pedido = link ? W.pedidoDasGuias({ telefone: doc.data().telefone, cliente: nome, competencia, link }) : null;
+      if (pedido) {
+        const w = await db.collection('solicitacoesEmail').add({
+          tipo: 'whatsapp', status: 'pendente', para: pedido.para, texto: pedido.texto, clienteId: doc.id, clienteNome: nome,
+          origem: 'lote-fiscal', lote: ref.id, competencia, criadoEm: agora, criadoPor: lote.disparadoPor || 'robô', criadoPorUid: lote.disparadoPorUid || '',
+        });
+        resultado.whatsapp = { pedido: w.id, para: pedido.para };
+      } else resultado.whatsapp = { semEnvio: link ? 'sem o telefone no cadastro' : 'a empresa não tem a Área do Cliente' };
+    } catch (err) { resultado.whatsapp = { erro: String(err.message || err).slice(0, 200) }; }
+  }
   try {
     resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : via === 'zap' ? 'WhatsApp' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
   } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
