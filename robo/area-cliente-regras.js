@@ -749,9 +749,11 @@ const CAMPOS_DO_ESPELHO = {
   // a DANFE pedida pelo relatório do dia (12/11/2026): documentos/danfe-<chave> (os pedaços como os do DP)
   documentoDanfe: ['tipo', 'id', 'nome', 'chave', 'partes', 'erro', 'atualizadoEm'],
   // o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
-  faturamento: ['empresas', 'fonte', 'atualizadoEm'],
+  // a receita do PGDAS-D no mês e a data da consulta no e-CAC (25/11/2026)
+  faturamento: ['empresas', 'fonte', 'atualizadoEm', 'receitaConsultadaEm'],
   empresaFat: ['codigo', 'nome', 'regime', 'meses'],
-  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes', 'banco'],
+  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes', 'banco', 'receita'],
+  receitaFat: ['valor', 'rbt12', 'consultadoEm'],
   // o que entrou nas contas pelos extratos (13/11/2026): só a soma do mês e quantas contas, nenhum lançamento
   bancoFat: ['entradas', 'saidas', 'contas', 'saldo', 'porBanco'],
   saldoFat: ['valor', 'data'],
@@ -784,7 +786,7 @@ const CAMPOS_DO_ESPELHO = {
   ticketNaArea: ['codigo', 'numero', 'assunto', 'validoAte', 'total', 'faltam', 'refazer'],
   serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { recibo: { recusa: 'recusaRecibo' }, comunicados: { itens: 'itemComunicado' }, parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem', passo: 'passoChamado' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
+const DENTRO = { recibo: { recusa: 'recusaRecibo' }, comunicados: { itens: 'itemComunicado' }, parcelamentos: { itens: 'itemParcelamento' }, entregas: { itens: 'itemEntrega' }, ficha: { socios: 'socioFicha' }, pendencias: { itens: 'itemPendencia' }, tickets: { tickets: 'ticketNaArea' }, resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem', passo: 'passoChamado' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat', receita: 'receitaFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {

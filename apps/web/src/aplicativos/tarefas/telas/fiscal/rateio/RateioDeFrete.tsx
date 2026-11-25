@@ -4,7 +4,8 @@
 // faixa (o valor, editável, o ICMS e quantas notas), as NF-e que ele transporta (com o frete de cada uma; marcar outras),
 // o rateio pelas tributações e, clicando numa linha, o frete pelos NCMs, cada um no seu cartão. "Sem XML? Digite os
 // valores" faz a planilha à mão. Só as peças do catálogo (Busca com lupa, Botão com borda, SeletorMes, Segmentado, busca
-// curta, Cartão, Tabela padrão, Checkbox, Valor editável, Botão fantasma, Dica, Alerta, Vazio, Esqueleto).
+// curta, Cartão, Tabela padrão, Checkbox, Valor editável, Botão fantasma, Dica, Alerta, Vazio, Esqueleto). Na barra,
+// Exportar planilha e Imprimir (25/11/2026): o rateio da tela, pelo CT-e ou digitado.
 import { Alerta, BotaoIcone, Dica, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import type { tarefas } from '@nads/core';
 import type { KeyboardEvent, ReactNode } from 'react';
@@ -35,7 +36,10 @@ export function RateioDeFrete() {
           </>
         )}
         <span className="tarefas-barra-espaco" />
-        {doCte && <button type="button" className="btn btn-ghost" onClick={vm.digitar}><Icone nome="lapis" width={16} height={16} />Sem XML? Digite os valores</button>}
+        {/* o rateio que está na tela, pelo CT-e ou digitado (25/11/2026) */}
+        <button type="button" className="btn btn-outline" disabled={!vm.temRelatorio} onClick={vm.exportar}><Icone nome="download" width={16} height={16} />Exportar planilha</button>
+        <button type="button" className="btn btn-outline" disabled={!vm.temRelatorio} onClick={vm.imprimir}><Icone nome="printer" width={16} height={16} />Imprimir</button>
+        {doCte &&<button type="button" className="btn btn-ghost" onClick={vm.digitar}><Icone nome="lapis" width={16} height={16} />Sem XML? Digite os valores</button>}
       </div>
       {vm.exemplos && doCte && <p className="hint fc-exemplo">Dados de exemplo: o CT-e T701 leva a NF-e T502, com os números da planilha.</p>}
 

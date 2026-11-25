@@ -229,8 +229,9 @@ importação, ainda sem gravar):
 | O | Situação no nads | *(sem campo)* | conciliada, sugerida, sem regra... |
 
 - A **linha 1** traz os títulos (linha inicial = 2). A **última linha** traz o total de débitos (descartar 1 no fim).
-- As colunas L a O servem só para quem confere. O gerador as deixa sem campo. **A confirmar** que o SCI aceita colunas
-  sem campo no meio; se não aceitar, elas vão para uma segunda aba.
+- **25/11/2026:** a aba Importar ficou só com as 11 colunas do gerador (A a K), com os nomes dos campos dele (Valor principal,
+  CNPJ da filial, Participante a débito/crédito). O nome das contas, a origem e o motivo ficam só na aba Conferir, que não
+  vai para o SCI.
 - **Produtores rurais**: um segundo gerador com as 12 colunas do LCDPR depois da coluna O. Para as outras empresas, a
   planilha é a mesma sem essas colunas.
 

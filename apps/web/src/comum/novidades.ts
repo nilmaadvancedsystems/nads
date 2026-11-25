@@ -69,7 +69,8 @@ export const NOVIDADES = {
   /** o ShadersCI (23/11/2026: "Vamos buildar um aplicativo chamado ShadersCI … uma abinha de lançamentos onde o usuario lance, adicione,
    *  remova, edite … copie e cole com o botao direito"): a aba de lançamentos do SCI, com os planos padrão 90113 e 90011; só o Contábil
    *  e o admin; os lançamentos ficam só no navegador */
-  shadersci: { desde: '23/11/2026', aprovada: true },
+  // de volta só no modo desenvolvedor (25/11/2026: "Desabilita o botao do minimum por enquanto")
+  shadersci: { desde: '23/11/2026', aprovada: false },
   /** o Está no SCI e o plano de contas do SCI em Cadastro › Dados da empresa (24/11/2026); aprovada para todos no mesmo dia, à
    *  parte do minimum, que segue no modo desenvolvedor ("Publica em cadastros na versao final a parte de estar no SCI") */
   'sci-no-cadastro': { desde: '24/11/2026', aprovada: true },

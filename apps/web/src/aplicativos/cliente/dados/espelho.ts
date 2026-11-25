@@ -110,7 +110,7 @@ function lerNotasDoMes(x: unknown): ac.NotasDoMes | null {
   };
 }
 
-/** resumo/faturamento (12/11/2026): { empresas: [{ codigo, nome, regime, meses: [{ competencia, nfe, nfce, notas, total, variacao }] }], fonte, atualizadoEm }. */
+/** resumo/faturamento (12/11/2026): { empresas: [{ codigo, nome, regime, meses: [{ competencia, nfe, nfce, notas, total, variacao, receita? }] }], fonte, atualizadoEm, receitaConsultadaEm? }. */
 /** o saldo de fim de mês de uma conta (ou de todas): { valor, data 'aaaa-mm-dd' } */
 function lerSaldo(x: unknown): { valor: number; data: string } | null {
   const s = objeto(x);
@@ -125,6 +125,8 @@ export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
     meses: lista(e.meses).map(objeto).filter((m): m is Solto => !!m && COMPETENCIA.test(texto(m.competencia))).map(m => ({
       competencia: texto(m.competencia), nfe: numeroOuNulo(m.nfe), nfce: numeroOuNulo(m.nfce), notas: typeof m.notas === 'number' ? m.notas : 0,
       total: numeroOuNulo(m.total), variacao: numeroOuNulo(m.variacao),
+      // a receita declarada no PGDAS-D (25/11/2026): o total do mês veio da Receita
+      ...(() => { const r = objeto(m.receita); return r && typeof r.valor === 'number' && Number.isFinite(r.valor) ? { receita: { valor: r.valor, rbt12: numeroOuNulo(r.rbt12), consultadoEm: instante(r.consultadoEm) } } : {}; })(),
       ...(typeof m.canceladas === 'number' ? { canceladas: m.canceladas } : {}),
       ...(Array.isArray(m.series) ? { series: lista(m.series).map(objeto).filter((x): x is Solto => !!x).map(x => ({
         modelo: texto(x.modelo), serie: texto(x.serie), primeira: numeroOuNulo(x.primeira), ultima: numeroOuNulo(x.ultima),
@@ -143,7 +145,7 @@ export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
       })(),
     })),
   })).filter(e => e.meses.length);
-  return empresas.length ? { empresas, fonte: texto(r.fonte), atualizadoEm: instante(r.atualizadoEm) } : null;
+  return empresas.length ? { empresas, fonte: texto(r.fonte), atualizadoEm: instante(r.atualizadoEm), ...(instante(r.receitaConsultadaEm) ? { receitaConsultadaEm: instante(r.receitaConsultadaEm) } : {}) } : null;
 }
 
 /** resumo/marca (12/11/2026): { logo, atualizadoEm }; só a imagem PNG/JPG/WebP em data URL (erroDaLogo) passa. */

@@ -91,11 +91,14 @@ describe('a planilha do SCI', () => {
     const a = abas(planilhaDoSci(s));
     expect(Object.keys(a)).toEqual(['Importar', 'Conferir']);
     expect(a.Importar[0]).toEqual([...COLUNAS_DO_SCI]);
-    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', 'NADS2611', '11.222.333/0001-81', '', '', '', '', 'lancatudo.xls', 'pronto']);
+    // só as 11 colunas do gerador (25/11/2026: "Nome da conta D? que isso nao ta no layout")
+    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', 'NADS2611', '11.222.333/0001-81', '', '']);
+    expect(a.Importar[0]).toHaveLength(11);
     expect(a.Importar[2].slice(0, 5)).toEqual([46336, 2101, 1201, 830.4, 116]);
     expect(a.Importar[3][0]).toBe('Total');
     expect(a.Importar[3][3]).toBeCloseTo(2330.4, 2);
     expect(a.Importar).toHaveLength(4);
+    expect(a.Conferir[0].slice(11)).toEqual(['Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo']);
     expect(a.Conferir[1][14]).toBe('teste');
   });
 

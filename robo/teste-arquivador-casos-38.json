@@ -1,0 +1,221 @@
+{
+ "_comentario": "25/11/2026: os NÃO IDENTIFICADOS da conta em dois clientes do cadastro e dos comprovantes do aplicativo do BB. Dados FICTÍCIOS (nomes, CNPJs, contas e valores inventados), no mesmo formato do texto que o pdf.js tira dos PDFs reais: no BB Rende Fácil o resumo e os lançamentos saem primeiro e o bloco 'Dados do Cliente' no fim da página.",
+ "_cadastro": [
+  {
+   "codigo": 901,
+   "razao": "FLORESTA EXEMPLO LTDA",
+   "fantasia": "FLORESTA EXEMPLO",
+   "doc": "98765432000198",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "bb",
+     "agencia": "1234-5",
+     "conta": "99887-1",
+     "fonte": "entregas",
+     "origem": "drive"
+    },
+    {
+     "banco": "bb",
+     "agencia": "1234-5",
+     "conta": "11223-4",
+     "fonte": "entregas",
+     "origem": "drive"
+    },
+    {
+     "banco": "bb",
+     "agencia": "1234-5",
+     "conta": "77777-7",
+     "fonte": "entregas",
+     "origem": "drive"
+    },
+    {
+     "banco": "banco-do-brasil",
+     "agencia": "1234-5",
+     "conta": "77777-7",
+     "fonte": "nads"
+    },
+    {
+     "banco": "itau",
+     "agencia": "4321",
+     "conta": "12345-6",
+     "fonte": "nads"
+    }
+   ]
+  },
+  {
+   "codigo": 902,
+   "razao": "VIVEIRO MODELO LTDA",
+   "fantasia": "VIVEIRO MODELO",
+   "doc": "87654321000198",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "bb",
+     "agencia": "1234-5",
+     "conta": "99887-1",
+     "fonte": "entregas",
+     "origem": "drive"
+    },
+    {
+     "banco": "bradesco",
+     "agencia": "0999",
+     "conta": "0012345-6",
+     "fonte": "entregas",
+     "origem": "drive"
+    },
+    {
+     "banco": "bb",
+     "agencia": "1234-5",
+     "conta": "77777-7",
+     "fonte": "entregas",
+     "origem": "drive"
+    }
+   ]
+  }
+ ],
+ "rendeFacilContaEmDois": {
+  "nome": "RENDE FACIL EXEMPLO2 10-26.pdf",
+  "rel": "Exemplo 10.2026.zip\\BB Exemplo - Viveiro\\RENDE FACIL EXEMPLO2 10-26.pdf",
+  "texto": [
+   "Resumo do mês - Outubro/2026\nSaldo bruto em 30/09/2026R$ 10.000,00\nAplicações no mês:R$ 50.000,00\nResgates líquidos no mês:R$ 40.000,00\nIR sobre resgates no mês:R$ 1,00\nIOF sobre resgates no mês:R$ 2,00\nRendimentos no mês:R$ 15,00\nSaldo bruto em 30/10/2026:R$ 20.012,00\nHistórico de movimentação\nDataHistóricoCapitalRendimento*IRIOFValor Líquido\n30/09/2026Saldo AnteriorR$ 9.998,00R$ 2,00R$ 0,00R$ 0,00R$ 0,00\n01/10/2026AplicaçãoR$ 25.000,00R$ 0,00R$ 0,00R$ 0,00R$ 25.000,00\n02/10/2026ResgateR$ 5.000,00R$ 1,00R$ 0,20R$ 0,05R$ 5.000,75\n05/10/2026ResgateR$ 7.500,00R$ 1,50R$ 0,30R$ 0,10R$ 7.501,10\n06/10/2026AplicaçãoR$ 25.000,00R$ 0,00R$ 0,00R$ 0,00R$ 25.000,00\n08/10/2026ResgateR$ 6.000,00R$ 0,60R$ 0,05R$ 0,40R$ 6.000,15\n09/10/2026ResgateR$ 4.000,00R$ 0,90R$ 0,06R$ 0,70R$ 4.000,14\n13/10/2026ResgateR$ 3.500,00R$ 0,90R$ 0,08R$ 0,54R$ 3.500,28\n14/10/2026ResgateR$ 2.000,00R$ 0,56R$ 0,05R$ 0,31R$ 2.000,20\n15/10/2026ResgateR$ 1.000,00R$ 0,28R$ 0,03R$ 0,14R$ 1.000,11\n19/10/2026ResgateR$ 1.200,00R$ 0,10R$ 0,01R$ 0,05R$ 1.200,04\n22/10/2026ResgateR$ 4.700,00R$ 0,52R$ 0,06R$ 0,23R$ 4.700,23\n23/10/2026ResgateR$ 8.200,00R$ 1,00R$ 0,12R$ 0,43R$ 8.200,45\n26/10/2026ResgateR$ 1.080,00R$ 0,14R$ 0,02R$ 0,04R$ 1.080,08\nBB RENDE FÁCIL\nDados do Cliente\nAgência\n1234-5\nConta\n99887-1\nCliente\nFLORESTA EXEMPLO LTDA\nCNPJ\n98.765.432/0001-98\n",
+   "27/10/2026ResgateR$ 900,00R$ 0,10R$ 0,01R$ 0,03R$ 900,06\n29/10/2026ResgateR$ 500,00R$ 0,05R$ 0,00R$ 0,02R$ 500,03\n* Rendimento bruto\nSAC 0800 729 0722\nOuvidoria BB 0800 729 5678\n"
+  ]
+ },
+ "entreContasAppBB": {
+  "nome": "23-10 TRANSF. BB VIVEIRO PARA FULANO 720.pdf",
+  "rel": "Exemplo 10.2026.zip\\BB Exemplo - Viveiro\\Comprovantes e NFs\\23-10 TRANSF. BB VIVEIRO PARA FULANO 720.pdf",
+  "texto": [
+   "Entre contas correntes BB\nG3362309052720781\n23/10/2026 09:10:50\nDebitado\nNomeFLORESTA E LTDA\nAgência1234-5\nConta corrente99887-1\nCreditado\nNomeFULANO DE TAL\nAgência1234-5\nConta corrente55555-5\nValor720,00\nDataNesta data\nTransação efetuada com sucesso por: JF000000 ATENDENTE EXEMPLO.\nServiço de Atendimento ao Consumidor - SAC 0800 729 0722Ouvidoria BB 0800 729 5678\nPara deficientes auditivos 0800 729 0088\n"
+  ]
+ },
+ "tedAppBB": {
+  "nome": "05-10 TRANSF. BB PARA ITAU R$32.000.pdf",
+  "rel": "Exemplo 10.2026.zip\\Comprovantes e NFs\\05-10 TRANSF. BB PARA ITAU R$32.000.pdf",
+  "texto": [
+   "TED\nG3340508311561391\n30/09/2026 08:55:32\nDebitado\nAgência1234-5\nConta corrente77777-7 FULANO E S F EIRELI\nCreditado\nBanco341 ITAU UNIBANCO S.A.\nAgência (sem DV)4321 CENTRO\nConta corrente (com DV)123456\nConta Pagamento0000\nNome favorecidoFULANO DE TAL\nFinalidadeCREDITO EM CONTA\nNúmero documento100.508\nValor32.000,00\nData transferência01/10/2026\nAutenticação SISBB2719DDD32EC52280\nTransação efetuada com sucesso por: JF000000 ATENDENTE EXEMPLO.\nServiço de Atendimento ao Consumidor - SAC 0800 729 0722Ouvidoria BB 0800 729 5678\n"
+  ]
+ },
+ "proLabore": {
+  "nome": "RECIBO PRÓ-LABORE 1.000 transf. para a conta.PDF",
+  "rel": "Exemplo 10.2026.zip\\Comprovantes e NFs\\RECIBO PRÓ-LABORE 1.000 transf. para a conta.PDF",
+  "texto": [
+   "000.000.000-00\nDIRETOR GERAL DE EMPRESA\nPROFISSÃO............:\nCPF..........................:\nFULANO DE TAL\nFLORESTA EXEMPLO LTDA\n98.765.432/0001-98\nCNPJ.......................:\nFONTE PAGADORA:\n00901()\nFAVORECIDO.........:\n1.000,00Líquido a Receber..............:\nDeclaro ter recebido a importância de R$ 1.000,00 (Um Mil Reais), referente a meus rendimentos do \nmês de  setembro-2026 com os descontos exigidos em lei.\nRECIBO DE PRÓ-LABORE / LUCRO\nReferência: \n09/2026\nDESCONTOSRENDIMENTOS\n"
+  ]
+ },
+ "ofxItau": "OFXHEADER:100\nDATA:OFXSGML\n<OFX>\n<BANKMSGSRSV1>\n<STMTTRNRS>\n<STMTRS>\n<CURDEF>BRL\n<BANKACCTFROM>\n<BANKID>0341\n<ACCTID>4321123456\n<ACCTTYPE>CHECKING\n</BANKACCTFROM>\n<BANKTRANLIST>\n<DTSTART>20261001100000[-03:EST]\n<DTEND>20261031100000[-03:EST]\n<STMTTRN>\n<TRNTYPE>DEBIT\n<DTPOSTED>20261005100000[-03:EST]\n<TRNAMT>-100.00\n<FITID>1\n<MEMO>TARIFA\n</STMTTRN>\n<STMTTRN>\n<TRNTYPE>CREDIT\n<DTPOSTED>20261010100000[-03:EST]\n<TRNAMT>200.00\n<FITID>2\n<MEMO>PIX RECEBIDO\n</STMTTRN>\n</BANKTRANLIST>\n</STMTRS>\n</STMTTRNRS>\n</BANKMSGSRSV1>\n</OFX>\n",
+ "ofxContaEmDois": "OFXHEADER:100\nDATA:OFXSGML\n<OFX>\n<BANKMSGSRSV1>\n<STMTTRNRS>\n<STMTRS>\n<CURDEF>BRL\n<BANKACCTFROM>\n<BANKID>001\n<BRANCHID>1234-5\n<ACCTID>99887-1\n<ACCTTYPE>CHECKING\n</BANKACCTFROM>\n<BANKTRANLIST>\n<DTSTART>20261001100000[-03:EST]\n<DTEND>20261031100000[-03:EST]\n<STMTTRN>\n<TRNTYPE>DEBIT\n<DTPOSTED>20261005100000[-03:EST]\n<TRNAMT>-100.00\n<FITID>1\n<MEMO>TARIFA\n</STMTTRN>\n<STMTTRN>\n<TRNTYPE>CREDIT\n<DTPOSTED>20261010100000[-03:EST]\n<TRNAMT>200.00\n<FITID>2\n<MEMO>PIX RECEBIDO\n</STMTTRN>\n</BANKTRANLIST>\n</STMTRS>\n</STMTTRNRS>\n</BANKMSGSRSV1>\n</OFX>\n",
+ "aegroPdf": {
+  "nome": "EXTRATO AEGRO EXEMPLO 11223-4.pdf",
+  "rel": "Exemplo 10.2026.zip\\BB Exemplo\\EXTRATO AEGRO EXEMPLO 11223-4.pdf",
+  "texto": [
+   "Empresa Licenca Exemplo Ltda\nGrupo Exemplo\nExtrato\nExemplo - BB - Viveiro - CC: 11223-4\nGerado em 06/11/2026 09:19 por ATENDENTE EXEMPLOPágina 1 de 2\n Filtros aplicados Período:01/10/2026 a 31/10/2026 Conta bancária:Exemplo - BB - Viveiro - CC: 11223-4\nSALDO INICIAL\nR$ 1.000,00\nTOTAL DE ENTRADAS\nR$ 500,00\nTOTAL DE SAÍDAS\nR$ 200,00\nSALDO FINAL\nR$ 1.300,00\nDATACONTAORIGEM/DESTINOPRODUTORDESCRIÇÃOVALOR (R$)SALDO\n01/10/2026Exemplo - BB - Viveiro - CC: 11223-4\nFULANO DE TAL\nPIX ENVIADO\n-200,00800,00\n"
+  ]
+ },
+ "aegroPdfSemNumero": {
+  "nome": "EXTRATO - AEGRO FLORESTA BB.pdf",
+  "rel": "Exemplo 10.2026.zip\\EXTRATO - AEGRO FLORESTA BB.pdf",
+  "texto": [
+   "Empresa Licenca Exemplo Ltda\nGrupo Exemplo\nExtrato\nFLORESTA - BB\nGerado em 06/11/2026 09:19 por ATENDENTE EXEMPLOPágina 1 de 2\n Filtros aplicados Período:01/10/2026 a 31/10/2026 Conta bancária:FLORESTA - BB\nSALDO INICIAL\nR$ 1.000,00\nTOTAL DE ENTRADAS\nR$ 500,00\nTOTAL DE SAÍDAS\nR$ 200,00\nSALDO FINAL\nR$ 1.300,00\nDATACONTAORIGEM/DESTINOPRODUTORDESCRIÇÃOVALOR (R$)SALDO\n01/10/2026FLORESTA - BB\nFULANO DE TAL\nPIX ENVIADO\n-200,00800,00\n"
+  ]
+ },
+ "aegroPdfSigla": {
+  "nome": "BB - EXTRATO AEGRO FE.pdf",
+  "rel": "Exemplo 10.2026.zip\\BB - EXTRATO AEGRO FE.pdf",
+  "texto": [
+   "Empresa Licenca Exemplo Ltda\nGrupo Exemplo\nExtrato\nFE - BB\nGerado em 06/11/2026 09:19 por ATENDENTE EXEMPLOPágina 1 de 2\n Filtros aplicados Período:01/10/2026 a 31/10/2026 Conta bancária:FE - BB\nSALDO INICIAL\nR$ 1.000,00\nTOTAL DE ENTRADAS\nR$ 500,00\nTOTAL DE SAÍDAS\nR$ 200,00\nSALDO FINAL\nR$ 1.300,00\nDATACONTAORIGEM/DESTINOPRODUTORDESCRIÇÃOVALOR (R$)SALDO\n01/10/2026FE - BB\nFULANO DE TAL\nPIX ENVIADO\n-200,00800,00\n"
+  ]
+ },
+ "aegroPlanilha": {
+  "nome": "BB Categoria_03-11-26_15_05_46_Aegro.xlsx",
+  "rel": "Exemplo 10.2026.zip\\BB Categoria_03-11-26_15_05_46_Aegro.xlsx",
+  "planilha": [
+   [],
+   [
+    null,
+    " Empresa Licenca Exemplo Ltda   Grupo Exemplo "
+   ],
+   [
+    null,
+    "Extrato Exemplo - BB - CC: 11223-4"
+   ],
+   [
+    null,
+    "gerado em 03/11/2026 às 15:05h por ATENDENTE EXEMPLO"
+   ],
+   [
+    null,
+    "Período: 01/10/2026 às 31/10/2026"
+   ],
+   [
+    null,
+    "Conta bancária:  Exemplo - BB - CC: 11223-4"
+   ],
+   [],
+   [],
+   [
+    null,
+    "Data Vencimento",
+    "Data Lançamento",
+    "Data Pagamento",
+    "Conciliação",
+    "Conta",
+    "Fornecedor",
+    "Produtor",
+    "Nota Fiscal",
+    "Documento Fornecedor",
+    "Categoria Financeira",
+    "Agrupadores",
+    "Safras",
+    "Origem/Destino",
+    "Descrição",
+    "Produtos",
+    "Entrada",
+    "Saída",
+    "Saldo"
+   ],
+   [
+    null,
+    null,
+    "01/10/26",
+    "01/10/26",
+    "Conciliado",
+    "Exemplo - BB - CC: 11223-4",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    "FULANO DE TAL",
+    "PIX ENVIADO",
+    null,
+    null,
+    200,
+    800
+   ]
+  ]
+ },
+ "solides": {
+  "nome": "SOLIDES 100,00.pdf",
+  "rel": "Exemplo 10.2026.zip\\Boletos\\SOLIDES 100,00.pdf",
+  "texto": [
+   "1ª via\nSOLIDES TECNOLOGIA S/A\nWWW.SOLIDES.COM.BR\nCNPJ: 76.543.210/0001-98 | Inscrição Estadual: 000.000.000/0000\nRUA EXEMPLO, 1 - CENTRO\nNota de Débito - Benefícios nº 0000000001\nEmissão:  Belo Horizonte (MG), 30 de Setembro de 2026.\nCliente:  FLORESTA EXEMPLO LTDA\nCNPJ: 98.765.432/0001-98\nObjeto: \nDescriçãoValor Total\nNúmero do pedido: 1\nData de pagamento: 08/10/2026\nAlimentação R$100.00\n100,00\n"
+  ]
+ },
+ "boletoSeguro": {
+  "nome": "BOLETOS APOLICE SEGURO ABC1D23.pdf",
+  "rel": "Exemplo 10.2026.zip\\Comprovantes e NFs\\BOLETOS APOLICE SEGURO ABC1D23.pdf",
+  "texto": [
+   "Local de PagamentoVencimento\nPagável em Qualquer Banco até o Vencimento\n22/10/2026\nBeneficiárioAgência/Código Beneficiário\nAPVS TRUCK  - Cnpj: 76.543.210/0001-98\nInstruções de responsabilidade do BENEFICIÁRIO.\nmantenha a proteção do seu veículo em dia.\nPagador\nFLORESTA EXEMPLO LTDA - CNPJ/CPF: 98.765.432/0001-98\nValor do Documento\n1.000,00\n"
+  ]
+ },
+ "seguroValor": {
+  "nome": "SEGURO 76,44.pdf",
+  "rel": "Exemplo 10.2026.zip\\SEGURO 76,44.pdf",
+  "texto": [
+   "Prezado (a) VIVEIRO MODELO LTDA\nNão deixe de contar com a proteção que o seu seguro oferece, pague este boleto\nBOLETO DE COBRANÇA\nATÉ O VENCIMENTO , COBRAR R$ 76,44.\nBradesco Vida e Previdência S.A.   CNPJ: 76.543.210/0001-98\nSegurado: VIVEIRO MODELO LTDA CNPJ 87.654.321/0001-98\n"
+  ]
+ }
+}

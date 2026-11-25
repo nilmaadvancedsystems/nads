@@ -81,6 +81,9 @@ const SITES = {
   extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'tarefas' },
   'cheque-especial': { site: 'cheque-especial-nilma', nome: 'Cheque especial', tipo: 'mudou', para: 'tarefas' },
   creditor: { site: 'creditor-nilma', nome: 'Creditor', tipo: 'mudou', para: 'tarefas' },
+  // a Conferência antiga (conferencia.html, sem login) no site padrão do projeto (25/11/2026, auditoria de segurança): o banco
+  // conferencia-nilma foi fechado (sem uso desde 19/11), e a página antiga lia e gravava nele sem login; leva para a Tarefas
+  'conferencia-antiga': { site: 'conferencia-nilma', nome: 'Conferência (antiga)', tipo: 'mudou', para: 'tarefas' },
 };
 
 const argumentos = process.argv.slice(2);

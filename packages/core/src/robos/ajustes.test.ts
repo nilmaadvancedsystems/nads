@@ -54,7 +54,7 @@ describe('os horários', () => {
   const vigia = roboPorId('vigia')!;
   const h = { ativo: true, dias: [1], de: '08:00', ate: '18:00' };
   it('só nos robôs em que dá', () => {
-    expect(ROBOS_COM_HORARIO.map(r => r.id).sort()).toEqual(['alterdata', 'fgts', 'ia', 'sieg', 'vigia']);
+    expect(ROBOS_COM_HORARIO.map(r => r.id).sort()).toEqual(['alterdata', 'fgts', 'ia', 'pgdas', 'sieg', 'vigia']);
     expect(validarHorario(roboPorId('nfse')!, h)).toMatch(/não aceita/);
   });
   it('sem configuração vem desligado', () => { expect(lerHorarios(null).sieg.ativo).toBe(false); });
