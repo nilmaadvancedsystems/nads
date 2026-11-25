@@ -187,6 +187,11 @@ export function useDp({ token, area, hoje }: DaCasca) {
     },
     competencia: mesBr(area.pessoal?.competencia ?? ''),
     temFuncionarios: funcionarios.length > 0,
+    // o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): sem salário, o CPF mascarado
+    rhnet: (area.pessoal?.rhnet ?? []).map(c => ({
+      id: c.id, nome: nomeDaPessoa(c.nome), tipo: c.tipo, cpf: c.cpf, entrada: c.entrada ? dataBr(c.entrada) : '', situacao: c.situacao,
+      tom: c.situacao === 'Na folha' ? 'ok' : c.situacao === 'Recusado' ? 'bad' : 'warn',
+    })),
     funcionarios: visiveis.map(f => ({
       id: f.id, nome: nomeDaPessoa(f.nome), iniciais: iniciais(nomeDaPessoa(f.nome)), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),
       ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length,

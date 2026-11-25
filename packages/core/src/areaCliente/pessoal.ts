@@ -97,7 +97,24 @@ export interface ResumoDoPessoal {
   total: number;
   /** a folha mês a mês pelas guias do FGTS (13/11/2026: o custo da folha) */
   historico?: MesDaFolha[];
+  /** o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): sem salário, CPF mascarado */
+  rhnet?: CadastroNoRhNetNaArea[];
   atualizadoEm: string;
+}
+
+/** Uma pessoa no RH NET como a Área do Cliente mostra: o nome, o CPF mascarado, o tipo, a entrada e a situação. Nada de valor. */
+export interface CadastroNoRhNetNaArea {
+  /** 'rh' + o número do cadastro no RH NET (não é dado pessoal) */
+  id: string;
+  nome: string;
+  /** '***.456.789-**' */
+  cpf: string;
+  /** "Sócio – pró-labore", a função do funcionário, "Funcionário" ou "Contribuinte" */
+  tipo: string;
+  /** 'aaaa-mm-dd' ou '' */
+  entrada: string;
+  /** "Na folha", "Aguardando o escritório", "Indo para a folha" ou "Recusado" */
+  situacao: string;
 }
 
 /** Um documento do DP no espelho (os bytes vão em pedaços, em documentos/{id}~{n}). */

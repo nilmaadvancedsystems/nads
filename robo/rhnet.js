@@ -113,6 +113,40 @@ async function atenderPedido(db, p) {
   } catch (err) { throw new Error(motivo(err)); }
 }
 
+// ---------- a Área do Cliente (o robô do PC, area-cliente.js) ----------
+
+const NA_AREA_MS = 60 * 60 * 1000;
+const naArea = new Map();
+/**
+ * As pessoas do RH NET das empresas do link, para a aba Departamento pessoal da Área do Cliente (25/11/2026; o dono: "pode
+ * mostrar do jeito que sugeriu"): o nome, o CPF mascarado, o tipo, a entrada e a situação, sem salário. null = desligado
+ * (config/sci.rhNet, a empresa fora da lista ou sem o token dela). Guardado 1 hora por empresa; nunca joga erro.
+ */
+async function cadastrosParaArea(db, codigos, log = () => {}) {
+  let cfg;
+  try { cfg = await SCI.config(db); } catch (e) { return null; }
+  if (!cfg.rhNet) return null;
+  const t = await lerTokens().catch(() => null);
+  if (!t || !t.parceiro) return null;
+  const todos = [];
+  let algum = false;
+  for (const codigo of codigos || []) {
+    if (!S.empresaNoSci(cfg, codigo) || !(t.empresas[String(codigo)] || {}).token) continue;
+    algum = true;
+    const guardado = naArea.get(String(codigo));
+    if (guardado && Date.now() - guardado.em < NA_AREA_MS) { todos.push(...guardado.lista); continue; }
+    try {
+      const lista = await clienteDa(codigo).cadastrosParaArea();
+      naArea.set(String(codigo), { em: Date.now(), lista });
+      todos.push(...lista);
+    } catch (err) {
+      log('RH NET: não consegui ler as pessoas da empresa', codigo, 'para a Área do Cliente -', motivo(err));
+      if (guardado) todos.push(...guardado.lista);
+    }
+  }
+  return algum ? todos : null;
+}
+
 // ---------- o teste pela linha de comando ----------
 
 async function testar(codigo) {
@@ -145,4 +179,4 @@ if (require.main === module) {
   testar(codigo).then(c => process.exit(c), err => { console.log('erro: ' + motivo(err)); process.exit(1); });
 }
 
-module.exports = { atenderPedido, testar, lerTokens };
+module.exports = { atenderPedido, cadastrosParaArea, testar, lerTokens };

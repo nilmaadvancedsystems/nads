@@ -3,8 +3,9 @@
 // memória; os tokens nunca vão para log nem para o banco.
 import { lerLoginDoSci, sessaoDoSciAindaAceita, sessaoDoSciVale, SCI_AUTH, type SessaoDoSci } from '../../areaCliente/sciReport';
 import { ErroDoSci, type BuscarNoSci, type MetodoDoSci } from '../../areaCliente/sciReportCliente';
+import type { CadastroNoRhNetNaArea } from '../../areaCliente/pessoal';
 import {
-  admissaoDoRhNet, clienteIdDoJwt, corpoDaAdmissao, corpoDaLiberacao, corpoDaLiberacaoDaPlanilha, corpoDosLancamentos, empresaIdDoJwt, erroDaAdmissao,
+  admissaoDoRhNet, cadastrosParaArea, clienteIdDoJwt, corpoDaAdmissao, corpoDaLiberacao, corpoDaLiberacaoDaPlanilha, corpoDosLancamentos, empresaIdDoJwt, erroDaAdmissao,
   erroDoLancamento, itensDoCadastro, lerPaginaDoRhNet, mensagemDoRhNet, CADASTROS_DO_RH, LIBERACAO_DA_PLANILHA, RH_NET, RH_NET_POR_PAGINA,
   type AdmissaoNoRhNet, type AdmissaoParaRhNet, type CadastrosDoRhNet, type LancamentoParaRhNet, type RecursoDeCadastroRh, type SituacaoNoRhNet, type TipoDePlanilhaRh,
 } from './rhNet';
@@ -20,6 +21,8 @@ export interface ClienteRhNet {
   identificacao(): Promise<{ empresaId: number; clienteId: number }>;
   cadastros(): Promise<CadastrosDoRhNet>;
   admissoes(situacao?: SituacaoNoRhNet): Promise<AdmissaoNoRhNet[]>;
+  /** as pessoas da empresa como a Área do Cliente mostra (o nome, o CPF mascarado, o tipo, a entrada e a situação; sem salário) */
+  cadastrosParaArea(): Promise<CadastroNoRhNetNaArea[]>;
   /** cadastra (fica "não liberado"); devolve o id do funcionário no RH NET */
   criarAdmissao(a: AdmissaoParaRhNet): Promise<AdmissaoNoRhNet>;
   /** libera (vai para a folha do SCI) ou volta para não liberado */
@@ -97,6 +100,10 @@ export function criarClienteRhNet(deps: { buscar: BuscarNoSci; tokens: () => Tok
     },
     async admissoes(situacao) {
       return (await listar('/api/v1/admissoes', situacao ? { situacao } : {})).map(admissaoDoRhNet).filter((a): a is AdmissaoNoRhNet => !!a);
+    },
+    async cadastrosParaArea() {
+      const funcoes = new Map(itensDoCadastro('funcoes', await listar(CADASTROS_DO_RH.funcoes.caminho)).map(f => [f.id, f.nome] as const));
+      return cadastrosParaArea(await listar('/api/v1/admissoes'), funcoes);
     },
     async criarAdmissao(a) {
       const erro = erroDaAdmissao(a);

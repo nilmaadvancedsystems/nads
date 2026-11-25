@@ -748,10 +748,12 @@ function iniciarAreaDoCliente(db, log) {
     // os que saíram (o mês passou dos 12, o arquivo foi tirado da pasta)
     for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
     dpNoEspelho.set(token, vivos);
-    // o resumo do pessoal: só quando tem funcionário ou documento (sem nada, a aba nem aparece para o cliente)
-    if (reg.funcionarios.length || vivos.size) {
+    // o cadastro no RH NET da SCI (25/11/2026, robo/rhnet.js): só com config/sci.rhNet, a empresa na lista e o token dela
+    const rhnet = await require('./rhnet').cadastrosParaArea(db, link.codigos, log).catch(() => null);
+    // o resumo do pessoal: só quando tem funcionário, documento ou alguém no RH NET (sem nada, a aba nem aparece para o cliente)
+    if (reg.funcionarios.length || vivos.size || (rhnet && rhnet.length)) {
       // (13/11/2026) e a folha mês a mês pelas mesmas guias: o custo da folha no Registro
-      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, historico: P.historicoComAFolha(P.historicoDaFolha(guias), holerites), atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
+      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, historico: P.historicoComAFolha(P.historicoDaFolha(guias), holerites), ...(rhnet && rhnet.length ? { rhnet } : {}), atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
     } else if (await hashAtual(espelhoDe(token).collection('resumo').doc('pessoal'), token + '/resumo/pessoal')) {
       await espelhoDe(token).collection('resumo').doc('pessoal').delete();
       hashes.set(token + '/resumo/pessoal', '');

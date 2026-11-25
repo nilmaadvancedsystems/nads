@@ -1002,6 +1002,44 @@ const LIBERACAO_DA_PLANILHA = {
 	intermitentes: "/api/v1/liberacoes/planilhas-lancamentos-intermitentes",
 	"centros-custos": "/api/v1/liberacoes/planilhas-lancamentos-centros-custo"
 };
+const SITUACAO_NA_AREA = {
+	integrado: "Na folha",
+	nao_liberado: "Aguardando o escritório",
+	liberado: "Indo para a folha",
+	aguardando_integracao: "Indo para a folha",
+	recusado: "Recusado"
+};
+function cpfMascarado(cpf) {
+	const d = String(cpf ?? "").replace(/\D/g, "");
+	return d.length === 11 ? "***." + d.slice(3, 6) + "." + d.slice(6, 9) + "-**" : "";
+}
+function cadastroParaArea(x, funcoes = /* @__PURE__ */ new Map()) {
+	const o = objeto(x);
+	const id = inteiro(o?.funcionario_contribuinte_id);
+	const nome = texto(o?.nome).replace(/\s+/g, " ");
+	if (!o || !id || !nome || o.cadastro_ativo === false || o.cadastroAtivo === false || texto(o.desligamento_data)) return null;
+	const categoria = inteiro(o.categoria_esocial_id);
+	const contribuinte = o.tipo_colaborador === "contribuinte";
+	const funcao = funcoes.get(inteiro(o.v_funcao_id)) || "";
+	const tipo = contribuinte ? categoria >= 721 && categoria <= 723 ? "Sócio – pró-labore" : "Contribuinte" : funcao || "Funcionário";
+	const situacao = situacaoNoRhNet(o.situacao);
+	return {
+		id: "rh" + id,
+		nome: nome.slice(0, 120),
+		cpf: cpfMascarado(o.cpf),
+		tipo: tipo.slice(0, 60),
+		entrada: (texto(o.entrada_data) || texto(o.admissao_data)).slice(0, 10).replace(/^(?!\d{4}-\d{2}-\d{2}$).*$/, ""),
+		situacao: situacao ? SITUACAO_NA_AREA[situacao] : ""
+	};
+}
+function cadastrosParaArea(itens, funcoes = /* @__PURE__ */ new Map()) {
+	const porId = /* @__PURE__ */ new Map();
+	for (const x of itens) {
+		const c = cadastroParaArea(x, funcoes);
+		if (c) porId.set(c.id, c);
+	}
+	return [...porId.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+}
 
 //#endregion
 //#region packages/core/src/sci/integracao/rhNetCliente.ts
@@ -1094,6 +1132,10 @@ function criarClienteRhNet(deps) {
 		async admissoes(situacao) {
 			return (await listar("/api/v1/admissoes", situacao ? { situacao } : {})).map(admissaoDoRhNet).filter((a) => !!a);
 		},
+		async cadastrosParaArea() {
+			const funcoes = new Map(itensDoCadastro("funcoes", await listar(CADASTROS_DO_RH.funcoes.caminho)).map((f) => [f.id, f.nome]));
+			return cadastrosParaArea(await listar("/api/v1/admissoes"), funcoes);
+		},
 		async criarAdmissao(a) {
 			const erro = erroDaAdmissao(a);
 			if (erro) throw new ErroDoSci(0, erro);
@@ -1136,8 +1178,11 @@ exports.MAIOR_PDF_NO_SCI = MAIOR_PDF_NO_SCI;
 exports.RH_NET = RH_NET;
 exports.RH_NET_POR_PAGINA = RH_NET_POR_PAGINA;
 exports.ROTULO_DA_SITUACAO_RH = ROTULO_DA_SITUACAO_RH;
+exports.SITUACAO_NA_AREA = SITUACAO_NA_AREA;
 exports.TIPOS_NO_INTEGRA = TIPOS_NO_INTEGRA;
 exports.admissaoDoRhNet = admissaoDoRhNet;
+exports.cadastroParaArea = cadastroParaArea;
+exports.cadastrosParaArea = cadastrosParaArea;
 exports.camposDaPublicacao = camposDaPublicacao;
 exports.chaveDaGuiaNoSci = chaveDaGuiaNoSci;
 exports.chaveDoXml = chaveDoXml;
@@ -1150,6 +1195,7 @@ exports.corpoDaAdmissao = corpoDaAdmissao;
 exports.corpoDaLiberacao = corpoDaLiberacao;
 exports.corpoDaLiberacaoDaPlanilha = corpoDaLiberacaoDaPlanilha;
 exports.corpoDosLancamentos = corpoDosLancamentos;
+exports.cpfMascarado = cpfMascarado;
 exports.criarClienteIntegraNet = criarClienteIntegraNet;
 exports.criarClienteRhNet = criarClienteRhNet;
 exports.criarClienteSciReport = criarClienteSciReport;

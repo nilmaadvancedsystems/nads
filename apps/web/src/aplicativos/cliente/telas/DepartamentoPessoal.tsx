@@ -472,7 +472,24 @@ export function DepartamentoPessoal(props: DaCasca) {
             ) : vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
               : <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Nenhum funcionário inativo.' : 'Nenhum funcionário ativo.'}</p>}
           </>
-        ) : <Vazio icone="equipe" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
+        ) : vm.rhnet.length ? null : <Vazio icone="equipe" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
+        {/* o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): o nome, o tipo, o CPF
+            mascarado, a entrada e a situação, sem salário */}
+        {vm.rhnet.length > 0 && (
+          <div className="cli-rh">
+            <h4 className="cli-rh-titulo">No RH NET (SCI)</h4>
+            <ul className="cli-rh-lista">
+              {vm.rhnet.map(c => (
+                <li key={c.id} className="cli-rh-linha">
+                  <Avatar nome={c.nome} tamanho={36} />
+                  <span className="cli-rh-quem"><b>{c.nome}</b><span className="hint">{[c.tipo, c.cpf].filter(Boolean).join(' · ')}</span></span>
+                  <span className="cli-rh-entrada hint">{c.entrada ? 'Desde ' + c.entrada : ''}</span>
+                  <span className={'cli-eq-ferias t-' + c.tom}>{c.situacao}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>}
 
       {/* as férias de cada um (13/11/2026: os avisos de férias): a vencida primeiro, com o Programar férias */}

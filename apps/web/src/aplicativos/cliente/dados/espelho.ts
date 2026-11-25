@@ -86,8 +86,14 @@ export function lerPessoal(x: unknown): ac.ResumoDoPessoal | null {
       for (const k of ['proventos', 'descontos', 'liquido', 'inss', 'irrf', 'holerites'] as const) if (typeof m[k] === 'number' && Number.isFinite(m[k])) extra[k] = m[k] as number;
       return { competencia: texto(m.competencia), base: m.base as number, fgts: typeof m.fgts === 'number' ? m.fgts : 0, funcionarios: typeof m.funcionarios === 'number' ? m.funcionarios : 0, ...extra };
     });
+  // o cadastro no RH NET da SCI (25/11/2026): campo a campo, sem salário; o CPF só mascarado
+  const rhnet = lista(r.rhnet).map(objeto).filter((c): c is Solto => !!c && /^rh\d+$/.test(texto(c.id)) && !!texto(c.nome).trim())
+    .map(c => ({
+      id: texto(c.id), nome: texto(c.nome).trim().slice(0, 120), cpf: /^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto(c.cpf)) ? texto(c.cpf) : '',
+      tipo: texto(c.tipo).slice(0, 60), entrada: /^\d{4}-\d{2}-\d{2}$/.test(texto(c.entrada)) ? texto(c.entrada) : '', situacao: texto(c.situacao).slice(0, 40),
+    }));
   return { funcionarios, competencia: COMPETENCIA.test(texto(r.competencia)) ? texto(r.competencia) : '', total: typeof r.total === 'number' ? r.total : 0,
-    ...(historico.length ? { historico } : {}), atualizadoEm: instante(r.atualizadoEm) };
+    ...(historico.length ? { historico } : {}), ...(rhnet.length ? { rhnet } : {}), atualizadoEm: instante(r.atualizadoEm) };
 }
 
 const numeroOuNulo = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);

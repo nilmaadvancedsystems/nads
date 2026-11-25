@@ -10,6 +10,7 @@
 //   - respostas { sucesso, status, mensagem, paginacao: { pagina_atual, ultima_pagina, ... }, retorno }.
 // Dados pessoais (CPF, salário, dependentes): nada daqui vai para log; o pedido guarda os dados só até o robô mandar.
 import { cpfValido } from '../../empresas/cadastro/receita';
+import type { CadastroNoRhNetNaArea } from '../../areaCliente/pessoal';
 
 export const RH_NET = 'https://api2.rhnetsocial.com.br';
 /** o maior lote por página que o nads pede */
@@ -260,3 +261,45 @@ export const LIBERACAO_DA_PLANILHA: Record<TipoDePlanilhaRh, string> = {
   intermitentes: '/api/v1/liberacoes/planilhas-lancamentos-intermitentes',
   'centros-custos': '/api/v1/liberacoes/planilhas-lancamentos-centros-custo',
 };
+
+// ---------------------------------- o que a Área do Cliente mostra ----------------------------------
+
+/** A situação para o cliente, em português simples (o escritório é quem libera). */
+export const SITUACAO_NA_AREA: Record<SituacaoNoRhNet, string> = {
+  integrado: 'Na folha', nao_liberado: 'Aguardando o escritório', liberado: 'Indo para a folha', aguardando_integracao: 'Indo para a folha', recusado: 'Recusado',
+};
+
+/** '52998224725' ou '529.982.247-25' → '***.982.247-**' (o mesmo formato da Área); '' se não é CPF. */
+export function cpfMascarado(cpf: unknown): string {
+  const d = String(cpf ?? '').replace(/\D/g, '');
+  return d.length === 11 ? '***.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-**' : '';
+}
+
+/**
+ * Um cadastro do RH NET (a admissão completa, como a API devolve) → o que a Área do Cliente mostra. LISTA BRANCA: só o nome, o
+ * CPF mascarado, o tipo (o sócio do pró-labore, a função do funcionário), a entrada e a situação; nada de salário. O cadastro
+ * desativado (desligado) não vai. `funcoes`: o nome de cada função pelo id (os cadastros da empresa).
+ */
+export function cadastroParaArea(x: unknown, funcoes: ReadonlyMap<number, string> = new Map()): CadastroNoRhNetNaArea | null {
+  const o = objeto(x);
+  const id = inteiro(o?.funcionario_contribuinte_id);
+  const nome = texto(o?.nome).replace(/\s+/g, ' ');
+  if (!o || !id || !nome || o.cadastro_ativo === false || o.cadastroAtivo === false || texto(o.desligamento_data)) return null;
+  const categoria = inteiro(o.categoria_esocial_id);
+  const contribuinte = o.tipo_colaborador === 'contribuinte';
+  const funcao = funcoes.get(inteiro(o.v_funcao_id)) || '';
+  const tipo = contribuinte ? (categoria >= 721 && categoria <= 723 ? 'Sócio – pró-labore' : 'Contribuinte') : funcao || 'Funcionário';
+  const situacao = situacaoNoRhNet(o.situacao);
+  return {
+    id: 'rh' + id, nome: nome.slice(0, 120), cpf: cpfMascarado(o.cpf), tipo: tipo.slice(0, 60),
+    entrada: (texto(o.entrada_data) || texto(o.admissao_data)).slice(0, 10).replace(/^(?!\d{4}-\d{2}-\d{2}$).*$/, ''),
+    situacao: situacao ? SITUACAO_NA_AREA[situacao] : '',
+  };
+}
+
+/** Os cadastros para a Área, sem repetir, em ordem de nome. */
+export function cadastrosParaArea(itens: unknown[], funcoes: ReadonlyMap<number, string> = new Map()): CadastroNoRhNetNaArea[] {
+  const porId = new Map<string, CadastroNoRhNetNaArea>();
+  for (const x of itens) { const c = cadastroParaArea(x, funcoes); if (c) porId.set(c.id, c); }
+  return [...porId.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+}
