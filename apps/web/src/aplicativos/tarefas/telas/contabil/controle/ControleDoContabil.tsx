@@ -1,5 +1,6 @@
 // Controle Forestry (o Controle contábil; 23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Contábil no nads), no desenho do
-// painel do DP (25/11/2026): a barra dos filtros, a linha do resumo com a busca e os ícones, e a tabela com o Cliente em duas linhas. Cada empresa: o mês feito (o menu JAN…DEZ, com a sugestão do executor ao lado), a
+// painel do DP (25/11/2026): a barra dos filtros e a linha do resumo com a busca e os ícones; a tabela no desenho do Relatório
+// do Fiscal. Cada empresa: o mês feito (o menu JAN…DEZ, com a sugestão do executor ao lado), a
 // situação calculada, a pendência e o menu ⋯ (abrir a empresa, não acompanhar, tirar do controle). Os dados e as ações
 // são os do useControleDoContabil; a prévia da planilha abre na JanelaDaImportacao.
 import { tarefas as t } from '@nads/core';
@@ -72,12 +73,9 @@ export function ControleDoContabil() {
   ];
   const listaId = 'cc-empresas-fora';
 
-  // a situação no selo do DP: em dia como a concluída, atrasada como a em andamento (e como a parada com 2 meses ou mais), o resto neutro
-  const selo = (r: Linha) => (r.situacao === 'em-dia' ? 'badge badge-ok' : r.situacao === 'atrasada' ? (r.atraso >= 2 ? 'badge badge-parada' : 'badge badge-warn badge-cheia') : 'badge badge-neutral');
-
-  // no desenho do painel do DP (25/11/2026: "faz no mesmo estilo da do departamento pessoal"): a barra dos filtros em cima; embaixo, o
-  // resumo à esquerda e, à direita, a busca e só os ícones (o Excel, o + Empresa e a planilha); a tabela com o Cód. e o Cliente em
-  // duas linhas (o nome e, embaixo, o responsável e o regime), a situação no selo
+  // as barras no desenho do painel do DP (25/11/2026: "faz no mesmo estilo da do departamento pessoal"): os filtros em cima; embaixo, o
+  // resumo à esquerda e, à direita, a busca e só os ícones (o Excel, o + Empresa e a planilha). A tabela é a de antes, a do Relatório
+  // do Fiscal (25/11/2026: "curti mais o outro layout… da tabela"), com a faixa da situação à esquerda e a etiqueta
   return (
     <section className="dp-painel cc">
       <div className="tarefas-barra-topo dp-filtros-linha">
@@ -138,32 +136,35 @@ export function ControleDoContabil() {
               </>
             )}
           </div>
-          <section className="card dp-lista dp-lista-fixa" aria-label={'Controle Forestry ' + vm.ano}>
+          <section className="card fr-cartao" aria-label={'Controle Forestry ' + vm.ano}>
             {!vm.total ? (
               <div className="hint dp-vazio cc-vazio">
                 <p>Nenhuma empresa no controle de {vm.ano}.</p>
                 {vm.podeGravar && <p>Importe a planilha, ponha as empresas pelo <b>+</b> ou <button type="button" className="btn btn-sm btn-outline" onClick={() => void vm.copiarDoAnoAnterior()}>copie a lista de {vm.ano - 1}</button></p>}
               </div>
-            ) : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
-              <div className="table-wrap">
-                <table className="dp-tabela cc-tabela">
+            ) : !vm.linhas.length ? <p className="hint dp-vazio">Nenhuma empresa com esses filtros.</p> : (
+              <div className="fr-rola">
+                <table className="fr-tabela cc-tabela">
+                  <colgroup>
+                    <col className="cc-c-cod" /><col className="cc-c-nome" /><col className="cc-c-regime" /><col className="cc-c-resp" />
+                    <col className="cc-c-mes" /><col className="cc-c-sit" /><col className="cc-c-obs" /><col className="cc-c-acoes" />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th>Cód.</th><th>Cliente</th>
-                      <th title="O último mês com a contabilidade feita">Feita até</th><th>Situação</th><th>Observações</th><th aria-label="Ações" />
+                      <th className="fr-num">Nº</th><th>Empresa</th><th>Regime</th><th>Responsável</th>
+                      <th className="fr-g" title="O último mês com a contabilidade feita">Feita até</th><th>Situação</th><th className="fr-g">Observações</th><th aria-label="Ações" />
                     </tr>
                   </thead>
                   <tbody>
                     {vm.linhas.map(r => (
-                      <tr key={r.codigo} className={'dp-linha' + (r.situacao === 'pausada' ? ' cc-pausada' : '')}>
-                        <td className="num fraco">{r.codigo}</td>
-                        <td className="dp-cliente dp-cliente-inteiro">
-                          <span className="dp-cliente-nome" title={r.noCadastro ? r.nome : r.nome + ' (não está no Cadastro)'}>{r.nome}</span>
-                          <span className="dp-cliente-info">{r.responsavel || 'Sem responsável'} · {r.regime || 'Sem regime'}</span>
-                        </td>
-                        <td><MesFeito r={r} vm={vm} /></td>
-                        <td><span className={selo(r)} title={r.linha.pausada ? 'Não acompanhar: ' + r.linha.pausada : r.rotulo}>{r.linha.pausada ? r.linha.pausada : r.rotulo}</span></td>
-                        <td className="cc-obs"><Valor largo estreito valor={r.linha.observacao} rotulo={'Observação de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarObservacao(r.codigo, v)} /></td>
+                      <tr key={r.codigo} className={'cc-' + r.situacao + (r.atraso >= 2 ? ' cc-forte' : '')}>
+                        <td className="fr-num fr-cod">{r.codigo}</td>
+                        <td className="fr-cliente"><span title={r.noCadastro ? r.nome : r.nome + ' (não está no Cadastro)'}>{r.nome}</span></td>
+                        <td className="cc-texto">{r.regime || '—'}</td>
+                        <td className="cc-texto">{r.responsavel || '—'}</td>
+                        <td className="fr-g"><MesFeito r={r} vm={vm} /></td>
+                        <td><span className={'cc-sit cc-sit-' + r.situacao + (r.atraso >= 2 ? ' cc-forte' : '')} title={r.linha.pausada ? 'Não acompanhar: ' + r.linha.pausada : r.rotulo}>{r.linha.pausada ? r.linha.pausada : r.rotulo}</span></td>
+                        <td className="fr-g"><Valor largo estreito valor={r.linha.observacao} rotulo={'Observação de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarObservacao(r.codigo, v)} /></td>
                         <td className="fr-centro">
                           <MenuSuspenso className="icon-btn cc-acoes" flutuante compacto semSeta direita titulo={r.nome} dica={'Mais de ' + r.nome} rotulo={<Icone nome="mais" />}
                             itens={[

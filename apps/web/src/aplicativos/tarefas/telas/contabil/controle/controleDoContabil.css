@@ -1,20 +1,33 @@
-/* O Controle Forestry (o Controle contábil; 23/11/2026), no desenho do painel do DP (25/11/2026): a tabela .dp-tabela, com o
-   Cliente em duas linhas e a situação no selo do DP. As colunas cabem na largura da caixa, sem rolar para o lado (25/11/2026:
-   "Quero que as colunas comportem o espaco para nao ter scroll horizontal"): a tabela fixa na largura, o Cód., o mês, a
-   situação e o ⋯ estreitos, e o Cliente e as Observações dividindo o resto, quebrando a linha em vez de empurrar a tabela */
-.cc-tabela{table-layout:fixed;width:100%;min-width:0;}
-.cc-tabela th:nth-child(1){width:56px;}
-.cc-tabela th:nth-child(3){width:112px;}
-.cc-tabela th:nth-child(4){width:136px;}
-.cc-tabela th:nth-child(6){width:40px;}
-.cc-tabela .dp-cliente{width:auto;}
-.cc-tabela .dp-cliente-nome,.cc-tabela .dp-cliente-info{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cc-tabela td.cc-obs{white-space:normal;overflow-wrap:anywhere;}
-.cc-tabela td.cc-obs input[type="text"],.cc-tabela td.cc-obs .fr-campo{width:100%;min-width:0;max-width:100%;text-align:left;font-variant-numeric:normal;}
-.cc-tabela .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
-/* não acompanhar: a linha apagada */
+/* O Controle Forestry (o Controle contábil; 23/11/2026): as barras no desenho do painel do DP e a tabela no do Relatório do Fiscal */
+/* a tabela é a de antes (25/11/2026: "curti mais o outro layout… da tabela"), a do Relatório do Fiscal (.fr-tabela), mas sem a
+   largura mínima: as colunas cabem na caixa, sem rolar para o lado. O Nº, o regime, o responsável, o mês, a situação e o ⋯ têm
+   largura fixa; a Empresa e as Observações dividem o resto e a Empresa quebra a linha quando não cabe */
+.cc-tabela{min-width:0;}
+.cc-tabela col.cc-c-cod{width:52px;}
+.cc-tabela col.cc-c-nome{width:auto;}
+.cc-tabela col.cc-c-regime{width:92px;}
+.cc-tabela col.cc-c-resp{width:104px;}
+.cc-tabela col.cc-c-mes{width:112px;}
+.cc-tabela col.cc-c-sit{width:140px;}
+.cc-tabela col.cc-c-obs{width:30%;}
+.cc-tabela col.cc-c-acoes{width:40px;}
+.cc-tabela .fr-cliente,.cc-tabela .fr-cliente span{white-space:normal;overflow-wrap:anywhere;}
+.cc-tabela td.cc-texto{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc-tabela input[type="text"].fr-campo{width:100%;min-width:0;text-align:left;font-variant-numeric:normal;}
+.cc-tabela thead tr:first-child th{top:0;height:30px;font-size:var(--fs-11);letter-spacing:0;text-transform:none;}
+.cc-texto{color:var(--ink-muted);font-size:var(--fs-12);}
+/* a faixa à esquerda da linha, como o .fr-feita: verde em dia, amarelo atrasada, vermelho 2 meses ou mais, cinza não acompanhar */
+.cc-tabela tbody tr.cc-em-dia td:first-child{box-shadow:inset 3px 0 0 var(--success);}
+.cc-tabela tbody tr.cc-atrasada td:first-child,.cc-tabela tbody tr.cc-nao-iniciada td:first-child{box-shadow:inset 3px 0 0 var(--warn);}
+.cc-tabela tbody tr.cc-forte td:first-child{box-shadow:inset 3px 0 0 var(--danger);}
 .cc-tabela tbody tr.cc-pausada td{color:var(--ink-faint);}
-.cc-tabela tbody tr.cc-pausada .dp-cliente-nome{color:var(--ink-faint);font-weight:400;}
+.cc-tabela tbody tr.cc-pausada .fr-cliente span{color:var(--ink-faint);font-weight:400;}
+/* a situação */
+.cc-sit{display:inline-block;max-width:100%;padding:1px 8px;border-radius:999px;font-size:var(--fs-11);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}
+.cc-sit-em-dia{background:var(--success-soft);color:var(--success-ink);}
+.cc-sit-atrasada,.cc-sit-nao-iniciada{background:var(--warn-soft);color:var(--warn);}
+.cc-sit.cc-forte{background:var(--danger-soft);color:var(--danger-ink);}
+.cc-sit-pausada{background:var(--surface-3);color:var(--ink-muted);font-weight:500;}
 /* o mês feito: o botão do menu, pequeno, e a sugestão do executor ao lado */
 .cc-mes{display:inline-flex;align-items:center;gap:6px;}
 .cc-mes-botao{display:inline-flex;align-items:center;gap:4px;min-width:52px;height:24px;padding:0 8px;border:1px solid var(--border);border-radius:6px;
@@ -51,7 +64,10 @@
 .cc-previa-lista ul{margin:6px 0 0;padding-left:20px;max-height:220px;overflow:auto;font-size:var(--fs-12);color:var(--ink-muted);}
 .cc-previa-aviso summary b{color:var(--warn);}
 .cc-previa-linha{margin:8px 0;font-size:var(--fs-13);}
-/* na tela estreita, a situação encolhe; ainda sem rolar */
-@media (max-width:720px){
-  .cc-tabela th:nth-child(4){width:112px;}
+/* na tela estreita, as Observações e as colunas fixas encolhem; ainda sem rolar */
+@media (max-width:900px){
+  .cc-tabela col.cc-c-obs{width:24%;}
+  .cc-tabela col.cc-c-regime{width:76px;}
+  .cc-tabela col.cc-c-resp{width:84px;}
+  .cc-tabela col.cc-c-sit{width:116px;}
 }
