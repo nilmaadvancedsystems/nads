@@ -44,7 +44,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
   const [mandando, setMandando] = useState(false);
   // desligado para todos, menos para o dono do robô de PC (o botão Vitor)
   const IMPORTAR_DESLIGADO = importarDesligado();
-  // o "Baixar para o SCI" (23/11/2026, docs/sci): só no modo desenvolvedor (novidade 'sci')
+  // o "Baixar para o SCI" (23/11/2026, docs/sci): para todos desde 25/11/2026 ("libera a planilha para fora do dev")
   const paraOSci = useBaixarParaOSci(p.empresa, p.origem, p.planilha);
 
   useEffect(() => { setId(lembrado(k)); setEstado(null); }, [k]);
@@ -89,7 +89,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
     if (!p.baixar) {
       if (!paraOSci.ligado) return null;
       return (
-        <button type="button" className="btn btn-secondary" disabled={p.disabled || paraOSci.ocupado} title={p.disabled ? p.motivo : 'A planilha que o SCI importa (modo desenvolvedor)'} onClick={paraOSci.baixar}>
+        <button type="button" className="btn btn-secondary" disabled={p.disabled || paraOSci.ocupado} title={p.disabled ? p.motivo : 'A planilha que o SCI importa'} onClick={paraOSci.baixar}>
           <Icone nome="download" width={16} height={16} />Baixar para o SCI
         </button>
       );
@@ -106,7 +106,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
               </button>
                 {paraOSci.ligado && (
                   <button type="button" className="popover-item" role="menuitem" disabled={p.disabled || paraOSci.ocupado} title={p.disabled ? p.motivo : undefined} onClick={() => { fechar(); paraOSci.baixar(); }}>
-                    <Icone nome="download" /><span className="popover-texto"><b>Baixar para o SCI</b><br /><span className="hint">A planilha que o SCI importa (modo desenvolvedor)</span></span>
+                    <Icone nome="download" /><span className="popover-texto"><b>Baixar para o SCI</b><br /><span className="hint">A planilha que o SCI importa</span></span>
                   </button>
                 )}
             </>
@@ -139,7 +139,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
                 </button>
                 {paraOSci.ligado && (
                   <button type="button" className="popover-item" role="menuitem" disabled={p.disabled || paraOSci.ocupado} title={p.disabled ? p.motivo : undefined} onClick={() => { fechar(); paraOSci.baixar(); }}>
-                    <Icone nome="download" /><span className="popover-texto"><b>Baixar para o SCI</b><br /><span className="hint">A planilha que o SCI importa (modo desenvolvedor)</span></span>
+                    <Icone nome="download" /><span className="popover-texto"><b>Baixar para o SCI</b><br /><span className="hint">A planilha que o SCI importa</span></span>
                   </button>
                 )}
               </>
@@ -157,7 +157,7 @@ export function BotaoImportarNoAlterdata(p: PropsImportarNoAlterdata) {
         {estado?.status === 'pronto' || estado?.status === 'erro' ? 'Importar de novo no Alterdata' : 'Importar no Alterdata'}
       </button>
       {paraOSci.ligado && (
-        <button type="button" className="btn btn-secondary" disabled={p.disabled || paraOSci.ocupado} title={p.disabled ? p.motivo : 'A planilha que o SCI importa (modo desenvolvedor)'} onClick={paraOSci.baixar}>
+        <button type="button" className="btn btn-secondary" disabled={p.disabled || paraOSci.ocupado} title={p.disabled ? p.motivo : 'A planilha que o SCI importa'} onClick={paraOSci.baixar}>
           <Icone nome="download" width={16} height={16} />Baixar para o SCI
         </button>
       )}

@@ -14,6 +14,7 @@ import { BalaoDeGuia } from './BalaoDeGuia';
 import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { LogoDoMinimum } from './LogoDoMinimum';
 import { Paleta, type ItemDaPaleta } from './Paleta';
+import { ExtratoParaSci } from './ExtratoParaSci';
 import { RazaoDoSci, temConsultaDoSci } from './RazaoDoSci';
 import { useShadersCi, type ColunaDosLancamentos, type Formulario, type VmShadersCi } from './useShadersCi';
 
@@ -31,8 +32,8 @@ export function ShadersCi() {
         // pode sair, que vai voltar para tela inicial de selecao de empresa. Ou aparece o nome dos outros aplicativos")
         menu={vm.empresa ? [
           ...vm.apps.filter(a => a !== vm.app).map(a => ({
-            rotulo: a === 'lancamentos' ? 'Lançamentos' : a === 'extratudo' ? 'Extratudo' : 'Visualizar lançamentos',
-            icone: a === 'lancamentos' ? 'list' as const : a === 'extratudo' ? 'landmark' as const : 'olho' as const, onClick: () => vm.abrirApp(a),
+            rotulo: a === 'lancamentos' ? 'Lançamentos' : a === 'extratudo' ? 'Extratudo' : a === 'extrato' ? 'Extrato → SCI' : 'Visualizar lançamentos',
+            icone: a === 'lancamentos' ? 'list' as const : a === 'extratudo' ? 'landmark' as const : a === 'extrato' ? 'upload' as const : 'olho' as const, onClick: () => vm.abrirApp(a),
           })),
           { rotulo: 'Trocar de empresa', icone: 'trocar' as const, separado: true, onClick: () => { void vm.trocarEmpresa(); } },
         ] : undefined} />
@@ -46,7 +47,7 @@ export function ShadersCi() {
         {/* sem o selo do plano e sem o campo do CNPJ (24/11/2026: "remove isso"): o plano e o CNPJ vêm do Cadastro da empresa;
             só a empresa sem plano no Cadastro ainda escolhe aqui */}
         {lancamentos && !vm.planoDoCadastro && <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
-        {vm.dev && vm.app !== 'extratudo' && vm.app !== 'razao' && (
+        {vm.dev && vm.app !== 'extratudo' && vm.app !== 'razao' && vm.app !== 'extrato' && (
           <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · fica só neste navegador"
             itens={vm.empresa ? [
               { rotulo: 'Lançamentos de exemplo (' + vm.plano + ')', icone: 'zap', onClick: vm.teste.preencher },
@@ -78,7 +79,8 @@ export function ShadersCi() {
         {lancamentos && <FiltroEBusca vm={vm} />}
       </AcoesDoTopo>
       {/* o Extratudo é o Lançatudo, com a empresa daqui: o mesmo leitor de extrato do fluxo de tarefas do Contábil */}
-      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
+      {/* o Extrato → SCI (25/11/2026): o PDF do extrato direto na planilha do SCI, só no navegador */}
+      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
     </section>
   );
 }
@@ -167,6 +169,16 @@ function AppsDaEmpresa({ vm }: { vm: VmShadersCi }) {
             <span className="sci-app-num">02</span>
             <span className="sci-app-nome">Extratudo<span className="sci-app-seta" aria-hidden="true">→</span></span>
             <span className="sci-app-desc">Conciliação bancária</span>
+          </button>
+        </>
+      )}
+      {vm.apps.includes('extrato') && (
+        <>
+          <span className="sci-apps-divisor" aria-hidden="true" />
+          <button type="button" className="sci-app" onClick={() => vm.abrirApp('extrato')}>
+            <span className="sci-app-num">03</span>
+            <span className="sci-app-nome">Extrato → SCI<span className="sci-app-seta" aria-hidden="true">→</span></span>
+            <span className="sci-app-desc">Do PDF do banco à planilha do SCI</span>
           </button>
         </>
       )}
