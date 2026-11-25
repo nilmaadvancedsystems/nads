@@ -54,8 +54,6 @@ export * as auditoriaItens from './auditoriaItens';
 export * as painel from './painel';
 // o delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): tarefas.delegadas.*
 export * as delegadas from './regras/delegadas';
-// a lucratividade por cliente, versão mínima (ficha E23, 25/11/2026): tarefas.lucratividade.*
-export * as lucratividade from './regras/lucratividade';
 // o Início novo (13/11/2026): os grupos Hoje / Amanhã / Esta semana, o calendário, os comentários e as notificações
 export * as agenda from './regras/agenda';
 // os feriados e os pontos facultativos de Taiobeiras (o calendário do Início; 15/11/2026): tarefas.feriados.*

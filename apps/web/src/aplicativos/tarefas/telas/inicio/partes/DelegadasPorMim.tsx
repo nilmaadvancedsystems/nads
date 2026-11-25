@@ -10,13 +10,11 @@ import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import type { useCentralDeTarefas } from '../../delegador/useCentralDeTarefas';
 import { useDelegadasPorPessoa } from '../../delegador/useDelegadasPorPessoa';
-import { useLucratividadePorCliente } from '../../delegador/useLucratividadePorCliente';
-import { useOperador } from '../../../casca/operador';
 import type { PessoaComFoto } from '../useInicioNovo';
 import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
-type Modo = 'lista' | 'pessoas' | 'clientes';
+type Modo = 'lista' | 'pessoas';
 type Linha = ReturnType<typeof useCentralDeTarefas>['grupos'][number]['linhas'][number];
 
 /**
@@ -46,12 +44,9 @@ export function DelegadasPorMim({ vm, abrir, comFoto, cobrarLigado, discreta, lu
   lugarDosFiltros?: HTMLElement | null; lugarDoFim?: HTMLElement | null;
 }) {
   const [modo, setModo] = useState<Modo>('lista');
-  // o Por cliente (a lucratividade, ficha E23, 25/11/2026): só Diretor e Dono
-  const { operador } = useOperador();
-  const veClientes = !!operador && (operador.nivel === 'diretor' || operador.nivel === 'dono');
   const filtros = (
     <>
-      <Segmentado<Modo> valor={modo} onMudar={setModo} opcoes={[{ valor: 'lista', rotulo: 'Lista' }, { valor: 'pessoas', rotulo: 'Por pessoa' }, ...(veClientes ? [{ valor: 'clientes' as const, rotulo: 'Por cliente' }] : [])]} />
+      <Segmentado<Modo> valor={modo} onMudar={setModo} opcoes={[{ valor: 'lista', rotulo: 'Lista' }, { valor: 'pessoas', rotulo: 'Por pessoa' }]} />
       {modo === 'lista' && !vm.abaVazia && <>
         <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />
         {vm.pessoas.length > 0 && <MenuDeFiltro rotulo={vm.colunaDaPessoa} valor={vm.quem} mudar={vm.setQuem} todos="Todas as pessoas" opcoes={vm.pessoas} />}
@@ -74,7 +69,6 @@ export function DelegadasPorMim({ vm, abrir, comFoto, cobrarLigado, discreta, lu
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       {modo === 'lista'
         ? <Lista vm={vm} abrir={abrir} comFoto={comFoto} cobrarLigado={cobrarLigado} discreta={discreta} />
-        : modo === 'clientes' && veClientes ? <PorCliente />
         : <PorPessoa abrir={abrir} comFoto={comFoto} verDaPessoa={nome => { vm.limparFiltros(); vm.setQuem(nome); setModo('lista'); }} />}
     </section>
   );
@@ -188,61 +182,6 @@ function PorPessoa({ abrir, comFoto, verDaPessoa }: { abrir: (id: string) => voi
             </tbody>
           </table>
         </div>
-      </section>
-    </>
-  );
-}
-
-/**
- * O Por cliente (a lucratividade mínima, ficha E23, 25/11/2026): o honorário do período, o tempo do cronômetro das tarefas
- * delegadas do cliente e o custo desse tempo pelo valor por minuto; os que sobram menos primeiro. Parcial, e a tela diz.
- */
-function PorCliente() {
-  const vm = useLucratividadePorCliente();
-  const r = vm.resumo;
-  return (
-    <>
-      <div className="stat-grid">
-        <Numero rotulo={'Honorários · ' + vm.rotuloDoPeriodo.toLowerCase()} valor={r.honorarios} />
-        <Numero rotulo="Tempo registrado" valor={r.tempo} dica="O cronômetro das tarefas delegadas com cliente" />
-        <Numero rotulo="Custo do tempo" valor={r.custo} />
-        <Numero rotulo="No vermelho" valor={r.noVermelho} dica="Clientes em que o custo do tempo passou do honorário" />
-      </div>
-      <section className="card ini-grupo">
-        <div className="card-head">
-          <h3>Por cliente</h3>
-          <span className="card-head-ctl">
-            <label className="luc-custo" title="Quanto custa um minuto da equipe (salários e encargos ÷ minutos de expediente). Fica neste computador.">
-              Custo por minuto
-              <input type="number" min={0} step={0.1} value={vm.custo} onChange={e => vm.setCusto(Math.max(0, Number(e.target.value) || 0))} />
-            </label>
-            <MenuSuspenso icone="calendar" className="btn btn-outline" rotulo={vm.rotuloDoPeriodo} titulo="Período" direita
-              itens={vm.periodos.map(p => ({ rotulo: p.rotulo, marcado: p.valor === vm.periodo, onClick: () => vm.setPeriodo(p.valor) }))} />
-          </span>
-        </div>
-        <p className="hint ini-delegadas-dica">Retrato parcial: conta só o tempo do cronômetro das tarefas delegadas com cliente. O trabalho das rotinas (Fiscal, DP, Contábil) não tem cronômetro e fica de fora.</p>
-        {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
-        {!vm.carregando && !vm.linhas.length ? <Vazio icone="relatorio" titulo="Nada para mostrar" texto="Sem contratos de honorário ativos e sem tempo registrado no período." /> : (
-          <div className="table-wrap">
-            <table className="table-compact ini-delegadas">
-              <thead>
-                <tr><th>Cliente</th><th className="num">Honorário</th><th className="num">Tarefas</th><th className="num">Tempo</th><th className="num">Custo</th><th className="num">Sobra</th></tr>
-              </thead>
-              <tbody>
-                {vm.linhas.map(l => (
-                  <tr key={l.codigo}>
-                    <td><span className="ini-empresa">{l.codigo}</span> {l.nome}</td>
-                    <td className={'num' + (l.honorario == null ? ' fraco' : '')}>{l.honorarioTexto}</td>
-                    <td className="num">{l.tarefas || '—'}</td>
-                    <td className="num">{l.tempoTexto}</td>
-                    <td className="num">{l.custoTexto}</td>
-                    <td className={'num' + (l.vermelho ? ' tdl-atrasada' : '')}>{l.sobraTexto}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </section>
     </>
   );
