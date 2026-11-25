@@ -3704,6 +3704,12 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
   const raizes = raizesDoTexto(bruto).filter(r => cad.porRaiz.has(r));
   const porRaiz = [...new Set(raizes.flatMap(r => [...cad.porRaiz.get(r)]))];
   if (porRaiz.length === 1) { ev.push('raiz do CNPJ impressa'); return { cliente: porRaiz[0], conf: 0.92, como: 'doc' }; }
+  // (25/11/2026, decisão do dono: "FGTS vai para a matriz") a guia do FGTS Digital só com a raiz do CNPJ (o recolhimento é da empresa, de todos os estabelecimentos):
+  // a matriz dessa raiz, quando há uma só; a guia com o CNPJ inteiro de um estabelecimento continua com a regra do 1º CNPJ, acima
+  if (porRaiz.length > 1 && regra.tipo === 'FGTS' && new Set(raizes).size === 1) {
+    const mz = matrizDaRaiz(porRaiz, cad, entrada.rel);
+    if (mz != null) { ev.push('FGTS Digital só com a raiz do CNPJ (' + raizes[0] + ', da matriz e das filiais ' + porRaiz.join(', ') + '): a matriz ' + mz + ' (decisão do dono, 25/11/2026)'); return { cliente: mz, conf: 0.9, como: 'doc' }; }
+  }
   // a razão social do cabeçalho primeiro (no corpo de um extrato aparecem os nomes de quem pagou/recebeu)
   // (28/10/2026) no extrato/aplicação com o titular lido (que não é cliente): os outros nomes do texto são de quem pagou ou recebeu
   // ("PIX - ENVIADO / VERA REFLORESTAMENTOS" no extrato da Minas): não decidem; fica a pasta de origem
