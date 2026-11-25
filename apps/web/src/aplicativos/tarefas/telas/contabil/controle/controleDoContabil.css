@@ -11,7 +11,7 @@
 .cc-tabela col.cc-c-sit{width:140px;}
 .cc-tabela col.cc-c-obs{width:30%;}
 .cc-tabela col.cc-c-acoes{width:40px;}
-.cc-tabela .fr-cliente,.cc-tabela .fr-cliente span{white-space:normal;overflow-wrap:anywhere;}
+.cc-tabela .fr-cliente,.cc-tabela .fr-cliente span{white-space:normal;overflow-wrap:break-word;}
 .cc-tabela td.cc-texto{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cc-tabela input[type="text"].fr-campo{width:100%;min-width:0;text-align:left;font-variant-numeric:normal;}
 .cc-tabela thead tr:first-child th{top:0;height:30px;font-size:var(--fs-11);letter-spacing:0;text-transform:none;}
@@ -64,12 +64,18 @@
 .cc-previa-lista ul{margin:6px 0 0;padding-left:20px;max-height:220px;overflow:auto;font-size:var(--fs-12);color:var(--ink-muted);}
 .cc-previa-aviso summary b{color:var(--warn);}
 .cc-previa-linha{margin:8px 0;font-size:var(--fs-13);}
-/* na tela estreita, as Observações e as colunas fixas encolhem; ainda sem rolar */
-@media (max-width:900px){
-  .cc-tabela col.cc-c-obs{width:24%;}
-  .cc-tabela col.cc-c-regime{width:76px;}
-  .cc-tabela col.cc-c-resp{width:84px;}
-  .cc-tabela col.cc-c-sit{width:116px;}
+/* na tela estreita (25/11/2026: a Empresa espremida, quebrando o nome letra a letra): a Empresa fica com uma parte fixa da
+   largura e o resto encolhe junto; as Observações ficam com o que sobra */
+@media (max-width:1100px){
+  .cc-tabela col.cc-c-cod{width:44px;}
+  .cc-tabela col.cc-c-nome{width:30%;}
+  .cc-tabela col.cc-c-regime{width:9%;}
+  .cc-tabela col.cc-c-resp{width:10%;}
+  .cc-tabela col.cc-c-mes{width:84px;}
+  .cc-tabela col.cc-c-sit{width:15%;}
+  .cc-tabela col.cc-c-obs{width:auto;}
+  .cc-tabela col.cc-c-acoes{width:36px;}
+  .cc-tabela .cc-mes-botao{min-width:0;padding:0 6px;}
 }
 /* o ano: só 2026, uma etiqueta no lugar do menu */
 .cc-ano{cursor:default;}
