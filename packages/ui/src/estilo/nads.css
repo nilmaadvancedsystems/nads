@@ -8748,7 +8748,7 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
    elementos centralizados na tela"): o main, o .content e o .sci esticam só enquanto ela aparece */
 #app:has(.sci-inicio) > main.main,main.main:has(.sci-inicio) > .content,.content > .sci:has(> .sci-inicio){flex:1 1 auto;display:flex;flex-direction:column;}
 .sci > .sci-inicio{flex:1 1 auto;}
-.sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 0 20px;
+.sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 0 40px;
   background:radial-gradient(ellipse 60% 45% at 50% 38%,var(--accent-soft),transparent 70%);}
 .sci-inicio > *{animation:sciChega .6s cubic-bezier(.23,1,.32,1) both !important;}
 /* a logo (24/11/2026: no lugar da maletinha): a palavra "minımum" numa serifada bem pesada (a Bodoni MT Black do Office; sem
@@ -8768,6 +8768,8 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* embaixo da logo, a mesma altura com ou sem empresa (25/11/2026: "manter a logo nesse lugar fixo"): a escolha e os apps
    trocam aqui dentro, e a logo não se mexe */
 .sci-inicio-corpo{height:150px;width:100%;display:flex;justify-content:center;}
+/* na escolha da empresa (só o botão, desde 25/11/2026), a altura do que tem: o bloco fica no meio da tela, sem vão embaixo */
+.sci-inicio-corpo:has(> .sci-escolha){height:auto;}
 .sci-inicio > .sci-inicio-corpo{animation-delay:.08s !important;}
 .sci-escolha,.sci-apps{display:flex;flex-direction:column;align-items:center;}
 .sci-escolha > *,.sci-apps > *{animation:sciChega .5s cubic-bezier(.23,1,.32,1) both;}
@@ -8782,8 +8784,6 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-escolher:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
 .sci-escolher > svg{flex:none;color:var(--accent);}
 .sci-escolher-rotulo{flex:1;font-weight:500;color:var(--ink);text-align:center;}
-/* sem a linha de baixo, o título leva o espaço até o botão (25/11/2026) */
-.sci-escolha > .sci-inicio-titulo{margin-bottom:20px;}
 .sci-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;font-family:inherit;font-size:11px;
   font-weight:500;color:var(--ink-muted);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--surface);}
 /* a paleta: no centro, sobre a tela desfocada */
