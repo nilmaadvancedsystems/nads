@@ -1389,6 +1389,10 @@ td.fraco{color:var(--ink-muted);}
 .codigo-num{min-width:4ch;text-align:right;}
 /* Minhas empresas: a coluna do código só da largura dela, sobra espaço para as outras */
 .tabela-empresas th:first-child,.tabela-empresas td:first-child{width:1%;white-space:nowrap;padding-right:8px;}
+/* a empresa que não é da pessoa (o dono, o diretor e o sênior veem a coluna Responsável; 25/11/2026: "as que ele nao for responsavel
+   deixe levemente ofuscado"): a linha apagada, que volta ao passar o mouse */
+.tabela-empresas tbody tr.linha-de-outro td{opacity:.55;}
+.tabela-empresas tbody tr.linha-de-outro:hover td,.tabela-empresas tbody tr.linha-de-outro:focus-visible td{opacity:1;}
 
 /* ---------------------------------- Tarefas: página da empresa ---------------------------------- */
 tr.linha-abre:hover{background:var(--surface-3);}
@@ -8457,7 +8461,7 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-tabela .sci-conta-nome.sci-conta-c{color:light-dark(#b42318,#ff8f86);}
 .sci-tabela .sci-conta-cod{font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 /* o resumo da seleção, no canto de baixo à esquerda, com mais de um lançamento marcado (24/11/2026) */
-.sci-selecao{position:fixed;left:24px;bottom:24px;z-index:40;width:260px;padding:12px 14px 10px;border-radius:10px;
+.sci-selecao{position:fixed;left:24px;bottom:24px;z-index:40;width:280px;padding:12px 14px 10px;border-radius:10px;
   background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg);animation:popIn .18s ease;}
 .sci-selecao-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
 .sci-selecao-total{display:block;margin:2px 0 8px;font-size:22px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2;}
@@ -8467,6 +8471,17 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-selecao-dados dd{margin:0;color:var(--ink);font-weight:500;text-align:right;}
 /* o excluir em lote, no pé da caixa (25/11/2026): a largura toda; a cor é a do btn-danger, o vermelho padrão de excluir */
 .btn.sci-selecao-excluir{width:100%;justify-content:center;margin-top:10px;}
+/* alterar em lote (25/11/2026): o botão acima do excluir e, aberto, os campos em duas colunas */
+.btn.sci-selecao-lote{width:100%;justify-content:center;margin-top:10px;}
+.sci-lote{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.sci-lote-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sci-lote-campo{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:var(--fs-11);color:var(--ink-muted);}
+.sci-lote-campo:last-child{grid-column:1 / -1;}
+.sci-lote-campo input{width:100%;min-width:0;height:28px;font-size:var(--fs-12);}
+.sci-lote-campo small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-11);}
+.sci-lote-nota{margin:8px 0 0;font-size:var(--fs-11);}
+.sci-lote-erro{margin:6px 0 0;font-size:var(--fs-12);color:var(--danger);}
+.sci-lote-botoes{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;}
 .sci-selecao-alerta dt,.sci-selecao-alerta dd{color:var(--danger);}
 @media (max-width:640px){.sci-selecao{left:12px;right:12px;bottom:12px;width:auto;}}
 .sci-tabela td.sci-valor{font-weight:700;font-variant-numeric:tabular-nums;}
@@ -8478,7 +8493,7 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 /* a busca é a última da linha dos botões, na extrema direita (25/11/2026: "Busca na extrema direita, perdao, o ultimo da fila") */
 .sci-barra{display:inline-flex;align-items:center;gap:8px;}
 /* o Novo lançamento e a Planilha do SCI só com o ícone, quadrados (25/11/2026: "deixa so os icones") */
-.btn.sci-btn-icone{width:32px;padding:0;justify-content:center;}
+.btn.sci-btn-icone{width:32px;height:32px;min-height:32px;padding:0;justify-content:center;flex:none;}
 .btn.sci-btn-icone svg{width:16px;height:16px;margin:0;}
 /* o botão que pulsa para guiar (25/11/2026): o + sem lançamento nenhum e o Importar a consulta do Razão sem consulta; um anel da cor
    do botão que cresce e some, a cada 1,6s */
@@ -8611,7 +8626,11 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 @media (max-width:980px){.sci-razao-painel{grid-template-columns:1fr;}.sci-razao-saldos{align-items:flex-start;padding-top:0;}}
 /* os botões, o filtro e a busca no fim da linha, alinhados com a borda da tabela, mesmo quando descem para baixo do nome
    (25/11/2026: "Deixa mais pro final da linha") */
-.topbar:has(.sci-barra) #topbarActions{flex:1 1 auto;justify-content:flex-end;}
+.topbar:has(.sci-barra) #topbarActions{flex:1 1 auto;justify-content:flex-end;align-items:center;}
+/* os botões do minimum não esticam na altura da barra (25/11/2026: no monitor de 1366, o +, o olho e o Excel ficavam com 46px de
+   altura e 32 de largura): todos com 32 de altura, centrados, como a busca e o plano */
+.topbar:has(.sci-barra) #topbarActions .sci-guia{align-self:center;}
+.topbar:has(.sci-barra) #topbarActions .steps{height:32px;margin:0;align-self:center;}
 /* todas as linhas da mesma altura, o simples e o múltiplo (25/11/2026): nada quebra linha; o histórico longo vira "…" */
 .sci-tabela tbody td{height:48px;white-space:nowrap;}
 /* a caixa da tabela sem o vão em cima: o cabeçalho encosta na borda, nos cantos redondos, num tom próprio (o azul da marca bem
@@ -8735,6 +8754,8 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-inicio-logo{display:block;font-size:56px;color:var(--ink);}
 /* a logo e, presa nela, a do SCI: o conjunto entra junto e não se mexe com ou sem empresa */
 .sci-inicio-marca{position:relative;display:block;margin-bottom:20px;}
+/* o slogan do minimum, embaixo do nome (25/11/2026) */
+.sci-slogan{display:block;margin-top:6px;font-size:var(--fs-13);font-style:italic;letter-spacing:.02em;color:var(--ink-muted);}
 .sci-inicio > .sci-inicio-marca{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
 /* a collab com o SCI (25/11/2026): a logo original do SCI pequena, centrada em cima do minimum ("Bota esse mesmo tamanho, mas centralizado acima") */
 .sci-collab{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);user-select:none;}
@@ -8751,14 +8772,16 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-escolha > :nth-child(2){animation-delay:.06s;}
 .sci-escolha > :nth-child(3),.sci-apps > :nth-child(2){animation-delay:.12s;}
 /* a escolha da empresa (25/11/2026: "uma coisa mais premium"): um botão grande que abre a paleta */
-.sci-escolher{display:inline-flex;align-items:center;gap:12px;width:420px;max-width:100%;min-height:54px;padding:0 18px;cursor:pointer;
+.sci-escolher{display:inline-flex;align-items:center;justify-content:center;gap:12px;width:420px;max-width:100%;min-height:54px;padding:0 18px;cursor:pointer;
   font:inherit;font-size:var(--fs-15,15px);color:var(--ink-muted);text-align:left;border-radius:14px;border:1px solid var(--border);
   background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 92%,#fff 8%),var(--surface-2));
   box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(0,0,0,.55);transition:border-color .2s,box-shadow .2s,transform .2s,color .2s;}
 .sci-escolher:hover{color:var(--ink);border-color:var(--accent-border);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 14px 36px -12px rgba(0,0,0,.6),0 0 0 4px var(--accent-soft);transform:translateY(-1px);}
 .sci-escolher:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
 .sci-escolher > svg{flex:none;color:var(--accent);}
-.sci-escolher-rotulo{flex:1;font-weight:500;color:var(--ink);}
+.sci-escolher-rotulo{flex:1;font-weight:500;color:var(--ink);text-align:center;}
+/* sem a linha de baixo, o título leva o espaço até o botão (25/11/2026) */
+.sci-escolha > .sci-inicio-titulo{margin-bottom:20px;}
 .sci-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;font-family:inherit;font-size:11px;
   font-weight:500;color:var(--ink-muted);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--surface);}
 /* a paleta: no centro, sobre a tela desfocada */

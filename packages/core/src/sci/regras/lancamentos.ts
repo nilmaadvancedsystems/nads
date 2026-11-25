@@ -226,6 +226,44 @@ export function lancamentoLimpo<T extends CamposDoLancamento>(l: T, plano: Plano
   };
 }
 
+/** O que se troca em lote nos lançamentos marcados (vazio = não mexe nesse campo). */
+export interface MudancaEmLote {
+  /** aaaa-mm-dd */
+  data?: string;
+  debito?: string;
+  credito?: string;
+  /** em centavos */
+  valor?: number;
+  historico?: string;
+}
+
+/**
+ * Altera em lote os lançamentos marcados (25/11/2026: "Coloca alguma funcao de alterar em lote: data, conta debito, conta credito,
+ * valor, numero do historico"). A regra: o lote não muda os múltiplos ("Lancamentos em lote nao muda multiplos, deixe isso como
+ * regra"): as partidas de um múltiplo ficam como estão e são contadas à parte. A conta trocada leva o participante só se ela
+ * pede: a que não pede apaga o participante daquele lado. A conta e o histórico entram como na digitação (lancamentoLimpo).
+ */
+export function alterarEmLote<T extends LancamentoDoShader>(ls: readonly T[], ids: ReadonlySet<string>, m: MudancaEmLote, plano: PlanoSci): { lancamentos: T[]; mudados: number; multiplos: number } {
+  let mudados = 0;
+  let multiplos = 0;
+  const lancamentos = ls.map(l => {
+    if (!ids.has(l.id)) return l;
+    if (l.multiplo) { multiplos++; return l; }
+    let n: T = { ...l };
+    if (m.data) n.data = m.data;
+    if (m.valor != null && Number.isFinite(m.valor) && m.valor > 0) n.valor = m.valor;
+    if (m.historico?.trim()) n.historico = m.historico;
+    if (m.debito?.trim()) { n.debito = m.debito; if (!participanteDoLado(contaDoPlano(plano, m.debito), 'debito')) n.participanteD = ''; }
+    if (m.credito?.trim()) { n.credito = m.credito; if (!participanteDoLado(contaDoPlano(plano, m.credito), 'credito')) n.participanteC = ''; }
+    n = lancamentoLimpo(n, plano);
+    const igual = (Object.keys(n) as (keyof T)[]).every(k => n[k] === l[k]);
+    if (igual) return l;
+    mudados++;
+    return n;
+  });
+  return { lancamentos: mudados ? lancamentos : [...ls], mudados, multiplos };
+}
+
 /** Débito ↔ crédito (e os participantes junto). */
 export const invertido = <T extends CamposDoLancamento>(l: T): T => ({ ...l, debito: l.credito, credito: l.debito, participanteD: l.participanteC, participanteC: l.participanteD });
 

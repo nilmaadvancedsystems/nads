@@ -107,13 +107,14 @@ export function MinhasEmpresas() {
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
-              <th>Progresso</th>
-              <th />
-              <th />
+              {vm.verResponsavel && <Titulo vm={vm} coluna="responsavel" rotulo="Responsável" />}
+              <Titulo vm={vm} coluna="progresso" rotulo="Progresso" />
+              <Titulo vm={vm} coluna="etapa" rotulo="Etapa" />
+              <Titulo vm={vm} coluna="quando" rotulo="Última vez" />
             </tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(l => (
-                <tr key={l.chave} data-linha={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nomeNaTela}
+                <tr key={l.chave} data-linha={l.chave} className={'linha-abre' + (l.deOutro ? ' linha-de-outro' : '')} tabIndex={0} title={'Ver ' + l.nomeNaTela}
                   onClick={() => vm.abrirEmpresa(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrirEmpresa(l.rota); }}>
                   <td className="num">
                     {/* a situação em cor: laranja parada, amarelo em andamento, cinza não iniciada, verde concluída */}
@@ -123,6 +124,8 @@ export function MinhasEmpresas() {
                     </span>
                   </td>
                   <td>{l.nomeNaTela}</td>
+                  {/* o responsável: em branco quando é a própria pessoa; a linha de outro fica apagada (25/11/2026) */}
+                  {vm.verResponsavel && <td className="fraco">{l.responsavel}</td>}
                   <td className="num" title={l.concluidas + ' de ' + l.total + ' etapas'}>
                     <span className="progresso-linha">
                       <span className="tarefas-barra"><span className={l.situacao === 'parada' ? 'parada' : undefined} style={{ width: l.porcentagem + '%' }} /></span>
