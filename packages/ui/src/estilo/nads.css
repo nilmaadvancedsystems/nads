@@ -8821,3 +8821,8 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .registro-topo .sci-busca-plano{margin-bottom:0;}
 .sci-plano{max-height:50vh;overflow:auto;}
 @media (max-width:900px){.sci-form{grid-template-columns:1fr 1fr;}.sci-form .sci-largo{grid-column:1/-1;}}
+
+/* o custo por minuto do Por cliente das Delegadas por mim (a lucratividade, ficha E23, 25/11/2026) */
+.luc-custo{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-muted);}
+.luc-custo input{width:84px;height:32px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;text-align:right;}
+
