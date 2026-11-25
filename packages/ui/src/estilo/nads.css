@@ -8744,7 +8744,11 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* a tela inicial do minimum (24/11/2026: "Faz uma tela inicial bem bonita, com animações"): no centro, o selo, o título, a
    busca e as empresas do SCI; tudo chega uma vez, de baixo para cima, um atrás do outro (exceção pedida à regra de não
    animar, como a gaveta; nada infinito). Sem movimento pedido pelo sistema, aparece parado */
-.sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 0 64px;
+/* a tela de início ocupa a área toda entre o topo e o rodapé e fica no meio dela (25/11/2026: "Tira a logo do sci e deixe os
+   elementos centralizados na tela"): o main, o .content e o .sci esticam só enquanto ela aparece */
+#app:has(.sci-inicio) > main.main,main.main:has(.sci-inicio) > .content,.content > .sci:has(> .sci-inicio){flex:1 1 auto;display:flex;flex-direction:column;}
+.sci > .sci-inicio{flex:1 1 auto;}
+.sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 0 20px;
   background:radial-gradient(ellipse 60% 45% at 50% 38%,var(--accent-soft),transparent 70%);}
 .sci-inicio > *{animation:sciChega .6s cubic-bezier(.23,1,.32,1) both !important;}
 /* a logo (24/11/2026: no lugar da maletinha): a palavra "minımum" numa serifada bem pesada (a Bodoni MT Black do Office; sem
@@ -8757,8 +8761,6 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* o slogan do minimum, embaixo do nome (25/11/2026) */
 .sci-slogan{display:block;margin-top:6px;font-size:var(--fs-13);font-style:italic;letter-spacing:.02em;color:var(--ink-muted);}
 .sci-inicio > .sci-inicio-marca{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
-/* a collab com o SCI (25/11/2026): a logo original do SCI pequena, centrada em cima do minimum ("Bota esse mesmo tamanho, mas centralizado acima") */
-.sci-collab{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);user-select:none;}
 /* menor (24/11/2026: "Diminua o escolha sua empresa") */
 .sci-inicio-titulo{margin:0;font-size:var(--fs-20);line-height:1.2;font-weight:600;letter-spacing:-.01em;color:var(--ink);}
 .sci-inicio-sub{margin:4px 0 20px;font-size:var(--fs-13);color:var(--ink-muted);}

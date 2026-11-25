@@ -4,7 +4,7 @@
 // valor, o histórico do plano de históricos, o complemento, o documento e o participante na frente da conta que pede); embaixo, a tabela, com o botão
 // direito (editar, duplicar, inverter, copiar, colar, excluir) e os atalhos do Excel. Sai na planilha do gerador do SCI.
 import { empresas, sci } from '@nads/core';
-import { BotaoIcone, CampoDataComCalendario, Icone, Interruptor, LogoExcel, LogoSci, MenuSuspenso, Segmentado } from '@nads/ui';
+import { BotaoIcone, CampoDataComCalendario, Icone, Interruptor, LogoExcel, MenuSuspenso, Segmentado } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { AcoesDoTopo, TituloDoTopo } from '../../../../comum/topo';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from '../drive/MenuDeContexto';
@@ -94,11 +94,9 @@ export function ShadersCi() {
 function TelaInicial({ vm }: { vm: VmShadersCi }) {
   return (
     <div className="sci-inicio">
-      {/* a logo do SCI pequena, como uma collab, centrada em cima do minimum (25/11/2026: "Coloca a logo da sci menor acima do
-          minimum, como se fosse uma collab"; "Bota esse mesmo tamanho, mas centralizado acima da logo do minimum") */}
+      {/* sem a logo do SCI em cima (25/11/2026: "Tira a logo do sci e deixe os elementos centralizados na tela") */}
       <span className="sci-inicio-marca">
         <LogoDoMinimum className="sci-inicio-logo" />
-        <span className="sci-collab"><LogoSci altura={20} /></span>
         {/* o slogan, embaixo do nome (25/11/2026: "Na verdade o slogan do minimum e esse, deixa abaixo do nome nessa tela de inicio") */}
         <span className="sci-slogan">O mínimo que nem todos fazem</span>
       </span>
