@@ -1,6 +1,5 @@
-// Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Contábil no nads), no desenho do Relatório do
-// Fiscal: uma barra só em cima (o ano e os filtros em menus; à direita a planilha, a busca e o Excel) e a tabela num .card
-// com o resumo por situação no topo. Cada empresa: o mês feito (o menu JAN…DEZ, com a sugestão do executor ao lado), a
+// Controle Forestry (o Controle contábil; 23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Contábil no nads), no desenho do
+// painel do DP (25/11/2026): a barra dos filtros, a linha do resumo com a busca e os ícones, e a tabela com o Cliente em duas linhas. Cada empresa: o mês feito (o menu JAN…DEZ, com a sugestão do executor ao lado), a
 // situação calculada, a pendência e o menu ⋯ (abrir a empresa, não acompanhar, tirar do controle). Os dados e as ações
 // são os do useControleDoContabil; a prévia da planilha abre na JanelaDaImportacao.
 import { tarefas as t } from '@nads/core';
@@ -73,42 +72,29 @@ export function ControleDoContabil() {
   ];
   const listaId = 'cc-empresas-fora';
 
+  // a situação no selo do DP: em dia como a concluída, atrasada como a em andamento (e como a parada com 2 meses ou mais), o resto neutro
+  const selo = (r: Linha) => (r.situacao === 'em-dia' ? 'badge badge-ok' : r.situacao === 'atrasada' ? (r.atraso >= 2 ? 'badge badge-parada' : 'badge badge-warn badge-cheia') : 'badge badge-neutral');
+
+  // no desenho do painel do DP (25/11/2026: "faz no mesmo estilo da do departamento pessoal"): a barra dos filtros em cima; embaixo, o
+  // resumo à esquerda e, à direita, a busca e só os ícones (o Excel, o + Empresa e a planilha); a tabela com o Cód. e o Cliente em
+  // duas linhas (o nome e, embaixo, o responsável e o regime), a situação no selo
   return (
-    <section className="fr cc">
-      <div className="tarefas-barra-topo fr-topo">
+    <section className="dp-painel cc">
+      <div className="tarefas-barra-topo dp-filtros-linha">
         <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={String(vm.ano)} titulo="Ano" dica="Trocar o ano"
           itens={vm.anos.map(a => ({ rotulo: String(a), marcado: a === vm.ano, onClick: () => vm.setAno(a) }))} />
+        <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
         <MenuDeFiltro rotulo="Situação" valor={f.situacao} mudar={f.setSituacao} opcoes={f.situacoes} todos="Todas" />
         <MenuDeFiltro rotulo="Regime" valor={f.regime} mudar={f.setRegime} opcoes={f.regimes} />
-        <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
-        <span className="tarefas-barra-espaco" />
-        {vm.podeGravar && (
-          <>
-            <button type="button" className="btn btn-outline" onClick={() => arquivo.current?.click()} title="Trazer os meses e as observações da planilha do Controle Forestry (.xlsx): mostra o que muda antes de gravar">
-              <Icone nome="fileUp" width={16} height={16} />Importar planilha
-            </button>
-            <input ref={arquivo} type="file" accept=".xlsx,.xls,.csv" hidden aria-label="A planilha do Controle Forestry"
-              onChange={e => { const a = e.target.files?.[0]; e.target.value = ''; if (a) void vm.lerArquivo(a); }} />
-          </>
-        )}
-        <label className="busca-curta fr-busca">
-          <Icone nome="search" />
-          <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar empresa" aria-label="Buscar empresa (nome, código ou observação)"
-            onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
-        </label>
-        <button type="button" className="icon-btn" title="Exportar a tabela para o Excel" aria-label="Exportar a tabela para o Excel" disabled={vm.carregando || !vm.linhas.length}
-          onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
-          <LogoExcel />
-        </button>
       </div>
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: o que se escreve fica só nesta aba.</p>}
       {!vm.podeGravar && <p className="hint">Só o Contábil preenche o controle; você está vendo.</p>}
       {vm.falhou && <p className="hint cc-erro">Não deu para ler o controle de {vm.ano}: confira a internet (ou a permissão do banco) e recarregue.</p>}
 
       {vm.carregando ? <Esqueleto linhas={8} /> : (
-        <section className="card fr-cartao" aria-label={'Controle Forestry ' + vm.ano}>
-          <div className="fr-cartao-topo">
+        <>
+          <div className="tarefas-barra-topo dp-filtros-linha">
             <span className="cc-resumo" title={vm.esperado ? 'Em dia = feita até ' + vm.rotuloEsperado + '/' + vm.ano : undefined}>
               {resumo.map(s => (
                 <button key={s.valor} type="button" className={'cc-resumo-item cc-' + s.valor + (f.situacao === s.valor ? ' ativo' : '')} disabled={!s.n && f.situacao !== s.valor}
@@ -119,66 +105,85 @@ export function ControleDoContabil() {
               {vm.esperado > 0 && <span className="hint cc-esperado">esperado: feita até {vm.rotuloEsperado}</span>}
             </span>
             <span className="tarefas-barra-espaco" />
+            <label className="busca-curta">
+              <Icone nome="search" />
+              <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome, código ou observação)"
+                onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
+            </label>
+            <button type="button" className="icon-btn" title="Exportar a tabela para o Excel" aria-label="Exportar a tabela para o Excel" disabled={!vm.linhas.length}
+              onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+              <LogoExcel />
+            </button>
             {vm.podeGravar && (
-              <form className="fr-ret-novo" onSubmit={adicionar}>
-                <input type="text" list={listaId} value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Empresa (código ou nome)" aria-label="Empresa para pôr no controle" className="fr-ret-empresa" />
-                <datalist id={listaId}>{vm.paraAdicionar.map(x => <option key={x} value={x} />)}</datalist>
-                <button type="submit" className="btn btn-sm btn-outline" disabled={!empresa.trim()}><Icone nome="plus" />Empresa</button>
-                {vm.minhasFora > 0 && (
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => void vm.trazerMinhas()} title="As empresas em que você é o responsável do Contábil no Cadastro e que ainda não estão no controle">
-                    <Icone nome="usuario" />Trazer as minhas ({vm.minhasFora})
-                  </button>
-                )}
-              </form>
+              <>
+                {/* pôr uma empresa no controle (ou trazer as minhas do Cadastro), num menu do + */}
+                <MenuSuspenso className="icon-btn" semSeta direita largura={320} titulo="Pôr empresa no controle" dica="Pôr empresa no controle" rotulo={<Icone nome="plus" />}
+                  conteudo={fechar => (
+                    <form className="cc-novo" onSubmit={e => { adicionar(e); fechar(); }}>
+                      <input type="text" list={listaId} value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Empresa (código ou nome)" aria-label="Empresa para pôr no controle" autoFocus />
+                      <datalist id={listaId}>{vm.paraAdicionar.map(x => <option key={x} value={x} />)}</datalist>
+                      <button type="submit" className="btn btn-sm btn-primary" disabled={!empresa.trim()}><Icone nome="plus" />Pôr no controle</button>
+                      {vm.minhasFora > 0 && (
+                        <button type="button" className="btn btn-sm btn-outline" onClick={() => { fechar(); void vm.trazerMinhas(); }} title="As empresas em que você é o responsável do Contábil no Cadastro e que ainda não estão no controle">
+                          <Icone nome="usuario" />Trazer as minhas ({vm.minhasFora})
+                        </button>
+                      )}
+                    </form>
+                  )} />
+                <button type="button" className="icon-btn" onClick={() => arquivo.current?.click()} title="Importar a planilha do Controle Forestry (.xlsx): mostra o que muda antes de gravar" aria-label="Importar planilha">
+                  <Icone nome="fileUp" />
+                </button>
+                <input ref={arquivo} type="file" accept=".xlsx,.xls,.csv" hidden aria-label="A planilha do Controle Forestry"
+                  onChange={e => { const a = e.target.files?.[0]; e.target.value = ''; if (a) void vm.lerArquivo(a); }} />
+              </>
             )}
           </div>
-          {!vm.total ? (
-            <div className="hint dp-vazio cc-vazio">
-              <p>Nenhuma empresa no controle de {vm.ano}.</p>
-              {vm.podeGravar && <p>Importe a planilha, ponha as empresas pelo <b>+ Empresa</b> ou <button type="button" className="btn btn-sm btn-outline" onClick={() => void vm.copiarDoAnoAnterior()}>copie a lista de {vm.ano - 1}</button></p>}
-            </div>
-          ) : !vm.linhas.length ? <p className="hint dp-vazio">Nenhuma empresa com esses filtros.</p> : (
-            <div className="fr-rola">
-              <table className="fr-tabela cc-tabela">
-                <colgroup>
-                  <col className="cc-c-cod" /><col className="cc-c-nome" /><col className="cc-c-regime" /><col className="cc-c-resp" />
-                  <col className="cc-c-mes" /><col className="cc-c-sit" /><col className="cc-c-obs" /><col className="cc-c-acoes" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th className="fr-num">Nº</th><th>Empresa</th><th>Regime</th><th>Responsável</th>
-                    <th className="fr-g" title="O último mês com a contabilidade feita">Feita até</th><th>Situação</th><th className="fr-g">Observações</th><th aria-label="Ações" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {vm.linhas.map(r => (
-                    <tr key={r.codigo} className={'cc-' + r.situacao + (r.atraso >= 2 ? ' cc-forte' : '')}>
-                      <td className="fr-num fr-cod">{r.codigo}</td>
-                      <td className="fr-cliente"><span title={r.noCadastro ? r.nome : r.nome + ' (não está no Cadastro)'}>{r.nome}</span></td>
-                      <td className="cc-texto">{r.regime || '—'}</td>
-                      <td className="cc-texto">{r.responsavel || '—'}</td>
-                      <td className="fr-g"><MesFeito r={r} vm={vm} /></td>
-                      <td><span className={'cc-sit cc-sit-' + r.situacao + (r.atraso >= 2 ? ' cc-forte' : '')} title={r.linha.pausada ? 'Não acompanhar: ' + r.linha.pausada : r.rotulo}>{r.linha.pausada ? r.linha.pausada : r.rotulo}</span></td>
-                      <td className="fr-g"><Valor largo estreito valor={r.linha.observacao} rotulo={'Observação de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarObservacao(r.codigo, v)} /></td>
-                      <td className="fr-centro">
-                        <MenuSuspenso className="icon-btn cc-acoes" flutuante compacto semSeta direita titulo={r.nome} dica={'Mais de ' + r.nome} rotulo={<Icone nome="mais" />}
-                          itens={[
-                            ...(r.caminho ? [{ rotulo: 'Abrir a empresa no mês que falta', onClick: () => navegar(r.caminho) }] : []),
-                            ...(vm.podeGravar ? [
-                              r.linha.pausada
-                                ? { rotulo: 'Voltar a acompanhar', onClick: () => vm.pausar(r.codigo, '') }
-                                : { rotulo: 'Não acompanhar…', onClick: () => void naoAcompanhar(r) },
-                              { rotulo: 'Tirar do controle de ' + vm.ano, perigo: true, onClick: () => void tirar(r) },
-                            ] : []),
-                          ]} />
-                      </td>
+          <section className="card dp-lista dp-lista-fixa" aria-label={'Controle Forestry ' + vm.ano}>
+            {!vm.total ? (
+              <div className="hint dp-vazio cc-vazio">
+                <p>Nenhuma empresa no controle de {vm.ano}.</p>
+                {vm.podeGravar && <p>Importe a planilha, ponha as empresas pelo <b>+</b> ou <button type="button" className="btn btn-sm btn-outline" onClick={() => void vm.copiarDoAnoAnterior()}>copie a lista de {vm.ano - 1}</button></p>}
+              </div>
+            ) : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
+              <div className="table-wrap">
+                <table className="dp-tabela cc-tabela">
+                  <thead>
+                    <tr>
+                      <th>Cód.</th><th>Cliente</th>
+                      <th title="O último mês com a contabilidade feita">Feita até</th><th>Situação</th><th>Observações</th><th aria-label="Ações" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                  </thead>
+                  <tbody>
+                    {vm.linhas.map(r => (
+                      <tr key={r.codigo} className={'dp-linha' + (r.situacao === 'pausada' ? ' cc-pausada' : '')}>
+                        <td className="num fraco">{r.codigo}</td>
+                        <td className="dp-cliente dp-cliente-inteiro">
+                          <span className="dp-cliente-nome" title={r.noCadastro ? r.nome : r.nome + ' (não está no Cadastro)'}>{r.nome}</span>
+                          <span className="dp-cliente-info">{r.responsavel || 'Sem responsável'} · {r.regime || 'Sem regime'}</span>
+                        </td>
+                        <td><MesFeito r={r} vm={vm} /></td>
+                        <td><span className={selo(r)} title={r.linha.pausada ? 'Não acompanhar: ' + r.linha.pausada : r.rotulo}>{r.linha.pausada ? r.linha.pausada : r.rotulo}</span></td>
+                        <td className="cc-obs"><Valor largo estreito valor={r.linha.observacao} rotulo={'Observação de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarObservacao(r.codigo, v)} /></td>
+                        <td className="fr-centro">
+                          <MenuSuspenso className="icon-btn cc-acoes" flutuante compacto semSeta direita titulo={r.nome} dica={'Mais de ' + r.nome} rotulo={<Icone nome="mais" />}
+                            itens={[
+                              ...(r.caminho ? [{ rotulo: 'Abrir a empresa no mês que falta', onClick: () => navegar(r.caminho) }] : []),
+                              ...(vm.podeGravar ? [
+                                r.linha.pausada
+                                  ? { rotulo: 'Voltar a acompanhar', onClick: () => vm.pausar(r.codigo, '') }
+                                  : { rotulo: 'Não acompanhar…', onClick: () => void naoAcompanhar(r) },
+                                { rotulo: 'Tirar do controle de ' + vm.ano, perigo: true, onClick: () => void tirar(r) },
+                              ] : []),
+                            ]} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
       )}
       {vm.previa && <JanelaDaImportacao vm={vm} />}
     </section>
