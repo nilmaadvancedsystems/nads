@@ -107,10 +107,10 @@ export function MinhasEmpresas() {
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
-              {vm.verResponsavel && <th>Responsável</th>}
-              <th>Progresso</th>
-              <th />
-              <th />
+              {vm.verResponsavel && <Titulo vm={vm} coluna="responsavel" rotulo="Responsável" />}
+              <Titulo vm={vm} coluna="progresso" rotulo="Progresso" />
+              <Titulo vm={vm} coluna="etapa" rotulo="Etapa" />
+              <Titulo vm={vm} coluna="quando" rotulo="Última vez" />
             </tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(l => (
