@@ -105,7 +105,7 @@ export function Casca(p: {
   aplicativos?: {
     id: string; nome: string; icone: NomeIcone; ativo?: boolean; contador?: string;
     /** a logo da marca no lugar do ícone (14/10/2026: "no Drive, coloca a logo do Drive") */
-    marca?: 'drive' | 'gmail';
+    marca?: 'drive' | 'gmail' | 'minimum';
     /** o nome do grupo na gaveta (Rotinas, Comunicação, Escritório), quando muda */
     grupo?: string;
   }[];
@@ -367,8 +367,9 @@ export function Casca(p: {
                   {a.grupo && a.grupo !== p.aplicativos![i - 1]?.grupo && <span className="drawer-label drawer-grupo">{a.grupo}</span>}
                   <button className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined} data-app={a.id}
                     onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}>
-                    <span className={'drawer-app-icone' + (a.marca ? ' marca' : '')} aria-hidden="true">
-                      {a.marca === 'drive' ? <LogoDrive cor /> : a.marca === 'gmail' ? <LogoGmail /> : <Icone nome={a.icone} />}
+                    {/* o minimum com o m da logo dele, na serifada pesada (25/11/2026: "Coloca o m de minimum, na logo do menu lateral") */}
+                    <span className={'drawer-app-icone' + (a.marca === 'minimum' ? ' minimum' : a.marca ? ' marca' : '')} aria-hidden="true">
+                      {a.marca === 'drive' ? <LogoDrive cor /> : a.marca === 'gmail' ? <LogoGmail /> : a.marca === 'minimum' ? <span className="logo-minimum drawer-app-m">m</span> : <Icone nome={a.icone} />}
                     </span>
                     {a.nome}{a.contador && <span className="menu-contador drawer-contador">{a.contador}</span>}
                   </button>

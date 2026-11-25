@@ -33,7 +33,7 @@ export interface Pagina {
 export interface Aplicacao {
   id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
   /** o grupo na gaveta ☰ (14/10/2026: "melhore, atualize ícones") e a logo da marca no lugar do ícone (o Drive, o Gmail) */
-  grupo: 'Rotinas' | 'Comunicação' | 'Escritório'; marca?: 'drive' | 'gmail';
+  grupo: 'Rotinas' | 'Comunicação' | 'Escritório'; marca?: 'drive' | 'gmail' | 'minimum';
 }
 
 export const APLICACOES: readonly Aplicacao[] = [
@@ -66,7 +66,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o ShadersCI (23/11/2026: "Quero fazer uma aba de lançamento mais clean, a do meu sistema SCI é horrivel"): os lançamentos digitados
   // para o SCI, pelos planos padrão 90113 e 90011, e a planilha do gerador do SCI; uma tela só, sem a barra lateral. O Contábil e o
   // admin, no modo desenvolvedor até o Vitor aprovar (a novidade 'shadersci'); 24/11/2026: "ShadersCI troca para minimum, o nome"
-  { id: 'shadersci', nome: 'minimum', icone: 'list', grupo: 'Rotinas', pronta: true, paginas: [
+  // o m da logo do minimum no lugar do ícone, na gaveta (25/11/2026: "Coloca o m de minimum, na logo do menu lateral")
+  { id: 'shadersci', nome: 'minimum', icone: 'list', marca: 'minimum', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'minimum' },
   ] },
   // o Controle contábil (23/11/2026: a planilha "CONTROLE CONTÁBIL 2026" do Fernando virou módulo): até que mês a contabilidade
