@@ -5,6 +5,9 @@
 // chaves do próprio CT-e; o CT-e baixado antes do resumo 5 não as tem, e a pessoa marca as notas) e o valor do CT-e pelas
 // notas e pelas tributações dos itens; clicar numa tributação abre o frete dela pelos NCMs. Sem XML, "digite os valores"
 // faz a planilha à mão. As contas: core tarefas.sieg.rateioDoCte e ratear (em centavos, a soma bate com o CT-e).
+// Os NCMs do ST (24/11/2026, a planilha do COMPL. ST): pelo CT-e, o ICMS-ST e o Monofásico e ST ficam sempre abertos pelos
+// NCMs; à mão, a segunda parte "NCMs do ST" reparte o frete do ST pelos NCMs digitados; nos dois, a alíquota de cada NCM
+// (4% sem escolha, editável) e o ICMS = base × alíquota (core icmsDosNcms). A base é valor + IPI + frete em todos.
 import { empresas as emp, formatos, tarefas as t } from '@nads/core';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useState } from 'react';
@@ -51,6 +54,11 @@ export function useRateioDeFrete() {
   // o que a pessoa mudou nos valores (de qual CT-e; outro CT-e volta aos dele)
   const [mudados, setMudados] = useState<{ de: string } & Partial<Record<Campo, number>>>({ de: '' });
   const [digitadas, setDigitadas] = useState<LinhaDigitada[]>(LINHAS_INICIAIS);
+  // a alíquota escolhida por NCM (vale em todos os cartões; sem escolha, ALIQUOTA_PADRAO_DO_NCM)
+  const [aliquotas, setAliquotas] = useState<Record<string, number>>({});
+  // à mão: os NCMs do ST e o frete do ST (sem mudar, o da linha digitada que é ST; sem ela, o frete todo)
+  const [ncmsDigitados, setNcmsDigitados] = useState<LinhaDigitada[]>(LINHAS_INICIAIS);
+  const [freteDoStMudado, setFreteDoStMudado] = useState<number | null>(null);
 
   // (1) a empresa
   const empresas = useEmpresasPermitidas().filtrar(repo.listarEmpresas()).filter(e => e.codigo != null);
@@ -84,10 +92,21 @@ export function useRateioDeFrete() {
     : digitadas.map((l, i) => ({ id: String(i), rotulo: l.rotulo.trim() || 'Linha ' + (i + 1), detalhe: '', valor: numero(l.valor), ipi: numero(l.ipi) })).filter(l => l.valor > 0);
   const rateio = doCte ? doCte.rateio : r.ratear({ total: valor('total') || null, frete: valor('frete'), desconto: valor('desconto'), linhas });
 
-  // o detalhe pelos NCMs: só pelo CT-e (à mão não há NCM)
+  // o detalhe pelos NCMs, pelo CT-e: os grupos com ST sempre (24/11/2026: "ST já aberto por NCM"), mais o aberto pelo clique
+  const cartaoDoGrupo = (i: number, fixo: boolean) => {
+    const g = doCte!.grupos[i];
+    return { id: g.id, titulo: g.rotulo, fixo, ...r.icmsDosNcms(r.rateioDosNcms(g, rateio.linhas[i].frete, 0), aliquotas) };
+  };
+  const comSt = doCte && agrupar === 'tributacao' ? doCte.grupos.map((g, i) => (r.temSt(g.id) ? i : -1)).filter(i => i >= 0) : [];
   const iAberto = linhas.findIndex(l => l.id === aberto);
-  const grupoAberto = doCte && iAberto >= 0 ? doCte.grupos[iAberto] : null;
-  const ncms = grupoAberto ? r.rateioDosNcms(grupoAberto, rateio.linhas[iAberto].frete, 0) : null;
+  const cartoesDeNcm = doCte ? [...comSt.map(i => cartaoDoGrupo(i, true)), ...(iAberto >= 0 && !comSt.includes(iAberto) ? [cartaoDoGrupo(iAberto, false)] : [])] : [];
+
+  // à mão: o frete do ST (a linha digitada com "ST" no nome; sem ela, o frete todo) pelos NCMs digitados
+  const iSt = fonte === 'manual' ? rateio.linhas.findIndex(l => /\bst\b|substitui/i.test(l.rotulo)) : -1;
+  const freteDoStPadrao = iSt >= 0 ? rateio.linhas[iSt].frete : rateio.frete;
+  const freteDoSt = freteDoStMudado ?? freteDoStPadrao;
+  const linhasDosNcms = ncmsDigitados.map((l, i) => ({ rotulo: l.rotulo.trim() || 'NCM ' + (i + 1), valor: numero(l.valor), ipi: numero(l.ipi) })).filter(l => l.valor > 0);
+  const ncmsDoSt = fonte === 'manual' && linhasDosNcms.length ? r.icmsDosNcms(r.ratear({ frete: freteDoSt, linhas: linhasDosNcms }), aliquotas) : null;
 
   // a lista para marcar as notas (todas as NF-e de entrada do mês, as marcadas primeiro)
   const marcada = new Set(chavesDasNotas);
@@ -158,12 +177,24 @@ export function useRateioDeFrete() {
     linhas: rateio.linhas.map((l, i) => ({ ...l, id: linhas[i].id, detalhe: linhas[i].detalhe })),
     rateio,
     aberto, abrir: (id: string) => setAberto(a => (a === id ? '' : id)),
-    grupoAberto: grupoAberto ? grupoAberto.rotulo : '', ncms,
+    /** os cartões "pelos NCMs" (os de ST fixos; o aberto pelo clique fecha), com a alíquota e o ICMS de cada NCM */
+    cartoesDeNcm,
+    aliquotaPadrao: r.ALIQUOTA_PADRAO_DO_NCM,
+    mudarAliquota: (ncm: string, texto: string) => setAliquotas(a => ({ ...a, [ncm]: numero(texto) })),
     // à mão
     digitadas,
     mudarDigitada: (i: number, k: keyof LinhaDigitada, v: string) => setDigitadas(ls => ls.map((l, j) => (j === i ? { ...l, [k]: v } : l))),
     novaLinha: () => setDigitadas(ls => [...ls, { rotulo: '', valor: '', ipi: '' }]),
     tirarLinha: (i: number) => setDigitadas(ls => (ls.length > 1 ? ls.filter((_, j) => j !== i) : LINHAS_INICIAIS)),
+    // à mão: os NCMs do ST
+    ncmsDigitados, ncmsDoSt, freteDoSt,
+    /** o frete do ST veio da linha digitada com "ST" (o nome dela) ou é o frete todo */
+    origemDoFreteDoSt: freteDoStMudado !== null ? 'digitado' : iSt >= 0 ? 'da linha ' + rateio.linhas[iSt].rotulo : 'o frete todo',
+    mudarFreteDoSt: (texto: string) => setFreteDoStMudado(numero(texto)),
+    voltarFreteDoSt: () => setFreteDoStMudado(null),
+    mudarNcmDigitado: (i: number, k: keyof LinhaDigitada, v: string) => setNcmsDigitados(ls => ls.map((l, j) => (j === i ? { ...l, [k]: v } : l))),
+    novoNcm: () => setNcmsDigitados(ls => [...ls, { rotulo: '', valor: '', ipi: '' }]),
+    tirarNcm: (i: number) => setNcmsDigitados(ls => (ls.length > 1 ? ls.filter((_, j) => j !== i) : LINHAS_INICIAIS)),
   };
 }
 

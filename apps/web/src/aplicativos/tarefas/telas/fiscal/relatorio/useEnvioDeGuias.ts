@@ -17,6 +17,7 @@ import { useContatosDoEntregas, useControleTributos, useDriveDoEntregas, useGmai
 import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, type EscolhaDaGuia, type GuiaDoLote, type GuiaNaPasta, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
 import { useSepararPorCliente } from '../../ferramentas/useSepararPorCliente';
+import { useGuardado } from '../../../../../comum/guardado';
 
 const MAX_ARQUIVOS = 150;
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -110,9 +111,15 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     return repo.arquivos(idAtual, lista => setArquivos({ lote: idAtual, lista }));
   }, [idAtual, repo]);
   const lista = arquivos && arquivos.lote === idAtual ? arquivos.lista : [];
+  // o Excluir do que está fora do lote (24/11/2026: "nao tem como excluir coisas fora do lote"; o dono escolheu "só esconder"):
+  // a guia tirada ou com erro some da lista neste navegador; ela já não vai no disparo e o robô apaga o lote inteiro em 3 dias
+  const [escondidas, setEscondidas] = useGuardado<string[]>(idAtual ? 'fiscal-lote-escondidas|' + idAtual : null, []);
   // mais guias no mesmo lote (05/11/2026): só no lido, antes do disparo (depois, o robô pularia o cliente já enviado)
   const podeAdicionar = !!atual && atual.status === 'lido';
   const [subindo, setSubindo] = useState<{ feitos: number; total: number } | null>(null);
+  // as guias escolhidas esperam o botão Subir (24/11/2026: "quero um botao para subir ao inves de subir automatico"): dá para
+  // conferir a lista, tirar a que veio errada e escolher mais antes de mandar ao robô
+  const [aSubir, setASubir] = useState<File[]>([]);
   const [disparando, setDisparando] = useState(false);
 
   // os clientes para escolher e para mostrar: o nome da lista do escritório, o e-mail e o WhatsApp (os do Cadastro do nads, senão os do Entregas)
@@ -130,9 +137,9 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const tirados: GuiaDoLote[] = [];
   const comErro: GuiaDoLote[] = [];
   for (const a of lista) {
-    if (a.status === 'erro') { comErro.push(a); continue; }
+    if (a.status === 'erro') { if (!escondidas.includes(a.id)) comErro.push(a); continue; }
     if (a.status !== 'lido') continue;
-    if (a.fora) { tirados.push(a); continue; }
+    if (a.fora) { if (!escondidas.includes(a.id)) tirados.push(a); continue; }
     const x = efetivoDaGuia(a, grupo);
     if (x.codigo == null || !x.competencia) { faltam.push(a); continue; }
     const chave = x.codigo + '_' + x.competencia;
@@ -212,6 +219,8 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     grupos,
     faltam,
     tirados,
+    /** tira da lista "Fora do lote" a guia tirada ou com erro (só esconde: ela não vai no disparo de qualquer jeito) */
+    excluirDeFora: (a: GuiaDoLote) => setEscondidas(x => (x.includes(a.id) ? x : [...x, a.id])),
     comErro,
     clientes,
     /** a competência que vale para a guia sem ela (a mais comum do lote) */
@@ -312,28 +321,44 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     },
     /** o lote aberto recebe mais guias: lido e ainda não disparado (05/11/2026) */
     podeAdicionar,
-    /** sobe as guias escolhidas: no lote aberto (noLote) ou num lote novo; o robô lê */
-    async subir(escolhidas: FileList | File[], noLote = false) {
+    /** as guias escolhidas que ainda não subiram (esperam o botão Subir) */
+    aSubir: aSubir.map((f, i) => ({ i, nome: f.name, tamanho: f.size })),
+    /** escolher (ou arrastar) junta à lista; o mesmo arquivo (nome e tamanho) não entra duas vezes */
+    escolherParaSubir(fs: File[]) {
+      const pdfs = fs.filter(f => /\.pdf$/i.test(f.name));
+      if (pdfs.length < fs.length) toast('Só PDF: ' + (fs.length - pdfs.length) + (fs.length - pdfs.length === 1 ? ' arquivo ficou' : ' arquivos ficaram') + ' de fora.');
+      setASubir(atuais => [...atuais, ...pdfs.filter(f => !atuais.some(x => x.name === f.name && x.size === f.size))]);
+    },
+    tirarDaSubida: (i: number) => setASubir(atuais => atuais.filter((_, k) => k !== i)),
+    limparSubida: () => setASubir([]),
+    /** o botão Subir: manda a lista ao robô (no lote aberto, ou num novo) e limpa a lista se deu certo */
+    async subirEscolhidas(noLote = false) {
+      if (!aSubir.length || subindo) return;
+      if (await this.subir(aSubir, noLote)) setASubir([]);
+    },
+    /** sobe as guias escolhidas: no lote aberto (noLote) ou num lote novo; o robô lê. true = subiu */
+    async subir(escolhidas: FileList | File[], noLote = false): Promise<boolean> {
       const lista = Array.from(escolhidas);
-      if (!lista.length || subindo) return;
+      if (!lista.length || subindo) return false;
       const destino = noLote && podeAdicionar && atual ? atual : null;
       const jaTem = destino ? lista.length + destino.total : lista.length;
-      if (jaTem > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote' + (destino ? ' (este já tem ' + destino.total + ')' : '') + '.'); return; }
+      if (jaTem > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote' + (destino ? ' (este já tem ' + destino.total + ')' : '') + '.'); return false; }
       const grande = lista.find(f => f.size > MAX_BYTES);
-      if (grande) { toast(grande.name + ' passa de 25 MB.'); return; }
+      if (grande) { toast(grande.name + ' passa de 25 MB.'); return false; }
       setSubindo({ feitos: 0, total: lista.length });
       try {
         const escolhidas = await Promise.all(lista.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
       // o PDF com guias de vários clientes vira um arquivo por cliente, se a pessoa confirmar (plano do Acessórias,
       // 17/11/2026, ficha E16; frase do dono: "Separar PDF (E16)"); cancelou, nada sobe
         const lidos = await separarPorCliente(escolhidas);
-        if (!lidos) return;
-        if (lidos.length + (destino ? destino.total : 0) > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote.'); return; }
+        if (!lidos) return false;
+        if (lidos.length + (destino ? destino.total : 0) > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote.'); return false; }
         setSubindo({ feitos: 0, total: lidos.length });
         if (destino) await repo.adicionar(destino.id, lidos, (feitos, total) => setSubindo({ feitos, total }));
         else setEscolhido(await repo.subir(grupo, lidos, (feitos, total) => setSubindo({ feitos, total })));
         toast(lidos.length + (lidos.length === 1 ? ' guia enviada' : ' guias enviadas') + ' ao robô para ler' + (destino ? ', no mesmo lote.' : '.'));
-      } catch (e) { toast('Não consegui subir: ' + (e instanceof Error ? e.message : String(e))); } finally { setSubindo(null); }
+        return true;
+      } catch (e) { toast('Não consegui subir: ' + (e instanceof Error ? e.message : String(e))); return false; } finally { setSubindo(null); }
     },
     /** a escolha da revisão: o que mudar (cliente, coluna ou competência) vale sobre o que o robô leu */
     async escolher(arquivo: GuiaDoLote, mudar: Partial<EscolhaDaGuia>) {

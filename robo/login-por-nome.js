@@ -1,6 +1,6 @@
 // O login pelo nome (Vitor, 12/11/2026: "deixe logar com o usuário ou e-mail"): o nome vira nome@nilma.local, mas quem
 // trocou o e-mail de entrada (ou o próprio nome) não está mais lá. Aqui o robô mantém loginPorNome/{chave do nome} =
-// { email, uid } a partir da equipe (usuarios), e a tela de entrada do nads lê o índice antes de entrar. Também é por
+// { email } a partir da equipe (usuarios), e a tela de entrada do nads lê o índice antes de entrar. Também é por
 // ele que o convite sabe que um nome já tem dono (o nome é único). A regra do banco deixa qualquer um ler UM documento
 // (get, nunca list) e ninguém gravar: só o robô, com o Admin SDK.
 const { ouvir } = require('./ouvinte');
@@ -47,15 +47,18 @@ function iniciarLoginPorNome(db, log) {
         deNovo = false;
         if (!gravado) {
           gravado = new Map();
-          for (const d of (await db.collection(COLECAO).get()).docs) gravado.set(d.id, String(d.get('email') || '') + '|' + String(d.get('uid') || ''));
+          // o que tem mais que o e-mail (o uid de antes) é regravado só com ele
+          for (const d of (await db.collection(COLECAO).get()).docs) gravado.set(d.id, d.get('uid') != null ? '' : String(d.get('email') || ''));
         }
         const quer = indiceDaEquipe(ultimo || [], log);
         const lote = db.batch();
         let mudou = 0;
         for (const [chave, v] of quer) {
-          if (gravado.get(chave) === v.email + '|' + v.uid) continue;
-          lote.set(db.collection(COLECAO).doc(chave), { email: v.email, uid: v.uid, em: new Date().toISOString() });
-          gravado.set(chave, v.email + '|' + v.uid); mudou++;
+          if (gravado.get(chave) === v.email) continue;
+          // só o e-mail (auditoria de segurança, 24/11/2026): o documento é público (get sem login, para a tela de entrada), e o
+          // uid não serve a ela; quem chutava um nome levava o uid da pessoa junto
+          lote.set(db.collection(COLECAO).doc(chave), { email: v.email, em: new Date().toISOString() });
+          gravado.set(chave, v.email); mudou++;
         }
         for (const chave of [...gravado.keys()]) {
           if (quer.has(chave)) continue;

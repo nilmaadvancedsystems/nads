@@ -23,7 +23,6 @@ import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
 import { EntrarComSenha } from './EntrarComSenha';
-import { usePolitica } from './usePolitica';
 import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
 import { Contato, Empresa, Faturamento } from './Administrativo';
@@ -52,8 +51,7 @@ function Area() {
   // o aviso "Falta mandar" do sino abre o envio já no tipo (17/11/2026, ficha o-que-falta-mandar)
   const abrirEnvioDoTipo = useJanelaDeEnvioDoTipo(daCasca);
   const abrirPendencia = useJanelaDaPendencia(daCasca);
-  // o aceite da política de privacidade, uma vez por versão (22/11/2026, ficha aceite-lgpd; desligado até o escritório aprovar o texto)
-  usePolitica(vm.token, area.carregado && area.valido && !area.pedeLogin && !area.exemplos);
+  // o aceite da política de privacidade fica em useAreaCliente (24/11/2026: o tutorial espera o "Concordo")
   // a gaveta (celular): o foco vai para o ✕ quando abre e volta para o ☰ quando fecha
   const xDaGaveta = useRef<HTMLButtonElement>(null);
   const botaoDoMenu = useRef<HTMLButtonElement>(null);
@@ -154,9 +152,10 @@ function Area() {
                         <span className="cli-troca-txt">
                           <b className="cli-troca-nome">{vm.empresa}</b>
                           {vm.cnpj && <small>{vm.rotuloDoDocumento} {vm.cnpj}</small>}
-                          {vm.regime && <span className={vm.seloDoRegime + ' cli-troca-regime'}>{vm.regime}</span>}
                         </span>
                       </div>
+                      {/* o regime e os atalhos alinhados com a logo (24/11/2026: "joga a parte de dados cadastrais e simples para alinhar com a logo") */}
+                      {vm.regime && <div className="cli-troca-regime-linha"><span className={vm.seloDoRegime + ' cli-troca-regime'}>{vm.regime}</span></div>}
                       <div className="cli-troca-atalhos">
                         {vm.temFicha && <button type="button" className="btn btn-sm" onClick={() => { fechar(); vm.irPara('empresa'); }}><Icone nome="predio" width={14} height={14} />Dados cadastrais</button>}
                         <button type="button" className="btn btn-sm" onClick={() => { fechar(); vm.copiarLink(); }}><Icone nome="link" width={14} height={14} />Copiar o link</button>

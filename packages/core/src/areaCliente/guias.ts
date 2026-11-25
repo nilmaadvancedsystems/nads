@@ -4,11 +4,14 @@
 // espera o "Liberar" no escritório.
 
 // a DARF e o DAM do ISS (plano do Acessórias, 17/11/2026, ficha todas-as-guias; frase do dono: "Todas as guias (robô)"): as guias do lote do Fiscal e a DARF do lote do DP
-export type TipoDeGuia = 'FGTS' | 'DAS' | 'DAE' | 'DARF' | 'DAM' | 'outra';
+// HON: o boleto dos honorários do escritório (24/11/2026, ficha 50 honorarios; o dono: "Só o boleto, sem 'pago'"). Vem no
+// mesmo lugar do espelho (guias/hon-{AAAA-MM}-{cód}), mas o site o separa das guias de imposto (não entra em total, nem em
+// vencida, nem no sino): fica num quadro próprio, sem situação.
+export type TipoDeGuia = 'FGTS' | 'DAS' | 'DAE' | 'DARF' | 'DAM' | 'HON' | 'outra';
 export type SituacaoDaGuia = 'a vencer' | 'vence hoje' | 'vencida';
 
 /** O nome da guia para o cliente, sem sigla solta. */
-export const ROTULO_DA_GUIA: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS (Simples Nacional)', DAE: 'DAE (imposto estadual)', DARF: 'DARF', DAM: 'DAM (ISS)', outra: 'Guia' };
+export const ROTULO_DA_GUIA: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS (Simples Nacional)', DAE: 'DAE (imposto estadual)', DARF: 'DARF', DAM: 'DAM (ISS)', HON: 'Honorários do escritório', outra: 'Guia' };
 
 /** O nome da guia para o cliente: a DARF com o tributo ("DARF INSS"); as outras, o ROTULO_DA_GUIA. */
 export function rotuloDaGuia(g: Pick<GuiaDoCliente, 'tipo' | 'tributo'>): string {
@@ -47,6 +50,62 @@ export interface GuiaDoCliente {
   temPdf: boolean;
   /** 'dd/mm/aaaa': a saída do extrato que pagou a guia (o robô grava; sem = a pagar) (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir") */
   pagoEm?: string;
+  /** a linha digitável do boleto (só no HON), para copiar */
+  linha?: string;
+  /** o Pix copia e cola do boleto (só no HON emitido pelo Efí, o "bolix") (24/11/2026: "se possivel poder gerar um codigo pix") */
+  pix?: string;
+}
+
+/** O Pix copia e cola que vale: o payload EMV (começa com 000201), só caracteres comuns, até 512. */
+export function pixValido(t: unknown): string {
+  const s = String(t ?? '').trim();
+  return /^000201[\x20-\x7E]{20,506}$/.test(s) ? s : '';
+}
+
+/**
+ * O boleto de honorários como o Financeiro grava (financeiroBoletos/{id}); aqui só o que a projeção olha. O contrato
+ * (financeiroHonorarios/{contratoId}) dá o código da empresa.
+ */
+export interface BoletoDeHonorarioInterno {
+  id: string;
+  /** 'aaaa-mm' */
+  competencia: string;
+  /** 'aaaa-mm-dd' */
+  vencimento: string;
+  valor: number;
+  linha?: string;
+  contratoId?: string;
+  /** tirado do lote */
+  fora?: boolean;
+  /** quantos pedaços do PDF (financeiroBoletos/{id}/partes/{n}) */
+  partes?: number;
+  envio?: { status?: string; enviadoEm?: string };
+}
+
+/**
+ * O boleto de honorários que o cliente vê: só depois de ENVIADO por e-mail ao cliente (o rascunho, o tirado do lote e o
+ * que deu erro não saem). Sem 'pago' (o dono, 24/11/2026: o recebimento é marcado à mão; um atraso faria o cliente se
+ * sentir cobrado depois de pagar). Lista branca: só os campos da GuiaDoCliente.
+ */
+export function guiaDoHonorario(b: BoletoDeHonorarioInterno, codigo: number | string, hoje: Date, pixDoContrato?: string): GuiaDoCliente | null {
+  if (!b || b.fora === true || b.envio?.status !== 'enviado') return null;
+  const v = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(b.vencimento ?? ''));
+  const vencimento = v ? v[3] + '/' + v[2] + '/' + v[1] : '';
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(b.competencia ?? '')) || !dataDoVencimento(vencimento) || typeof b.valor !== 'number' || !Number.isFinite(b.valor) || b.valor <= 0) return null;
+  const linha = String(b.linha ?? '').replace(/[^\d. ]/g, '').trim().slice(0, 60);
+  // o Pix do contrato (financeiroHonorarios.boletosEfi.{AAAA-MM}.pix), quando o boleto saiu pelo Efí
+  const pix = pixValido(pixDoContrato);
+  return {
+    id: 'hon-' + b.competencia + '-' + codigo,
+    tipo: 'HON',
+    competencia: b.competencia,
+    vencimento,
+    valor: Math.round(b.valor * 100) / 100,
+    ...(linha ? { linha } : {}),
+    ...(pix ? { pix } : {}),
+    situacao: situacaoDaGuia(vencimento, hoje),
+    temPdf: typeof b.partes === 'number' && b.partes > 0,
+  };
 }
 
 /**

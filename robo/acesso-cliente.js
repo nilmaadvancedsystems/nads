@@ -12,6 +12,7 @@
 // NUNCA mexe numa conta da equipe (quem tem usuarios/{uid}): a ficha fica com erro e o login dela não muda.
 // Leituras: dois ouvintes pequenos (as fichas e os ponteiros das empresas); a conta só quando algo muda.
 
+const crypto = require('crypto');
 const ESPERA_MS = 5000;
 
 /** deps: { db, auth (getAuth() do firebase-admin), log, ouvir, core: () => o pacote gerado } */
@@ -56,6 +57,14 @@ function iniciarAcessoCliente({ db, auth, log, ouvir, core }) {
             continue;
           }
           if (!user) user = await auth.createUser({ email, emailVerified: false, disabled: false });
+          // a conta que já existia sem a marca de cliente não foi o robô que fez (auditoria de segurança, 24/11/2026): pode ser de
+          // um estranho que se adiantou com o e-mail do cliente. Senha aleatória e sessões derrubadas antes dos links; a pessoa
+          // cria a senha dela pelo Pedir senha (core areaCliente/acessoPorPessoa.ts, contaPrecisaZerar)
+          else if (perm.a.length && P.contaPrecisaZerar(user.customClaims)) {
+            await auth.updateUser(user.uid, { password: crypto.randomBytes(32).toString('base64url') });
+            await auth.revokeRefreshTokens(user.uid);
+            log('Acesso do cliente:', email, '- a conta já existia sem ser do robô: senha zerada');
+          }
           if (!P.mesmasPermissoes(user.customClaims, perm)) {
             // a lista de antes, lida ANTES de gravar a nova
             const antes = user.customClaims && Array.isArray(user.customClaims.a) ? user.customClaims.a.slice() : [];

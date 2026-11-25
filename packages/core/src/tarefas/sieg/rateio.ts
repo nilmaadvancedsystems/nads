@@ -174,6 +174,35 @@ export function rateioDosNcms(g: GrupoDaNota, frete: number, desconto: number): 
   return ratear({ total: g.valor, frete, desconto, linhas: g.ncms.map(x => ({ rotulo: x.ncm, valor: x.valor, ipi: x.ipi })) });
 }
 
+// ---------- a alíquota e o ICMS por NCM (24/11/2026) ----------
+
+/** A alíquota que cada NCM começa tendo (a coluna 4% da planilha do Fiscal); a pessoa muda por NCM. */
+export const ALIQUOTA_PADRAO_DO_NCM = 4;
+
+/** As tributações que têm ICMS-ST: os NCMs delas aparecem sempre abertos no rateio (24/11/2026: "ST já aberto por NCM"). */
+export const temSt = (t: string) => t === 'st' || t === 'monofasico-st';
+
+export interface LinhaComIcms extends LinhaRateada {
+  /** em %, a escolhida para o NCM (sem escolha, ALIQUOTA_PADRAO_DO_NCM) */
+  aliquota: number;
+  /** BASE × ALÍQUOTA %, em centavos */
+  icms: number;
+}
+
+/**
+ * A segunda parte da planilha com o imposto (24/11/2026: "alíquota e ICMS por NCM"): cada NCM do rateio com a alíquota dele
+ * (`aliquotas` pelo rótulo, o NCM; sem ela, `padrao`) e o ICMS = base × alíquota. A base continua valor + IPI + frete −
+ * desconto em todos os NCMs (24/11/2026: a planilha que usava só o frete em algumas linhas estava errada).
+ */
+export function icmsDosNcms(r: Rateio, aliquotas: Readonly<Record<string, number>> = {}, padrao = ALIQUOTA_PADRAO_DO_NCM): { linhas: LinhaComIcms[]; icms: number } {
+  const linhas = r.linhas.map(l => {
+    const a = aliquotas[l.rotulo];
+    const aliquota = a != null && Number.isFinite(a) && a >= 0 ? a : padrao;
+    return { ...l, aliquota, icms: centavos((l.base * aliquota) / 100) };
+  });
+  return { linhas, icms: centavos(linhas.reduce((t, l) => t + l.icms, 0)) };
+}
+
 // ---------- pelo CT-e (23/10/2026: "preciso que o rateio seja da CTE não da nota dos produtos que vão ser transportados") ----------
 
 export interface RateioDoCte {

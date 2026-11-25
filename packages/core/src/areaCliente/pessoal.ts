@@ -10,15 +10,16 @@
 import type { GuiaDoFgts } from '../tarefas/regras/fgts';
 import type { MesDaFolha } from './dp';
 
-export type CategoriaDoDp = 'folha' | 'recibo' | 'pro-labore' | 'ferias' | 'decimo-terceiro' | 'rescisao' | 'admissao' | 'fgts' | 'inss' | 'ponto' | 'outro';
+// informe: o informe de rendimentos que a empresa entrega aos funcionários (ficha 37, 24/11/2026)
+export type CategoriaDoDp = 'folha' | 'recibo' | 'pro-labore' | 'ferias' | 'decimo-terceiro' | 'rescisao' | 'admissao' | 'fgts' | 'inss' | 'ponto' | 'informe' | 'outro';
 
 export const ROTULO_DA_CATEGORIA_DP: Record<CategoriaDoDp, string> = {
   folha: 'Folha de pagamento', recibo: 'Recibos de pagamento', 'pro-labore': 'Pró-labore', ferias: 'Férias', 'decimo-terceiro': '13º salário',
-  rescisao: 'Rescisões', admissao: 'Admissões', fgts: 'FGTS', inss: 'INSS', ponto: 'Cartão de ponto', outro: 'Outros documentos',
+  rescisao: 'Rescisões', admissao: 'Admissões', fgts: 'FGTS', inss: 'INSS', ponto: 'Cartão de ponto', informe: 'Informe de rendimentos', outro: 'Outros documentos',
 };
 
 /** A ordem em que o cliente vê as categorias do mês (a folha primeiro, as guias depois). */
-export const ORDEM_DAS_CATEGORIAS_DP: CategoriaDoDp[] = ['folha', 'recibo', 'pro-labore', 'ferias', 'decimo-terceiro', 'rescisao', 'admissao', 'ponto', 'fgts', 'inss', 'outro'];
+export const ORDEM_DAS_CATEGORIAS_DP: CategoriaDoDp[] = ['folha', 'recibo', 'pro-labore', 'ferias', 'decimo-terceiro', 'informe', 'rescisao', 'admissao', 'ponto', 'fgts', 'inss', 'outro'];
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -112,6 +113,8 @@ export interface DocumentoDoDp {
   funcionario: string;
   /** quantos pedaços tem o arquivo (0 = grande demais: pedir ao escritório) */
   partes: number;
+  /** mês antigo (ficha 37, 24/11/2026): o PDF não está no espelho; o site pede ao robô ao baixar (documentoAntigo.ts) */
+  sobPedido?: boolean;
 }
 
 const soDigitos = (s: string) => s.replace(/\D/g, '');

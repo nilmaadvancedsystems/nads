@@ -6,6 +6,7 @@
 // valores" faz a planilha à mão. Só as peças do catálogo (Busca com lupa, Botão com borda, SeletorMes, Segmentado, busca
 // curta, Cartão, Tabela padrão, Checkbox, Valor editável, Botão fantasma, Dica, Alerta, Vazio, Esqueleto).
 import { Alerta, BotaoIcone, Dica, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import type { tarefas } from '@nads/core';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
@@ -129,7 +130,7 @@ function Resultado({ vm }: { vm: VmRateioDeFrete }) {
       </section>
       <NotasDoCte vm={vm} />
       {vm.notasDoCte.length > 0 && <Rateio vm={vm} />}
-      {vm.ncms && <Ncms vm={vm} />}
+      {vm.cartoesDeNcm.map(c => <Ncms key={c.id} vm={vm} cartao={c} />)}
     </>
   );
 }
@@ -194,7 +195,7 @@ function Rateio({ vm }: { vm: VmRateioDeFrete }) {
   return (
     <section className="card fc-cartao">
       {/* a explicação numa dica (23/10/2026: sem textos soltos na tela) */}
-      <Topo titulo={doCte ? 'Pelas tributações' : 'Rateio'} dica={doCte ? 'O valor do CT-e vai para cada tributação na proporção dos itens das notas; a base é valor + IPI + frete. Clique numa linha para ver pelos NCMs.' : 'O frete e o desconto vão para cada linha na proporção do valor dela; a base é valor + IPI + frete − desconto.'}>
+      <Topo titulo={doCte ? 'Pelas tributações' : 'Rateio'} dica={doCte ? 'O valor do CT-e vai para cada tributação na proporção dos itens das notas; a base é valor + IPI + frete. O ICMS-ST já aparece pelos NCMs logo abaixo; clique nas outras linhas para ver as delas.' : 'O frete e o desconto vão para cada linha na proporção do valor dela; a base é valor + IPI + frete − desconto.'}>
         {doCte && <Segmentado valor={vm.agrupar} onMudar={vm.setAgrupar} opcoes={[{ valor: 'tributacao', rotulo: 'Por tributação' }, { valor: 'cfop', rotulo: 'Por CFOP' }]} />}
       </Topo>
       {!vm.linhas.length ? <Vazio compacto texto={doCte ? 'As notas não têm itens com valor.' : 'Digite o valor de pelo menos uma linha.'} /> : (
@@ -233,33 +234,42 @@ function Rateio({ vm }: { vm: VmRateioDeFrete }) {
   );
 }
 
-function Ncms({ vm }: { vm: VmRateioDeFrete }) {
-  const d = vm.ncms!;
+/** Um cartão "pelos NCMs": o frete do grupo (ou do ST digitado) por NCM, com a alíquota editável e o ICMS de cada um. */
+function Ncms({ vm, cartao, titulo, acoes }: { vm: VmRateioDeFrete; cartao: CartaoDeNcm; titulo?: ReactNode; acoes?: ReactNode }) {
+  const linhas = cartao.linhas;
+  const soma = (k: 'valor' | 'ipi' | 'frete' | 'desconto' | 'base') => Math.round(linhas.reduce((t, l) => t + l[k], 0) * 100) / 100;
+  const pctTotal = linhas.reduce((t, l) => t + l.pct, 0);
   return (
     <section className="card fc-cartao">
-      <Topo titulo={<>{vm.grupoAberto} <span className="fraco">· pelos NCMs</span></>}>
-        <BotaoIcone icone="x" pequeno titulo="Fechar" onClick={() => vm.abrir(vm.aberto)} />
+      <Topo titulo={titulo ?? <>{cartao.titulo} <span className="fraco">· pelos NCMs</span></>}
+        dica={'A base é valor + IPI + frete em todos os NCMs; o ICMS é a base × a alíquota (' + vm.aliquotaPadrao + '% até você mudar, e a mudança vale para o NCM em todos os cartões).'}>
+        {acoes}
+        {cartao.id && !cartao.fixo && <BotaoIcone icone="x" pequeno titulo="Fechar" onClick={() => vm.abrir(cartao.id!)} />}
       </Topo>
       <div className="table-wrap fc-tabela">
         <table className="table-compact">
-          <thead><tr><th>NCM</th><th className="num">Valor</th><th className="num">IPI</th><th className="num">%</th><th className="num">Frete</th><th className="num">Desconto</th><th className="num">Base de cálculo</th></tr></thead>
+          <thead><tr><th>NCM</th><th className="num">Valor</th><th className="num">IPI</th><th className="num">%</th><th className="num">Frete</th><th className="num">Base de cálculo</th><th className="num">Alíquota</th><th className="num">ICMS</th></tr></thead>
           <tbody>
-            {d.linhas.map(l => (
+            {linhas.map(l => (
               <tr key={l.rotulo}>
                 <td><b>{l.rotulo}</b></td><td className="num">{brl(l.valor)}</td><td className="num">{brl(l.ipi)}</td><td className="num">{pct(l.pct)}</td>
-                <td className="num">{brl(l.frete)}</td><td className="num">{brl(l.desconto)}</td><td className="num"><b>{brl(l.base)}</b></td>
+                <td className="num">{brl(l.frete)}</td><td className="num"><b>{brl(l.base)}</b></td>
+                <td className="num fc-aliquota"><ValorEditavel zeroVale valor={l.aliquota} rotulo={'Alíquota do NCM ' + l.rotulo + ' (%)'} aoSalvar={x => vm.mudarAliquota(l.rotulo, x)} /><span className="fraco">%</span></td>
+                <td className="num"><b>{brl(l.icms)}</b></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr><td>Total</td><td className="num">{brl(d.soma.valor)}</td><td className="num">{brl(d.soma.ipi)}</td><td className="num">{pct(d.soma.pct)}</td>
-              <td className="num">{brl(d.soma.frete)}</td><td className="num">{brl(d.soma.desconto)}</td><td className="num">{brl(d.soma.base)}</td></tr>
+            <tr><td>Total</td><td className="num">{brl(soma('valor'))}</td><td className="num">{brl(soma('ipi'))}</td><td className="num">{pct(pctTotal)}</td>
+              <td className="num">{brl(soma('frete'))}</td><td className="num">{brl(soma('base'))}</td><td /><td className="num">{brl(cartao.icms)}</td></tr>
           </tfoot>
         </table>
       </div>
     </section>
   );
 }
+/** o que um cartão "pelos NCMs" desenha: os NCMs com a alíquota e o ICMS e, pelo CT-e, o grupo (o fixo não fecha) */
+interface CartaoDeNcm { id?: string; titulo?: string; fixo?: boolean; linhas: tarefas.sieg.LinhaComIcms[]; icms: number }
 
 function Digitar({ vm }: { vm: VmRateioDeFrete }) {
   return (
@@ -289,6 +299,39 @@ function Digitar({ vm }: { vm: VmRateioDeFrete }) {
         <div className="fc-pe"><button type="button" className="btn btn-outline btn-sm" onClick={vm.novaLinha}><Icone nome="plus" />Nova linha</button></div>
       </section>
       <Rateio vm={vm} />
+      <NcmsDigitados vm={vm} />
+    </>
+  );
+}
+
+/** À mão, a segunda parte da planilha: o frete do ST repartido pelos NCMs digitados, com a alíquota e o ICMS (24/11/2026). */
+function NcmsDigitados({ vm }: { vm: VmRateioDeFrete }) {
+  return (
+    <>
+      <section className="card fc-cartao">
+        <Topo titulo="NCMs do ST" dica="Digite os NCMs dos produtos ST com o valor e o IPI de cada um: o frete do ST vai para eles na proporção do valor. Sem mudar, o frete do ST é o da linha digitada com ST no nome; sem ela, o frete todo." />
+        <div className="fc-valores">
+          <label className="fc-valor"><span className="fc-rotulo">Frete do ST · {vm.origemDoFreteDoSt}</span><ValorEditavel zeroVale valor={vm.freteDoSt} rotulo="Frete do ST" aoSalvar={vm.mudarFreteDoSt} /></label>
+          {vm.origemDoFreteDoSt === 'digitado' && <span className="fc-valor fc-valor-acao"><button type="button" className="btn btn-ghost btn-sm" onClick={vm.voltarFreteDoSt}><Icone nome="girar" />Voltar ao do rateio</button></span>}
+        </div>
+        <div className="table-wrap fc-tabela">
+          <table className="table-compact fc-digitadas">
+            <thead><tr><th>NCM</th><th className="num">Valor</th><th className="num">IPI</th><th aria-label="Tirar" /></tr></thead>
+            <tbody>
+              {vm.ncmsDigitados.map((l, i) => (
+                <tr key={i}>
+                  <td><input type="text" inputMode="numeric" className="fin-valor-edita" aria-label={'NCM da linha ' + (i + 1)} placeholder={i === 0 ? 'Ex.: 39241000' : 'Ex.: 48201000'} value={l.rotulo} onChange={e => vm.mudarNcmDigitado(i, 'rotulo', e.target.value)} /></td>
+                  <td className="num"><input type="text" inputMode="decimal" className="fin-valor-edita num" aria-label={'Valor do NCM da linha ' + (i + 1)} placeholder="0,00" value={l.valor} onChange={e => vm.mudarNcmDigitado(i, 'valor', e.target.value)} /></td>
+                  <td className="num"><input type="text" inputMode="decimal" className="fin-valor-edita num" aria-label={'IPI do NCM da linha ' + (i + 1)} placeholder="0,00" value={l.ipi} onChange={e => vm.mudarNcmDigitado(i, 'ipi', e.target.value)} /></td>
+                  <td className="fc-acao"><BotaoIcone icone="x" pequeno titulo="Tirar o NCM" onClick={() => vm.tirarNcm(i)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="fc-pe"><button type="button" className="btn btn-outline btn-sm" onClick={vm.novoNcm}><Icone nome="plus" />Novo NCM</button></div>
+      </section>
+      {vm.ncmsDoSt && <Ncms vm={vm} cartao={vm.ncmsDoSt} titulo={<>ICMS-ST <span className="fraco">· pelos NCMs</span></>} />}
     </>
   );
 }

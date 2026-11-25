@@ -302,11 +302,14 @@ export function lerDocumentoDp(id: string, x: unknown): ac.DocumentoDoDp | null 
     tipo: 'dp', id, nome: texto(d.nome).trim(), categoria: (CATEGORIAS_DP.has(texto(d.categoria)) ? texto(d.categoria) : 'outro') as ac.CategoriaDoDp,
     competencia: texto(d.competencia), tamanho: typeof d.tamanho === 'number' ? d.tamanho : 0, funcionario: texto(d.funcionario),
     partes: typeof d.partes === 'number' && d.partes >= 0 ? Math.floor(d.partes) : 0,
+    // o mês antigo, sob pedido (ficha 37, 24/11/2026)
+    ...(d.sobPedido === true ? { sobPedido: true } : {}),
   };
 }
 
 // a DARF e o DAM do ISS (17/11/2026, ficha todas-as-guias do plano do Acessórias)
-const TIPOS_DE_GUIA = new Set<string>(['FGTS', 'DAS', 'DAE', 'DARF', 'DAM', 'outra']);
+// HON: o boleto dos honorários (24/11/2026, ficha 50), separado das guias em estadoDoEspelho
+const TIPOS_DE_GUIA = new Set<string>(['FGTS', 'DAS', 'DAE', 'DARF', 'DAM', 'HON', 'outra']);
 const SITUACOES_DA_GUIA = new Set<string>(['a vencer', 'vence hoje', 'vencida']);
 
 /** guias/{id}: { id, tipo, competencia, vencimento 'dd/mm/aaaa', valor, numero?, situacao, temPdf }. O id é o do documento. */
@@ -332,6 +335,10 @@ export function lerGuia(id: string, x: unknown): ac.GuiaDoCliente | null {
     temPdf: g.temPdf === true,
     // paga pelo extrato (plano do Acessórias, 18/11/2026, ficha guia-paga-confirmada; frase do dono: "Seguir")
     ...(ac.dataDoVencimento(texto(g.pagoEm)) ? { pagoEm: texto(g.pagoEm) } : {}),
+    // a linha digitável do boleto dos honorários: só dígitos, ponto e espaço
+    ...(/^[\d. ]{20,60}$/.test(texto(g.linha).trim()) ? { linha: texto(g.linha).trim() } : {}),
+    // o Pix copia e cola do boleto dos honorários (24/11/2026)
+    ...(ac.pixValido(g.pix) ? { pix: ac.pixValido(g.pix) } : {}),
   };
 }
 
@@ -464,16 +471,21 @@ export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [
   const resumo = p.resumo ?? (p.nomeDoLink ? { empresas: [{ codigo: 0, nome: p.nomeDoLink, cnpj: '' }], escritorio: {}, atualizadoEm: '' } : null);
   const pessoal = p.pessoal ?? null;
   const documentosDp = p.documentosDp ?? [];
+  // os honorários (24/11/2026, ficha 50) saem das guias de imposto: quadro próprio, nunca "pago" nem "vencida"
+  const impostos = p.guias.filter(g => g.tipo !== 'HON');
+  const honorarios = p.guias.filter(g => g.tipo === 'HON').map(({ pagoEm: _pagoEm, ...g }) => g).sort((a, b) => b.competencia.localeCompare(a.competencia));
   return {
     ...AREA_VAZIA, carregado: true, valido: true, exemplos: false,
     // a Central de documentos só aparece quando o escritório pôs algo na pasta (ficha documentos-do-escritorio)
     // a aba Pagas só aparece quando o robô achou alguma paga pelo extrato (ficha guia-paga-confirmada, 18/11/2026)
-    secoes: { ...SECOES_DO_BANCO, documentos: (p.documentos ?? []).length > 0, pagas: p.guias.some(g => g.pagoEm) },
+    secoes: { ...SECOES_DO_BANCO, documentos: (p.documentos ?? []).length > 0, pagas: impostos.some(g => g.pagoEm) },
     documentos: (p.documentos ?? []).map(({ partes: _partes, ...d }) => d),
     resumo, pessoal, documentosDp, faturamento: p.faturamento ?? null, logo: p.logo ?? null, danfes: p.danfes ?? [], certificado: p.certificado ?? null, avisos: p.avisos ?? [], comunicados: p.comunicados ?? [], tickets: p.tickets ?? [], ficha: p.ficha ?? null, entregas: p.entregas ?? [], parcelamentos: p.parcelamentos ?? [],
     // a paga sai de "a pagar" e vai para Pagas (o comprovante para baixar ainda não tem fonte)
-    guias: p.guias.filter(g => !g.pagoEm),
-    pagas: p.guias.filter(g => g.pagoEm).map(guiaPaga),
+    guias: impostos.filter(g => !g.pagoEm),
+    pagas: impostos.filter(g => g.pagoEm).map(guiaPaga),
+    emitidas: impostos,
+    honorarios,
     agenda: [...p.agenda].sort((a, b) => a.mes.localeCompare(b.mes)),
     envios: [...p.envios].sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm)),
     chamados: comPendentes(p.chamados, novos, respostas),

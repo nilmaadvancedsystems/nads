@@ -32,11 +32,13 @@ function iniciarSenhaDoCliente({ db, auth, log, ouvir, core, correio, agora = ()
       if (hoje.dia !== dia) { hoje.dia = dia; hoje.total = 0; hoje.porEmail.clear(); }
       if (hoje.total >= TOTAL_POR_DIA || (hoje.porEmail.get(p.email) || 0) >= POR_EMAIL_POR_DIA) return 'limite';
       hoje.porEmail.set(p.email, (hoje.porEmail.get(p.email) || 0) + 1);
-      hoje.total++;
       // só quem tem o link no login (a mesma conta da regra do banco) e não é da equipe
       const user = await auth.getUserByEmail(p.email).catch(() => null);
       if (!user || !P.clienteAbreOLink(user.customClaims, p.token)) return 'sem acesso';
       if ((await db.collection('usuarios').doc(user.uid).get()).exists) return 'equipe';
+      // o total do dia só conta o pedido de quem tem acesso (auditoria de segurança, 24/11/2026): contando antes, quem tinha um
+      // link qualquer gastava os 100 do dia com e-mails inventados e ninguém mais recebia a senha
+      hoje.total++;
       const link = P.linkDaPaginaDeSenha(await auth.generatePasswordResetLink(p.email));
       if (!link) { log('Senha do cliente: o Firebase não devolveu o código'); return 'sem codigo'; }
       const linkDoc = await db.collection('areasCliente').doc(p.token).get();

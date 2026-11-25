@@ -38,6 +38,8 @@ const codigo = [
   'export { notasDoMes, listaDeNotasDoMes } from ' + caminho('packages/core/src/areaCliente/notasDoMes.ts') + ';',
   'export { erroDaLogo } from ' + caminho('packages/core/src/areaCliente/logo.ts') + ';',
   'export { chaveDoPedidoDeDanfe, idDaDanfe, partesDaChave } from ' + caminho('packages/core/src/areaCliente/pedidoDeDanfe.ts') + ';',
+  // os documentos antigos do RH sob pedido (ficha 37, 24/11/2026)
+  'export { idDoPedidoDeDocumentoDp, mesComArquivoDp, MESES_COM_ARQUIVO_DP, MESES_NA_LISTA_DP, textoDoPdf, informeDaEmpresa, anoDoInforme } from ' + caminho('packages/core/src/areaCliente/documentoAntigo.ts') + ';',
   // os vencimentos da agenda do cliente com os feriados (17/11/2026, ficha E01 do plano do Acessórias): o robô faz a mesma
   // conta do site pelo calendário único, em vez de uma cópia (robo/area-cliente-regras.js)
   // o certificado A1 do cofre na Área do Cliente (17/11/2026, ficha certificado-digital)
@@ -53,7 +55,7 @@ const codigo = [
   // a ficha cadastral da empresa (18/11/2026, ficha dados-cadastrais)
   // as certidões da empresa (18/11/2026, ficha certidoes)
   // a senha por pessoa na Área do Cliente (18/11/2026)
-  'export { permissoesPorEmail, mesmasPermissoes, normalizarEmail, clienteAbreOLink } from ' + caminho('packages/core/src/areaCliente/acessoPorPessoa.ts') + ';',
+  'export { permissoesPorEmail, mesmasPermissoes, normalizarEmail, clienteAbreOLink, contaPrecisaZerar } from ' + caminho('packages/core/src/areaCliente/acessoPorPessoa.ts') + ';',
   // o e-mail de senha pelo robô (19/11/2026)
   'export { pedidoDeSenha, linkDaPaginaDeSenha, emailDeSenha } from ' + caminho('packages/core/src/areaCliente/emailDeSenha.ts') + ';',
   // a Tela de Insights (18/11/2026, ficha tela-de-insights)

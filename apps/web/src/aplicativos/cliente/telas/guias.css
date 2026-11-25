@@ -126,9 +126,12 @@
   .cli-app .cli-gu-num{width:34px;height:34px;font-size:14px;}
 }
 
-/* os parcelamentos ativos (plano do Acessórias, 18/11/2026, ficha parcelamentos) */
-.cli-gu-parcelamentos { margin-top: 12px; padding: 10px 14px; }
-.cli-gu-parcelamentos ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.cli-gu-parcelamentos li { display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: start; }
-.cli-gu-parcelamentos li svg { margin-top: 2px; }
-.cli-gu-parcelamentos li .hint { display: block; }
+/* outros pagamentos (24/11/2026: "essas 2"): os parcelamentos e os honorários num cartão só, no desenho das guias */
+.cli-app .cli-gu .card.cli-gu-outros{margin-top:12px;}
+.cli-app .cli-gu-outros .cli-gu-cabeca{margin:0;padding:14px 16px 4px;}
+.cli-app .cli-gu-outros .cli-gu-cabeca h3{font-size:14px;}
+.cli-app .cli-gu-outros .cli-gu-sub,.cli-app .cli-gu-outros .cli-gu-junto{white-space:normal;flex-wrap:wrap;}
+.cli-app .cli-gu-sigla-icone{border-radius:9px;background:var(--surface-3);color:var(--ink-muted);}
+@container gu-itens (max-width:720px){
+  .cli-app .cli-gu-itens .cli-gu-linha .cli-gu-sem-acao{display:none;}
+}

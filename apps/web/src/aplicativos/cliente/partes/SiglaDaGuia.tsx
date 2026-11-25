@@ -19,7 +19,7 @@ const LOGO: Partial<Record<TipoDoQuadradinho, { logo: ReactNode; /** a fração 
   HON: { logo: <MarcaN />, escala: 0.8 },
 };
 // a DARF virou um tipo da guia (17/11/2026, ficha todas-as-guias): o nome dela vem do ROTULO_DA_GUIA
-const NOME: Record<Exclude<TipoDoQuadradinho, ac.TipoDeGuia>, string> = { INSS: 'INSS (Receita Federal)', DCTFWeb: 'DCTFWeb (Receita Federal)', HON: 'Honorários do escritório' };
+const NOME: Record<Exclude<TipoDoQuadradinho, ac.TipoDeGuia>, string> = { INSS: 'INSS (Receita Federal)', DCTFWeb: 'DCTFWeb (Receita Federal)' };
 
 export function SiglaDaGuia({ tipo, tamanho = 44 }: { tipo: TipoDoQuadradinho; /** em px */ tamanho?: number }) {
   const l = LOGO[tipo];

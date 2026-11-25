@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gruposDaNota, ratear, rateioDoCte, rateioDosNcms, repartir, tributacaoDoItem, valoresDaNota } from './rateio';
+import { gruposDaNota, icmsDosNcms, ratear, temSt, rateioDoCte, rateioDosNcms, repartir, tributacaoDoItem, valoresDaNota } from './rateio';
 import type { NotaDoSieg } from './index';
 
 const pessoa = { doc: '11111111000111', nome: 'X' };
@@ -78,5 +78,26 @@ describe('o Rateio de frete (a planilha RATEIO - FRETE, 22/10/2026)', () => {
     const x = rateioDoCte({ valor: 100 }, [a, b, nfe([{ ncm: '1', cfop: '2102', cst: '000', cest: '', valor: 333.33 }], { chave: 'C' })], 'tributacao', 100.01);
     expect(Math.round(x.notas.reduce((t, n) => t + n.frete, 0) * 100)).toBe(10001);
     expect(x.rateio.soma.frete).toBe(100.01);
+  });
+});
+
+describe('a alíquota e o ICMS por NCM (24/11/2026, a planilha do COMPL. ST)', () => {
+  // os números da planilha: total 3.300,48, frete do ST 403,73 pelos três NCMs, 4% em todos
+  const r = ratear({ total: 3300.48, frete: 403.73, linhas: [{ rotulo: '39241000', valor: 291.6 }, { rotulo: '48201000', valor: 2862 }, { rotulo: '70133700', valor: 146.88 }] });
+  it('o frete bate com a planilha (35,67 / 350,09 / 17,97) e a base é valor + IPI + frete em todos', () => {
+    expect(r.linhas.map(l => l.frete)).toEqual([35.67, 350.09, 17.97]);
+    expect(r.linhas.map(l => Math.round(l.pct * 100) / 100)).toEqual([8.84, 86.71, 4.45]);
+    expect(r.linhas.map(l => l.base)).toEqual([327.27, 3212.09, 164.85]);
+  });
+  it('o ICMS = base × alíquota (4% sem escolha), com o total; a alíquota escolhida vale só para o NCM dela', () => {
+    const x = icmsDosNcms(r);
+    expect(x.linhas.map(l => [l.aliquota, l.icms])).toEqual([[4, 13.09], [4, 128.48], [4, 6.59]]);
+    expect(x.icms).toBe(148.16);
+    const y = icmsDosNcms(r, { '48201000': 12, '70133700': 0 });
+    expect(y.linhas.map(l => [l.aliquota, l.icms])).toEqual([[4, 13.09], [12, 385.45], [0, 0]]);
+    expect(y.icms).toBe(398.54);
+  });
+  it('as tributações com ST', () => {
+    expect(['tributado', 'st', 'monofasico', 'monofasico-st', 'isento'].filter(temSt)).toEqual(['st', 'monofasico-st']);
   });
 });

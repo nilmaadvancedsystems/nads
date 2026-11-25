@@ -164,6 +164,32 @@ export const comValorParaAPessoa = (lista: readonly Comissao[]) => lista.filter(
 /** A comissão: o valor do serviço × a % (em centavos). */
 export const valorDaComissao = (valorServico: number, percentual: number) => Math.round(valorServico * percentual) / 100;
 
+/**
+ * O que não bate numa comissão a pagar (auditoria de segurança, 24/11/2026): a regra do banco só confere a faixa de cada
+ * campo, e a tela calcula o valor; quem grava pelo console manda 100% ou um valor qualquer. Sem a aprovação do Financeiro
+ * (19/11/2026), a registrada já é a pagar: a lista do Financeiro mostra estes avisos antes do Marcar como pago.
+ * A escondida (o robô calcula) e a já decidida (paga, recusada) não entram. A % diferente da tabela pode ser a do Diretor:
+ * é aviso, não bloqueio.
+ */
+export function avisosDaComissao(c: Comissao, servicos: readonly ServicoComissionado[]): string[] {
+  if (c.oculta || c.situacao === 'paga' || c.situacao === 'recusada') return [];
+  const avisos: string[] = [];
+  const servico = c.servico ?? '';
+  if (c.valorServico != null && c.percentual != null && Math.abs(c.valor - valorDaComissao(c.valorServico, c.percentual)) > 0.01) {
+    avisos.push('O valor não é o do serviço × a %.');
+  }
+  const pctDaTabela = percentualDoServico(servicos, servico);
+  if (servico && c.percentual != null && pctDaTabela > 0 && Math.abs(c.percentual - pctDaTabela) > 0.001) {
+    avisos.push('A % (' + c.percentual + '%) não é a da tabela (' + pctDaTabela + '%).');
+  }
+  const unidade = valorDoServico(servicos, servico);
+  if (unidade > 0 && c.valorServico != null && Math.abs(c.valorServico - unidade * quantidadeDaComissao(c)) > 0.01) {
+    avisos.push('O valor do serviço não é o definido pelo Financeiro.');
+  }
+  if (servico && servicos.length && !servicos.some(s => s.nome === servico)) avisos.push('O serviço não está na tabela.');
+  return avisos;
+}
+
 /** O mês em que a comissão registrada pela pessoa entra para pagamento: sempre o seguinte ao atual (Vitor, 12/11/2026). */
 export const mesDoPagamento = (hoje: Date) => competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1));
 
