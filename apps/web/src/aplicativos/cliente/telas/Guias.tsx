@@ -13,8 +13,10 @@ import { Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useRef } from 'react';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { LinhaGuiaDoMes, LinhaPagaDoMes } from '../partes/LinhaGuiaDoMes';
+import { LinhaDoSci } from '../partes/LinhaDoSci';
 import { SiglaDaGuia } from '../partes/SiglaDaGuia';
 import { useGuias } from './useGuias';
+import { useGuiasDoSci } from './useGuiasDoSci';
 import type { DaCasca } from './useAreaCliente';
 import { AjudaDaTela } from '../partes/AjudaDaTela';
 import { MarcaDaTela } from '../partes/MarcaDaTela';
@@ -23,6 +25,8 @@ const SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export function Guias(props: DaCasca) {
   const vm = useGuias(props);
+  // as guias publicadas no SCI Report (24/11/2026), buscadas na hora pela função do Firebase
+  const sci = useGuiasDoSci(props.token, vm.mes);
   const raiz = useRef<HTMLDivElement>(null);
   // o clique no dia destaca o que vence nele e, se estiver fora da vista, leva até lá
   const escolherDia = (dia: number) => {
@@ -124,6 +128,18 @@ export function Guias(props: DaCasca) {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+          {/* (24/11/2026) as guias que o escritório publicou no SCI Report, no desenho das linhas da aba; o cartão só aparece
+              quando a empresa tem alguma guia lá (ou quando a busca falhou, para o cliente saber) */}
+          {sci.mostra && (
+            <section className="card cli-gu-lista cli-gu-outros" aria-label="Guias no SCI Report">
+              <div className="cli-gu-cabeca"><h3>No SCI Report</h3></div>
+              {sci.erro ? <p className="cli-gu-vazio"><Icone nome="repeat" width={18} height={18} />{sci.erro}</p> : sci.guias.length ? (
+                <ul className="cli-gu-itens">
+                  {sci.guias.map(g => <LinhaDoSci key={g.id} guia={g} ocupado={sci.abrindo === g.id} onAbrir={sci.abrir} />)}
+                </ul>
+              ) : <p className="cli-gu-vazio"><Icone nome="checkCircle" width={18} height={18} />Nada do SCI Report neste mês</p>}
             </section>
           )}
         </div>

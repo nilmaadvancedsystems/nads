@@ -3,6 +3,7 @@
 // saídas do mês e grava os números por série e as canceladas (siegSaidas). Aqui: os tipos e a conferência da sequência.
 import type { Nota, NotaServico } from '../../conferencia/tipos';
 import type { ConferenciaIbsCbs } from './ibsCbs';
+import type { ResumoDoIntegra } from '../../sci/integracao/integraNet';
 
 export type TipoDeNota = 'NFe' | 'NFCe' | 'NFSe' | 'CTe' | 'CFe';
 export const TIPOS_DE_NOTA: readonly { id: TipoDeNota; rotulo: string }[] = [
@@ -66,6 +67,8 @@ export interface NotasSieg {
   resumo?: number;
   /** a conferência do IBS/CBS pela calculadora da Receita (21/11/2026; robo/sieg-ibscbs.js); sem ela, ainda não conferiu */
   ibsCbs?: ConferenciaIbsCbs | null;
+  /** o Integra NET da SCI (24/11/2026; robo/sci.js): o que foi enviado e o que falta no SCI; sem ele, a integração está desligada */
+  sci?: ResumoDoIntegra | null;
 }
 
 /** siegSaidas/{codigo}_{AAAA-MM}: as saídas do mês (NF-e e NFC-e), série por série. */

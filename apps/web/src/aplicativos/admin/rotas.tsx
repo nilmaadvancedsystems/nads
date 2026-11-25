@@ -18,6 +18,7 @@ const PainelDoRobo = pedaco(() => import('../tarefas/telas/cadastro/painel-robo/
 const UsoDoSistema = pedaco(() => import('../tarefas/telas/uso/UsoDoSistema'), 'UsoDoSistema');
 const RobosEAgentes = pedaco(() => import('../tarefas/telas/cadastro/configuracoes/ConfiguracoesDoNads'), 'RobosEAgentes');
 const Registro = pedaco(() => import('./telas/registro/Registro'), 'Registro');
+const IntegracaoSci = pedaco(() => import('../tarefas/telas/cadastro/integracao-sci/IntegracaoSci'), 'IntegracaoSci');
 
 function Tela({ pagina }: { pagina: IdPaginaAdmin }) {
   switch (pagina) {
@@ -31,6 +32,7 @@ function Tela({ pagina }: { pagina: IdPaginaAdmin }) {
     case 'feedbacks': return <FeedbacksDoAdmin />;
     case 'sistema': return <RobosEAgentes />;
     case 'registro': return <Registro />;
+    case 'sci': return <IntegracaoSci />;
   }
 }
 

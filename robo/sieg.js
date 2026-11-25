@@ -1274,6 +1274,9 @@ function iniciarSieg({ db, log }) {
           // fila só dela, para não segurar o Drive; sem a calculadora no ar neste PC, só uma linha no registro
           const doMes = arquivos;
           filaIbsCbs = filaIbsCbs.then(() => ibsCbs.conferirEGravar({ db, id, arquivos: doMes, cnpj, canceladas: cancelamentosDe(doMes), log }));
+          // e o Integra NET da SCI (24/11/2026, sci.js; desligado por padrão em config/sci): as notas do mês que ainda não foram
+          // e a conferência do mês, na mesma fila (não segura o Drive); o resumo vai em siegNotas/{id}.sci
+          filaIbsCbs = filaIbsCbs.then(() => require('./sci').enviarAoIntegra({ db, id, codigo: p.codigo, cnpj, competencia: p.competencia, arquivos: doMes, canceladas: cancelamentosDe(doMes), log })).catch(() => {});
         });
         return;
       }

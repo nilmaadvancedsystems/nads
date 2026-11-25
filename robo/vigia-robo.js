@@ -943,6 +943,7 @@ async function atenderFila() {
         'whatsapp-conectar': 'Conectando o WhatsApp',
         'whatsapp-desconectar': 'Desconectando o WhatsApp',
         cartaBalanco: 'Carta de balanço ' + (p.teste ? '(teste) ' : '') + 'para ' + (p.empresa || 'o cliente ' + (p.codigo || '')),
+        rhnet: 'RH NET (' + (p.acao || '?') + ') da empresa ' + (p.codigo || '?'),
       }[p.tipo] || 'Pedido da tela';
       atendeuAlgum = true;
       roboRef.set({ filaAndamento: { ativo: true, atual: oqueAgora, restantes: pendentes.length, desde: agora(), em: agora() } }, { merge: true }).catch(() => {});
@@ -977,6 +978,8 @@ async function atenderFila() {
         else if (p.tipo === 'whatsapp') resultado = await require('./whatsapp').atenderPedido(p, doc.ref, { ler: () => lerAnexoDasPartes(p, doc.ref), apagar: () => apagarPartes(p, doc.ref) });
         else if (p.tipo === 'whatsapp-conectar' || p.tipo === 'whatsapp-desconectar') resultado = await require('./whatsapp').atenderComando(p);
         else if (p.tipo === 'cartaBalanco') resultado = await atenderCartaBalanco(p);
+        // o RH NET da SCI (25/11/2026, robo/rhnet.js; desligado em config/sci): os dados pessoais do pedido saem do banco também no erro
+        else if (p.tipo === 'rhnet') resultado = await require('./rhnet').atenderPedido(db, p).catch(async err => { await doc.ref.update({ dados: null }).catch(() => {}); throw err; });
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
         // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
@@ -991,6 +994,7 @@ async function atenderFila() {
           mandei: ['gmail', 'Mandou o link do Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente')],
           whatsapp: ['gmail', 'Mandou um WhatsApp para ' + (p.clienteNome || p.para || 'um cliente')],
           cartaBalanco: ['gmail', 'Mandou a carta de balanço ' + (p.teste ? '(teste) ' : '') + 'de ' + (p.empresa || 'o cliente ' + (p.codigo || ''))],
+          rhnet: ['gmail', 'RH NET da empresa ' + (p.codigo || '?')],
         }[p.tipo];
         if (feito) painel.atividade(feito[0], feito[1], [p.criadoPor ? 'pedido de ' + p.criadoPor : '', resultado.resumo || ''].filter(Boolean).join(' · '));
       } catch (err) {
@@ -1137,6 +1141,10 @@ async function iniciar() {
         getDrive: () => require('./drive-indice').getDrive(),
       }));
     } catch (err) { log('lote do Fiscal desligado:', err.message); }
+    // e o que o cliente fez com as guias publicadas no SCI Report (24/11/2026, sci.js): só age com config/sci.lerDeVolta
+    try {
+      tarefa('sci-de-volta', () => require('./sci').iniciarLeituraDeVolta(db, log));
+    } catch (err) { log('leitura de volta do SCI Report desligada:', err.message); }
     // e os boletos de honorários (10/11/2026, nads › Financeiro › Boletos): um e-mail por boleto, só depois do disparo do Diretor
     try {
       tarefa('boletos-financeiro', () => require('./boletos-financeiro').iniciarBoletosFinanceiro(db, {

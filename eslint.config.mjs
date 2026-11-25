@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/dist-sites/**', '**/dist-tipos/**', '**/node_modules/**', '.claude/**', 'docs/**', '**/__legado__/**', 'robo/**'] },
+  { ignores: ['**/dist/**', '**/dist-sites/**', '**/dist-tipos/**', '**/node_modules/**', '.claude/**', 'docs/**', '**/__legado__/**', 'robo/**', 'funcoes/gerado/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -21,6 +21,11 @@ export default tseslint.config(
     // scripts de Node da raiz (a trava de conexões)
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { console: 'readonly', process: 'readonly', URL: 'readonly' } },
+  },
+  {
+    // a função do Firebase (funcoes/, Node 22, ESM; 24/11/2026, o SCI Report na Área do Cliente)
+    files: ['funcoes/**/*.js'],
+    languageOptions: { globals: { fetch: 'readonly', URL: 'readonly', URLSearchParams: 'readonly' } },
   },
   {
     // Firebase só no repositório do banco de cada aplicativo (aplicativos/<app>/dados/*.firestore.ts)

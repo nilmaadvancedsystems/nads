@@ -27,6 +27,7 @@ const R = require('./arquivador-regras');
 const dp = require('./envios-do-dp');
 const L = require('./lote-dp');
 const EC = require('./econtador');
+const SCI = require('./sci');
 const painel = require('./painel');
 // as guias na Área do Cliente (17/11/2026, ficha todas-as-guias): a mesma gravação do envio pelo nads
 const NADS = require('./envios-do-nads');
@@ -436,10 +437,21 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
   const agora = new Date().toISOString();
   const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: '', preenchidos: [], erroNoRelatorio: '' };
   const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
+  // a via SCI Report com a publicação ligada (24/11/2026, sci.js; desligada por padrão em config/sci): cada guia vai de
+  // verdade para o SCI Report da empresa; o registro guarda o número de cada publicação (a leitura de volta usa)
+  let sciReport = null;
+  if (via === 'scireport') {
+    sciReport = await SCI.publicarGuias(db, {
+      codigo, cnpj: doc ? String(doc.data().documento || doc.data().cnpj || '') : '',
+      guias: itens.map((i, k) => ({ nome: i.vai.nome, tipo: i.vai.tipo, tributo: i.vai.tributo, valor: i.vai.valor, vencimento: (i.leitura && i.leitura.vencimento) || '', competencia, pdf: buffers[k] })),
+    }).catch(err => ({ empresaId: 0, publicadas: [], falhas: [], erro: String(err.message || err).slice(0, 200) }));
+    if (sciReport) resultado.sciReport = { publicadas: sciReport.publicadas.length, falhas: sciReport.falhas, erro: sciReport.erro };
+  }
   const registro = await db.collection('solicitacoesEmail').add({
     tipo: 'envioFiscal', via, origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
     empresa: nome, arquivos: [], para: [], enviados: itens.map(i => i.vai.nome),
     enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
+    ...(sciReport ? { sciReport: { empresaId: sciReport.empresaId, publicadas: sciReport.publicadas, falhas: sciReport.falhas, erro: sciReport.erro, pendente: sciReport.publicadas.length > 0, em: agora } } : {}),
   }).catch(() => null);
   // a via eContador com a pasta do UpDocs ligada (07/11/2026, econtador.js; desligada por padrão): as guias, já no Drive,
   // entram na fila da pasta que o UpDocs vigia no NILMA-SERVER; o registro ganha econtadorSaida (e, gravadas, econtador)

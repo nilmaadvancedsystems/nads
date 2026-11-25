@@ -9,7 +9,7 @@
 import { AgendarEnvio } from '../../janela/AgendarEnvio';
 import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
-import type { GuiaDoLote, ViaDaGuia } from '../../../dados/loteFiscal';
+import { fraseDoSciReport, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { JanelaLateral } from '../../janela/JanelaLateral';
 import { efetivoDaGuia, useEnvioDeGuias, type VmEnvioDeGuias } from './useEnvioDeGuias';
 import type { RegimeDoRelatorio } from './useRelatorioGeral';
@@ -87,7 +87,7 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
             const r = vm.noRelatorio(a);
             const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : g.via === 'zap' && !g.whatsapp ? 'sem WhatsApp no Cadastro nem no Entregas' : '';
             const jaNaRota = g.resultado?.jaNaRota || [];
-            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.via === 'zap' ? 'WhatsApp ' + foneLegivel(g.whatsapp) : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? (fraseDoSciReport(g.resultado?.sciReport) || 'vai pelo SCI Report') : g.via === 'zap' ? 'WhatsApp ' + foneLegivel(g.whatsapp) : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (

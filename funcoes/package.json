@@ -1,0 +1,14 @@
+{
+  "name": "nads-funcoes",
+  "private": true,
+  "description": "As funções do Firebase do nads no projeto do Entregas (entregas-2e5e2). Hoje só a das guias do SCI Report na Área do Cliente.",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.1",
+    "firebase-functions": "^7.4.0"
+  }
+}

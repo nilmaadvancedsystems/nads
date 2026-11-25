@@ -1,0 +1,10 @@
+{
+  "functions": [
+    {
+      "source": ".",
+      "codebase": "nads-sci-report",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", ".git", "firebase.json", "firebase-debug.log", "*.log", "LEIAME.md"]
+    }
+  ]
+}
