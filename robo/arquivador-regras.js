@@ -2424,7 +2424,9 @@ function pelaPastaENome(entrada, ctx, d) {
   // (lote 6, b) a conta de consumo (CEMIG, COELBA, água, telefone): PAGAMENTOS DE FORNECEDORES\ANO\MÊS\<CONCESSIONÁRIA>
   const conc = CONCESSIONARIA.exec(n);
   if (conc) {
-    const m = mesDe();
+    // (25/11/2026, decisão do dono: "CEMIG e COPASA também vão para pagamentos de fornecedores") sem o mês no nome, na pasta ou no vencimento legível: o do nome do
+    // zip/pasta de movimento ("OUT-2026", "10.2026"), como no pagamento de fornecedor
+    const m = mesDe() || mesDoNomeDaPasta(rel) || mesNumericoDaPasta(rel);
     if (!m) return null;
     // (Vitor, 02/11/2026, 6ª rodada, decisão 2; substitui a de 27/10/2026, que mandava para a matriz) na pasta que junta a matriz 413 e as filiais, a conta de consumo
     // escaneada não vai mais para a matriz por falta de outro cliente: vale o CNPJ inteiro de um cliente do grupo, o código no começo do nome ou a inscrição estadual legível
@@ -2432,6 +2434,13 @@ function pelaPastaENome(entrada, ctx, d) {
     const qc = quemDaContaDeConsumoNoGrupo(rel, nome, bruto, u, cad);
     if (qc && qc.cliente == null) { d.evidencias = (d.evidencias || []).concat(qc.porque + ': fica em NÃO IDENTIFICADOS (Vitor, 02/11/2026)'); return null; }
     if (qc) { c = { cliente: qc.cliente, conf: 0.9, como: qc.como }; ev.push(qc.porque); }
+    // (25/11/2026, decisão do dono: "CEMIG vai para a matriz") FORA da pasta do grupo, sem o CNPJ inteiro nem outra pista do cliente: a conta que traz só o nome da
+    // empresa (e o CNPJ mascarado, "12.3**.***/****-**") que bate com a matriz e as filiais de UMA raiz de CNPJ vai para a matriz dessa raiz
+    if (!qc && !cliente()) {
+      const nomes = clientesPeloNomeNoTexto(bruto.slice(0, 3000), cad);
+      const mz = nomes.length > 1 ? matrizDaRaiz(nomes, cad, rel) : null;
+      if (mz != null) { c = { cliente: mz, conf: 0.85, como: 'nome' }; ev.push('conta de consumo com o nome da matriz e das filiais (' + nomes.join(', ') + ', a mesma raiz de CNPJ) e sem o CNPJ inteiro: a matriz ' + mz + ' (decisão do dono, 25/11/2026)'); }
+    }
     return fim({ tipo: 'CONTA DE CONSUMO', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(m.ano), dois(m.mes), conc[1]], competencia: { mes: m.mes, ano: m.ano } }, 'conta de consumo (' + conc[1] + ', o mês pelo nome, pela pasta ou pelo vencimento)');
   }
   // (lote 6, e) o DAJE (custas do cartório): PAGAMENTOS DE FORNECEDORES\ANO\MÊS\DAJE; a DCF: FISCAL\<regime>\03. DOCUMENTOS FISCAIS
@@ -3695,6 +3704,12 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
   const raizes = raizesDoTexto(bruto).filter(r => cad.porRaiz.has(r));
   const porRaiz = [...new Set(raizes.flatMap(r => [...cad.porRaiz.get(r)]))];
   if (porRaiz.length === 1) { ev.push('raiz do CNPJ impressa'); return { cliente: porRaiz[0], conf: 0.92, como: 'doc' }; }
+  // (25/11/2026, decisão do dono: "FGTS vai para a matriz") a guia do FGTS Digital só com a raiz do CNPJ (o recolhimento é da empresa, de todos os estabelecimentos):
+  // a matriz dessa raiz, quando há uma só; a guia com o CNPJ inteiro de um estabelecimento continua com a regra do 1º CNPJ, acima
+  if (porRaiz.length > 1 && regra.tipo === 'FGTS' && new Set(raizes).size === 1) {
+    const mz = matrizDaRaiz(porRaiz, cad, entrada.rel);
+    if (mz != null) { ev.push('FGTS Digital só com a raiz do CNPJ (' + raizes[0] + ', da matriz e das filiais ' + porRaiz.join(', ') + '): a matriz ' + mz + ' (decisão do dono, 25/11/2026)'); return { cliente: mz, conf: 0.9, como: 'doc' }; }
+  }
   // a razão social do cabeçalho primeiro (no corpo de um extrato aparecem os nomes de quem pagou/recebeu)
   // (28/10/2026) no extrato/aplicação com o titular lido (que não é cliente): os outros nomes do texto são de quem pagou ou recebeu
   // ("PIX - ENVIADO / VERA REFLORESTAMENTOS" no extrato da Minas): não decidem; fica a pasta de origem
@@ -3932,6 +3947,14 @@ function mesDoNomeDaPasta(rel) {
   if (achados.size !== 1) return null;
   const [a, mm] = [...achados][0].split('-');
   return { mes: +mm, ano: +a };
+}
+/** (25/11/2026) O mês em número no nome do zip/pasta de origem ("Exemplo 10.2026.zip", "10-2026"): { mes, ano } se todas as pastas que o trazem dizem o mesmo; senão null. */
+function mesNumericoDaPasta(rel) {
+  const a = new Set();
+  for (const p of partesDoCaminho(rel).slice(0, -1)) for (const m of norm(p).matchAll(/(?:^|[^0-9])(0[1-9]|1[0-2])[.\-_](20\d{2})(?![0-9])/g)) a.add(m[2] + '-' + m[1]);
+  if (a.size !== 1) return null;
+  const [y, mm] = [...a][0].split('-');
+  return anoOk(+y) ? { mes: +mm, ano: +y } : null;
 }
 const PRO_LABORE_DO_GRUPO = 413;   // a BRAZILIAN FORESTRY (Vitor, 05/11/2026: "Denise e Dilma pode colocar na brazilian")
 const PALAVRAS_DE_MOVIMENTO = new Set(['MOVIMENTO', 'MOVIMENTOS', 'PLANILHA', 'PLANILH', 'PLANIL', 'COMPROVANTE', 'COMPROVANTES', 'PAGTO', 'PAGTOS', 'NOTA', 'NOTAS', 'BB', 'CEF', 'OUT', 'NOV', 'DEZ', 'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'DE', 'DA', 'DO', 'DOS', 'DAS', 'E', 'NF', 'NFS', 'REF', 'MES']);
@@ -4536,9 +4559,8 @@ function pagamentoDoDono(entrada, u, bruto, ctx, ev, porHash) {
   if (pg) { comp = { mes: +pg.slice(3, 5), ano: +pg.slice(6) }; ev.push('mês pela data de pagamento (' + pg + ')'); }
   const pasta = anoDaPasta(rel) || competenciaDaPasta(rel);
   if (!comp && pasta && pasta.mes) { comp = { mes: pasta.mes, ano: pasta.ano }; ev.push('mês pela pasta de origem (' + mesAno(comp) + ')'); }
-  // o mês do nome do zip/pasta: "OUT-2026" (mesDoNomeDaPasta) ou "10.2026" ("OV 10.2026.zip"), o mesmo em todas as pastas que o trazem
-  const numerico = () => { const a = new Set(); for (const p of partesDoCaminho(rel).slice(0, -1)) for (const m of norm(p).matchAll(/(?:^|[^0-9])(0[1-9]|1[0-2])[.\-_](20\d{2})(?![0-9])/g)) a.add(m[2] + '-' + m[1]); if (a.size !== 1) return null; const [y, mm] = [...a][0].split('-'); return anoOk(+y) ? { mes: +mm, ano: +y } : null; };
-  const doZip = !comp ? (mesDoNomeDaPasta(rel) || numerico()) : null;
+  // o mês do nome do zip/pasta: "OUT-2026" (mesDoNomeDaPasta) ou "10.2026" (mesNumericoDaPasta)
+  const doZip = !comp ? (mesDoNomeDaPasta(rel) || mesNumericoDaPasta(rel)) : null;
   if (doZip) { comp = doZip; ev.push('mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')'); }
   if (!comp) { const v = dataBr(linhaApos(u, /VENCIMENTO/, 60)); if (v) { comp = { mes: +v.slice(3, 5), ano: +v.slice(6) }; ev.push('mês pelo vencimento (' + v + ')'); } }
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente, evidencias: ev.concat('o mês não foi lido (pagamento, pasta, zip ou vencimento)') });
@@ -5561,7 +5583,7 @@ function tipoDoDestino(destino) {
 module.exports = {
   pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, periodoPelasDatas, ehFoto, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
-  cnpjValido, cpfValido, documentosDoTexto, docNoBlocoDoTitular, titularImpresso, titularEntre, relatorioAegro, raizesDoTexto, mascarasDoTexto,
+  cnpjValido, cpfValido, documentosDoTexto, docNoBlocoDoTitular, titularImpresso, titularEntre, relatorioAegro, mesNumericoDaPasta, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,
   confirmado, pastaParecida, bancoDoTexto, bancoDoNome, lerXml, classificarXml, camposDaGuia,
   contasDoTexto, clientePelaConta, numeroDeConta, mesmaConta, bancoDoCadastro, contasDoDocumento, contasDoNome, clientesPelasContas, decidir, decidir0, descarteDaImagem, pelaPastaENome, perfilDoDocumento, tipoDoDestino,
