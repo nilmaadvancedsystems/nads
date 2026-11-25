@@ -330,6 +330,7 @@ const MESMO_PEDIDO = {
   fgts: { campo: 'cnpj', iguais: ['competencia', 'modo'], jaSaiu: true },
   alterdata: { campo: 'codigo', iguais: ['competencia', 'tipo'] },
   sieg: { campo: 'codigo', iguais: ['competencia', 'tipo'] },
+  pgdas: { campo: 'codigo', iguais: ['competencia', 'modo'] },
 };
 
 /** O que devolve o pedido à fila, em cada robô (os mesmos campos que o próprio robô limpa quando devolve um pedido). */
@@ -337,6 +338,7 @@ const CAMPOS_DE_REFAZER = {
   fgts: () => ({ status: 'pendente', erro: '', aviso: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0, avisadoErroEm: null }),
   alterdata: em => ({ status: 'pendente', erro: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0, esperas: 0, onde: '', esperandoContabil: '', arquivos: {}, mesmoQue: '', andamento: { pct: 0, etapa: 'pedido de novo', clique: '', em } }),
   sieg: () => ({ status: 'pendente', erro: null, erroEm: null, andamento: '' }),
+  pgdas: () => ({ status: 'pendente', erro: '', aviso: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0 }),
 };
 
 /** O erro que não se refaz daqui, com o motivo (a importação no Contábil pode ter lançado metade; os XMLs do cliente já foram apagados). */
@@ -359,6 +361,9 @@ const PEDIDOS_POR_CLIENTE = {
   'sieg:saidas': { modelo: (cli, c) => ({ status: 'pendente', codigo: cli.codigo, competencia: c.competencia }) },
   'sieg:contagem': { modelo: (cli, c) => ({ status: 'pendente', tipo: 'contagem', codigo: cli.codigo, competencia: c.competencia }) },
   'alterdata:mensal': { modelo: (cli, c) => ({ status: 'pendente', tipo: 'mensal', codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
+  // o extrato do PGDAS-D no e-CAC (25/11/2026, robo/ecac-pgdas.js): o CNPJ é o do perfil de procurador
+  'pgdas:extrato': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'extrato', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
+  'pgdas:ensaio': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'ensaio', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
 };
 
 /** O cliente ativo do cadastro, pelo código (o cadastro em memória de 10 min do clientes-cache). */

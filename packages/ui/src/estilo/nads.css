@@ -6623,6 +6623,8 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .faturamento-tabela thead th.fs-fat-mes{color:var(--accent-ink);box-shadow:inset 0 -2px 0 var(--accent);}
 .fat-linha:hover td.fs-fat-mes{background:color-mix(in srgb,var(--accent) 10%,var(--hover-bg));}
 td.fs-fat-sem{color:var(--ink-faint);}
+/* o mês que veio da Receita (PGDAS-D, 25/11/2026): a bolinha depois do valor, na cor do destaque */
+td .fs-fat-receita{color:var(--accent);font-weight:700;}
 .fs-fat-cartao>.gh-blank{border:0;}
 /* a janela do cliente: o nome grande com as fichas, e o mix NF-e x NFC-e numa barra só */
 .fs-det-cabeca{display:flex;align-items:center;gap:12px;}

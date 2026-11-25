@@ -2,11 +2,13 @@
 // relação de faturamento do Fiscal (tarefas/sieg/faturamento.ts): as notas emitidas no SIEG, siegSaidas/{código}_{AAAA-MM}
 // (a soma das NF-e e NFC-e emitidas no mês, sem as canceladas; a NFS-e não entra). O robô (robo/area-cliente.js) monta o
 // resumo dos últimos 12 meses de cada empresa do link e grava em resumo/faturamento; a tela só desenha. Sem dado no mês,
-// a célula fica vazia: nada é inventado.
+// a célula fica vazia: nada é inventado. Desde 25/11/2026, o mês com o PGDAS-D que o robô do e-CAC baixou (tarefas.pgdas)
+// tem o total pela receita declarada à Receita (o número fiel do Simples); as notas do mês continuam do SIEG.
 import * as XLSX from 'xlsx';
 import type { SaidasSieg } from '../tarefas/sieg';
 import type { NotasDoMes } from './notasDoMes';
 import { FONTE_SIEG, mesesDoDetalhe } from '../tarefas/sieg/faturamento';
+import { faturamentoSoPeloPgdas, FONTE_RECEITA, type PgdasDaEmpresa } from '../tarefas/pgdas/resumo';
 
 export interface MesDoFaturamento {
   /** 'aaaa-mm' */
@@ -15,8 +17,13 @@ export interface MesDoFaturamento {
   nfce: number | null;
   /** quantas notas (sem as canceladas) */
   notas: number;
-  /** null = o mês não veio do SIEG */
+  /** null = o mês não veio do SIEG nem da Receita; com `receita`, é a receita declarada (25/11/2026) */
   total: number | null;
+  /**
+   * a receita declarada à Receita no PGDAS-D (25/11/2026: "um relatório fiel na área do cliente"), que o robô do e-CAC
+   * baixa: quando vem, o total do mês é ela (o número que a Receita tem); as notas (nfe, nfce, séries) continuam do SIEG
+   */
+  receita?: { valor: number; rbt12: number | null; consultadoEm: string };
   /** contra o mês anterior com dado, em % */
   variacao: number | null;
   /** as notas canceladas no mês (12/11/2026, o detalhamento) */
@@ -50,8 +57,8 @@ export function seriesDoMes(s: SaidasSieg | null | undefined): SerieDoMes[] {
 /** regime (12/11/2026): o que vale no cadastro (Simples, MEI, Presumido…), para o limite do Simples/MEI; '' = não sei */
 export interface FaturamentoDaEmpresa { codigo: number; nome: string; regime?: string; meses: MesDoFaturamento[] }
 
-/** O que vai para o espelho (resumo/faturamento). */
-export interface ResumoDoFaturamento { empresas: FaturamentoDaEmpresa[]; fonte: string; atualizadoEm: string }
+/** O que vai para o espelho (resumo/faturamento). receitaConsultadaEm (25/11/2026): a última consulta do PGDAS-D no e-CAC, quando algum mês veio da Receita. */
+export interface ResumoDoFaturamento { empresas: FaturamentoDaEmpresa[]; fonte: string; atualizadoEm: string; receitaConsultadaEm?: string }
 
 const dois = (n: number) => String(n).padStart(2, '0');
 
@@ -70,15 +77,44 @@ export function competenciasDoFaturamento(hoje: Date): string[] {
  */
 export function faturamentoDoCliente(empresas: readonly { codigo: number; nome: string; regime?: string }[], competencias: readonly string[],
   saidas: (codigo: number, competencia: string) => SaidasSieg | null | undefined, agora: Date,
-  notas?: (codigo: number, competencia: string) => NotasDoMes | null | undefined): ResumoDoFaturamento | null {
+  notas?: (codigo: number, competencia: string) => NotasDoMes | null | undefined,
+  pgdas?: (codigo: number) => PgdasDaEmpresa | null | undefined): ResumoDoFaturamento | null {
+  let consultas: string[] = [];
   const comDado = empresas
-    .map(e => ({ codigo: e.codigo, nome: e.nome, regime: e.regime ?? '', meses: mesesDoDetalhe(competencias, c => saidas(e.codigo, c)).map(m => ({
+    .map((e): FaturamentoDaEmpresa => ({ codigo: e.codigo, nome: e.nome, regime: e.regime ?? '', meses: mesesDoDetalhe(competencias, c => saidas(e.codigo, c)).map((m): MesDoFaturamento => ({
       competencia: m.competencia, nfe: m.nfe, nfce: m.nfce, notas: m.notas, total: m.total, variacao: m.variacao,
       ...(m.total == null ? {} : { canceladas: m.canceladas, series: seriesDoMes(saidas(e.codigo, m.competencia)) }),
       ...(() => { const r = notas?.(e.codigo, m.competencia); return r ? { notasDoMes: r } : {}; })(),
     })) }))
+    .map(e => {
+      const pg = pgdas?.(e.codigo);
+      if (!pg) return e;
+      if (pg.consultadoEm) consultas = [...consultas, pg.consultadoEm];
+      return { ...e, meses: comAReceita(e.meses, pg, faturamentoSoPeloPgdas(e.regime, pg)) };
+    })
     .filter(e => e.meses.some(m => m.total != null));
-  return comDado.length ? { empresas: comDado, fonte: FONTE_SIEG, atualizadoEm: agora.toISOString() } : null;
+  if (!comDado.length) return null;
+  const daReceita = comDado.some(e => e.meses.some(m => m.receita));
+  const soReceita = daReceita && comDado.every(e => e.meses.every(m => m.total == null || m.receita));
+  return {
+    empresas: comDado, fonte: soReceita ? FONTE_RECEITA : daReceita ? FONTE_RECEITA + ' e ' + FONTE_SIEG : FONTE_SIEG, atualizadoEm: agora.toISOString(),
+    ...(daReceita && consultas.length ? { receitaConsultadaEm: consultas.sort()[consultas.length - 1] } : {}),
+  };
+}
+
+/**
+ * o mês com a receita do PGDAS-D (o total passa a ser ela) e a variação refeita pelos totais novos; soReceita (o Simples,
+ * 25/11/2026): o mês sem o PGDAS-D fica sem total, mesmo com nota no SIEG
+ */
+function comAReceita(meses: readonly MesDoFaturamento[], pg: PgdasDaEmpresa, soReceita: boolean): MesDoFaturamento[] {
+  let anterior: number | null = null;
+  return meses.map(m => {
+    const r = pg.meses[m.competencia];
+    const total = r ? r.receita : soReceita ? null : m.total;
+    const variacao = total != null && anterior != null && anterior > 0 ? Math.round(((total - anterior) / anterior) * 1000) / 10 : null;
+    if (total != null) anterior = total;
+    return { ...m, total, variacao, ...(r ? { receita: { valor: r.receita, rbt12: r.rbt12, consultadoEm: r.consultadoEm } } : {}) };
+  });
 }
 
 // ---------- o painel da tela (12/11/2026: "preciso de melhora no faturamento") ----------

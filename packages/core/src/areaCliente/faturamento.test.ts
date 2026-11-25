@@ -38,6 +38,31 @@ describe('o faturamento do cliente', () => {
     expect(faturamentoDoCliente([{ codigo: 58, nome: 'X' }], ['2026-10'], () => null, new Date())).toBeNull();
   });
 
+  it('com o PGDAS-D (25/11/2026): no Simples, o total do mês é só a receita declarada (o mês sem ela fica vazio); as notas continuam do SIEG', () => {
+    const base = new Map([['292_2026-09', saida('292', '2026-09', 1000)], ['292_2026-10', saida('292', '2026-10', 800, 400)]]);
+    const mesPg = (c: string, receita: number) => ({ competencia: c, receita, interno: receita, externo: 0, rbt12: c === '2026-10' ? 15000 : null, declaracao: null, transmitidaEm: null, origem: 'extrato' as const, consultadoEm: '2026-11-26T02:00:00.000Z' });
+    const pg = { codigo: 292, cnpj: '', nome: '', fonte: 'Receita (PGDAS-D)', consultadoEm: '2026-11-26T02:00:00.000Z', meses: { '2026-10': mesPg('2026-10', 1500) } };
+    // a 58 não tem nota no SIEG, só a Receita: entra
+    const pg58 = { ...pg, codigo: 58, meses: { '2026-09': mesPg('2026-09', 700) } };
+    const r = faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }, { codigo: 58, nome: 'SO RECEITA', regime: 'Simples' }], ['2026-09', '2026-10', '2026-11'],
+      (c, m) => base.get(c + '_' + m), new Date(2026, 10, 26), undefined, c => (c === 292 ? pg : c === 58 ? pg58 : null));
+    expect(r?.empresas[0].meses.map(m => [m.competencia, m.nfe, m.nfce, m.total, m.variacao, m.receita?.valor ?? null])).toEqual([
+      ['2026-09', 1000, null, null, null, null],
+      ['2026-10', 800, 400, 1500, null, 1500],
+      ['2026-11', null, null, null, null, null],
+    ]);
+    expect(r?.empresas[0].meses[1].receita).toEqual({ valor: 1500, rbt12: 15000, consultadoEm: '2026-11-26T02:00:00.000Z' });
+    expect(r?.empresas.map(e => e.codigo)).toEqual([292, 58]);
+    expect(r?.fonte).toBe('Receita (PGDAS-D)');
+    expect(r?.receitaConsultadaEm).toBe('2026-11-26T02:00:00.000Z');
+    // só a Receita
+    const so = faturamentoDoCliente([{ codigo: 58, nome: 'SO RECEITA' }], ['2026-09'], () => null, new Date(), undefined, () => pg58);
+    expect([so?.fonte, so?.empresas[0].meses[0].total]).toEqual(['Receita (PGDAS-D)', 700]);
+    // fora do Simples: a Receita onde tem e o SIEG no resto, com a variação refeita
+    const presumido = faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Presumido' }], ['2026-09', '2026-10'], (c, m) => base.get(c + '_' + m), new Date(2026, 10, 26), undefined, () => pg);
+    expect(presumido?.empresas[0].meses.map(m => [m.total, m.variacao])).toEqual([[1000, null], [1500, 50]]);
+  });
+
 });
 
 // os meses de exemplo: de jan/2025 a nov/2026 (hoje, 12/11/2026), R$ 10 mil por mês em 2025 e R$ 12 mil em 2026

@@ -5,7 +5,7 @@
 //
 // Quem liga: o arquivador (satelites.js), com o canal do child_process. O painel vai para o pai (painel.js, modo
 // satélite). Se o pai sair (atualização, queda), este sai junto: o pai liga de novo quando voltar, e nunca ficam dois.
-//   node robo-modulo.js sieg | fgts | alterdata
+//   node robo-modulo.js sieg | fgts | alterdata | pgdas
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -16,6 +16,8 @@ const MODULOS = {
   fgts: (db, log) => require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }),
   // o balancete e o razão do Alterdata Contábil aberto e logado neste servidor (04/11/2026: "isso tem que rodar no servidor")
   alterdata: (db, log) => require('./alterdata').iniciarAlterdata(db, log),
+  // o extrato do PGDAS-D no e-CAC, só das 23h às 8h (25/11/2026, o faturamento fiel do Simples)
+  pgdas: (db, log) => require('./ecac-pgdas').iniciarPgdas(db, log),
   // só para o teste (teste-satelites.js): marca o tempo a cada 200 ms e fala com o painel; com ECO_OCUPADO_MS, fica
   // "trabalhando" esse tempo depois de ligar (teste-reinicio.js: o pai espera ele terminar antes de sair)
   eco: (db, log) => {

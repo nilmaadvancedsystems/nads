@@ -46,7 +46,7 @@ describe('a Central dos robôs nos exemplos', () => {
     const ate = new Date(Date.now() + 3600000).toISOString();
     await repo.pedir({ robo: '', maquina: 'servidor', acao: 'parar-tudo', ate });
     vi.advanceTimersByTime(2600);
-    expect(Object.keys(repo.docs().maquinas.servidor?.pausados || {}).sort()).toEqual(['alterdata', 'fgts', 'sieg']);
+    expect(Object.keys(repo.docs().maquinas.servidor?.pausados || {}).sort()).toEqual(['alterdata', 'fgts', 'pgdas', 'sieg']);
     expect(repo.docs().maquinas.servidor?.pausados.fgts.ate).toBe(ate);
     await repo.pedir({ robo: '', maquina: 'servidor', acao: 'retomar-tudo' });
     vi.advanceTimersByTime(2600);

@@ -47,12 +47,19 @@ function agrupar(vendas: readonly t.sieg.NotaDoSieg[], modo: ModoDasNotas): Grup
 const POR_VEZ = 30;
 
 /** mostrarVazios: os meses sem dado entram na tabela (só no período Ano; 22/10/2026: "se não tá marcado anual não tem por que estar ali comendo espaço") */
-export function useDetalheDoFaturamento(codigo: number, nome: string, competencias: readonly string[], mostrarVazios = false) {
+export function useDetalheDoFaturamento(codigo: number, nome: string, competencias: readonly string[], mostrarVazios = false, regime = '') {
   const sieg = useSieg();
   const fgts = useFgts();
   const contabil = useContabilDaEmpresa(nome, codigo);
-  const meses = f.mesesDoDetalhe(competencias, c => sieg.doMes(c).saidas.get(String(codigo)));
+  const doSieg = f.mesesDoDetalhe(competencias, c => sieg.doMes(c).saidas.get(String(codigo)));
+  // a Receita ao lado das notas (25/11/2026): a receita declarada no PGDAS-D que o robô do e-CAC trouxe, mês a mês
+  const daReceita = sieg.pgdas().empresas.get(codigo) || null;
+  const naReceita = f.mesesNaReceita(doSieg, daReceita);
+  // no Simples com o PGDAS-D, o faturamento é o da Receita (25/11/2026); as notas, o mix e o ticket seguem do SIEG
+  const pelaReceita = t.pgdas.faturamentoSoPeloPgdas(regime, daReceita);
+  const meses = f.mesesPelaReceita(doSieg, daReceita, regime);
   const comDado = meses.filter(m => m.total != null);
+  const doSiegComDado = doSieg.filter(m => m.total != null);
   const [escolhido, setEscolhido] = useState<string | null>(null);
   const mes = (escolhido && meses.find(m => m.competencia === escolhido && m.total != null)) || comDado[comDado.length - 1] || null;
   const notas = mes ? sieg.notas(String(codigo), mes.competencia) : null;
@@ -67,8 +74,9 @@ export function useDetalheDoFaturamento(codigo: number, nome: string, competenci
   // o painel do cliente (23/10/2026: "abre o dashboard de maneira muito simplista… procura referências"), como nos painéis
   // de faturamento por cliente: o ticket médio, o último mês com a variação, o mix NF-e × NFC-e, a evolução em barras e,
   // no mês, as notas para procurar (a curva ABC saiu em 23/10/2026: "o que é A, B, C? não tá intuitivo")
-  const notasNoPeriodo = comDado.reduce((s, m) => s + m.notas, 0);
-  const nfe = comDado.reduce((s, m) => s + (m.nfe || 0), 0), nfce = comDado.reduce((s, m) => s + (m.nfce || 0), 0);
+  const notasNoPeriodo = doSiegComDado.reduce((s, m) => s + m.notas, 0);
+  const totalDasNotas = doSiegComDado.reduce((s, m) => s + (m.total || 0), 0);
+  const nfe = doSiegComDado.reduce((s, m) => s + (m.nfe || 0), 0), nfce = doSiegComDado.reduce((s, m) => s + (m.nfce || 0), 0);
   const ultimo = comDado[comDado.length - 1] || null;
   // as notas do mês, para procurar e abrir (23/10/2026: "por que não tem como eu ver todos os clientes / abrir e ver /
   // pesquisar as notas por aqui?" e "por que não ter como ver as notas por CFOP se eu clicar?"): por comprador ou por
@@ -89,14 +97,21 @@ export function useDetalheDoFaturamento(codigo: number, nome: string, competenci
     return notasAchadas.length ? [{ ...g, notas: notasAchadas }] : [];
   }) : grupos;
   return {
+    /** null = a empresa ainda não tem o PGDAS-D no nads (o Presumido e o Real nunca têm) */
+    /** o faturamento do detalhe é o da Receita (o Simples com o PGDAS-D) */
+    pelaReceita,
+    receita: naReceita ? {
+      consultado: t.pgdas.consultadoEmTexto(daReceita?.consultadoEm || ''),
+      linhas: naReceita.map(l => ({ ...l, rotulo: f.mesCurto(l.competencia) })),
+    } : null,
     numeros: {
       total,
       media: comDado.length ? total / comDado.length : 0,
       mesesComDado: comDado.length,
       maior: maior ? { rotulo: t.rotuloCompetencia(maior.competencia), valor: maior.total || 0 } : null,
       notas: notasNoPeriodo,
-      canceladas: comDado.reduce((s, m) => s + m.canceladas, 0),
-      ticket: notasNoPeriodo ? total / notasNoPeriodo : 0,
+      canceladas: doSiegComDado.reduce((s, m) => s + m.canceladas, 0),
+      ticket: notasNoPeriodo ? totalDasNotas / notasNoPeriodo : 0,
       ultimo: ultimo ? { rotulo: t.rotuloCompetencia(ultimo.competencia), valor: ultimo.total || 0, variacao: ultimo.variacao, anterior: comDado.length > 1 ? f.mesCurto(comDado[comDado.length - 2].competencia) : '' } : null,
       mix: { nfe, nfce, pctNfe: Math.round(pct(nfe, nfe + nfce)), pctNfce: Math.round(pct(nfce, nfe + nfce)) },
     },

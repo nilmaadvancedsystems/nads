@@ -2,9 +2,10 @@
 //   - siegContagens/{codigo}_{AAAA-MM} e siegSaidas/{codigo}_{AAAA-MM} (só leitura): o robô do PC grava;
 //   - pedidosSieg: o pedido {status: 'pendente', codigo, competencia, criadoEm, criadoPor, criadoPorUid} (só essas
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
-//   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
+//   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto;
+//   - pgdas/{código} (só leitura, 25/11/2026): o resumo do PGDAS-D da empresa, que o robô do e-CAC grava.
 import { escutasDoBanco, sci, tarefas as t } from '@nads/core';
-import { addDoc as addDocBruto, collection, doc, getDoc, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, PedidoSituacao, RepoSieg, SituacaoNaSefaz } from './sieg';
 import { travar, travarPedido } from '../../../comum/disjuntorDeGravacao';
@@ -30,6 +31,8 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
   const notas = new Map<string, { carregadas: boolean; dados: t.sieg.NotasSieg | null }>();
   const pedidos = new Map<string, PedidoSieg | null>();
   const situacoes = new Map<string, PedidoSituacao | null>();
+  let pgdasPedido = false;
+  let pgdasLido: { carregado: boolean; empresas: Map<number, t.pgdas.PgdasDaEmpresa> } = { carregado: false, empresas: new Map() };
   const doMes = new Map<string, { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg>; vieram: number }>();
 
   const tipos = (r: unknown) => {
@@ -62,6 +65,19 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
       return contagens.get(k)!;
     },
     // todos os clientes do mês numa consulta só (siegContagens e siegSaidas têm o campo competencia; 09/10/2026)
+    pgdas() {
+      // uma vez por sessão, sem ouvir (as leituras do banco passam da cota): um documento por empresa
+      if (!pgdasPedido) {
+        pgdasPedido = true;
+        getDocs(collection(db, 'pgdas')).then(s => {
+          const empresas = new Map<number, t.pgdas.PgdasDaEmpresa>();
+          for (const x of s.docs) { const e = t.pgdas.lerPgdasDaEmpresa(x.data()); if (e) empresas.set(e.codigo, e); }
+          pgdasLido = { carregado: true, empresas };
+          mudou();
+        }, () => { pgdasLido = { carregado: true, empresas: new Map() }; mudou(); });
+      }
+      return pgdasLido;
+    },
     doMes(competencia) {
       escutas.usar('mes|' + competencia);
       if (!doMes.has(competencia)) {

@@ -742,8 +742,8 @@ async function iniciar() {
   const SEPARADOS = SO_SERVIDOR && process.env.ARQ_TUDO_JUNTO !== '1';
   if (SEPARADOS) {
     // o Alterdata também (04/11/2026: o balancete e o razão no Contábil deste servidor)
-    log('SIEG, FGTS e Alterdata: cada um no seu processo (robo-modulo.js)');
-    require('./satelites').ligar(['sieg', 'fgts', 'alterdata'], log);
+    log('SIEG, FGTS, Alterdata e PGDAS-D: cada um no seu processo (robo-modulo.js)');
+    require('./satelites').ligar(['sieg', 'fgts', 'alterdata', 'pgdas'], log);
   }
   if (SO_SERVIDOR) {
     log('Atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
@@ -766,7 +766,7 @@ async function iniciar() {
     try {
       const central = require('./central');
       // o FGTS, o SIEG e o Alterdata sabem pausar (10/11/2026): em processos próprios o recado vai pelo canal do satelites.js
-      for (const m of ['fgts', 'sieg', 'alterdata']) {
+      for (const m of ['fgts', 'sieg', 'alterdata', 'pgdas']) {
         const definir = sim => (SEPARADOS ? require('./satelites').pausar(m, sim) : require('./pausa-local').definir(m, sim));
         central.registrarPausa(m, { pausar: async () => definir(true), retomar: async () => definir(false) });
       }

@@ -28,7 +28,7 @@ export function FaturamentoDosClientes() {
         <button type="button" className={'chip-f' + (vm.soComDado ? ' on' : '')} aria-pressed={vm.soComDado} onClick={vm.alternarSoComDado}>Só com faturamento</button>
         <span className="tarefas-barra-espaco" />
         {/* a fonte numa dica (23/10/2026: sem o parágrafo de explicação) */}
-        <Dica texto={'Fonte: ' + vm.fonte + ' (a soma das notas do mês, sem as canceladas; a NFS-e ainda não entra). Mês sem dado fica vazio' + (vm.semDado ? ' (' + vm.semDado + ' clientes sem dado no período)' : '') + '.'} />
+        <Dica texto={(vm.receitaConsultada ? 'Fonte: Receita (PGDAS-D), a receita declarada, nos meses que o robô do e-CAC já trouxe (' + vm.receitaConsultada + '; marcados com •). No Simples com o PGDAS-D, só ela: o mês sem a declaração fica vazio. Nos outros: ' : 'Fonte: ') + vm.fonte + ' (a soma das notas do mês, sem as canceladas; a NFS-e ainda não entra). Mês sem dado fica vazio' + (vm.semDado ? ' (' + vm.semDado + ' clientes sem dado no período)' : '') + '.'} />
         <MenuSuspenso rotulo="Mais" titulo="Exportar e imprimir" direita largura={200}
           itens={[
             { rotulo: 'Exportar Excel', icone: 'download', desabilitado: !vm.linhas.length, onClick: () => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); } },
@@ -79,7 +79,7 @@ export function FaturamentoDosClientes() {
                     <td className="num"><Variacao pct={l.variacao} titulo="O último mês com dado contra o anterior" /></td>
                     {vm.competencias.map(c => {
                       const v = l.meses[c.chave];
-                      return <td key={c.chave} className={'num' + (c.chave === vm.competencia ? ' fs-fat-mes' : '') + (v ? '' : ' fs-fat-sem')} title={v ? 'Fonte: ' + vm.fonte : 'Sem dado neste mês'}>{v ? brl(v.valor) : '—'}</td>;
+                      return <td key={c.chave} className={'num' + (c.chave === vm.competencia ? ' fs-fat-mes' : '') + (v ? '' : ' fs-fat-sem')} title={v ? 'Fonte: ' + vm.fonteDaCelula(v.fonte) : 'Sem dado neste mês'}>{v ? brl(v.valor) : '—'}{v && v.fonte === 'Receita' && <span className="fs-fat-receita" aria-label="pela Receita"> •</span>}</td>;
                     })}
                   </tr>
                 ))}

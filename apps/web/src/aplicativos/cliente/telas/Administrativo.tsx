@@ -297,6 +297,7 @@ export function Faturamento(props: DaCasca) {
               <span className="cli-numero-valor menor">{p.numeros.total}</span>
               {p.numeros.anterior ? <span className="hint"><span className={'cli-variacao ' + (p.numeros.anterior.subiu ? 'sobe' : 'desce')}>{p.numeros.anterior.variacao || p.numeros.anterior.diferenca}</span> {p.numeros.sobre}</span>
                 : <span className="hint">{p.emAndamento ? 'em andamento' : ' '}</span>}
+              {p.numeros.fonte && <span className="hint cli-fat-fonte">{p.numeros.fonte}</span>}
             </div>
             <div className="cli-numero">
               <span className="cli-sobre">Notas emitidas</span>

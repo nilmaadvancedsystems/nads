@@ -53,6 +53,8 @@ export * from './regras/deTeste';
 export * from './regras/caixaNoBanco';
 export * from './regras/adiantamentoSalarial';
 export * as sieg from './sieg';
+// o faturamento fiel do Simples pelo extrato do PGDAS-D no e-CAC (25/11/2026): tarefas.pgdas.*
+export * as pgdas from './pgdas';
 export * as sintegra from './sintegra';
 export * as auditoriaItens from './auditoriaItens';
 export * as painel from './painel';

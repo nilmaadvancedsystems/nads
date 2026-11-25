@@ -30,7 +30,11 @@ export function useFaturamentoDosClientes() {
   const meses = competencias.map(c => sieg.doMes(c));
   const permitidas = useEmpresasPermitidas();
   const empresas = permitidas.filtrar(repo.listarEmpresas()).filter(e => e.codigo != null).map(e => ({ codigo: e.codigo as number, nome: e.nome, regime: e.regime || '' }));
-  const todas = f.linhasDoFaturamento(empresas, competencias, c => sieg.doMes(c).saidas);
+  // a receita do PGDAS-D que o robô do e-CAC trouxe (25/11/2026): vale mais que o SIEG no mês que tem; no Simples, é a
+  // única (o mês sem ela fica vazio)
+  const pgdas = sieg.pgdas();
+  const todas = f.linhasDoFaturamento(empresas, competencias, c => sieg.doMes(c).saidas, false, codigo => pgdas.empresas.get(codigo));
+  const consultas = [...pgdas.empresas.values()].map(e => e.consultadoEm).filter(Boolean).sort();
   const q = busca.trim();
   const achadas = q ? new Set(emp.buscarEmpresas(todas, q).map(e => e.codigo)) : null;
   const linhas = todas.filter(l => (!achadas || achadas.has(l.codigo)) && (!regime || l.regime === regime) && (!soComDado || l.total != null));
@@ -45,7 +49,7 @@ export function useFaturamentoDosClientes() {
   const rotuloDoPeriodo = periodo === 'mes' ? t.rotuloCompetencia(competencia) : periodo === 'ano' ? 'Janeiro a ' + t.rotuloCompetencia(competencia) : '12 meses até ' + t.rotuloCompetencia(competencia);
   return {
     exemplos: sieg.exemplos,
-    carregando: meses.some(m => !m.carregado),
+    carregando: meses.some(m => !m.carregado) || !pgdas.carregado,
     periodo, setPeriodo, periodos: f.PERIODOS_DO_FATURAMENTO,
     competencia, setCompetencia,
     busca, setBusca,
@@ -66,6 +70,10 @@ export function useFaturamentoDosClientes() {
       maior: maior && maior.total ? { nome: maior.nome, valor: maior.total } : null,
     },
     fonte: f.FONTE_SIEG,
+    /** de onde veio o número da célula (25/11/2026): a Receita (PGDAS-D) ou o SIEG */
+    fonteDaCelula: (fonte: string) => (fonte === t.pgdas.FONTE_RECEITA_CURTA ? t.pgdas.FONTE_RECEITA + ' · a receita declarada' : f.FONTE_SIEG),
+    /** a última consulta do robô do e-CAC ('' = nenhuma empresa com o PGDAS-D ainda) */
+    receitaConsultada: consultas.length ? t.pgdas.consultadoEmTexto(consultas[consultas.length - 1]) : '',
     rotuloDoPeriodo,
     exportar() {
       const p = f.planilhaDoFaturamento(linhas, competencias);
