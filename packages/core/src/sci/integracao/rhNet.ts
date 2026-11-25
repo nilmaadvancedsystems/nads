@@ -120,12 +120,28 @@ export function informacoesDoJwt(jwt: string): Record<string, unknown> {
 const numeroDoJwt = (jwt: string, chaves: string[]) => { const o = informacoesDoJwt(jwt); for (const k of chaves) { const n = inteiro(o[k]); if (n) return n; } return 0; };
 
 /**
- * O empresa_id que vem no JWT do Token de Cliente da empresa (as chaves mudam de nome conforme a SCI). 0 quando não tem: aí o
- * escritório informa o número na configuração do robô.
+ * Os dados do usuário dentro do JWT, como a SCI manda de verdade (visto no primeiro login, 25/11/2026):
+ * usuario: { tipo, usuarioId, dados: { clienteId, empresasVinculadas: [empresaId], acessos } }.
  */
-export const empresaIdDoJwt = (jwt: string) => numeroDoJwt(jwt, ['empresa_id', 'empresaId', 'empresa', 'emp_id']);
-/** O cliente_id (o código da contabilidade na SCI; a liberação da planilha pede) que vem no JWT; 0 quando não tem. */
-export const clienteIdDoJwt = (jwt: string) => numeroDoJwt(jwt, ['cliente_id', 'clienteId', 'cliente']);
+function dadosDoUsuarioNoJwt(jwt: string): Solto {
+  return objeto(objeto(informacoesDoJwt(jwt).usuario)?.dados) || {};
+}
+
+/**
+ * O empresa_id do Token de Cliente da empresa: o de usuario.dados.empresasVinculadas quando há uma só (com mais de uma, fica a
+ * dúvida e o escritório informa), senão as chaves soltas. 0 quando não tem: aí o escritório informa na configuração do robô.
+ */
+export function empresaIdDoJwt(jwt: string): number {
+  const vinculadas = dadosDoUsuarioNoJwt(jwt).empresasVinculadas;
+  if (Array.isArray(vinculadas)) {
+    const ids = [...new Set(vinculadas.map(inteiro).filter(Boolean))];
+    if (ids.length === 1) return ids[0];
+    if (ids.length > 1) return 0;
+  }
+  return numeroDoJwt(jwt, ['empresa_id', 'empresaId', 'empresa', 'emp_id']);
+}
+/** O cliente_id (o código da contabilidade na SCI; a liberação da planilha pede): o de usuario.dados, senão as chaves soltas; 0 quando não tem. */
+export const clienteIdDoJwt = (jwt: string) => inteiro(dadosDoUsuarioNoJwt(jwt).clienteId) || numeroDoJwt(jwt, ['cliente_id', 'clienteId', 'cliente']);
 
 // ---------------------------------- a admissão ----------------------------------
 

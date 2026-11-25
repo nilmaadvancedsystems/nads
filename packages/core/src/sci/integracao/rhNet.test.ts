@@ -39,6 +39,12 @@ describe('RH NET: a regra', () => {
     expect(empresaIdDoJwt(jwt({ empresa_id: 900001, cliente: '1234' }))).toBe(900001);
     expect(clienteIdDoJwt(jwt({ empresa_id: 900001, cliente: '1234' }))).toBe(1234);
     expect(empresaIdDoJwt('lixo')).toBe(0);
+    // como a SCI manda de verdade (o primeiro login, 25/11/2026): dentro de usuario.dados
+    const real = jwt({ sub: 1, parceiroId: 802, usuario: { tipo: 2, usuarioId: 1, dados: { clienteId: 17157, empresasVinculadas: [566483], acessos: {} } } });
+    expect(empresaIdDoJwt(real)).toBe(566483);
+    expect(clienteIdDoJwt(real)).toBe(17157);
+    // usuário com mais de uma empresa: fica a dúvida (o escritório informa)
+    expect(empresaIdDoJwt(jwt({ usuario: { dados: { empresasVinculadas: [1, 2] } } }))).toBe(0);
   });
 
   it('a admissão: confere o mínimo e monta o corpo como a SCI pede', () => {

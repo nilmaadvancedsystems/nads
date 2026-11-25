@@ -887,13 +887,24 @@ const numeroDoJwt = (jwt, chaves) => {
 	}
 	return 0;
 };
-const empresaIdDoJwt = (jwt) => numeroDoJwt(jwt, [
-	"empresa_id",
-	"empresaId",
-	"empresa",
-	"emp_id"
-]);
-const clienteIdDoJwt = (jwt) => numeroDoJwt(jwt, [
+function dadosDoUsuarioNoJwt(jwt) {
+	return objeto(objeto(informacoesDoJwt(jwt).usuario)?.dados) || {};
+}
+function empresaIdDoJwt(jwt) {
+	const vinculadas = dadosDoUsuarioNoJwt(jwt).empresasVinculadas;
+	if (Array.isArray(vinculadas)) {
+		const ids = [...new Set(vinculadas.map(inteiro).filter(Boolean))];
+		if (ids.length === 1) return ids[0];
+		if (ids.length > 1) return 0;
+	}
+	return numeroDoJwt(jwt, [
+		"empresa_id",
+		"empresaId",
+		"empresa",
+		"emp_id"
+	]);
+}
+const clienteIdDoJwt = (jwt) => inteiro(dadosDoUsuarioNoJwt(jwt).clienteId) || numeroDoJwt(jwt, [
 	"cliente_id",
 	"clienteId",
 	"cliente"
