@@ -54,7 +54,7 @@ describe('RH NET: a regra', () => {
     expect(erroDaAdmissao({ ...ADMISSAO, salario: 0 })).toMatch('salário');
     const corpo = corpoDaAdmissao(900001, { ...ADMISSAO, celular: '(38) 99876-5432', salario: 1800, funcaoId: 5 });
     expect(corpo).toMatchObject({
-      empresa_id: 900001, tipo_colaborador: 'funcionario', nome: 'MARIA DA SILVA', cpf: '52998224725', admissao_data: '2026-12-01',
+      empresa_id: 900001, tipo_colaborador: 'funcionario', nome: 'MARIA DA SILVA', cpf: '529.982.247-25', admissao_data: '2026-12-01',
       ddd_celular: '38', celular: '998765432', salario_base: 1800, v_funcao_id: 5, departamento_id: null, habilita_acesso_modulo_colaborador: false,
     });
     expect(admissaoDoRhNet({ funcionario_contribuinte_id: 15, situacao: 'nao_liberado', nome: 'MARIA DA SILVA', cpf: '529', admissao_data: '2026-12-01' }))

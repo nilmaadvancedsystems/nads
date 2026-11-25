@@ -187,9 +187,11 @@ export function erroDaAdmissao(a: AdmissaoParaRhNet): string {
 export function corpoDaAdmissao(empresaId: number, a: AdmissaoParaRhNet): Record<string, unknown> {
   const digitos = (v?: string) => String(v ?? '').replace(/\D/g, '');
   const cel = digitos(a.celular);
+  // o RH NET só aceita o CPF formatado (o primeiro teste, 25/11/2026: só os números voltou "não possui o formato válido de CPF")
+  const cpf = digitos(a.cpf).replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
   return {
     empresa_id: empresaId, tipo_colaborador: 'funcionario',
-    nome: texto(a.nome).toUpperCase(), cpf: digitos(a.cpf), admissao_data: a.admissao,
+    nome: texto(a.nome).toUpperCase(), cpf, admissao_data: a.admissao,
     nascimento_data: a.nascimento || null, sexo: a.sexo ?? null, email: texto(a.email) || null,
     ddd_celular: cel.length >= 10 ? cel.slice(0, 2) : null, celular: cel.length >= 10 ? cel.slice(2) : null,
     mae_nome: texto(a.maeNome).toUpperCase() || null, pis_numero: digitos(a.pis) || null,

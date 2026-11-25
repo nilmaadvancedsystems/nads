@@ -922,11 +922,12 @@ function erroDaAdmissao(a) {
 function corpoDaAdmissao(empresaId, a) {
 	const digitos = (v) => String(v ?? "").replace(/\D/g, "");
 	const cel = digitos(a.celular);
+	const cpf = digitos(a.cpf).replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
 	return {
 		empresa_id: empresaId,
 		tipo_colaborador: "funcionario",
 		nome: texto(a.nome).toUpperCase(),
-		cpf: digitos(a.cpf),
+		cpf,
 		admissao_data: a.admissao,
 		nascimento_data: a.nascimento || null,
 		sexo: a.sexo ?? null,
