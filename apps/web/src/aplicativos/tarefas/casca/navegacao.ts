@@ -19,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens', 'tabelas-reforma'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'lancatudo' | 'shadersci' | 'controle-contabil' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'prazos' | 'lancatudo' | 'shadersci' | 'controle-contabil' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -58,6 +58,10 @@ export const APLICACOES: readonly Aplicacao[] = [
   // regras da empresa; o Contábil e o admin, só no modo desenvolvedor até o Vitor aprovar (a novidade 'lancatudo')
   // uma tela só, sem a barra lateral (18/11/2026: "remove essa barra lateral"): as Regras abrem em janela, pelo botão da barra
   // de cima; o link antigo /tarefas/lancatudo/regras abre a tela com a janela das Regras
+  // os prazos do mês (25/11/2026, plano do Acessórias, ficha E04): as obrigações com prazo de todas as empresas, por situação
+  { id: 'prazos', nome: 'Prazos', icone: 'clock', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'mes', rotulo: 'Prazos do mês', icone: 'clock', titulo: 'Prazos do mês' },
+  ] },
   { id: 'lancatudo', nome: 'Lançatudo', icone: 'landmark', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'list', titulo: 'Lançamentos do extrato' },
     // sem barra lateral, não aparece em lugar nenhum: só faz o link das Regras abrir a tela com a janela delas
@@ -317,6 +321,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
+    // os Prazos do mês: o Fiscal, o admin e o Diretor, no modo desenvolvedor até ser aprovado (só o Fiscal tem prazos por ora)
+    (a.id !== 'prazos' || ((op.admin || ehDiretor(op) || op.departamento === 'fiscal') && novidadeLigada('prazos'))) &&
     (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
     (a.id !== 'shadersci' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
     // o Controle Forestry só para quem está liberado (25/11/2026: "Controle forestry somente para fernando, depois peco para

@@ -32,6 +32,8 @@ export interface RepoAcesso {
   equipe(): { carregada: boolean; lista: usuarios.Usuario[]; docs: Record<string, usuarios.DocUsuario> };
   salvarCargo(uid: string, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null): Promise<void>;
   salvarPapeis(uid: string, papeis: string[]): Promise<void>;
+  /** uma linha no Registro de alterações (ficha E20) feita fora do acesso, como a troca de responsável (M02); nos exemplos, nada */
+  registrarAlteracao(acao: usuarios.AcaoDoRegistro, detalhe: string): void;
   /** a foto de perfil de quem está logado (a mesma do Entregas: usuarios.fotoPerfil), ao vivo */
   minhaFoto(): string | null;
   /** troca (ou tira, com null) a foto de perfil de quem está logado */
@@ -122,6 +124,7 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
     equipe: () => ({ carregada: true, lista: equipe(), docs }),
     async salvarCargo(uid, dep, nivel) { Object.assign(docs[uid], usuarios.mudancaDeCargo(docs[uid], dep, nivel)); mudou(); },
     async salvarPapeis(uid, papeis) { docs[uid].roles = papeis as usuarios.Papel[]; mudou(); },
+    registrarAlteracao() { /* nos exemplos não há registro */ },
     minhaFoto: () => Object.values(docs).find(d => d.nome === quem()?.nome)?.fotoPerfil || null,
     async marcarPresenca() {
       const d = Object.values(docs).find(x => x.nome === quem()?.nome);

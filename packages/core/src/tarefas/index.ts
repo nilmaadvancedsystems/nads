@@ -36,6 +36,8 @@ export * from './regras/prazosDoDp';
 export * from './regras/prazos';
 // o que está pendente numa empresa quando ela muda de responsável (plano do Acessórias, ficha M02)
 export * from './regras/pendenciasNaTroca';
+// os prazos do mês: cada obrigação de cada empresa com a situação pelo prazo (plano do Acessórias, ficha E04)
+export * from './regras/situacaoDoPrazo';
 export * from './regras/despesasDoBalancete';
 export * from './regras/inicio';
 export * from './regras/enviosDoDp';

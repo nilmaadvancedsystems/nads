@@ -5,13 +5,17 @@
 
 export type AcaoDoRegistro =
   | 'usuario-criado' | 'usuario-cargo' | 'usuario-papeis' | 'usuario-ativado' | 'usuario-desativado' | 'usuario-excluido' | 'usuario-email'
-  | 'acesso-liberado' | 'acesso-recusado' | 'acesso-revogado';
+  | 'acesso-liberado' | 'acesso-recusado' | 'acesso-revogado'
+  // a troca de responsável das empresas (25/11/2026, ficha M02): o pedido, o aceite, a recusa e a troca direta do Diretor
+  | 'responsavel-pedido' | 'responsavel-aceito' | 'responsavel-recusado' | 'responsavel-trocado';
 
 export const ROTULO_DO_REGISTRO: Record<AcaoDoRegistro, string> = {
   'usuario-criado': 'Criou a conta', 'usuario-cargo': 'Mudou o cargo', 'usuario-papeis': 'Mudou os papéis',
   'usuario-ativado': 'Ativou a conta', 'usuario-desativado': 'Desativou a conta', 'usuario-excluido': 'Excluiu a conta',
   'usuario-email': 'Trocou o e-mail', 'acesso-liberado': 'Liberou um computador', 'acesso-recusado': 'Recusou um computador',
   'acesso-revogado': 'Revogou um computador',
+  'responsavel-pedido': 'Pediu troca de responsável', 'responsavel-aceito': 'Aceitou troca de responsável',
+  'responsavel-recusado': 'Recusou troca de responsável', 'responsavel-trocado': 'Trocou o responsável',
 };
 
 export const MAIOR_DETALHE = 300;
