@@ -3905,7 +3905,8 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   // (05/11/2026) no zip de movimento solto, o mês do nome do zip ("MOVIMENTO_BRAZILIAN_COFFEE_OUT-2026…zip", "…OUTUBRO-2026…"), o mesmo em todas as pastas que o trazem
   // (25/11/2026) e o mês em número ("Exemplo 10.2026.zip")
   const doZip = mesDoNomeDaPasta(rel) || mesNumericoDaPasta(rel);
-  if (!comp && c.semPasta && doZip) { comp = doZip; ev.push('mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')'); }
+  // (25/11/2026) e quando o cliente veio de outro lugar (o hash, o "Arquivar em…" do admin) mas a pasta de origem não diz o cliente: o zip de movimento solto do mesmo jeito
+  if (!comp && (c.semPasta || !clienteDaPasta(rel, cad)) && doZip) { comp = doZip; ev.push('mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')'); }
   // (Vitor, 05/11/2026) a data do nome no futuro ("02-10-2027 OURO VERDE FRETE…" num zip de OUTUBRO-2026: erro de digitação): vale o mês do nome do zip/pasta
   const hoje = ctx.hoje || new Date();
   if (comp && comp.ano * 12 + comp.mes > hoje.getFullYear() * 12 + hoje.getMonth() + 1 && doZip) { ev.push('a data do nome (' + mesAno(comp) + ') está no futuro: o mês do nome do zip/pasta de origem (' + mesAno(doZip) + ')'); comp = doZip; }
