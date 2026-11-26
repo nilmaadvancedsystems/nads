@@ -182,6 +182,8 @@ describe('SCI Report: o cliente da API', () => {
     expect(await sci.empresaPeloDocumento('12.345.678/0001-90')).toBe(7);
     expect(await sci.empresaPeloDocumento(CNPJ)).toBe(7);
     expect(chamadas.filter(c => c.url.includes('/empresa/busca/'))).toHaveLength(1);
+    // a SCI só acha o CNPJ formatado (26/11/2026)
+    expect(new URL(chamadas.find(c => c.url.includes('/empresa/busca/'))!.url).searchParams.get('numeroDocumento')).toBe('12.345.678/0001-90');
   });
 });
 

@@ -95,8 +95,11 @@ async function publicarGuias(db, { codigo, cnpj, guias }) {
     const jaNoSci = r.empresaId && competencias.length ? await sci.publicacoes(r.empresaId, competencias[0], competencias[competencias.length - 1]) : [];
     for (const g of guias) {
       const descricao = [g.tipo === 'OUTRO' ? '' : g.tipo, g.tributo].filter(Boolean).join(' ') || g.nome;
-      const guia = { competencia: g.competencia, vencimento: g.vencimento, valor: Number(g.valor) || 0, descricao };
-      const relatorioId = S.relatorioDaGuia(cfg, g.tipo, g.tributo);
+      // (26/11/2026, o primeiro DAS de teste) o lote lê o vencimento como 'dd-mm-aaaa' e o valor pode vir em texto ('R$1,00')
+      const vencimento = String(g.vencimento || '').trim().replace(/^(\d{2})-(\d{2})-(\d{4})$/, '$1/$2/$3');
+      const valor = typeof g.valor === 'number' ? g.valor : Number(String(g.valor || '').replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+      const guia = { competencia: g.competencia, vencimento, valor, descricao };
+      const relatorioId = S.relatorioDaGuia(cfg, g.tipo, g.tributo, g.coluna || '');
       const erro = S.erroDaGuiaParaPublicar(guia, relatorioId, r.empresaId || null, g.pdf ? g.pdf.length : 0);
       if (erro) { r.falhas.push({ nome: g.nome, erro }); continue; }
       try {

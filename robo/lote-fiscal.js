@@ -463,7 +463,7 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
   if (via === 'scireport') {
     sciReport = await SCI.publicarGuias(db, {
       codigo, cnpj: doc ? String(doc.data().documento || doc.data().cnpj || '') : '',
-      guias: itens.map((i, k) => ({ nome: i.vai.nome, tipo: i.vai.tipo, tributo: i.vai.tributo, valor: i.vai.valor, vencimento: (i.leitura && i.leitura.vencimento) || '', competencia, pdf: buffers[k] })),
+      guias: itens.map((i, k) => ({ nome: i.vai.nome, tipo: i.vai.tipo, tributo: i.vai.tributo, coluna: i.vai.coluna || '', valor: i.vai.valor, vencimento: (i.leitura && i.leitura.vencimento) || '', competencia, pdf: buffers[k] })),
     }).catch(err => ({ empresaId: 0, publicadas: [], falhas: [], erro: String(err.message || err).slice(0, 200) }));
     if (sciReport) resultado.sciReport = { publicadas: sciReport.publicadas.length, falhas: sciReport.falhas, erro: sciReport.erro };
   }
