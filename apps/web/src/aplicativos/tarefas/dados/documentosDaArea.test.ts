@@ -53,6 +53,8 @@ describe('o Enviar ao cliente adivinha a empresa e a área (26/11/2026)', () => 
     const emp = [{ codigo: 292, nome: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA' }, { codigo: 590, nome: 'TORIBA TECNOLOGIA E GESTAO EMPRESARIAL LTDA' }];
     const docs = new Map([[292, '11.222.333/0001-81'], [590, '44.555.666/0001-00']]);
     expect(cnpjsDoTexto('CNPJ: 44.555.666/0001-00 e 44555666000100')).toEqual(['44555666000100']);
+    // o CNPJ no nome do arquivo (os da Receita: "GuiaPagamento_65116459000109_1004202608.pdf")
+    expect(cnpjsDoTexto('GuiaPagamento_65116459000109_1004202608.pdf')).toEqual(['65116459000109']);
     expect(empresaDoArquivo(emp, 'nota.pdf', ['44555666000100'], docs)?.codigo).toBe(590);
     expect(empresaDoArquivo(emp, 'nota.pdf', ['44555666000299'], docs)?.codigo).toBe(590);
     expect(empresaDoArquivo(emp, '292 - extrato.pdf', [], docs)?.codigo).toBe(292);

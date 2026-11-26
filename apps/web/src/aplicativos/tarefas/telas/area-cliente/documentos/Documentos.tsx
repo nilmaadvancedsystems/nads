@@ -175,7 +175,8 @@ function JanelaDaRecusa({ vm }: { vm: Vm }) {
 function JanelaDeEnviar({ vm }: { vm: Vm }) {
   const v = vm.enviar;
   const a = v.andamento;
-  const pronto = a.fase === 'pronto';
+  // pronto: todos foram (com vários, o resumo dos nomes)
+  const pronto = v.enviadosAgora.length > 0 && !v.ocupado && !v.arquivos.length;
   return (
     <JanelaPequena titulo="Enviar ao cliente" sub="O cliente vê em Documentos › Do escritório, em até 30 minutos." onFechar={v.fechar}
       rodape={pronto ? <>
@@ -186,14 +187,27 @@ function JanelaDeEnviar({ vm }: { vm: Vm }) {
         <button type="button" className="btn btn-outline" onClick={v.fechar} disabled={v.ocupado}>Cancelar</button>
       </>}>
       {pronto ? (
-        <Vazio compacto icone="checkCircle" titulo="Enviado" texto={'“' + a.nomeFinal + '” está na pasta da ' + (v.empresa?.nome ?? 'empresa') + '. O cliente vê em Documentos › Do escritório em até 30 minutos.'} />
+        <Vazio compacto icone="checkCircle" titulo={v.enviadosAgora.length === 1 ? 'Enviado' : v.enviadosAgora.length + ' arquivos enviados'}
+          texto={(v.enviadosAgora.length === 1 ? '“' + v.enviadosAgora[0] + '”' : v.enviadosAgora.join(', ')) + ' — na Área do Cliente da ' + (v.empresa?.nome ?? 'empresa') + ', em Documentos › Do escritório.'} />
       ) : <>
         {/* o arquivo com a peça "Escolher arquivos" do nads (fora do .field: a regra do .field label deforma o quadro) */}
+        {/* os arquivos (26/11/2026: "tenho que poder selecionar mais de um arquivo"), com a peça "Escolher arquivos" do nads
+            (fora do .field: a regra do .field label deforma o quadro) */}
         <div>
-          <span className="field-rotulo">Arquivo</span>
-          <CampoArquivo aceitar="*" arquivo={v.arquivo} onEscolher={f => v.setArquivo(f)} desabilitado={v.ocupado} />
-          <p className="hint" style={{ marginTop: 6 }}>{v.arquivo ? v.tamanho + ' · ' : ''}Até 5 MB. Holerite não vai por aqui.</p>
-          {v.erroDoArquivo && <p className="hint registro-dica-erro" role="alert">{v.erroDoArquivo}</p>}
+          <span className="field-rotulo">Arquivos</span>
+          <CampoArquivo aceitar="*" multiplo onEscolherVarios={fs => v.escolher(fs)} desabilitado={v.ocupado} />
+          {v.arquivos.length > 0 && (
+            <ul className="ent-linhas" style={{ marginTop: 8 }}>
+              {v.arquivos.map(f => (
+                <li key={f.nome}>
+                  <IconeDeArquivo formato={formatoPeloNome(f.nome)} tamanho={20} />
+                  <div><b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nome}</b><span className="fraco">{f.tamanho}{f.erro ? ' · ' + f.erro : ''}</span></div>
+                  <button type="button" className="janela-x" aria-label={'Tirar ' + f.nome} title="Tirar" disabled={v.ocupado} onClick={() => v.tirar(f.nome)}><Icone nome="x" width={16} height={16} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="hint" style={{ marginTop: 6 }}>Pode escolher vários. Até 5 MB cada. Holerite não vai por aqui.</p>
         </div>
         <div className="field">
           <span className="field-rotulo">Empresa</span>
@@ -204,7 +218,7 @@ function JanelaDeEnviar({ vm }: { vm: Vm }) {
           <span className="field-rotulo">Área</span>
           <Segmentado valor={v.area} onMudar={v.setArea} opcoes={v.areas.map(x => ({ valor: x.valor, rotulo: x.rotulo }))} />
         </div>
-        {a.fase === 'enviando' && <p className="hint" role="status">{a.texto}</p>}
+        {a.fase === 'enviando' && <p className="hint" role="status">{v.vez ? v.vez + ' · ' : ''}{a.texto}</p>}
         {a.fase === 'erro' && <p className="hint registro-dica-erro" role="alert">{a.texto}</p>}
       </>}
     </JanelaPequena>

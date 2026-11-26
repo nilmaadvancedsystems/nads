@@ -77,21 +77,31 @@ export function useDocumentos() {
   // A pessoa ainda troca
   const gmail = useGmailDoEntregas();
   const [adivinhado, setAdivinhado] = useState('');
-  async function adivinhar(f: File) {
-    const a = areaPeloNome(f.name);
+  // (26/11/2026: "tenho que poder selecionar mais de um arquivo") olha todos: a área do primeiro que diz; a empresa pelo CNPJ
+  // do nome ou de dentro do PDF de qualquer um deles
+  async function adivinhar(fs: readonly File[]) {
+    const a = fs.map(f => areaPeloNome(f.name)).find(Boolean) ?? null;
     if (a) setArea(a);
-    let cnpjs: string[] = [];
-    if (/\.pdf$/i.test(f.name) && f.size <= ac.MAIOR_ENVIO_AO_CLIENTE) {
-      try {
-        const bytes = new Uint8Array(await f.arrayBuffer());
-        if (extrator.ehPdf(bytes)) cnpjs = cnpjsDoTexto(t.linhasDasPaginas(await extrator.itensDoPdf(bytes)).map(l => l.join(' ')).join(' '));
-      } catch { /* sem leitura: fica o nome do arquivo */ }
+    let e: EmpresaParaEnviar | null = null;
+    for (const f of fs) {
+      let cnpjs = cnpjsDoTexto(f.name);
+      if (!cnpjs.length && /\.pdf$/i.test(f.name) && f.size <= ac.MAIOR_ENVIO_AO_CLIENTE) {
+        try {
+          const bytes = new Uint8Array(await f.arrayBuffer());
+          if (extrator.ehPdf(bytes)) cnpjs = cnpjsDoTexto(t.linhasDasPaginas(await extrator.itensDoPdf(bytes)).map(l => l.join(' ')).join(' '));
+        } catch { /* sem leitura: fica o nome do arquivo */ }
+      }
+      e = empresaDoArquivo(empresas, f.name, cnpjs, gmail.documentos());
+      if (e) break;
     }
-    const e = empresaDoArquivo(empresas, f.name, cnpjs, gmail.documentos());
     setEmpresa(atual => atual ?? e);
     setAdivinhado([e ? 'a empresa' : '', a ? 'a área' : ''].filter(Boolean).join(' e '));
   }
-  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [arquivos, setArquivos] = useState<File[]>([]);
+  // o envio de vários, um atrás do outro: em qual está e quais já foram
+  const [vez, setVez] = useState<{ atual: number; total: number } | null>(null);
+  const [enviadosAgora, setEnviadosAgora] = useState<string[]>([]);
+  const erroDe = (f: File) => ac.erroDoEnvioAoCliente({ nome: f.name, tamanho: f.size });
   // só as empresas com link: o robô do PC só publica a pasta DO ESCRITÓRIO de quem tem acesso (revisão de 26/11/2026)
   const comLink = repo.links().lista;
   const empresas = useMemo(() => daPessoa.empresas.filter(x => x.codigo != null && comLink.some(l => l.codigo === x.codigo)).map(x => ({ codigo: x.codigo as number, nome: x.nome })), [daPessoa.empresas, comLink]);
@@ -166,24 +176,42 @@ export function useDocumentos() {
     // o enviar ao cliente
     enviar: {
       aberta: enviando,
-      abrir(paraEmpresa?: EmpresaParaEnviar) { setEnviando(true); setEmpresa(paraEmpresa ?? null); setArquivo(null); setArea('societario'); setAdivinhado(''); envio.limpar(); },
+      abrir(paraEmpresa?: EmpresaParaEnviar) { setEnviando(true); setEmpresa(paraEmpresa ?? null); setArquivos([]); setArea('societario'); setAdivinhado(''); setVez(null); setEnviadosAgora([]); envio.limpar(); },
       fechar() { if (!envio.ocupado) { setEnviando(false); envio.limpar(); } },
       empresas, empresa, setEmpresa,
       area, setArea, areas: ac.AREAS_DO_ESCRITORIO,
-      arquivo, setArquivo: (f: File | null) => { setArquivo(f); envio.limpar(); if (f) void adivinhar(f); },
+      /** os arquivos escolhidos (mais um lote junta aos que já estão; o mesmo nome não repete) */
+      arquivos: arquivos.map(f => ({ nome: f.name, tamanho: ac.tamanhoLegivel(f.size), erro: erroDe(f) })),
+      escolher(fs: readonly File[]) {
+        if (!fs.length) return;
+        const juntos = [...arquivos, ...fs.filter(f => !arquivos.some(x => x.name === f.name && x.size === f.size))];
+        setArquivos(juntos); envio.limpar(); setEnviadosAgora([]);
+        void adivinhar(juntos);
+      },
+      tirar(nome: string) { setArquivos(l => l.filter(f => f.name !== nome)); },
       /** o que foi adivinhado pelo arquivo ("Empresa e área pelo arquivo; confira") */
       adivinhado,
-      erroDoArquivo: arquivo ? ac.erroDoEnvioAoCliente({ nome: arquivo.name, tamanho: arquivo.size }) : '',
-      tamanho: arquivo ? ac.tamanhoLegivel(arquivo.size) : '',
       andamento: envio.andamento,
-      ocupado: envio.ocupado,
-      pode: !!empresa && !!arquivo && !ac.erroDoEnvioAoCliente({ nome: arquivo.name, tamanho: arquivo.size }) && !envio.ocupado,
+      /** "Arquivo 2 de 3" enquanto manda vários */
+      vez: vez && vez.total > 1 ? 'Arquivo ' + vez.atual + ' de ' + vez.total : '',
+      enviadosAgora,
+      ocupado: envio.ocupado || !!vez,
+      pode: !!empresa && arquivos.length > 0 && arquivos.every(f => !erroDe(f)) && !envio.ocupado && !vez,
       async confirmar() {
-        if (!empresa || !arquivo) return;
-        try { await envio.enviar(arquivo, empresa, area); setAba('enviados'); }
-        catch { /* o andamento já diz o motivo */ }
+        if (!empresa || !arquivos.length) return;
+        const feitos: string[] = [];
+        try {
+          for (let i = 0; i < arquivos.length; i++) {
+            setVez({ atual: i + 1, total: arquivos.length });
+            const r = await envio.enviar(arquivos[i], empresa, area);
+            feitos.push(r.nomeFinal);
+          }
+          setEnviadosAgora(feitos);
+          setAba('enviados');
+        } catch { /* o andamento já diz o motivo; os que foram ficam em Enviados por mim */ }
+        finally { setVez(null); setArquivos(l => l.filter(f => !feitos.includes(f.name))); }
       },
-      outro() { setArquivo(null); envio.limpar(); },
+      outro() { setArquivos([]); setEnviadosAgora([]); envio.limpar(); },
     },
 
     // os enviados por mim
