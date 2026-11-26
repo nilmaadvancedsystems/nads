@@ -1,7 +1,7 @@
 // A ferramenta nads → SCI (23/11/2026, docs/sci): junta as planilhas de importação do nads e baixa a planilha que o
 // gerador do SCI importa. No SCI só entram importações; o que estiver errado se trata lá pelo balancete.
 import { BotaoAcao, CampoArquivo, Icone, Segmentado, SoltarArquivos, Vazio } from '@nads/ui';
-import { formatos, type sci } from '@nads/core';
+import { formatos, sci } from '@nads/core';
 import { useNadsParaSci } from './useNadsParaSci';
 
 type Vm = ReturnType<typeof useNadsParaSci>;
@@ -150,7 +150,7 @@ function Lado({ vm }: { vm: Vm }) {
 
       <span className="hint">Plano do SCI da empresa</span>
       <Segmentado<sci.IdDoPlanoSci | ''> valor={vm.idDoPlano} onMudar={vm.setIdDoPlano} opcoes={[
-        { valor: '', rotulo: 'Nenhum' }, { valor: '90113', rotulo: '90113' }, { valor: '90011', rotulo: '90011' },
+        { valor: '', rotulo: 'Nenhum' }, ...sci.planosDoSci().map(p => ({ valor: p.id, rotulo: p.id })),
       ]} />
       {vm.idDoPlano && (
         vm.planoDaEmpresa

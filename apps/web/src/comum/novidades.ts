@@ -89,12 +89,17 @@ export const NOVIDADES = {
   /** Cadastro › Obrigações (25/11/2026, plano do Acessórias, ficha E08): ligar, desligar e mudar o dia do prazo de uma etapa só
    *  numa empresa, a partir de uma competência; e o regime com "a partir de" (ficha E10) em Fiscal › Parâmetros */
   'obrigacoes-por-empresa': { desde: '25/11/2026', aprovada: false },
+  /** Cadastro › empresa: os Parâmetros do Contábil e do Fiscal numa aba só, Particularidades (26/11/2026) */
+  particularidades: { desde: '26/11/2026', aprovada: true },
   /** a troca de responsável mostra o que está pendente em cada empresa (25/11/2026, plano do Acessórias, ficha M02): o selo na
    *  janela Trocar empresas, o "Vão junto" na frase e o "Vêm pendentes" no cartão de aceite */
   'pendencias-na-troca': { desde: '25/11/2026', aprovada: false },
   /** Prazos › Prazos do mês (25/11/2026, plano do Acessórias, ficha E04; o dono: "E03 + E04: Prazos do mês"): as obrigações com prazo de
    *  todas as empresas na competência, com a situação pelo prazo; por ora só o Fiscal */
   prazos: { desde: '25/11/2026', aprovada: false },
+  /** o "Mostrar apenas as minhas" na barra de Minhas empresas (26/11/2026): para quem vê a coluna Responsável, esconde as empresas
+   *  de outra pessoa; aprovada para todos no mesmo dia ("Liberar para todos") */
+  'apenas-as-minhas': { desde: '26/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

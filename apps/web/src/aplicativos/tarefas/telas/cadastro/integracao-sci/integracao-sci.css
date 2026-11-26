@@ -12,3 +12,12 @@
 .sci-botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .sci-token { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 0 0 12px; }
 .sci-token .input { flex: 1 1 260px; min-width: 0; font-family: var(--mono, monospace); }
+/* os planos de contas (26/11/2026): o botão à direita do título, a prévia do que muda e a lista das contas que dá para abrir */
+.sci-planos-acao { margin-left: auto; }
+.sci-planos-erro { margin: 8px 0 0; color: var(--danger); font-size: var(--fs-13); }
+.sci-planos-previa { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.sci-planos-previa > p { margin: 0 0 6px; }
+.sci-planos-lista { margin: 6px 0; font-size: var(--fs-13); }
+.sci-planos-lista summary { cursor: pointer; }
+.sci-planos-lista ul { margin: 6px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; font-size: var(--fs-12); color: var(--ink-muted); }
+.sci-planos-botoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }

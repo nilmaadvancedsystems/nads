@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
-import { useAcesso, useCategoriasDp, useExecucoes, useRepo } from '../../dados/repo';
+import { useAcesso, useCategoriasDp, useExecucoes, useRepo, useTodosOsCadastros } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
 import { useDocumentosDoDp } from './useDocumentosDoDp';
 import { documentoFormatado } from '../financeiro/formatosDaNota';
@@ -79,6 +79,11 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const repo = useRepo();
   const op = useOperador().operador as Operador;
   const [params, setParams] = useSearchParams();
+  // as empresas que estão no SCI (o "Está no SCI" do Cadastro): a linha fica levemente azul (26/11/2026: "faz a linha levemente azul
+  // no departamento pessoal tambem, das empresas que estao na sci")
+  const cadastros = useTodosOsCadastros();
+  const noSci = new Set<number>();
+  for (const c of cadastros.porId.values()) if (c.noSci && c.codigo != null) noSci.add(c.codigo);
   // do dia 20 em diante, o mês corrente também (a folha que está fechando)
   const { lista: competencias, padrao } = competenciasDoDp(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : padrao;
@@ -147,6 +152,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     const situacao: t.SituacaoGeral = concluida ? 'concluida' : parada ? 'parada' : feitas > 0 ? 'em-andamento' : 'nao-iniciada';
     return {
       ...c, chave: String(c.codigo), responsavelNome: nomeDe(c.responsavel), ex,
+      /** a empresa está no SCI (a linha levemente azul) */
+      noSci: noSci.has(c.codigo),
       /** o CNPJ/CPF só com os dígitos (o que se copia) e com a máscara (o que aparece) */
       documento: documentos.get(c.codigo) || '', documentoNaTela: documentoFormatado(documentos.get(c.codigo) || ''),
       obrigacoes, concluida, temAlguma,

@@ -5155,7 +5155,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-logo-previa{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:3px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#64748b;overflow:hidden;}
 .ac-logo-previa img{width:100%;height:100%;object-fit:contain;}
 .ac-logo-txt{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0;}
-.ac-logo-acoes{display:flex;gap:8px;}
+.ac-logo-acoes{display:flex;align-items:center;gap:8px;}
 .ac-logo-acoes label.btn{cursor:pointer;}
 .ac-logo-acoes label.btn.disabled{opacity:.55;pointer-events:none;}
 .ac-endereco{display:flex;align-items:center;gap:8px;max-width:100%;margin:0;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);font-size:12px;overflow-wrap:anywhere;}
@@ -6752,7 +6752,7 @@ td .fs-fat-receita{color:var(--accent);font-weight:700;}
 /* Carteira (12/11/2026): o salário, as finanças e as comissões de cada pessoa */
 /* a janela dos Serviços das Comissões (13/11/2026, Vitor: "não to conseguindo mexer"): cabe na tela, o título e o Gravar
    fixos e só o miolo rola (uma barra de rolagem; as tabelas dentro não rolam sozinhas) */
-.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);}
+.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);width:calc(100vw - 32px);max-width:820px;}
 .cart-servicos-janela .registro-topo,.cart-servicos-janela .registro-pe{flex:none;}
 .cart-servicos-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
 .cart-servicos-janela .registro-corpo > *{flex-shrink:0;}
@@ -8890,11 +8890,59 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .registro-topo .sci-busca-plano{margin-bottom:0;}
 .sci-plano{max-height:50vh;overflow:auto;}
 @media (max-width:900px){.sci-form{grid-template-columns:1fr 1fr;}.sci-form .sci-largo{grid-column:1/-1;}}
-/* a Tarefas a 90% nas telas médias (25/11/2026: "nesse monitor de 1366x768 parece ta tudo meio grande, ajuste isso"): de 1100 a
-   1439px de largura, a página inteira encolhe junto. O que se põe num ponto da tela pelo JavaScript divide pelo zoom
-   (zoomDaPagina: o menu flutuante, o do botão direito e o arrastar das colunas) */
-@media (min-width:1100px) and (max-width:1439px){
-  html[data-tarefas]{zoom:.9;}
-  /* o 100vh também encolhe com o zoom: a casca volta a ocupar a tela inteira, sem a faixa vazia embaixo do rodapé */
-  html[data-tarefas] body,html[data-tarefas] #app{min-height:calc(100vh / .9);min-height:calc(100dvh / .9);}
-}
+/* os Serviços comissionados no jeito de planilha (26/11/2026): a tabela na largura da janela (o Serviço com o que sobra), a
+   célula é o campo (sem a caixa arredondada; o foco é uma linha da cor de destaque por dentro) e a lixeira vermelha */
+.cart-servicos-tabela{table-layout:fixed;width:100%;}
+.cart-servicos-tabela .cart-servicos-valor{width:24%;}
+.cart-servicos-tabela .cart-servicos-pct{width:16%;}
+.cart-servicos-tabela .cart-servicos-tirar{width:44px;}
+.cart-servicos-tabela td{padding:0;}
+.cart-servicos-tabela td:last-child{text-align:center;}
+.cart-servicos-tabela td input,.cart-servicos-tabela td .campo-reais{width:100%;min-width:0;box-sizing:border-box;border:0;border-radius:0;background:transparent;box-shadow:none;}
+.cart-servicos-tabela td input{height:36px;padding:0 10px;}
+.cart-servicos-tabela td .campo-reais{height:36px;padding-left:10px;max-width:none;}
+.cart-servicos-tabela td .campo-reais input{padding-left:6px;}
+.cart-servicos-tabela td input:focus,.cart-servicos-tabela td .campo-reais:focus-within{outline:none;box-shadow:inset 0 0 0 1px var(--accent);}
+.cart-servicos-tabela td .campo-reais input:focus{box-shadow:none;}
+.cart-servicos-tabela .cart-servicos-tirar-btn{color:var(--destructive);}
+.cart-servicos-tabela .cart-servicos-tirar-btn:hover{color:var(--destructive);background:color-mix(in srgb, var(--destructive) 12%, transparent);}
+/* as Particularidades (26/11/2026): o título de cada parte (Contábil, Fiscal) em cima das seções dela */
+/* cada parte (Contábil, Fiscal) é um dropdown (26/11/2026: "Coloca um dropdown"): o título com a seta, que gira aberto */
+.cad-particularidades-parte{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+/* o título na fonte de sempre, como os títulos das seções (26/11/2026: "Coloca a fonte padrao do sistema nesses nomes") */
+.cad-particularidades-grupo{display:flex;align-items:center;gap:8px;padding:12px 14px;font-size:var(--fs-14);font-weight:600;
+  color:var(--ink);cursor:pointer;list-style:none;user-select:none;border-radius:10px;}
+.cad-particularidades-grupo::-webkit-details-marker{display:none;}
+.cad-particularidades-grupo:hover{background:var(--hover-bg);}
+.cad-particularidades-seta{width:14px;height:14px;transition:transform .15s ease !important;}
+.cad-particularidades-parte[open] > .cad-particularidades-grupo .cad-particularidades-seta{transform:rotate(90deg);}
+.cad-particularidades-parte[open] > .cad-particularidades-grupo{border-bottom:1px solid var(--border);border-radius:10px 10px 0 0;}
+.cad-particularidades-corpo{padding:4px 14px 8px;}
+/* o SCI em primeiro, com a logo dele no título */
+.cad-sci-titulo{display:inline-flex;align-items:center;gap:8px;}
+/* o SCI sem a linha divisória do título, com o espaço antes dos dropdowns */
+.cad-sci-bloco{margin-bottom:12px;}
+/* o plano do SCI com a fonte branca (26/11/2026: "Deixa branca a fonte"), não na cor de destaque do menu */
+.cfg-linha-controle .btn.btn-ghost.cad-sci-plano{color:var(--ink);}
+/* a empresa que está no SCI, na lista do Cadastro: um azul leve na linha para identificar (26/11/2026) */
+tr.cad-linha-sci > td{background:color-mix(in srgb,var(--info, #3b82f6) 14%,transparent);}
+tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20%,transparent);}
+/* Dados da empresa em grade (26/11/2026: "os elementos estao muito baguncados"): o nome em cima, o valor embaixo, em duas colunas;
+   o largo ocupa a linha toda. O "à mão" marca o dado digitado no nads */
+.cad-dados-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px;padding:4px 0 8px;}
+.cad-dado{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.cad-dado.largo{grid-column:1 / -1;}
+.cad-dado-rotulo{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-12);color:var(--ink-muted);}
+.cad-dado-selo{padding:0 6px;border-radius:999px;font-size:var(--fs-11);background:var(--info-soft);color:var(--info);}
+.cad-dado-valor{font-size:var(--fs-14);color:var(--ink);overflow-wrap:anywhere;}
+.cad-dado-valor.vazio{color:var(--ink-faint, var(--ink-muted));}
+.cad-dado-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cad-dado-nota{font-size:var(--fs-12);color:var(--ink-muted);}
+.cad-dado-aviso{font-size:var(--fs-12);color:var(--danger);}
+.cad-dado-edita{display:flex;align-items:center;gap:8px;}
+.cad-dado .input,.cad-dado-edita .input{width:100%;min-width:0;}
+@media (max-width:640px){.cad-dados-grade{grid-template-columns:minmax(0,1fr);}}
+/* o Link do cliente nas linhas da janela da empresa (26/11/2026): o endereço curto, com reticências, e a logo pequena ao lado do botão */
+.ac-link-curto{display:inline-flex;align-items:center;gap:6px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
+.cfg-linha .ac-logo-previa{width:32px;height:32px;border-radius:8px;}
+.cfg-linha .ac-botoes{flex-wrap:wrap;justify-content:flex-end;}

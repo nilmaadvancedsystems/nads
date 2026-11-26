@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirSciDesde, definirDadosManuais, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -383,7 +383,7 @@ describe('os cartões da empresa (07/10/2026)', () => {
   it('cartão empresarial e vende no cartão: sim, não, não informado; vão e voltam do documento', () => {
     const c = definirCartao(definirCartao(vazio(), 'cartaoEmpresarial', true, 'Vitor', AGORA), 'vendeNoCartao', false, 'Vitor', AGORA);
     expect([c.cartaoEmpresarial, c.vendeNoCartao]).toEqual([true, false]);
-    expect(c.historico[0]).toMatchObject({ acao: 'Vende no cartão', detalhe: 'Não' });
+    expect(c.historico[0]).toMatchObject({ acao: 'Possui maquininha', detalhe: 'Não' });
     const volta = cadastroDoDocumento('FITO', 292, documentoDoCadastro(c));
     expect([volta.cartaoEmpresarial, volta.vendeNoCartao]).toEqual([true, false]);
     expect('cartaoEmpresarial' in definirCartao(c, 'cartaoEmpresarial', null, 'Vitor', AGORA)).toBe(false);
@@ -422,7 +422,32 @@ describe('a nota de honorário (07/10/2026)', () => {
   });
 });
 
+// 26/11/2026: "queria cadastrar a empresa manualmente tbm, ter essa opcao"
+describe('os dados digitados à mão', () => {
+  it('guarda, vai e volta do documento, registra só o que mudou e o vazio tira', () => {
+    const c = definirDadosManuais(vazio(), { fantasia: '  Fito  Alimentos ', inscricaoEstadual: '001.234', endereco: '' }, 'Vitor', AGORA);
+    expect(c.manual).toEqual({ fantasia: 'Fito Alimentos', inscricaoEstadual: '001.234' });
+    expect(c.historico[0]).toMatchObject({ acao: 'Dados da empresa', detalhe: 'Nome fantasia: Fito Alimentos · Inscrição estadual: 001.234' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).manual).toEqual(c.manual);
+    expect(definirDadosManuais(c, { fantasia: 'Fito Alimentos' }, 'Vitor', AGORA)).toBe(c);
+    const sem = definirDadosManuais(definirDadosManuais(c, { fantasia: '' }, 'Vitor', AGORA), { inscricaoEstadual: '' }, 'Vitor', AGORA);
+    expect('manual' in sem).toBe(false);
+    expect('manual' in documentoDoCadastro(sem)).toBe(false);
+  });
+});
+
 describe('está no SCI (24/11/2026)', () => {
+  // 26/11/2026: "Data tambem, porque a partir de tal competencia entra na sci"
+  it('a competência de entrada no SCI: só com a empresa no SCI, vai e volta do documento e sai ao desligar', () => {
+    expect(definirSciDesde(vazio(), '2026-05', 'Vitor', AGORA).sciDesde).toBeUndefined();
+    const c = definirSciDesde(definirNoSci(vazio(), true, 'Vitor', AGORA), '2026-05', 'Vitor', AGORA);
+    expect(c.sciDesde).toBe('2026-05');
+    expect(c.historico[0]).toMatchObject({ acao: 'Está no SCI', detalhe: 'Desde 05/2026' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).sciDesde).toBe('2026-05');
+    expect(definirSciDesde(c, '2026-13', 'Vitor', AGORA)).toBe(c);
+    expect(definirSciDesde(c, '', 'Vitor', AGORA).sciDesde).toBeUndefined();
+    expect('sciDesde' in definirNoSci(c, false, 'Vitor', AGORA)).toBe(false);
+  });
   it('liga e desliga; vai e volta do documento, com o histórico', () => {
     const c = definirNoSci(vazio(), true, 'Vitor', AGORA);
     expect(c.noSci).toBe(true);

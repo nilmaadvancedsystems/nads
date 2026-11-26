@@ -1,6 +1,9 @@
 // A saída do intermediário nads → SCI: a planilha que o gerador do SCI lê (docs/sci/02, item C). Aba "Importar" só com
-// os lançamentos prontos (títulos na linha 1, total na última: o gerador usa linha inicial 2 e descarta 1 no fim) e
+// os lançamentos prontos (títulos na linha 1 e nada depois do último: o gerador usa linha inicial 2 e descarta 0 no fim) e
 // aba "Conferir" com os que têm problema e o porquê, para a análise antes de importar.
+//
+// A regra (26/11/2026: "Leva como regra nesses arquivos exportados da sci, eu quero ele 100% pronto, não quero editar. Então
+// remova: esse total e os dados da coluna lote, deixa vazia!"): sem a linha Total no fim e a coluna Lote só com o título.
 import * as XLSX from 'xlsx';
 import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci, LinhaDoNads, OpcoesDoSci, ResumoDoSci } from '../tipos';
@@ -138,7 +141,8 @@ const numeroOuTexto = (s: string): number | string => (/^\d{1,15}$/.test(s) ? Nu
 function linhaDaPlanilha(l: LancamentoSci): (string | number)[] {
   return [
     serialExcel(l.data), numeroOuTexto(l.debito), numeroOuTexto(l.credito), l.valor / 100, numeroOuTexto(l.historico),
-    l.complemento, l.documento, l.lote, l.cnpjEmpresa, l.participanteD, l.participanteC,
+    // a coluna Lote vai vazia (26/11/2026: "os dados da coluna lote, deixa vazia!")
+    l.complemento, l.documento, '', l.cnpjEmpresa, l.participanteD, l.participanteC,
   ];
 }
 
@@ -160,16 +164,14 @@ function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkS
 }
 
 /**
- * A planilha .xlsx para o SCI. Aba "Importar": as 11 colunas do gerador, com os títulos, os lançamentos prontos e a linha
- * "Total" (o gerador lê da linha 2 e descarta 1 no fim). Aba "Conferir" (só se houver): os que têm problema, com o nome das
- * contas, a origem e o motivo depois das colunas do SCI.
+ * A planilha .xlsx para o SCI, pronta para importar sem editar nada. Aba "Importar": as 11 colunas do gerador, com os títulos
+ * e os lançamentos prontos, sem a linha Total (o gerador lê da linha 2 e descarta 0 no fim). Aba "Conferir" (só se houver): os
+ * que têm problema, com o nome das contas, a origem e o motivo depois das colunas do SCI.
  */
 export function planilhaDoSci(lancamentos: readonly LancamentoSci[]): Uint8Array {
   const prontos = lancamentos.filter(l => !l.problemas.length);
   const comProblema = lancamentos.filter(l => l.problemas.length);
-  const total = prontos.reduce((s, l) => s + l.valor, 0);
   const importar: (string | number)[][] = [[...COLUNAS_DO_SCI], ...prontos.map(linhaDaPlanilha)];
-  importar.push(['Total', '', '', total / 100, '', '', '', '', '', '', '']);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, aba(importar, prontos.length), 'Importar');
   if (comProblema.length) {

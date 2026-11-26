@@ -4,8 +4,10 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
-import { SITUACOES, useAndamento } from './andamento';
+import { ACAO, SITUACOES, useAndamento } from './andamento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../comum/novidades';
 
 export const LIMITE = 60;
 /** Quantas empresas a lista do "Iniciar" mostra de uma vez. */
@@ -32,6 +34,22 @@ type Linha = ReturnType<typeof useAndamento>['linhas'][number];
 /** A aba de Minhas empresas do Contábil: as empresas do Alterdata ou as do SCI. */
 export type SistemaContabil = 'alterdata' | 'sci';
 
+/** ⚡ Dados de teste do "Mostrar apenas as minhas": cinco empresas fictícias, duas da pessoa e três de outro responsável. */
+function linhasDeTeste(): Linha[] {
+  const TOTAL = 14;
+  return ([['em-andamento', 6, false], ['nao-iniciada', 0, false], ['parada', 2, true], ['nao-iniciada', 0, true], ['concluida', TOTAL, true]] as const)
+    .map(([situacao, concluidas, deOutro], i) => {
+      const nome = 'EMPRESA DE TESTE ' + (i + 1) + ' LTDA';
+      const empresa = { codigo: 9990 + i, nome, regime: 'Simples Nacional' };
+      return {
+        responsavel: deOutro ? 'Colega de teste' : '', deOutro, noSci: false,
+        empresa, chave: 'teste-' + i, codigo: empresa.codigo, nome, nomeNaTela: nome, rota: 'teste-' + (i + 1),
+        concluidas, total: TOTAL, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
+        proxima: '—', acao: ACAO[situacao], mexiEm: null, etapaAtual: '', ultimaVez: null,
+      };
+    });
+}
+
 export function useMinhasEmpresas() {
   const a = useAndamento();
   const navegar = useNavigate();
@@ -53,7 +71,17 @@ export function useMinhasEmpresas() {
   const { dep, comDep } = useDepartamentoDaTela();
   const comAbas = dep === 'contabil';
   const sistema: SistemaContabil = comAbas && a.params.get('sistema') === 'sci' ? 'sci' : 'alterdata';
-  const doSistema = comAbas ? a.linhas.filter(l => l.noSci === (sistema === 'sci')) : a.linhas;
+
+  // "Mostrar apenas as minhas" (26/11/2026: "Coloca um botao de opção, 'Mostrar apenas as minhas'"): para quem vê a coluna
+  // Responsável, esconde as empresas de outra pessoa; os números, a lista e o Iniciar seguem. Na URL (?apenas=minhas)
+  const novidade = useNovidade('apenas-as-minhas');
+  const [dev] = useModoDesenvolvedor();
+  // ⚡ Dados de teste: empresas fictícias, da pessoa e de outro responsável, só na tela, para ver o botão funcionar
+  const [teste, setTeste] = useState(false);
+  const comTeste = dev && teste ? [...a.linhas, ...linhasDeTeste()] : a.linhas;
+  const temOpcaoApenasMinhas = novidade && (a.verResponsavel || (dev && teste));
+  const apenasMinhas = temOpcaoApenasMinhas && a.params.get('apenas') === 'minhas';
+  const doSistema = (comAbas ? comTeste.filter(l => l.noSci === (sistema === 'sci')) : comTeste).filter(l => !apenasMinhas || !l.deOutro);
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(doSistema.map(l => l.empresa), busca)) : null;
   const linhas = doSistema.filter(l => (!situacao || l.situacao === situacao) && (!achadas || achadas.has(l.empresa)));
   const comparar: Record<Coluna, (x: Linha, y: Linha) => number> = {
@@ -119,7 +147,12 @@ export function useMinhasEmpresas() {
     limparFiltros: () => { setBusca(''); a.mudar('situacao', ''); },
     carregando: a.carregando,
     /** a coluna Responsável, para o dono, o diretor e o sênior */
-    verResponsavel: a.verResponsavel,
+    verResponsavel: a.verResponsavel || (dev && teste),
+    /** o botão "Mostrar apenas as minhas" (só para quem vê empresas de outra pessoa) */
+    temOpcaoApenasMinhas, apenasMinhas,
+    alternarApenasMinhas: () => a.mudar('apenas', apenasMinhas ? '' : 'minhas'),
+    /** o ⚡ Dados de teste (modo desenvolvedor) */
+    testeApenasMinhas: dev && novidade ? [{ rotulo: teste ? 'Tirar as empresas de teste' : 'Empresas de outro responsável', onClick: () => setTeste(v => !v) }] : [],
     // quando mexeram por último ("há 5 horas", "ontem"), e a data e hora completas para o título
     linhas: linhas.slice(0, LIMITE).map(l => ({
       ...l,

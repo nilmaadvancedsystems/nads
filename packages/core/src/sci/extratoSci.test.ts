@@ -90,13 +90,15 @@ describe('extrato → SCI', () => {
     expect(lancamentos.every(l => !l.problemas.length)).toBe(true);
     expect(lancamentos[0]).toMatchObject({ lote: 'SICO2608', cnpjEmpresa: '11.222.333/0001-81', valor: 450000, documento: '' });
 
-    // a aba Importar: os títulos do gerador na linha 1, os lançamentos da linha 2 e o Total no fim (descarta 1)
+    // a aba Importar: os títulos do gerador na linha 1 e os lançamentos da linha 2, sem o Total e com o Lote vazio (26/11/2026:
+    // "eu quero ele 100% pronto, não quero editar")
     const wb = XLSX.read(planilhaDoSci(lancamentos), { type: 'array' });
     expect(wb.SheetNames).toEqual(['Importar']);
     const aoa = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Importar, { header: 1, raw: true });
     expect(aoa[0]).toEqual([...COLUNAS_DO_SCI]);
     expect(aoa.slice(1, 4).map(r => r.slice(1, 5))).toEqual([[652, 614, 4500, 2000], [565, 652, 45.9, 1000], [397, 652, 100, 1000]]);
-    expect(aoa[4][0]).toBe('Total');
+    expect(aoa).toHaveLength(4);
+    expect(aoa.slice(1).map(r => r[7] ?? '')).toEqual(['', '', '']);
   });
 
   it('a linha sem contrapartida ou sem a conta do banco vai para a Conferir, com o motivo', () => {
