@@ -34,6 +34,8 @@ export * from './impostosDoAno';
 export * from './avaliacao';
 export * from './guiaPaga';
 export * from './parcelamentos';
+export * from './sciReport';
+export * from './sciReportCliente';
 
 /** Quem o link mostra: as empresas, o contato do escritório e quando o robô atualizou. */
 export interface ResumoDoCliente {

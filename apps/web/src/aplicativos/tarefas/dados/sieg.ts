@@ -42,6 +42,11 @@ export interface RepoSieg {
   contagem(codigo: string, competencia: string): { carregada: boolean; dados: t.sieg.ContagemSieg | null };
   /** as contagens e as saídas de todos os clientes do mês, numa consulta só (o Painel do Fiscal; 09/10/2026), pelo código */
   doMes(competencia: string): { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg> };
+  /**
+   * o faturamento fiel do Simples pela Receita (25/11/2026): o resumo do PGDAS-D de cada empresa (pgdas/{código}), que o
+   * robô do e-CAC grava. Uma leitura por empresa, uma vez por sessão (sem ouvir a coleção), pelo código.
+   */
+  pgdas(): { carregado: boolean; empresas: Map<number, t.pgdas.PgdasDaEmpresa> };
   saidas(codigo: string, competencia: string): { carregadas: boolean; dados: t.sieg.SaidasSieg | null };
   /** o último pedido desta empresa e mês, de cada tipo (sem tipo = baixar as saídas) */
   pedido(codigo: string, competencia: string, tipo?: TipoDePedidoSieg): PedidoSieg | null;
@@ -182,6 +187,22 @@ export function criarSiegMemoria(): RepoSieg {
         || { codigo, competencia, em: agora(), emitidas: { NFe: 214, NFCe: 0, NFSe: 3, CTe: 0, CFe: 0 }, recebidas: { NFe: 87, NFCe: 0, NFSe: 5, CTe: 12, CFe: 0 } },
     }),
     saidas: (codigo, competencia) => ({ carregadas: true, dados: saidas.get(codigo + '_' + competencia) || null }),
+    // nos exemplos: a 10 e a 23 com o PGDAS-D dos últimos meses (a 23 com valor diferente do SIEG, para ver a fonte)
+    pgdas: () => {
+      const empresas = new Map<number, t.pgdas.PgdasDaEmpresa>();
+      const hoje = new Date();
+      for (const [codigo, base] of [[10, 50100], [23, 91500]] as const) {
+        const meses: Record<string, t.pgdas.MesDoPgdas> = {};
+        for (let i = 1; i <= 13; i++) {
+          const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+          const c = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          const receita = Math.round(base * (0.8 + (((d.getMonth() + 1) * 7) % 5) / 10) * 100) / 100;
+          meses[c] = { competencia: c, receita, interno: receita, externo: 0, rbt12: i === 1 ? base * 12 : null, declaracao: null, transmitidaEm: null, origem: i === 1 ? 'extrato' : 'anteriores', consultadoEm: agora() };
+        }
+        empresas.set(codigo, { codigo, cnpj: '', nome: '', fonte: t.pgdas.FONTE_RECEITA, consultadoEm: agora(), meses });
+      }
+      return { carregado: true, empresas };
+    },
     // nos exemplos: uns clientes com notas e um com buraco na sequência
     doMes: competencia => {
       const contagens = new Map<string, t.sieg.ContagemSieg>();

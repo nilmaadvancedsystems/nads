@@ -229,6 +229,18 @@ describe('o Registro com a folha de verdade (13/11/2026)', () => {
     expect(torto?.funcionarios[0]).not.toHaveProperty('liquido');
     expect(torto?.funcionarios[0]).not.toHaveProperty('periodosDeFerias');
   });
+
+  it('o cadastro no RH NET (25/11/2026): passa na lista branca do robô e volta igual; sem salário e o CPF só mascarado', async () => {
+    const { lerPessoal } = await import('./espelho');
+    const gravado = { funcionarios: [], competencia: '2026-10', total: 0, atualizadoEm: '2026-11-25T10:00:00.000Z',
+      rhnet: [{ id: 'rh15', nome: 'JOSE EXEMPLO', cpf: '***.982.247-**', tipo: 'Sócio – pró-labore', entrada: '2026-02-01', situacao: 'Na folha' }] };
+    R.conferirListaBranca('pessoal', gravado);
+    expect(lerPessoal(gravado)).toEqual(gravado);
+    // o robô não deixa sair o salário
+    expect(() => R.conferirListaBranca('pessoal', { ...gravado, rhnet: [{ ...gravado.rhnet[0], salario_base: 5000 }] })).toThrow('salario_base');
+    // o CPF inteiro não passa na tela
+    expect(lerPessoal({ ...gravado, rhnet: [{ ...gravado.rhnet[0], cpf: '529.982.247-25' }] })?.rhnet?.[0].cpf).toBe('');
+  });
 });
 
 // o certificado A1 do cofre (plano do Acessórias, 17/11/2026, ficha certificado-digital)

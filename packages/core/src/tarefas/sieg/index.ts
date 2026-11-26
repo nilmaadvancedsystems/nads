@@ -3,6 +3,7 @@
 // saídas do mês e grava os números por série e as canceladas (siegSaidas). Aqui: os tipos e a conferência da sequência.
 import type { Nota, NotaServico } from '../../conferencia/tipos';
 import type { ConferenciaIbsCbs } from './ibsCbs';
+import type { ResumoDoIntegra } from '../../sci/integracao/integraNet';
 
 export type TipoDeNota = 'NFe' | 'NFCe' | 'NFSe' | 'CTe' | 'CFe';
 export const TIPOS_DE_NOTA: readonly { id: TipoDeNota; rotulo: string }[] = [
@@ -66,6 +67,8 @@ export interface NotasSieg {
   resumo?: number;
   /** a conferência do IBS/CBS pela calculadora da Receita (21/11/2026; robo/sieg-ibscbs.js); sem ela, ainda não conferiu */
   ibsCbs?: ConferenciaIbsCbs | null;
+  /** o Integra NET da SCI (24/11/2026; robo/sci.js): o que foi enviado e o que falta no SCI; sem ele, a integração está desligada */
+  sci?: ResumoDoIntegra | null;
 }
 
 /** siegSaidas/{codigo}_{AAAA-MM}: as saídas do mês (NF-e e NFC-e), série por série. */
@@ -221,8 +224,9 @@ export { receitasDoMes, creditosDoMes, pisCofins, icmsDoMes, irpjCsll, receitaPa
 export { percentuaisEfetivos, calculoDoSimples, fatorR, PARCELAS_DA_RECEITA, TRIBUTOS_DO_SIMPLES, ROTULO_DO_TRIBUTO, TETO_DO_ISS, FATOR_R_MINIMO, type TributoDoSimples, type PercentuaisEfetivos, type ParcelaDoCalculo, type CalculoDoSimples, type FolhaDoMes } from './calculadora';
 export { espelhoDaNota, comoVerANota, type EspelhoDaNota } from './espelho';
 export { espelhoDoServico, type EspelhoDoServico } from './espelhoDoServico';
-export { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, resumoDasEmitidas, curvaAbc, type ClasseAbc, type CurvaAbc, type MesDoDetalhe, type ResumoDasEmitidas, planilhaDoFaturamento, htmlDoFaturamento, mesCurto, PERIODOS_DO_FATURAMENTO, FONTE_SIEG, FONTE_SIEG_CURTA, type PeriodoDoFaturamento, type LinhaDoFaturamento, type EmpresaDoFaturamento, type ValorDoFaturamento } from './faturamento';
+export { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, mesesNaReceita, mesesPelaReceita, type MesNaReceita, resumoDasEmitidas, curvaAbc, type ClasseAbc, type CurvaAbc, type MesDoDetalhe, type ResumoDasEmitidas, planilhaDoFaturamento, htmlDoFaturamento, mesCurto, PERIODOS_DO_FATURAMENTO, FONTE_SIEG, FONTE_SIEG_CURTA, type PeriodoDoFaturamento, type LinhaDoFaturamento, type EmpresaDoFaturamento, type ValorDoFaturamento } from './faturamento';
 export { ratear, repartir, tributacaoDoItem, valoresDaNota, gruposDaNota, rateioDosNcms, rateioDoCte, icmsDosNcms, temSt, ALIQUOTA_PADRAO_DO_NCM, TRIBUTACOES, type LinhaComIcms, type Rateio, type LinhaRateada, type LinhaParaRatear, type Tributacao, type ValoresDaNota, type GrupoDaNota, type AgruparPor, type RateioDoCte } from './rateio';
+export { relatorioDoRateio, planilhaDoRateio, htmlDoRateio, textoDaCelula, type RelatorioDoRateio, type TabelaDoRateio, type EntradaDoRelatorioDoRateio, type CelulaDoRateio, type FormatoDaColuna } from './rateioExportar';
 export { linhasDaAntecipacao, calcularAntecipacao, contaDaAntecipacao, totaisDaAntecipacao, linhasQueCobram, resumoDaAntecipacao, filtrarAntecipacao, htmlDaAntecipacao, cfopDeEntrada, rotuloDaSituacao, mesDaLinha, arred, SITUACOES_DA_ANTECIPACAO, ALIQUOTA_INTERNA_ES, type SituacaoDaAntecipacao, type LinhaDaAntecipacao, type LinhaCalculada, type MarcaDaAntecipacao, type AliquotaCorrigida, type TotaisDaAntecipacao, type ResumoDaAntecipacao, type EmpresaDoRelatorio } from './antecipacao';
 export { danfeDoXml, chaveEmGrupos, docFormatado, type Danfe, type ItemDaDanfe, type PessoaDaDanfe } from './danfe';
 export { painelDoSieg, notaDaLinha, linhaCombina, ABAS_DO_SIEG, type AbaDoSieg, type PainelDoSieg, type ResumoDaAba, type LinhaDaNotaSieg, type GrupoDoSieg } from './painel';

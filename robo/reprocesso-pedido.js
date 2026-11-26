@@ -8,6 +8,15 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
+// (26/11/2026, decisão do dono) as levas únicas: o reprocesso automático olha só as pastas-dia dos últimos 3 dias, e o produtor rural (NFA-e, GTA, GCA, ITR e o DAE da
+// GTA, regras novas) está nas pastas-dia de 09/11 e de outros dias. Cada leva roda UMA vez (o id fica em reprocesso-auto.json) na próxima mudança de regras e não volta.
+const LEVAS_UNICAS = [{ id: 'produtor-rural-2026-11-26', filtro: 'PRODUTOR RURAL' }];
+/** Os filtros do reprocesso automático: as pastas-dia dos últimos 3 dias e as levas únicas que ainda não rodaram. → { dias, filtros, levas: [ids] } */
+function filtrosDoReprocessoAuto(agoraMs, jaFeitas) {
+  const dias = [0, 1, 2].map(n => { const d = new Date(agoraMs - n * 864e5); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-NOVO'; });
+  const levas = LEVAS_UNICAS.filter(l => !(jaFeitas || []).includes(l.id));
+  return { dias, filtros: dias.concat(levas.map(l => l.filtro)), levas: levas.map(l => l.id) };
+}
 function iniciar({ controle, log }) {
   const pedido = path.join(controle, 'reprocessar-ni.pedido');
   let rodando = false;
@@ -40,17 +49,19 @@ function iniciar({ controle, log }) {
   try {
     const versao = require('./arquivador-novo').versaoDasRegras();   // a mesma versão que o reprocessar-ni.js carimba nos já decididos
     const marca = path.join(controle, 'reprocesso-auto.json');
-    let antes = null;
-    try { antes = JSON.parse(fs.readFileSync(marca, 'utf8')).versao; } catch (e) { /* primeira vez */ }
-    if (antes !== versao && !fs.existsSync(pedido) && !fs.existsSync(pedido.replace(/\.pedido$/, '.rodando'))) {
-      const dias = [0, 1, 2].map(n => { const d = new Date(Date.now() - n * 864e5); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-NOVO'; });
-      if (antes) fs.writeFileSync(pedido, dias.join(',') + '\n');   // a primeira vez só anota a versão
-      fs.writeFileSync(marca, JSON.stringify({ versao, em: new Date().toISOString(), dias: antes ? dias : [] }));
-      if (antes) log('as regras do arquivador mudaram: os NÃO IDENTIFICADOS de ' + dias.join(', ') + ' vão ser reprocessados');
+    let antes = null, feitas = [];
+    try { const m = JSON.parse(fs.readFileSync(marca, 'utf8')); antes = m.versao; feitas = m.levas || []; } catch (e) { /* primeira vez */ }
+    // dispara quando as regras mudaram OU quando há uma leva única que ainda não rodou (e a marca já existe: a primeira vez só anota a versão)
+    const pendentes = filtrosDoReprocessoAuto(Date.now(), feitas).levas.length;
+    if ((antes !== versao || (antes && pendentes)) && !fs.existsSync(pedido) && !fs.existsSync(pedido.replace(/\.pedido$/, '.rodando'))) {
+      const { dias, filtros, levas } = filtrosDoReprocessoAuto(Date.now(), feitas);
+      if (antes) fs.writeFileSync(pedido, filtros.join(',') + '\n');   // a primeira vez só anota a versão
+      fs.writeFileSync(marca, JSON.stringify({ versao, em: new Date().toISOString(), dias: antes ? dias : [], levas: antes ? feitas.concat(levas) : feitas }));
+      if (antes) log('as regras do arquivador mudaram: os NÃO IDENTIFICADOS de ' + filtros.join(', ') + ' vão ser reprocessados');
     }
   } catch (e) { log('reprocesso automático: ' + e.message); }
   setInterval(olhar, 60 * 1000);
   setTimeout(olhar, 15 * 1000);
 }
 
-module.exports = { iniciar };
+module.exports = { iniciar, filtrosDoReprocessoAuto, LEVAS_UNICAS };

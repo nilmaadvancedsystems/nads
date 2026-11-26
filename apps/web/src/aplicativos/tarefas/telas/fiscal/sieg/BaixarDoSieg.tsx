@@ -50,6 +50,8 @@ export function BaixarDoSieg() {
             {vm.carregando ? <Esqueleto linhas={6} numeros={4} /> : (
               <>
                 {vm.painel && <Numeros vm={vm} />}
+                {/* o Integra NET da SCI (24/11/2026): só aparece com a integração ligada para a empresa */}
+                {vm.fraseDoSci && <p className="hint fc-sci" title={vm.erroDoSci || undefined}>{vm.fraseDoSci}{vm.erroDoSci ? ' · ' + vm.erroDoSci : ''}</p>}
                 <Segmentado valor={vm.aba} onMudar={vm.mudarAba} opcoes={opcoes} />
                 {vm.aba === 'ibscbs'
                   ? <AbaIbsCbs c={vm.ibsCbs} rotuloCompetencia={vm.rotuloCompetencia} />

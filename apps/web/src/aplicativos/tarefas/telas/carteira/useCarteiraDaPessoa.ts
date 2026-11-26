@@ -224,13 +224,25 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   };
 }
 
+export type ColunaDosServicos = 'nome' | 'valor' | 'percentual';
+const posicao = (ids: readonly string[], id: string) => { const i = ids.indexOf(id); return i < 0 ? ids.length : i; };
+/** pelo nome (a ordem do português) ou pelo número; o vazio vai sempre para o fim */
+function ordenarServicos<T extends { nome: string; valor: string; percentual: string }>(l: readonly T[], coluna: ColunaDosServicos, dir: 'asc' | 'desc'): T[] {
+  const sinal = dir === 'asc' ? 1 : -1;
+  return [...l].sort((a, b) => {
+    if (coluna === 'nome') return sinal * a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' });
+    const va = a[coluna].trim() ? valorDigitado(a[coluna]) : null, vb = b[coluna].trim() ? valorDigitado(b[coluna]) : null;
+    if (va == null || vb == null) return va == null && vb == null ? 0 : va == null ? 1 : -1;
+    return sinal * (va - vb);
+  });
+}
+
 /** A janela dos serviços comissionados (o Financeiro): os serviços, a % de cada um, acrescentar e tirar. */
 export function useJanelaDosServicos(fechar: () => void) {
   const repo = useCarteira();
   const { toast } = useRetorno();
   const salvos = repo.servicos();
   const [lista, setLista] = useState<{ id: string; nome: string; percentual: string; valor: string }[] | null>(null);
-  const [novo, setNovo] = useState('');
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // o valor do serviço (23/11/2026, a novidade 'comissao-quantidade'): a coluna só aparece com a novidade, mas o valor gravado
@@ -239,15 +251,24 @@ export function useJanelaDosServicos(fechar: () => void) {
   // a lista que está na tela: a do banco até a pessoa mexer
   const atual = lista ?? salvos.lista.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual ? valorNoCampo(s.percentual) : '', valor: s.valor ? valorNoCampo(s.valor) : '' }));
   const comoServicos = () => atual.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual.trim() ? valorDigitado(s.percentual) : 0, ...(s.valor.trim() && valorDigitado(s.valor) > 0 ? { valor: valorDigitado(s.valor) } : {}) }));
+  // ordenar pelo título da coluna (Vitor, 26/11/2026: "nomeacao crecente ou descrescente quando clica no cabeçalho"): a ordem é
+  // tirada no clique (digitar não faz a linha pular); o serviço novo entra no fim. Só a tela: a lista grava na ordem de sempre
+  const [ordem, setOrdem] = useState<{ coluna: ColunaDosServicos; dir: 'asc' | 'desc'; ids: string[] } | null>(null);
+  const naTela = ordem ? [...atual].sort((a, b) => posicao(ordem.ids, a.id) - posicao(ordem.ids, b.id)) : atual;
   return {
-    carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando, comValor,
+    carregada: salvos.carregada, erro: salvos.erro, lista: naTela, erros, salvando, comValor,
+    ordem: ordem ? { coluna: ordem.coluna, dir: ordem.dir } : null,
+    ordenar(coluna: ColunaDosServicos) {
+      const dir = ordem?.coluna === coluna && ordem.dir === 'asc' ? 'desc' : 'asc';
+      setOrdem({ coluna, dir, ids: ordenarServicos(atual, coluna, dir).map(s => s.id) });
+    },
     mudar: (id: string, campo: 'nome' | 'percentual' | 'valor', v: string) => setLista(atual.map(s => (s.id === id ? { ...s, [campo]: v } : s))),
     tirar: (id: string) => setLista(atual.filter(s => s.id !== id)),
-    acrescentar() {
-      if (!novo.trim()) return;
-      const s = carteira.novoServico(comoServicos(), novo);
-      setLista([...atual, { id: s.id, nome: s.nome, percentual: '', valor: '' }]);
-      setNovo('');
+    /** a linha nova, vazia, no fim (26/11/2026: "um botao de adicionar abaixo"): o id dela, para a tela pôr o cursor no nome */
+    adicionar() {
+      const s = carteira.novoServico(comoServicos(), 'servico');
+      setLista([...atual, { id: s.id, nome: '', percentual: '', valor: '' }]);
+      return s.id;
     },
     async salvar() {
       const l = comoServicos();

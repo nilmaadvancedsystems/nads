@@ -320,7 +320,11 @@ export const ehDiretor = (op: Operador | null) => !!op && (op.admin || usuarios.
 
 /** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
 export const abasDoCadastroDe = (op: Operador | null) =>
-  ABAS_DO_CADASTRO.filter(a => (a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil') && (a.id !== 'obrigacoes' || novidadeLigada('obrigacoes-por-empresa')));
+  ABAS_DO_CADASTRO.filter(a => (a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil') && (a.id !== 'obrigacoes' || novidadeLigada('obrigacoes-por-empresa'))
+    // com as Particularidades, os dois Parâmetros saem da lista (estão dentro dela); sem, a aba nova não aparece
+    && (novidadeLigada('particularidades') ? a.id !== 'contabil' && a.id !== 'fiscal' : a.id !== 'particularidades')
+    // o Plano de contas da empresa desligado por enquanto (26/11/2026: "Plano de contas por enquanto desabilita isso aqui")
+    && a.id !== 'plano');
 
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
@@ -511,6 +515,12 @@ export function paginasDaEmpresa(dep: string): Pagina[] {
 // por setor, no estilo das configurações do Notion (14/10/2026: "contas padrão e bancárias irão ficar em contábil")
 export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone; grupo: string }[] = [
   { id: 'empresa', rotulo: 'Dados da empresa', icone: 'briefcase', grupo: 'Empresa' },
+  // as Particularidades (26/11/2026: "Crie um botao chamado particularidades que vai ter esses dois menus dentro de um so"): os
+  // Parâmetros do Contábil e os do Fiscal numa aba só; na versão final desde o mesmo dia ("pode colocar na final essa alteracao")
+  { id: 'particularidades', rotulo: 'Particularidades', icone: 'settings', grupo: 'Empresa' },
+  // o Contato e a Área do Cliente em abas à parte (26/11/2026: "Contato e area do cliente em menu separado")
+  { id: 'contato', rotulo: 'Contato', icone: 'envelope', grupo: 'Empresa' },
+  { id: 'area-cliente', rotulo: 'Área do Cliente', icone: 'usuario', grupo: 'Empresa' },
   // o que a empresa tem de diferente da rotina (plano do Acessórias, ficha E08; novidade em teste)
   { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', grupo: 'Empresa' },
   { id: 'contabil', rotulo: 'Parâmetros', icone: 'settings', grupo: 'Contábil' },

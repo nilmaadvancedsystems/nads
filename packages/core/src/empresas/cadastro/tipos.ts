@@ -163,7 +163,8 @@ export interface RetratoDaReceita {
 export type ReceitaNoCadastro = Partial<Omit<RetratoDaReceita, 'consultadoEm'>> & { conferidoEm: string; por: string };
 
 /** Os planos de contas padrão do SCI (os mesmos do minimum). */
-export type PlanoDoSci = '90113' | '90011';
+/** O número do plano de contas do SCI (90113, 90011 ou um adicionado em Integração SCI; 26/11/2026). */
+export type PlanoDoSci = string;
 
 /** Um regime e a competência em que ele passou a valer (ficha E10). */
 export interface RegimeDesde {
@@ -236,6 +237,16 @@ export interface CadastroDaEmpresa {
    * plano de contas, referenciar para nao ficar selecionando"): o minimum abre a empresa nele. Só com o noSci.
    */
   planoSci?: PlanoDoSci;
+  /**
+   * A competência (AAAA-MM) em que a empresa passou a ser lançada no SCI (26/11/2026: "Data tambem, porque a partir de tal
+   * competencia entra na sci"); antes dela, no Alterdata. Só com o noSci.
+   */
+  sciDesde?: string;
+  /**
+   * Os dados digitados à mão em Cadastro › Dados da empresa (26/11/2026: "queria cadastrar a empresa manualmente tbm, ter essa
+   * opcao"): valem no lugar dos da Receita e do Entregas. O campo vazio volta a usar o de lá.
+   */
+  manual?: DadosManuaisDaEmpresa;
   /**
    * O lembrete de vencimento ao cliente desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'sim' manda mesmo com o
    * lembrete geral desligado, 'nao' nunca manda; diasAntes troca os dias do escritório. Sem = como o escritório
@@ -385,3 +396,11 @@ export interface TransferenciaDeResponsavel {
 /** Os bancos do relatório de liquidação do Creditor (o Sicoob: Títulos por Período; o Bradesco: Carteira de Cobrança). */
 export type BancoDoRelatorio = 'sicoob' | 'bradesco';
 export const BANCOS_DO_RELATORIO: readonly { id: BancoDoRelatorio; nome: string }[] = [{ id: 'sicoob', nome: 'Sicoob' }, { id: 'bradesco', nome: 'Bradesco' }];
+
+/** Os dados da empresa digitados à mão (26/11/2026). */
+export interface DadosManuaisDaEmpresa {
+  fantasia?: string;
+  inscricaoEstadual?: string;
+  /** o endereço numa linha: rua, número, bairro, cidade/UF, CEP */
+  endereco?: string;
+}

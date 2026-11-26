@@ -1,6 +1,6 @@
 // O plano de contas padrão 90113 do SCI, exportado do SCI pelo escritório (23/11/2026). Só o plano padrão, sem dado de cliente.
 // Cada conta: o código reduzido (o que o SCI usa no lançamento), a classificação, o nome e o apelido. Gerado da planilha
-// exportada; para atualizar, exportar de novo do SCI e gerar outra vez.
+// exportada; para atualizar, exportar de novo do SCI e gerar outra vez. Atualizado em 25/11/2026 (a conta do Nubank: 765 e 766).
 export const PLANO_90113: readonly (readonly [codigo: string, classificacao: string, nome: string, apelido: string])[] = [
   ["1","01","ATIVO",""],
   ["2","01.1","ATIVO CIRCULANTE",""],
@@ -15,6 +15,8 @@ export const PLANO_90113: readonly (readonly [codigo: string, classificacao: str
   ["622","01.1.1.02.005","Banco do Nordeste",""],
   ["652","01.1.1.02.006","Banco Sicoob","BS"],
   ["670","01.1.1.02.007","Banco Itau S/A",""],
+  ["765","01.1.1.02.008","Nubank S.A","NUBAS"],
+  ["766","01.1.1.02.008.001","Nubank S.A",""],
   ["11","01.1.1.03","APLICAÇÕES DE LIQUIDEZ IMEDIATA - FAF",""],
   ["13","01.1.1.03.001","Caixa Econômica Federal","FAFCEF"],
   ["624","01.1.1.03.002","Banco do Brasil S/A","BBA"],

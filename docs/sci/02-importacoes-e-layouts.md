@@ -229,8 +229,12 @@ importação, ainda sem gravar):
 | O | Situação no nads | *(sem campo)* | conciliada, sugerida, sem regra... |
 
 - A **linha 1** traz os títulos (linha inicial = 2). A **última linha** traz o total de débitos (descartar 1 no fim).
-- As colunas L a O servem só para quem confere. O gerador as deixa sem campo. **A confirmar** que o SCI aceita colunas
-  sem campo no meio; se não aceitar, elas vão para uma segunda aba.
+- **26/11/2026 (regra do Vitor):** "eu quero ele 100% pronto, não quero editar. Então remova: esse total e os dados da coluna
+  lote, deixa vazia!". Desde então a aba Importar **não tem a linha Total** e a coluna **Lote vai vazia** (só o título). No
+  gerador `nads` do SCI, o *total de linhas a descartar no fim* passa a ser **0**; com 1, o SCI perde o último lançamento.
+- **25/11/2026:** a aba Importar ficou só com as 11 colunas do gerador (A a K), com os nomes dos campos dele (Valor principal,
+  CNPJ da filial, Participante a débito/crédito). O nome das contas, a origem e o motivo ficam só na aba Conferir, que não
+  vai para o SCI.
 - **Produtores rurais**: um segundo gerador com as 12 colunas do LCDPR depois da coluna O. Para as outras empresas, a
   planilha é a mesma sem essas colunas.
 
@@ -241,7 +245,6 @@ Exemplo fictício (o que se vê no Excel):
 | 05/11/2026 | 2950 | 1201 | 1.500,00 | 116 | PAGTO NF 123 FORNECEDOR EXEMPLO LTDA | 123 | LANC2611 | 11.222.333/0001-81 | | | ALUGUEL | BANCO EXEMPLO | Lançatudo | conciliada |
 | 10/11/2026 | 2101 | 1201 | 830,40 | 116 | PAGTO NF 456 | 456 | LANC2611 | 11.222.333/0001-81 | 44.555.666/0001-99 | | FORNECEDORES | BANCO EXEMPLO | Lançatudo | conciliada |
 | 30/11/2026 | 1201 | 3301 | 12,35 | 117 | RENDIMENTO APLICACAO | | LANC2611 | 11.222.333/0001-81 | | | BANCO EXEMPLO | RECEITAS FINANCEIRAS | Lançatudo | sugerida |
-| **Total** | | | **2.342,75** | | | | | | | | | | | |
 
 ---
 

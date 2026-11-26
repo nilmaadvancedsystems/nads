@@ -36,6 +36,9 @@ const codigo = [
   // o Faturamento da Área do Cliente (12/11/2026): os 12 meses de cada empresa pelas notas emitidas no SIEG
   'export { faturamentoDoCliente, competenciasDoFaturamento, entradasDosExtratos, comOBanco, lancamentosDoMes } from ' + caminho('packages/core/src/areaCliente/faturamento.ts') + ';',
   'export { notasDoMes, listaDeNotasDoMes } from ' + caminho('packages/core/src/areaCliente/notasDoMes.ts') + ';',
+  // o faturamento fiel do Simples pela Receita (25/11/2026, robo/ecac-pgdas.js): o extrato do PGDAS-D, o resumo por empresa
+  // e a janela do e-CAC (23h às 8h)
+  'export { extratoDoPgdas, juntarExtrato, lerPgdasDaEmpresa, dentroDaJanelaDoEcac, esperaAteAJanela, ESPERA_ENTRE_PERFIS_MS } from ' + caminho('packages/core/src/tarefas/pgdas/index.ts') + ';',
   'export { erroDaLogo } from ' + caminho('packages/core/src/areaCliente/logo.ts') + ';',
   'export { chaveDoPedidoDeDanfe, idDaDanfe, partesDaChave } from ' + caminho('packages/core/src/areaCliente/pedidoDeDanfe.ts') + ';',
   // os documentos antigos do RH sob pedido (ficha 37, 24/11/2026)

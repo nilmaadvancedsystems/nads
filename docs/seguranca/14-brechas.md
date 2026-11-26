@@ -21,7 +21,7 @@ Legenda: ✅ protegido · 🔧 corrigido nesta auditoria · ⏳ correção pront
 | 11 | Mandar a IA ignorar | 🔧 | A IA lia o banco inteiro, e dois robôs davam ao Claude mais poder do que precisava |
 | 12 | Script no usuário (XSS) | ✅ | Todo texto de fora é escapado; há melhorias de manutenção |
 | 13 | Senhas no GitHub | ✅ | Nenhum segredo real no histórico |
-| 14 | Abrir teu banco de dados | ⚠️ | O banco do Entregas está fechado; o `conferencia-nilma` está aberto |
+| 14 | Abrir teu banco de dados | ⚠️ | O banco do Entregas está fechado; o `conferencia-nilma` continua aberto (o nads ainda usa) |
 
 ---
 
@@ -190,13 +190,17 @@ liberado.
   - toda coleção tem regra;
   - a que não tem nasce trancada (`match /{document=**} { allow read, write: if false; }`);
   - `logado()` sozinho não abre nada: precisa ser da equipe.
-- **`conferencia-nilma`: ABERTO.** A regra é `allow read, write: if true`. Qualquer pessoa da internet que saiba o nome do
-  projeto lê, troca e apaga os dados do Extrator, da Conferência, do Creditor e do Lançatudo. O nome do projeto está no
-  site. Esse projeto não tem login, por isso não basta trocar a regra.
-  - **Proposta:** o nads pede ao robô da nuvem um login do `conferencia-nilma` para quem é da equipe (custom token), e a
-    regra de lá passa a exigir esse login.
-  - É trabalho próprio: login no projeto, permissão da conta do robô, as telas e o site antigo `conferencia-nilma.web.app`.
-  - Até lá, os dados de clientes desse banco estão expostos.
+- **`conferencia-nilma`: ABERTO.** A regra é `allow read, write: if true`: qualquer pessoa da internet que saiba o nome
+  do projeto lê, troca e apaga os dados do Extrator, da Conferência, do Creditor e do Lançatudo.
+  - Em 25/11/2026 foi fechado (`if false`) achando que estava sem uso, porque não recebia gravação desde 19/11. Mas o nads
+    ainda lê esse banco (Extrator, Creditor, Lançatudo, os históricos do Contábil e parte do Cadastro, por
+    `bancoDaConferencia()`), e as telas deram "Missing or insufficient permissions". Reaberto no mesmo dia.
+  - **Para fechar de verdade**, um destes dois caminhos:
+    - migrar essas coleções para o banco do Entregas, com regra própria, e só então fechar o `conferencia-nilma`;
+    - ou o login pelo robô (o nads pede ao robô da nuvem um login de lá, conferido como o `membroNoNads`). Há um rascunho
+      pronto e testado, guardado fora do GitHub; precisa ligar o Authentication do `conferencia-nilma` e dar à conta do
+      robô a permissão de assinar por ele.
+  - O site antigo `conferencia-nilma.web.app` (a Conferência sem login) já leva para a Tarefas. O nads não usa esse site.
 - **Storage:** nenhum dos três projetos publica regra de Storage; os arquivos ficam no Firestore em pedaços.
   `lcdpr-b7f69` não tem banco publicado.
 
@@ -208,5 +212,6 @@ liberado.
 2. **Robôs:** as mudanças em `robo/` só valem depois do push na `desenvolvimento` e da troca do `robo-versao`.
    - Antes, testar no PC o FGTS sem `bypassPermissions` e o suporte com as proibições de leitura.
    3. **Site:** o aviso das comissões entra na próxima publicação do nads.
-4. **`conferencia-nilma`:** decidir e fazer o login por custom token (item 14).
+4. **`conferencia-nilma`:** continua aberto. Migrar as coleções para o Entregas, ou ligar o login pelo robô, antes de
+   fechar (item 14).
 5. **GitHub:** proteção de branch e 2FA (item 11).

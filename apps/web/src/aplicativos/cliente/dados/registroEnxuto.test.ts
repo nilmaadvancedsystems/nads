@@ -18,6 +18,15 @@ describe('resumoDoRegistro', () => {
   it('sem férias para tirar, só os ativos', () => {
     expect(resumoDoRegistro({ ativos: 0, paraTirar: 0, urgentes: 0 })).toEqual([{ valor: '0', depois: 'funcionários ativos' }]);
   });
+  it('o sócio do pró-labore (RH NET, 25/11/2026) conta à parte; só com sócio, não diz "0 funcionários"', () => {
+    expect(resumoDoRegistro({ ativos: 0, paraTirar: 0, urgentes: 0, socios: 1 })).toEqual([{ valor: '1', depois: 'sócio no pró-labore' }]);
+    expect(resumoDoRegistro({ ativos: 3, paraTirar: 0, urgentes: 0, socios: 2 })).toEqual([
+      { valor: '3', depois: 'funcionários ativos' },
+      { valor: '2', depois: 'sócios no pró-labore' },
+    ]);
+    // no máximo dois fatos: com as férias, o sócio fica de fora
+    expect(resumoDoRegistro({ ativos: 5, paraTirar: 3, urgentes: 1, socios: 1 })).toHaveLength(2);
+  });
 });
 
 describe('fraseCurtaDasFerias', () => {

@@ -53,6 +53,12 @@ import { criarControleTributosFirestore } from './controleTributos.firestore';
 import { criarControleContabilMemoria, type RepoControleContabil } from './controleContabil';
 import { criarControleContabilFirestore } from './controleContabil.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
+import { criarConfigSciMemoria, type RepoConfigSci } from './configSci';
+import { criarConfigSciFirestore } from './configSci.firestore';
+import { criarPlanosSciMemoria, type RepoPlanosSci } from './planosSci';
+import { criarPlanosSciFirestore } from './planosSci.firestore';
+import { criarRhNetMemoria, type RepoRhNet } from './rhNet';
+import { criarRhNetFirestore } from './rhNet.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
 import { criarArquivoFisicoMemoria, type RepoArquivoFisico } from './arquivoFisico';
 import { criarArquivoFisicoFirestore } from './arquivoFisico.firestore';
@@ -597,7 +603,53 @@ export const testeDoInicioLigado = (q: DadosDeTesteDoInicio) => !!teste[q];
 export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
   // os avisos de exemplo levam junto as reuniões de exemplo (as Notificações do Início novo)
   if (q === 'avisos') { teste.avisos = ligar ? criarAvisosMemoria(true) : null; teste.reunioes = ligar ? criarReunioesMemoria(quemDasTarefas, true) : null; }
-  else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
+  else { teste.tarefas = ligar ? criarTarefasDelegadasMemoria(() => agindoComo || quemDasTarefas(), true) : null; if (!ligar) agindoComo = null; }
+  teste.ver++;
+  for (const f of ouvintesDoTeste) f();
+}
+
+/**
+ * Os dois perfis fictícios do modo desenvolvedor (26/11/2026: "No modo desenvolvedor coloca uma funcao de 2 usuarios ficticios,
+ * onde eu posso escolher o setor e a hierarquia"; "ai eu posso alterar entre os perfis"; "E ser duas pessoas diferentes vendo o
+ * nads"): ficam neste navegador e entram na equipe só com as tarefas de exemplo ligadas (nada vai para o banco).
+ */
+export interface PerfilFicticio { uid: string; nome: string; departamento: usuarios.Departamento; nivel: usuarios.Nivel }
+// o modo convidado (26/11/2026: "O modo guest, apos ligar o desenvolvedor, fica 2 convidados no modo desenvolvedor")
+const CHAVE_DOS_FICTICIOS = 'nads-dev-convidados';
+const FICTICIOS_PADRAO: readonly PerfilFicticio[] = [
+  { uid: 'convidado-1', nome: 'Convidado 1', departamento: 'contabil', nivel: 'pleno' },
+  { uid: 'convidado-2', nome: 'Convidado 2', departamento: 'fiscal', nivel: 'junior' },
+];
+let ficticios: PerfilFicticio[] = (() => {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE_DOS_FICTICIOS) || 'null') as PerfilFicticio[] | null;
+    if (Array.isArray(v) && v.length === 2) return FICTICIOS_PADRAO.map((p, i) => ({ ...p, ...v[i], uid: p.uid }));
+  } catch { /* sem storage */ }
+  return FICTICIOS_PADRAO.map(p => ({ ...p }));
+})();
+export const perfisFicticios = (): readonly PerfilFicticio[] => ficticios;
+/** Muda o nome, o setor ou a hierarquia de um perfil fictício (e o "Agir como", se for ele). */
+export function mudarPerfilFicticio(uid: string, mudar: Partial<Omit<PerfilFicticio, 'uid'>>) {
+  ficticios = ficticios.map(p => (p.uid === uid ? { ...p, ...mudar, nome: (mudar.nome ?? p.nome).slice(0, 40) || p.nome } : p));
+  try { localStorage.setItem(CHAVE_DOS_FICTICIOS, JSON.stringify(ficticios)); } catch { /* sem storage */ }
+  if (agindoComo?.uid === uid) { const p = ficticios.find(x => x.uid === uid)!; agindoComo = { uid: p.uid, nome: p.nome }; }
+  teste.ver++;
+  for (const f of ouvintesDoTeste) f();
+}
+/** A pessoa fictícia como alguém da equipe. */
+const comoUsuario = (p: PerfilFicticio): usuarios.Usuario => ({ uid: p.uid, nome: p.nome, email: '', departamento: p.departamento, nivel: p.nivel, papeis: [], ativo: true, fotoPerfil: null });
+
+/**
+ * O "Agir como" das tarefas de teste (26/11/2026: "quero simular a rotina de requerer documentos, por parte de quem ta pedindo e por
+ * parte de quem ta recebendo"): com as tarefas de exemplo ligadas, o Início passa a ser o de outra pessoa da equipe (só na memória;
+ * nada vai para o banco). null = volta a ser quem entrou.
+ */
+let agindoComo: { uid: string; nome: string } | null = null;
+export const agindoComoNoTeste = () => agindoComo;
+export function agirComoNoTeste(p: { uid: string; nome: string } | null) {
+  // ser um perfil fictício liga as tarefas de exemplo: ele só existe na memória
+  if (p && !teste.tarefas && ficticios.some(f => f.uid === p.uid)) teste.tarefas = criarTarefasDelegadasMemoria(() => agindoComo || quemDasTarefas(), true);
+  agindoComo = teste.tarefas ? p : null;
   teste.ver++;
   for (const f of ouvintesDoTeste) f();
 }
@@ -705,6 +757,30 @@ export function repoDeCategoriasDp(): RepoCategoriasDp {
   return categoriasDp;
 }
 
+let configSci: RepoConfigSci | null = null;
+
+/** A integração com as APIs da SCI (24/11/2026): no banco, config/sci; nos exemplos, na memória. */
+export function repoDaConfigSci(): RepoConfigSci {
+  if (!configSci) configSci = noBanco ? criarConfigSciFirestore(() => quemPede()?.nome || '') : criarConfigSciMemoria();
+  return configSci;
+}
+
+let planosSci: RepoPlanosSci | null = null;
+
+/** Os planos de contas do SCI adicionados ou atualizados pelo escritório (26/11/2026): no banco, config/sciPlanos; nos exemplos, na memória. */
+export function repoDosPlanosSci(): RepoPlanosSci {
+  if (!planosSci) planosSci = noBanco ? criarPlanosSciFirestore(() => quemPede()?.nome || '') : criarPlanosSciMemoria();
+  return planosSci;
+}
+
+let rhNet: RepoRhNet | null = null;
+
+/** Os pedidos ao RH NET da SCI (25/11/2026): no banco, a fila do robô (solicitacoesEmail tipo 'rhnet'); nos exemplos, na memória. */
+export function repoDoRhNet(): RepoRhNet {
+  if (!rhNet) rhNet = noBanco ? criarRhNetFirestore(() => quemPede()?.nome || '') : criarRhNetMemoria();
+  return rhNet;
+}
+
 let insights: RepoInsights | null = null;
 /** A Tela de Insights: no banco, nadsInsights/atual; nos exemplos, na memória (plano do Acessórias, 18/11/2026, ficha tela-de-insights; frases do dono: "a Tela de Insights eu quero", "esses paineis so vao ser vistos por diretor e admin", "Todos os seis"). */
 export function repoDosInsights(): RepoInsights {
@@ -764,9 +840,20 @@ export function repoDaIA(): RepoIA {
 }
 
 let acesso: RepoAcesso | null = null;
+let acessoComFicticios: RepoAcesso | null = null;
 
 /** A proteção do login, a equipe e as configurações do nads (config/nads). */
 export function repoDeAcesso(): RepoAcesso {
+  // com as tarefas de exemplo (modo desenvolvedor), a equipe ganha os dois perfis fictícios (26/11/2026)
+  if (teste.tarefas) {
+    const base = repoDeAcessoDoBanco();
+    if (!acessoComFicticios) acessoComFicticios = { ...base, equipe: () => { const e = base.equipe(); return { ...e, lista: [...e.lista, ...ficticios.map(comoUsuario)] }; } };
+    return acessoComFicticios;
+  }
+  return repoDeAcessoDoBanco();
+}
+
+function repoDeAcessoDoBanco(): RepoAcesso {
   if (!acesso) {
     acesso = noBanco
       ? criarAcessoFirestore(() => {

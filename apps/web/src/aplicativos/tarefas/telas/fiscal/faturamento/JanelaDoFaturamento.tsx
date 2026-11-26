@@ -12,7 +12,7 @@ const brl = (n: number | null | undefined) => (n == null ? '' : n.toLocaleString
 export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, anual, fechar }: {
   cliente: { codigo: number; nome: string; regime: string }; competencias: readonly string[]; rotuloDoPeriodo: string; anual: boolean; fechar: () => void;
 }) {
-  const vm = useDetalheDoFaturamento(cliente.codigo, cliente.nome, competencias, anual);
+  const vm = useDetalheDoFaturamento(cliente.codigo, cliente.nome, competencias, anual, cliente.regime);
   const janela = useRef<HTMLDivElement>(null);
   // com o espelho da nota aberto por cima, o Esc fecha só ele
   useJanela(janela, () => { if (!vm.vendo) fechar(); });
@@ -35,7 +35,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
             <p className="fs-det-fichas">
               <span className="badge badge-neutral">{cliente.regime || 'Sem regime'}</span>
               <span className="badge badge-neutral">{rotuloDoPeriodo}</span>
-              <span className="fs-det-fonte">NF-e e NFC-e emitidas no SIEG, sem as canceladas</span>
+              <span className="fs-det-fonte">{vm.pelaReceita ? 'Faturamento: Receita (PGDAS-D), ' + vm.receita?.consultado + ' · as notas: SIEG' : 'NF-e e NFC-e emitidas no SIEG, sem as canceladas' + (vm.receita ? ' · Receita (PGDAS-D), ' + vm.receita.consultado : '')}</span>
             </p>
           </div>
         </div>
@@ -57,7 +57,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
         <section className="card fat-detalhe-evolucao">
           <h3>Evolução</h3>
           <BarrasEmColuna colunas={vm.barras} ativa={vm.mes?.competencia ?? null} onEscolher={vm.escolher} />
-          {vm.semDado > 0 && <p className="fraco fat-sem-dado">{vm.semDado === 1 ? '1 mês' : vm.semDado + ' meses'} do período sem dado no SIEG (no período Ano, aparecem vazios)</p>}
+          {vm.semDado > 0 && <p className="fraco fat-sem-dado">{vm.semDado === 1 ? '1 mês' : vm.semDado + ' meses'} do período sem dado {vm.pelaReceita ? 'no PGDAS-D' : 'no SIEG'} (no período Ano, aparecem vazios)</p>}
           {/* o mix numa barra só, as duas partes com a legenda de bolinha */}
           <div className="fs-mix" aria-label="NF-e e NFC-e no período">
             <span className="fs-mix-barra" aria-hidden="true">
@@ -68,6 +68,29 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
             <span className="fs-mix-item"><i className="fs-mix-nfce" /><b>NFC-e</b> {vm.numeros.mix.pctNfce}% · R$ {brl(vm.numeros.mix.nfce)}</span>
           </div>
         </section>
+
+        {/* a Receita ao lado das notas (25/11/2026: "um relatório fiel"): a receita declarada no PGDAS-D, que o robô do
+            e-CAC baixa, contra a soma das notas do SIEG; a diferença ajuda a achar nota fora do SIEG ou receita sem nota */}
+        {vm.receita && (
+          <section className="card fat-receita">
+            <h3><span>Na Receita (PGDAS-D)<span className="fraco"> · {vm.receita.consultado}</span></span></h3>
+            <div className="table-wrap">
+              <table className="table-compact">
+                <thead><tr><th>Mês</th><th className="num">Receita declarada</th><th className="num">Notas no SIEG</th><th className="num">Diferença</th></tr></thead>
+                <tbody>
+                  {vm.receita.linhas.map(l => (
+                    <tr key={l.competencia}>
+                      <td>{l.rotulo}</td>
+                      <td className="num">{l.receita == null ? '—' : brl(l.receita)}</td>
+                      <td className="num">{l.notas == null ? '—' : brl(l.notas)}</td>
+                      <td className="num">{l.diferenca == null ? '—' : brl(l.diferenca)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {/* as notas do mês escolhido, para procurar e abrir (23/10/2026: "por que não tem como eu ver todos os clientes /
             abrir e ver / pesquisar as notas por aqui?" e "ver as notas por CFOP se eu clicar"): por comprador ou por CFOP,

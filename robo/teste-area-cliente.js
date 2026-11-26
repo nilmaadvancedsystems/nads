@@ -371,6 +371,15 @@ if (modulo) {
   igual('o faturamento: o regime (o limite do Simples/MEI)', fat.empresas[0].regime, 'Simples');
   igual('o faturamento: as séries do mês (o detalhamento)', fat.empresas[0].meses[0].series.length, 1);
   {
+    // o PGDAS-D do robô do e-CAC (25/11/2026): o total do mês é a receita declarada; o resumo passa na lista branca
+    const pg = { codigo: 292, cnpj: '99888777000166', nome: 'FITO', fonte: 'Receita (PGDAS-D)', consultadoEm: '2026-11-26T02:00:00.000Z',
+      meses: { '2026-10': { competencia: '2026-10', receita: 650, interno: 650, externo: 0, rbt12: 7000, declaracao: '99888777202610001', transmitidaEm: '2026-11-18T14:05:31', origem: 'extrato', consultadoEm: '2026-11-26T02:00:00.000Z' } } };
+    const comReceita = G.faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }], ['2026-10'], () => ({ codigo: '292', competencia: '2026-10', em: '', series: [{ modelo: '55', serie: '1', numeros: [1], canceladas: [], valor: 500 }] }), new Date(2026, 10, 26), undefined, () => G.lerPgdasDaEmpresa(pg));
+    igual('o faturamento com a Receita passa na lista branca', joga(() => R.conferirListaBranca('faturamento', comReceita)), '');
+    igual('o faturamento com a Receita: o total é a receita declarada, as notas seguem do SIEG', [comReceita.empresas[0].meses[0].total, comReceita.empresas[0].meses[0].nfe, comReceita.empresas[0].meses[0].receita.valor], [650, 500, 650]);
+    igual('o faturamento com a Receita: o número da declaração não sai para o cliente', JSON.stringify(comReceita).includes('99888777202610001'), false);
+  }
+  {
     const notas = { codigo: '292', competencia: '2026-10', em: '2026-11-01', pasta: '', arquivos: 1, novos: 0, recebidas: [], emitidas: [
       { tipo: 'NF-e', chave: '3126', numero: '1', serie: '1', data: '05/10/2026', emitente: { doc: '', nome: '' }, destinatario: { doc: '11222333000181', nome: 'LOJA X' }, valor: 500, cfop: '5102' },
     ] };

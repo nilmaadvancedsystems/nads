@@ -1,12 +1,11 @@
-// O "Baixar para o SCI" do botão Lançamentos das telas (23/11/2026, docs/sci: "Botão direto nas telas"; só no modo
-// desenvolvedor, pela novidade 'sci'). Pega a mesma planilha do Baixar (a do Alterdata), pede o CNPJ (o do Cadastro, ou
+// O "Baixar para o SCI" do botão Lançamentos das telas (23/11/2026, docs/sci: "Botão direto nas telas"; fora do modo
+// desenvolvedor desde 25/11/2026: "libera a planilha para fora do dev"). Pega a mesma planilha do Baixar (a do Alterdata), pede o CNPJ (o do Cadastro, ou
 // o último usado para a empresa neste navegador) e o histórico das linhas sem código, e baixa a planilha que o gerador
 // do SCI importa. Nada é gravado no banco: só o CNPJ e o histórico ficam lembrados neste navegador, por conveniência.
 import { sci } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { cnpjNoCadastro } from '../aplicativos/tarefas/dados/cadastro.firestore';
-import { useNovidade } from './novidades';
 
 const CHAVE_DO_CNPJ = (empresa: string) => 'sciCnpj|' + empresa;
 const CHAVE_DO_HISTORICO = 'sciHistorico';
@@ -16,7 +15,8 @@ function lembrar(k: string, v: string) { try { localStorage.setItem(k, v); } cat
 export interface PlanilhaDaTela { bytes: Uint8Array; linhas: number }
 
 export function useBaixarParaOSci(empresa: string, origem: string, planilha: () => PlanilhaDaTela | null) {
-  const ligado = useNovidade('sci');
+  // para todos (25/11/2026: "libera a planilha para fora do dev"); o campo fica para as telas que ainda perguntam
+  const ligado = true;
   const { modal, aviso } = useRetorno();
   const [ocupado, setOcupado] = useState(false);
 

@@ -188,6 +188,8 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     titulo: mesPorExtenso(mes), emAndamento: !!d?.emAndamento, tem: m.total != null, temNotas: !!n,
     numeros: {
       total: m.total == null ? 'Sem nota' : formatos.reais(totalDoMes),
+      // o mês que veio do PGDAS-D (25/11/2026: "um relatório fiel"): o que a empresa declarou à Receita, e quando o escritório consultou
+      fonte: m.receita ? 'Declarado à Receita (e-CAC)' + (Number.isFinite(Date.parse(m.receita.consultadoEm)) ? ', consultado em ' + new Date(m.receita.consultadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '') : '',
       anterior, anoPassado,
       // (16/11/2026, "muita informação") "sobre setembro", sem o ano que o seletor já mostra
       sobre: anterior ? 'sobre ' + semAno(anterior.mes) : '',

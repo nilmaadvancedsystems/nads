@@ -7,7 +7,7 @@ import { BotaoFechar, Icone, useEntradaAnimada, useIndicador, useJanela } from '
 import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
-import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empresa/DadosDaEmpresa';
+import { AreaDoClienteDaEmpresa, ContatoDaEmpresa, DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais, SciDaEmpresa } from '../empresa/DadosDaEmpresa';
 import { DocumentosDoFiscal } from '../fiscal/DocumentosDoFiscal';
 import { ParcelamentosDaEmpresa } from '../fiscal/ParcelamentosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
@@ -18,11 +18,33 @@ import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
 import { CodigoDoSimplesNoCadastro } from '../../senhas/CodigoDoSimplesNoCadastro';
 import { LinkDoClienteNaEmpresa } from '../../area-cliente/LinkDoClienteNaEmpresa';
 
-function Aba({ rota, aba, simples }: { rota: string; aba: string; simples: boolean }) {
+/** Uma parte das Particularidades (o Contábil, o Fiscal) que abre e fecha no clique do título; começa fechada. */
+function DropdownDasParticularidades({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <details className="cad-particularidades-parte">
+      <summary className="cad-particularidades-grupo"><Icone nome="chevronRight" className="cad-particularidades-seta" />{titulo}</summary>
+      <div className="cad-particularidades-corpo">{children}</div>
+    </details>
+  );
+}
+
+function Aba({ rota, aba, simples, verContabil }: { rota: string; aba: string; simples: boolean; verContabil: boolean }) {
   switch (aba) {
     // o código de acesso do Simples à mostra em cima dos dados (03/11/2026: "aparecer no cadastro como informação facil")
     case 'empresa': return <><CodigoDoSimplesNoCadastro rota={rota} simples={simples} /><DadosDaEmpresa rota={rota} /></>;
-    case 'contabil': return <ParametrosContabeis rota={rota} />;
+    case 'contabil': return <><SciDaEmpresa rota={rota} /><ParametrosContabeis rota={rota} /></>;
+    // o Contato e a Área do Cliente em abas à parte (26/11/2026: "Contato e area do cliente em menu separado")
+    case 'contato': return <ContatoDaEmpresa rota={rota} />;
+    case 'area-cliente': return <AreaDoClienteDaEmpresa rota={rota} />;
+    // os dois Parâmetros numa aba só (26/11/2026): em primeiro o SCI ("nao e contabil nem fiscal, pode deixar em primeiro de
+    // todos"); depois o do Contábil (para quem vê o Contábil) e o do Fiscal, cada um num dropdown ("Coloca um dropdown")
+    case 'particularidades': return (
+      <>
+        <SciDaEmpresa rota={rota} />
+        {verContabil && <DropdownDasParticularidades titulo="Contábil"><ParametrosContabeis rota={rota} /></DropdownDasParticularidades>}
+        <DropdownDasParticularidades titulo="Fiscal"><ParametrosFiscais rota={rota} /></DropdownDasParticularidades>
+      </>
+    );
     case 'obrigacoes': return <ObrigacoesDaEmpresa rota={rota} />;
     case 'fiscal': return <ParametrosFiscais rota={rota} />;
     case 'fiscal-docs': return <DocumentosDoFiscal rota={rota} />;
@@ -118,9 +140,9 @@ export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
             {vm.abaAberta && <h2 className="cfg-titulo">{vm.abaAberta.grupo !== 'Empresa' && <span className="fraco">{vm.abaAberta.grupo} · </span>}{vm.abaAberta.rotulo}</h2>}
             {soLeitura ? <><CodigoDoSimplesNoCadastro rota={rota} simples={vm.simples} />{soLeitura}</> : <>
               {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
-              <Aba rota={rota} aba={vm.aba} simples={vm.simples} />
+              <Aba rota={rota} aba={vm.aba} simples={vm.simples} verContabil={vm.verContabil} />
               {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}
-              {vm.aba === 'empresa' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
+              {vm.aba === 'area-cliente' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
             </>}
           </div>
         </div>

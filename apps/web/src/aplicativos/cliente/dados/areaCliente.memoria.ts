@@ -232,7 +232,12 @@ function pessoalDeExemplo(hoje: Date): ac.ResumoDoPessoal {
     const holerite = k >= 9 ? { proventos: base, inss: Math.round(base * 0.085 * 100) / 100, irrf: Math.round(base * 0.021 * 100) / 100, descontos: Math.round(base * 0.142 * 100) / 100, liquido: Math.round(base * 0.858 * 100) / 100, holerites: ativosNoMes.length } : {};
     return { competencia, base, fgts: Math.round(base * 0.08 * 100) / 100, funcionarios: ativosNoMes.length, ...holerite };
   });
-  return { funcionarios, competencia: ultimo, total: 15800, historico, atualizadoEm: comHora(hoje, 7, 30) };
+  // o cadastro no RH NET da SCI (25/11/2026): o sócio do pró-labore e uma admissão que o escritório ainda vai liberar
+  const rhnet: ac.CadastroNoRhNetNaArea[] = [
+    { id: 'rh1', nome: 'ROBERTO EXEMPLO', cpf: '***.982.247-**', tipo: 'Sócio – pró-labore', entrada: '2021-01-04', situacao: 'Na folha' },
+    { id: 'rh2', nome: 'LUCIA MODELO', cpf: '***.117.448-**', tipo: 'Auxiliar administrativo', entrada: mesAtras(hoje, -1) + '-01', situacao: 'Aguardando o escritório' },
+  ];
+  return { funcionarios, competencia: ultimo, total: 15800, historico, rhnet, atualizadoEm: comHora(hoje, 7, 30) };
 }
 
 /** O faturamento de exemplo (12/11/2026): 12 meses de notas emitidas, como o robô monta pelo SIEG (o mês de hoje ainda sem dado). */

@@ -1,0 +1,29 @@
+/* Configurações › Integração SCI (24/11/2026) */
+.sci-config { display: flex; flex-direction: column; gap: 16px; max-width: 880px; }
+.sci-config .cad-secao > .hint { margin: 0 0 8px; }
+.sci-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 14px; }
+.sci-grade .input { max-width: 110px; font-variant-numeric: tabular-nums; text-transform: uppercase; }
+.sci-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+.sci-ok { color: var(--ok, #2e7d32); }
+.sci-bad { color: var(--bad, #c62828); }
+.sci-warn { color: var(--warn, #b26a00); }
+.sci-empresa + .sci-empresa { border-top: 1px solid var(--linha, rgba(127,127,127,.2)); }
+.sci-empresa .cad-chave-texto { display: flex; flex-direction: column; gap: 2px; }
+.sci-botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.sci-token { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 0 0 12px; }
+.sci-token .input { flex: 1 1 260px; min-width: 0; font-family: var(--mono, monospace); }
+/* os planos de contas (26/11/2026): o botão à direita do título, a prévia do que muda e a lista das contas que dá para abrir */
+.sci-planos-acao { margin-left: auto; }
+.sci-planos-erro { margin: 8px 0 0; color: var(--danger); font-size: var(--fs-13); }
+.sci-planos-previa { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.sci-planos-previa > p { margin: 0 0 6px; }
+.sci-planos-lista { margin: 6px 0; font-size: var(--fs-13); }
+.sci-planos-lista summary { cursor: pointer; }
+.sci-planos-lista ul { margin: 6px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; font-size: var(--fs-12); color: var(--ink-muted); }
+.sci-planos-botoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+/* o "+ Adicionar empresa" do RH NET (26/11/2026) */
+.sci-adicionar { align-self: flex-start; margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.sci-nova { display: grid; grid-template-columns: 160px 1fr; gap: 10px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
+.sci-nova .sci-botoes { grid-column: 1 / -1; }
+.sci-nova .input[type=password] { font-family: var(--mono, monospace); }
+@media (max-width: 640px) { .sci-nova { grid-template-columns: 1fr; } }

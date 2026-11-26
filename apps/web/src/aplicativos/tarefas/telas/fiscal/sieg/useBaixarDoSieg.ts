@@ -4,7 +4,7 @@
 // que o SIEG traz no mês: saídas, entradas, serviços prestados e tomados e CT-e, cada um com o resumo por CFOP/CST/NBS e a
 // tabela das notas (com busca; clicar abre o espelho), mais a sequência das saídas. As contas: core tarefas.sieg.painelDoSieg.
 // A empresa aberta em Minhas empresas chega já escolhida (?empresa=código).
-import { empresas as emp, tarefas as t } from '@nads/core';
+import { empresas as emp, sci, tarefas as t } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
@@ -68,6 +68,9 @@ export function useBaixarDoSieg() {
     painel,
     /** a conferência do IBS/CBS do mês (o robô grava no resumo do SIEG); null = ainda não conferiu */
     ibsCbs: dados?.ibsCbs || null,
+    /** o Integra NET da SCI (24/11/2026): "SCI: 214 enviadas · faltam 3 no SCI"; '' = desligado ou ainda não rodou */
+    fraseDoSci: sci.integracao.fraseDoIntegra(dados?.sci),
+    erroDoSci: dados?.sci?.erro || '',
     aba, mudarAba,
     resumo,
     servico,

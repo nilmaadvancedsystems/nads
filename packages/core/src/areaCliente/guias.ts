@@ -14,7 +14,8 @@ export type SituacaoDaGuia = 'a vencer' | 'vence hoje' | 'vencida';
 export const ROTULO_DA_GUIA: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS (Simples Nacional)', DAE: 'DAE (imposto estadual)', DARF: 'DARF', DAM: 'DAM (ISS)', HON: 'Honorários do escritório', outra: 'Guia' };
 
 /** O nome da guia para o cliente: a DARF com o tributo ("DARF INSS"); as outras, o ROTULO_DA_GUIA. */
-export function rotuloDaGuia(g: Pick<GuiaDoCliente, 'tipo' | 'tributo'>): string {
+export function rotuloDaGuia(g: Pick<GuiaDoCliente, 'tipo' | 'tributo'> & { nome?: string }): string {
+  if (g.tipo === 'outra' && g.nome) return g.nome;
   return g.tipo === 'DARF' && g.tributo ? 'DARF ' + g.tributo : ROTULO_DA_GUIA[g.tipo];
 }
 
@@ -54,6 +55,8 @@ export interface GuiaDoCliente {
   linha?: string;
   /** o Pix copia e cola do boleto (só no HON emitido pelo Efí, o "bolix") (24/11/2026: "se possivel poder gerar um codigo pix") */
   pix?: string;
+  /** o nome que veio de fora, para a guia sem tipo conhecido (a do SCI Report, 26/11/2026); sem ele, o ROTULO_DA_GUIA */
+  nome?: string;
 }
 
 /** O Pix copia e cola que vale: o payload EMV (começa com 000201), só caracteres comuns, até 512. */

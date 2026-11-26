@@ -126,6 +126,8 @@ export function Guias(props: DaCasca) {
               </ul>
             </section>
           )}
+          {/* (26/11/2026: "tem que parecer que sci report nem existe para o usuario") as guias do SCI Report já vêm
+              juntas às outras, na lista de cima (dados/repo.ts, comGuiasDoSci) */}
         </div>
 
         {temLado && (

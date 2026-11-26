@@ -120,6 +120,7 @@ function iniciarAreaDoCliente(db, log) {
   const comunicados = new Map();
   const pedidosFgts = new Map();      // id → pedido pronto
   const saidasSieg = new Map();       // '<código>_<AAAA-MM>' → as saídas do SIEG do mês (o Faturamento)
+  const pgdasPorCodigo = new Map();   // código → o resumo do PGDAS-D da empresa (pgdas/{código}, o robô do e-CAC; 25/11/2026)
   const notasDoMesSieg = new Map();   // '<código>_<AAAA-MM>' → o resumo das notas do mês (o painel do mês; a nota não fica)
   const listaDeNotasSieg = new Map(); // '<código>_<AAAA-MM>' → as notas do mês em lista enxuta (o relatório do dia)
   const logosDasEmpresas = new Map(); // código → a logo (data URL) que o gestor pôs no nads (logosDasEmpresas/{código})
@@ -747,10 +748,12 @@ function iniciarAreaDoCliente(db, log) {
     // os que saíram (o mês passou dos 12, o arquivo foi tirado da pasta)
     for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
     dpNoEspelho.set(token, vivos);
-    // o resumo do pessoal: só quando tem funcionário ou documento (sem nada, a aba nem aparece para o cliente)
-    if (reg.funcionarios.length || vivos.size) {
+    // o cadastro no RH NET da SCI (25/11/2026, robo/rhnet.js): só com config/sci.rhNet, a empresa na lista e o token dela
+    const rhnet = await require('./rhnet').cadastrosParaArea(db, link.codigos, log).catch(() => null);
+    // o resumo do pessoal: só quando tem funcionário, documento ou alguém no RH NET (sem nada, a aba nem aparece para o cliente)
+    if (reg.funcionarios.length || vivos.size || (rhnet && rhnet.length)) {
       // (13/11/2026) e a folha mês a mês pelas mesmas guias: o custo da folha no Registro
-      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, historico: P.historicoComAFolha(P.historicoDaFolha(guias), holerites), atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
+      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, historico: P.historicoComAFolha(P.historicoDaFolha(guias), holerites), ...(rhnet && rhnet.length ? { rhnet } : {}), atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
     } else if (await hashAtual(espelhoDe(token).collection('resumo').doc('pessoal'), token + '/resumo/pessoal')) {
       await espelhoDe(token).collection('resumo').doc('pessoal').delete();
       hashes.set(token + '/resumo/pessoal', '');
@@ -833,11 +836,12 @@ function iniciarAreaDoCliente(db, log) {
     try { gravados += await espelharCertidoes(token, empresas); } catch (e) { log('Certidões: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
     // o acervo do escritório (a pasta fixa DO ESCRITÓRIO): um erro aqui não para o resto do espelho
     try { gravados += await espelharDoEscritorio(token, empresas); } catch (e) { log('Do escritório: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
-    // o Faturamento: os 12 meses de cada empresa pelas notas emitidas no SIEG; sem nenhum mês, o resumo sai
+    // o Faturamento: os 12 meses de cada empresa pelas notas emitidas no SIEG; sem nenhum mês, o resumo sai. Com o PGDAS-D
+    // que o robô do e-CAC trouxe (25/11/2026), o total do mês é a receita declarada à Receita
     try {
       const P = doCore();
       const fat = P.faturamentoDoCliente(empresas.map(e => ({ codigo: e.codigo, nome: e.nome, regime: e.regime || '' })), P.competenciasDoFaturamento(hoje),
-        (c, m) => saidasSieg.get(c + '_' + m), hoje, (c, m) => notasDoMesSieg.get(c + '_' + m));
+        (c, m) => saidasSieg.get(c + '_' + m), hoje, (c, m) => notasDoMesSieg.get(c + '_' + m), c => pgdasPorCodigo.get(Number(c)) || null);
       const ref = espelhoDe(token).collection('resumo').doc('faturamento');
       // o que entrou no banco em cada mês, pelos extratos que o escritório leu (13/11/2026); sem acesso, o faturamento segue sem
       const banco = fat ? await entradasDoBanco(empresas) : new Map();
@@ -1162,6 +1166,19 @@ function iniciarAreaDoCliente(db, log) {
       if (!primeirasSaidas) tokensDaEmpresa(s.codigo).forEach(t => fila.add(t));
     }
     primeirasSaidas = false;
+    agendar();
+  }, log);
+
+  // o PGDAS-D de cada empresa (25/11/2026, robo/ecac-pgdas.js): um documento por empresa, que muda uma vez por noite
+  let primeiroPgdas = true;
+  ouvir('Área do Cliente: PGDAS-D', () => db.collection('pgdas'), snap => {
+    for (const ch of snap.docChanges()) {
+      const e = ch.type === 'removed' ? null : doCore().lerPgdasDaEmpresa(ch.doc.data());
+      const cod = Number(ch.doc.id);
+      if (e) pgdasPorCodigo.set(e.codigo, e); else pgdasPorCodigo.delete(cod);
+      if (!primeiroPgdas) tokensDaEmpresa(cod).forEach(tk => fila.add(tk));
+    }
+    primeiroPgdas = false;
     agendar();
   }, log);
 

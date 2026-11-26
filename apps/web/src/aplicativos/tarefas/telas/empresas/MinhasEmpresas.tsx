@@ -2,14 +2,15 @@
 // lugar do "main ▾"; à direita a busca curta com atalho "/" e Situação ▾), as empresas por situação, a lista (clicar no
 // título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
 // Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
+import { LIMITE, useMinhasEmpresas, type Coluna, type SistemaContabil } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
 import { JanelaDeMinhasEmpresas } from './partes/JanelaDeMinhasEmpresas';
 import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
+import { BotaoDeTeste } from '../../../../comum/BotaoDeTeste';
 
 
 /** A cor e o ícone de cada situação no número (os tons do painel do DP). */
@@ -65,10 +66,22 @@ export function MinhasEmpresas() {
         {vm.perguntarCompetencia && <JanelaDaCompetencia competencias={vm.competencias} competencia={vm.competencia} onSeguir={vm.setCompetencia} />}
         <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        {/* as abas do Contábil: as empresas do Alterdata e as do SCI (25/11/2026), sem o número ("Remove 58 e 14") */}
+        {vm.abasDoSistema && (
+          <Segmentado<SistemaContabil> valor={vm.sistema} onMudar={vm.setSistema} opcoes={vm.abasDoSistema.map(x => ({ valor: x.valor, rotulo: x.rotulo }))} />
+        )}
         {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
 
         <span className="tarefas-barra-espaco" />
 
+        <BotaoDeTeste itens={vm.testeApenasMinhas} />
+        {/* "Mostrar apenas as minhas" (26/11/2026): esconde as empresas de outra pessoa (a novidade 'apenas-as-minhas') */}
+        {vm.temOpcaoApenasMinhas && (
+          <button type="button" className={'btn btn-outline' + (vm.apenasMinhas ? ' ativo' : '')} aria-pressed={vm.apenasMinhas} onClick={vm.alternarApenasMinhas}
+            title={vm.apenasMinhas ? 'Mostrando só as empresas em que você é o responsável. Clique para ver todas.' : 'Mostrar só as empresas em que você é o responsável'}>
+            <Icone nome="usuario" />Mostrar apenas as minhas
+          </button>
+        )}
         {vm.departamento === 'contabil' && <button type="button" className="icon-btn" title="Configurações: os históricos do Creditor" aria-label="Configurações" onClick={() => setJanela('configuracoes')}><Icone nome="settings" /></button>}
 
         <label className="busca-curta">

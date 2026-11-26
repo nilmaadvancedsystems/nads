@@ -9,9 +9,9 @@
 import { AgendarEnvio } from '../../janela/AgendarEnvio';
 import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
-import type { GuiaDoLote, ViaDaGuia } from '../../../dados/loteFiscal';
+import { fraseDoSciReport, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { JanelaLateral } from '../../janela/JanelaLateral';
-import { efetivoDaGuia, useEnvioDeGuias, type VmEnvioDeGuias } from './useEnvioDeGuias';
+import { useEnvioDeGuias, type VmEnvioDeGuias } from './useEnvioDeGuias';
 import type { RegimeDoRelatorio } from './useRelatorioGeral';
 
 const hora = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
@@ -26,7 +26,8 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
 // o DARF de mais de um tributo: "DARF PIS + COFINS" (05/11/2026)
 // o que não é guia (escolhido como OUTRO: o relatório da Antecipação ICMS-ES que vai junto, 12/11/2026) aparece pelo nome do arquivo
 const naoEGuia = (a: GuiaDoLote) => a.escolha?.tipo === 'OUTRO';
-const tipoDaGuia = (a: GuiaDoLote) => naoEGuia(a) ? a.nome.replace(/\.[^.]+$/, '') : [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
+// o leitor não achou o tipo: vale o da escolha (o tipo do menu leva a pasta: "DAE" do ICMS-ST; 26/11/2026)
+const tipoDaGuia = (a: GuiaDoLote) => naoEGuia(a) ? a.nome.replace(/\.[^.]+$/, '') : [a.leitura?.tipo || a.escolha?.tipo,(a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
 const VIAS: { valor: ViaDaGuia; rotulo: string; icone?: ReactNode }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }, { valor: 'zap', rotulo: 'WhatsApp', icone: <LogoWhatsApp /> }];
 // o ícone do WhatsApp é a imagem que o Vitor mandou (12/11/2026, ticket 1ORUBY: "O icone"), em logos-bancos/whatsapp.png
 const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador', scireport: 'SCI Report', zap: 'WhatsApp' };
@@ -36,7 +37,7 @@ const foneLegivel = (n: string) => { const d = n.replace(/^55/, ''); return '(' 
 /** escolher o cliente na lista do escritório, com a busca (o mesmo menu do lote do DP) */
 function MenuDeCliente({ vm, arquivo }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote }) {
   const [busca, setBusca] = useState('');
-  const x = efetivoDaGuia(arquivo, vm.grupo.id);
+  const x = vm.efetivo(arquivo);
   const atual = x.codigo != null ? vm.clientes.find(c => c.codigo === x.codigo) : null;
   const q = busca.trim().toLowerCase();
   const achados = (q ? vm.clientes.filter(c => (c.codigo + ' ' + c.nome).toLowerCase().includes(q)) : vm.clientes).slice(0, 60);
@@ -59,15 +60,19 @@ function MenuDeCliente({ vm, arquivo }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLot
   );
 }
 
-/** a coluna do Relatório que a guia preenche (ou "sem coluna"), para trocar */
-function MenuDeColuna({ vm, arquivo, compacto }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote; compacto?: boolean }) {
-  const atual = efetivoDaGuia(arquivo, vm.grupo.id).coluna;
+/**
+ * o tipo da guia, para trocar (26/11/2026): só os tipos do regime da empresa (no Presumido PIS, COFINS, IRPJ, CSLL, ICMS, ISS,
+ * IBS, CBS e o parcelamento; no Simples as colunas do Simples); cada tipo é a coluna do Relatório que recebe o valor
+ */
+function MenuDeTipo({ vm, arquivo, compacto }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote; compacto?: boolean }) {
+  const atual = vm.efetivo(arquivo).coluna;
+  const tipos = vm.tiposDe(arquivo);
   // o DARF de mais de um tributo vai dividido (cada um na coluna dele) até a pessoa escolher uma coluna só
   const r = vm.noRelatorio(arquivo);
   return (
-    <MenuSuspenso rotulo={r.dividida ? 'Colunas: ' + r.coluna : atual ? 'Coluna: ' + vm.rotuloDaColuna(atual) : 'Sem coluna'} className={compacto ? 'btn btn-ghost btn-sm' : 'btn btn-outline'} titulo="Coluna do Relatório" compacto={compacto} flutuante direita
-      dica="A coluna do Relatório que recebe o valor desta guia"
-      itens={vm.colunas.map(c => ({ rotulo: c.rotulo, marcado: !r.dividida && c.valor === atual, onClick: () => void vm.escolher(arquivo, { coluna: c.valor }) }))} />
+    <MenuSuspenso rotulo={r.dividida ? 'Tipos: ' + r.coluna : atual ? 'Tipo: ' + vm.rotuloDaColuna(atual) : 'Outro (sem coluna)'} className={compacto ? 'btn btn-ghost btn-sm' : 'btn btn-outline'} titulo={'Tipos do ' + tipos.grupo} compacto={compacto} flutuante direita
+      dica="O tipo da guia, pelo regime da empresa: diz a coluna do Relatório que recebe o valor"
+      itens={tipos.lista.map(c => ({ rotulo: c.rotulo, marcado: !r.dividida && c.valor === atual, onClick: () => void vm.escolher(arquivo, { coluna: c.valor }) }))} />
   );
 }
 
@@ -87,7 +92,7 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
             const r = vm.noRelatorio(a);
             const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : g.via === 'zap' && !g.whatsapp ? 'sem WhatsApp no Cadastro nem no Entregas' : '';
             const jaNaRota = g.resultado?.jaNaRota || [];
-            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.via === 'zap' ? 'WhatsApp ' + foneLegivel(g.whatsapp) : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? (fraseDoSciReport(g.resultado?.sciReport) || 'vai pelo SCI Report') : g.via === 'zap' ? 'WhatsApp ' + foneLegivel(g.whatsapp) : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (
@@ -95,6 +100,8 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
                     <td className="num fraco dp-guia-cod" rowSpan={g.arquivos.length}>{g.codigo}<span className="dp-guia-vence">{mesAno(g.competencia)}</span></td>
                     <td className="dp-cliente" rowSpan={g.arquivos.length}>
                       <span className="dp-cliente-nome" title={g.nome}>{g.nome || 'Cliente ' + g.codigo}</span>
+                      {/* a empresa de outro regime (26/11/2026): os tipos e o Relatório são os do regime dela */}
+                      {g.outroRelatorio && <span className="fraco" title={'O robô preenche o Relatório do ' + g.outroRelatorio}>{g.outroRelatorio}</span>}
                       {erro ? <span className="fgts-pedido-erro">{erro}</span> : <span className="fraco">{destino}</span>}
                       {/* o WhatsApp (12/11/2026): a conversa com a mensagem do modelo e as guias baixadas para anexar */}
                       {g.via === 'zap' && g.whatsapp && g.resultado?.status !== 'enviado' && (
@@ -113,7 +120,7 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
                 {/* o valor e, embaixo, a coluna do Relatório (06/11/2026: com o SCI Report no Envio, a coluna à parte ficava cortada) */}
                 <td className="num dp-guia-valor">
                   <span className="dp-guia-valor-num">{(!naoEGuia(a) && r.valor) || <span className="fraco">—</span>}</span>
-                  {mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}
+                  {mexe ? <MenuDeTipo vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}
                 </td>
                 {/* sempre à vista, preso à direita (06/11/2026: "excluir somente uma delas"; com a tabela larga ele ficava escondido no fim) */}
                 <td className="dp-tabela-acao">{mexe && <BotaoIcone icone="lixeira" titulo="Tirar esta guia do lote" onClick={() => void vm.tirar(a, true)} />}</td>
@@ -279,7 +286,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
             <div className="card">
               <h3>Subir as guias</h3>
               {subir}
-              <p className="hint dp-lote-texto">O robô lê cada guia (DAS, DARF, DAE, DAM): o cliente pelo CNPJ, o valor e o mês da apuração. Nada sai antes de você disparar.</p>
+              <p className="hint dp-lote-texto">O robô lê cada guia: o cliente pelo CNPJ, o valor e o mês da apuração. Os tipos vêm do regime da empresa: {vm.tiposPorGrupo.map(g => g.rotulo + ' (' + g.tipos.join(', ') + ')').join(' ou ')}. Nada sai antes de você disparar.</p>
             </div>
           ) : (
             <>
@@ -322,7 +329,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                   <h3>Precisam de você · {vm.faltam.length}</h3>
                   <ul className="dp-lote-lista">
                     {vm.faltam.map(a => {
-                      const x = efetivoDaGuia(a, vm.grupo.id);
+                      const x = vm.efetivo(a);
                       return (
                         <li key={a.id} className="dp-lote-falta">
                           <div className="dp-lote-falta-nome">
@@ -332,7 +339,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                           {mexe && (
                             <div className="dp-lote-falta-campos">
                               <MenuDeCliente vm={vm} arquivo={a} />
-                              <MenuDeColuna vm={vm} arquivo={a} />
+                              <MenuDeTipo vm={vm} arquivo={a} />
                               <SeletorMes valor={x.competencia || vm.competenciaDoLote} onMudar={c => void vm.escolher(a, { competencia: c })} rotulo="Apuração" />
                               <button type="button" className="link-btn" onClick={() => void vm.tirar(a, true)}>Tirar</button>
                             </div>

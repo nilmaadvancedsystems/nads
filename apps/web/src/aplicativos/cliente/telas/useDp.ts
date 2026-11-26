@@ -91,6 +91,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
     podeBaixar: d.partes > 0 || !!d.sobPedido,
   });
   const b = sem(busca.trim());
+  // o RH NET da SCI (25/11/2026): quem não está já pelas guias do FGTS (o mesmo CPF mascarado)
+  const doRh = (area.pessoal?.rhnet ?? []).filter(c => !c.cpf || !funcionarios.some(f => f.cpf === c.cpf))
+    .map(c => ({ ...c, naFolha: c.situacao === 'Na folha', socio: /^Sócio/.test(c.tipo) }));
   // a equipe: os ativos ou quem saiu (um ou outro), com a busca
   const visiveis = funcionarios.filter(f => (mostrarSaidas ? !f.ativo : f.ativo) && (!b || sem(f.nome + ' ' + f.cpf + ' ' + f.matricula).includes(b)))
     .sort((x, y) => nomeDaPessoa(x.nome).localeCompare(nomeDaPessoa(y.nome)));
@@ -149,7 +152,7 @@ export function useDp({ token, area, hoje }: DaCasca) {
     // (16/11/2026: "muita informação") a nota do pé das férias numa frase; os três cartões de número viram dois fatos
     // curtos embaixo do título
     notaDasFerias: notaDasFerias(feriasFonte),
-    resumo: resumoDoRegistro({ ativos: funcionarios.filter(f => f.ativo).length, paraTirar: feriasParaTirar, urgentes: feriasUrgentes }),
+    resumo: resumoDoRegistro({ ativos: funcionarios.filter(f => f.ativo).length + doRh.filter(c => c.naFolha && !c.socio).length, paraTirar: feriasParaTirar, urgentes: feriasUrgentes, socios: doRh.filter(c => c.naFolha && c.socio).length }),
     feriasDoFuncionario: (id: string) => { const x = feriasDe.get(id); return x ? { rotulo: ROTULO_DAS_FERIAS[x.situacao], tom: TOM_DAS_FERIAS[x.situacao], texto: x.texto } : null; },
     // o custo da folha
     // as colunas do custo, no mesmo gráfico do Faturamento
@@ -187,6 +190,26 @@ export function useDp({ token, area, hoje }: DaCasca) {
     },
     competencia: mesBr(area.pessoal?.competencia ?? ''),
     temFuncionarios: funcionarios.length > 0,
+    // o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): sem salário, o CPF mascarado
+    // o cadastro no RH NET da SCI (25/11/2026; "integra isso mais bonito"): no mesmo cartão da equipe, sem salário. Quem
+    // já está pelas guias do FGTS (o mesmo CPF mascarado) não aparece duas vezes
+    temRhNet: doRh.length > 0,
+    rhnet: mostrarSaidas ? [] : doRh.filter(c => !b || sem(c.nome).includes(b) || c.cpf.includes(busca.trim())).map(c => ({
+      id: c.id, nome: nomeDaPessoa(c.nome), tipo: c.tipo || 'Funcionário', cpf: c.cpf || '—', situacao: c.situacao || 'No sistema de folha',
+      // (26/11/2026: "nao tem como abrir o funcionario com click") a ficha: o que a situação quer dizer
+      explica: c.naFolha ? 'Está na folha do escritório (sistema de folha da SCI).'
+        : c.situacao === 'Recusado' ? 'O departamento pessoal recusou esta admissão. Fale com o escritório para entender o motivo.'
+          : c.situacao === 'Indo para a folha' ? 'O escritório liberou a admissão; ela está indo para a folha.'
+            : 'A admissão chegou ao escritório e está sendo conferida pelo departamento pessoal antes de ir para a folha.',
+      tempo: c.naFolha && c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '',
+      // o selo só quando pede atenção: ainda não está na folha
+      selo: c.naFolha ? null : c.situacao === 'Recusado' ? { rotulo: 'Recusada', tom: 'ruim' } : c.situacao === 'Indo para a folha' ? { rotulo: 'Liberada', tom: 'neutro' } : { rotulo: 'Em admissão', tom: 'atencao' },
+      pe: {
+        entrada: c.entrada ? dataBr(c.entrada) : '—',
+        rotulo: c.naFolha ? 'Na empresa há' : 'CPF',
+        valor: c.naFolha ? (c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '—') : c.cpf || '—',
+      },
+    })),
     funcionarios: visiveis.map(f => ({
       id: f.id, nome: nomeDaPessoa(f.nome), iniciais: iniciais(nomeDaPessoa(f.nome)), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),
       ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length,
@@ -235,7 +258,7 @@ export function useDp({ token, area, hoje }: DaCasca) {
       .sort((a, b) => (a.x ? ac.ORDEM_DAS_FERIAS[a.x.situacao] : 9) - (b.x ? ac.ORDEM_DAS_FERIAS[b.x.situacao] : 9) || a.f.nome.localeCompare(b.f.nome))
       .map(({ f, x }) => ({ nome: nomeDaPessoa(f.nome), rotulo: x ? ROTULO_DAS_FERIAS[x.situacao] : '', tom: x ? TOM_DAS_FERIAS[x.situacao] : 'neutro', texto: x?.texto ?? '', limite: x?.limite ?? '' })),
     hoje,
-    novaAdmissao: (): PedidoDeAdmissao => ({ nome: '', cpf: '', cargo: '', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '' }),
+    novaAdmissao: (): PedidoDeAdmissao => ({ nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '' }),
     novasFerias: (empregado = ''): PedidoDeFerias => ({ empregado, inicio: '', dias: '30 dias', adiantar13: false, observacoes: '' }),
     novaDemissao: (empregado = ''): PedidoDeDemissao => ({ empregado, ultimoDia: '', motivo: '', aviso: 'Trabalhado', observacoes: '' }),
     dataBr,

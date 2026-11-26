@@ -4,8 +4,10 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
-import { SITUACOES, useAndamento } from './andamento';
+import { ACAO, SITUACOES, useAndamento } from './andamento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../comum/novidades';
 
 export const LIMITE = 60;
 /** Quantas empresas a lista do "Iniciar" mostra de uma vez. */
@@ -29,6 +31,24 @@ type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'] | 'todas';
 const RECENTE_MS = 3 * 24 * 60 * 60 * 1000;
 
 type Linha = ReturnType<typeof useAndamento>['linhas'][number];
+/** A aba de Minhas empresas do Contábil: as empresas do Alterdata ou as do SCI. */
+export type SistemaContabil = 'alterdata' | 'sci';
+
+/** ⚡ Dados de teste do "Mostrar apenas as minhas": cinco empresas fictícias, duas da pessoa e três de outro responsável. */
+function linhasDeTeste(): Linha[] {
+  const TOTAL = 14;
+  return ([['em-andamento', 6, false], ['nao-iniciada', 0, false], ['parada', 2, true], ['nao-iniciada', 0, true], ['concluida', TOTAL, true]] as const)
+    .map(([situacao, concluidas, deOutro], i) => {
+      const nome = 'EMPRESA DE TESTE ' + (i + 1) + ' LTDA';
+      const empresa = { codigo: 9990 + i, nome, regime: 'Simples Nacional' };
+      return {
+        responsavel: deOutro ? 'Colega de teste' : '', deOutro, noSci: false,
+        empresa, chave: 'teste-' + i, codigo: empresa.codigo, nome, nomeNaTela: nome, rota: 'teste-' + (i + 1),
+        concluidas, total: TOTAL, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
+        proxima: '—', acao: ACAO[situacao], mexiEm: null, etapaAtual: '', ultimaVez: null,
+      };
+    });
+}
 
 export function useMinhasEmpresas() {
   const a = useAndamento();
@@ -45,8 +65,25 @@ export function useMinhasEmpresas() {
   const coluna: Coluna = escolhida ? (a.params.get('ordem') as Coluna) : 'situacao';
   const dir: 'asc' | 'desc' = a.params.get('dir') === 'desc' ? 'desc' : 'asc';
 
-  const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(a.linhas.map(l => l.empresa), busca)) : null;
-  const linhas = a.linhas.filter(l => (!situacao || l.situacao === situacao) && (!achadas || achadas.has(l.empresa)));
+  // as abas do Contábil (25/11/2026: "Coloca duas abas em minhas empresas de cada contábil, aba de alterdata e aba das empresas do
+  // sci"): a do Alterdata, as que não estão no SCI; a do SCI, as com "Está no SCI" no Cadastro. Na URL (?sistema=sci); sem nada,
+  // o Alterdata. Os números, a lista, o Iniciar e as recentes seguem a aba
+  const { dep, comDep } = useDepartamentoDaTela();
+  const comAbas = dep === 'contabil';
+  const sistema: SistemaContabil = comAbas && a.params.get('sistema') === 'sci' ? 'sci' : 'alterdata';
+
+  // "Mostrar apenas as minhas" (26/11/2026: "Coloca um botao de opção, 'Mostrar apenas as minhas'"): para quem vê a coluna
+  // Responsável, esconde as empresas de outra pessoa; os números, a lista e o Iniciar seguem. Na URL (?apenas=minhas)
+  const novidade = useNovidade('apenas-as-minhas');
+  const [dev] = useModoDesenvolvedor();
+  // ⚡ Dados de teste: empresas fictícias, da pessoa e de outro responsável, só na tela, para ver o botão funcionar
+  const [teste, setTeste] = useState(false);
+  const comTeste = dev && teste ? [...a.linhas, ...linhasDeTeste()] : a.linhas;
+  const temOpcaoApenasMinhas = novidade && (a.verResponsavel || (dev && teste));
+  const apenasMinhas = temOpcaoApenasMinhas && a.params.get('apenas') === 'minhas';
+  const doSistema = (comAbas ? comTeste.filter(l => l.noSci === (sistema === 'sci')) : comTeste).filter(l => !apenasMinhas || !l.deOutro);
+  const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(doSistema.map(l => l.empresa), busca)) : null;
+  const linhas = doSistema.filter(l => (!situacao || l.situacao === situacao) && (!achadas || achadas.has(l.empresa)));
   const comparar: Record<Coluna, (x: Linha, y: Linha) => number> = {
     codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
     nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
@@ -67,22 +104,21 @@ export function useMinhasEmpresas() {
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (não faz sentido iniciar uma concluída), paradas e em
   // andamento primeiro, com filtro rápido e busca própria
-  const abertas = a.linhas.filter(l => l.situacao !== 'concluida');
+  const abertas = doSistema.filter(l => l.situacao !== 'concluida');
   const doFiltro = abertas.filter(l => filtroIniciar === 'todas' || l.situacao === filtroIniciar);
   const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
   const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
-  const { comDep } = useDepartamentoDaTela();
   const abrir = (rota: string) => navegar(comDep(caminhoDoExecutor(rota, a.competencia)));
 
   // Minhas recentes: onde quem está trabalhando mexeu nesta competência nos últimos 3 dias, a mais recente primeiro
-  const minhas = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
+  const minhas = doSistema.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
   const agora = Date.now();
   const recentes = minhas.filter(l => agora - Date.parse(l.mexiEm as string) <= RECENTE_MS);
   const ultimaAberta = minhas.find(l => l.situacao !== 'concluida') || null;
   // a fila: as linhas já vêm paradas → em andamento → não iniciadas
   const proximaDaFila = abertas[0] || null;
-  const paradas = a.linhas.filter(l => l.situacao === 'parada').length;
+  const paradas = doSistema.filter(l => l.situacao === 'parada').length;
 
   return {
     temRotina: a.temRotina,
@@ -111,7 +147,12 @@ export function useMinhasEmpresas() {
     limparFiltros: () => { setBusca(''); a.mudar('situacao', ''); },
     carregando: a.carregando,
     /** a coluna Responsável, para o dono, o diretor e o sênior */
-    verResponsavel: a.verResponsavel,
+    verResponsavel: a.verResponsavel || (dev && teste),
+    /** o botão "Mostrar apenas as minhas" (só para quem vê empresas de outra pessoa) */
+    temOpcaoApenasMinhas, apenasMinhas,
+    alternarApenasMinhas: () => a.mudar('apenas', apenasMinhas ? '' : 'minhas'),
+    /** o ⚡ Dados de teste (modo desenvolvedor) */
+    testeApenasMinhas: dev && novidade ? [{ rotulo: teste ? 'Tirar as empresas de teste' : 'Empresas de outro responsável', onClick: () => setTeste(v => !v) }] : [],
     // quando mexeram por último ("há 5 horas", "ontem"), e a data e hora completas para o título
     linhas: linhas.slice(0, LIMITE).map(l => ({
       ...l,
@@ -121,7 +162,14 @@ export function useMinhasEmpresas() {
     })),
     total: linhas.length,
     /** as empresas por situação: as da pessoa (ou todas), sem a busca e a situação */
-    resumo: t.resumoDoProgresso(a.linhas),
+    resumo: t.resumoDoProgresso(doSistema),
+    /** as abas Alterdata e SCI (só no Contábil) */
+    abasDoSistema: comAbas ? [
+      { valor: 'alterdata' as SistemaContabil, rotulo: 'Alterdata' },
+      { valor: 'sci' as SistemaContabil, rotulo: 'SCI' },
+    ] : null,
+    sistema,
+    setSistema: (s: SistemaContabil) => a.mudar('sistema', s === 'sci' ? 'sci' : ''),
     abrir,
     /** a página da empresa (insights dela) */
     abrirEmpresa: (rota: string) => navegar(comDep(caminhoDaEmpresa(rota, a.competencia))),

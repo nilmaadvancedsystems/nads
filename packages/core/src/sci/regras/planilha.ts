@@ -1,6 +1,9 @@
 // A saída do intermediário nads → SCI: a planilha que o gerador do SCI lê (docs/sci/02, item C). Aba "Importar" só com
-// os lançamentos prontos (títulos na linha 1, total na última: o gerador usa linha inicial 2 e descarta 1 no fim) e
+// os lançamentos prontos (títulos na linha 1 e nada depois do último: o gerador usa linha inicial 2 e descarta 0 no fim) e
 // aba "Conferir" com os que têm problema e o porquê, para a análise antes de importar.
+//
+// A regra (26/11/2026: "Leva como regra nesses arquivos exportados da sci, eu quero ele 100% pronto, não quero editar. Então
+// remova: esse total e os dados da coluna lote, deixa vazia!"): sem a linha Total no fim e a coluna Lote só com o título.
 import * as XLSX from 'xlsx';
 import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci, LinhaDoNads, OpcoesDoSci, ResumoDoSci } from '../tipos';
@@ -8,11 +11,19 @@ import { lerPlanilhaDoNads } from './leitura';
 import { classificacaoNormal } from './dePara';
 import { contaDoPlano, type ContaDoPlanoSci, type PlanoSci } from './plano';
 
-/** As 15 colunas da planilha do SCI, na ordem do gerador (A a K vão para o SCI; L a O são só para a análise). */
+/**
+ * As 11 colunas da planilha do SCI, as do modelo "nads" do Gerador de integração de lançamentos contábeis por planilha, na
+ * ordem e com os nomes dos campos dele (25/11/2026: "Eu quero exatamente no layout de exportacao do SCI! Tem colunas aqui sem
+ * sentido"; "Nome da conta D? que isso nao ta no layout"). As colunas de análise (o nome das contas, a origem e o motivo) ficam
+ * só na aba Conferir, que não vai para o SCI.
+ */
 export const COLUNAS_DO_SCI = [
-  'Data', 'Débito', 'Crédito', 'Valor', 'Histórico', 'Complemento', 'Documento', 'Lote', 'CNPJ empresa',
-  'Participante D', 'Participante C', 'Nome da conta D', 'Nome da conta C', 'Origem', 'Situação no nads',
+  'Data', 'Débito', 'Crédito', 'Valor principal', 'Histórico', 'Complemento', 'Documento', 'Lote', 'CNPJ da filial',
+  'Participante a débito', 'Participante a crédito',
 ] as const;
+
+/** A aba Conferir: as colunas do SCI e, depois, as da análise. */
+export const COLUNAS_DA_CONFERENCIA = [...COLUNAS_DO_SCI, 'Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo'] as const;
 
 /** O lote cabe em 10 letras no SCI. */
 export const TAMANHO_DO_LOTE = 10;
@@ -130,10 +141,13 @@ const numeroOuTexto = (s: string): number | string => (/^\d{1,15}$/.test(s) ? Nu
 function linhaDaPlanilha(l: LancamentoSci): (string | number)[] {
   return [
     serialExcel(l.data), numeroOuTexto(l.debito), numeroOuTexto(l.credito), l.valor / 100, numeroOuTexto(l.historico),
-    l.complemento, l.documento, l.lote, l.cnpjEmpresa, l.participanteD, l.participanteC, l.nomeD, l.nomeC, l.origem,
-    l.problemas.length ? l.problemas.join('; ') : 'pronto',
+    // a coluna Lote vai vazia (26/11/2026: "os dados da coluna lote, deixa vazia!")
+    l.complemento, l.documento, '', l.cnpjEmpresa, l.participanteD, l.participanteC,
   ];
 }
+
+/** A linha da aba Conferir: a do SCI, o nome das contas, a origem e o motivo de não estar pronto. */
+const linhaDaConferencia = (l: LancamentoSci): (string | number)[] => [...linhaDaPlanilha(l), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
 
 function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkSheet {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -145,24 +159,23 @@ function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkS
     const v = ws[XLSX.utils.encode_cell({ r, c: 3 })];
     if (v && typeof v.v === 'number') v.z = '#,##0.00';
   }
-  ws['!cols'] = [11, 12, 12, 13, 10, 50, 11, 10, 20, 20, 20, 30, 30, 26, 30].map(wch => ({ wch }));
+  ws['!cols'] = [11, 12, 12, 13, 10, 50, 11, 10, 20, 20, 20, 30, 30, 26, 30].slice(0, aoa[0]?.length ?? 15).map(wch => ({ wch }));
   return ws;
 }
 
 /**
- * A planilha .xlsx para o SCI. Aba "Importar": títulos, os lançamentos prontos e a linha "Total" (o gerador lê da linha 2
- * e descarta 1 no fim). Aba "Conferir" (só se houver): os que têm problema, com o motivo na coluna Situação.
+ * A planilha .xlsx para o SCI, pronta para importar sem editar nada. Aba "Importar": as 11 colunas do gerador, com os títulos
+ * e os lançamentos prontos, sem a linha Total (o gerador lê da linha 2 e descarta 0 no fim). Aba "Conferir" (só se houver): os
+ * que têm problema, com o nome das contas, a origem e o motivo depois das colunas do SCI.
  */
 export function planilhaDoSci(lancamentos: readonly LancamentoSci[]): Uint8Array {
   const prontos = lancamentos.filter(l => !l.problemas.length);
   const comProblema = lancamentos.filter(l => l.problemas.length);
-  const total = prontos.reduce((s, l) => s + l.valor, 0);
   const importar: (string | number)[][] = [[...COLUNAS_DO_SCI], ...prontos.map(linhaDaPlanilha)];
-  importar.push(['Total', '', '', total / 100, '', '', '', '', '', '', '', '', '', '', prontos.length + ' lançamentos']);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, aba(importar, prontos.length), 'Importar');
   if (comProblema.length) {
-    XLSX.utils.book_append_sheet(wb, aba([[...COLUNAS_DO_SCI], ...comProblema.map(linhaDaPlanilha)], comProblema.length), 'Conferir');
+    XLSX.utils.book_append_sheet(wb, aba([[...COLUNAS_DA_CONFERENCIA], ...comProblema.map(linhaDaConferencia)], comProblema.length), 'Conferir');
   }
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
 }

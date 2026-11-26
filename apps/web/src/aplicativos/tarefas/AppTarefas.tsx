@@ -10,11 +10,12 @@ import { ColetaDeUso } from './casca/ColetaDeUso';
 import { MapaNaTela } from './casca/MapaNaTela';
 import { useCofreSozinho } from './casca/useCofreSozinho';
 import { OperadorProvider, operadorDaConta, useOperador } from './casca/operador';
-import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso } from './dados/fonte';
+import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso, repoDosPlanosSci } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
 import { useSessao } from './dados/sessao';
 import { AvisosDeLiberacao } from './telas/acesso/AvisosDeLiberacao';
 import { BalaoDoSuporte } from './telas/suporte/BalaoDoSuporte';
+import { TrocaDeConvidado } from './casca/TrocaDeConvidado';
 import { LiberarComputador } from './telas/acesso/LiberarComputador';
 import { useLiberacao } from './telas/acesso/useLiberacao';
 import { AberturaDoLogin } from './telas/entrar/aberturaDoLogin';
@@ -58,9 +59,9 @@ export function AppTarefas() {
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
   // as tabelas compactas (Minha página › Aparência e telas), se a pessoa escolheu neste navegador
   useEffect(() => { aplicarTabelasCompactas(); }, []);
-  // a Tarefas marca a página para o zoom das telas médias (25/11/2026: "nesse monitor de 1366x768 parece ta tudo meio grande, ajuste
-  // isso"): o CSS põe a página a 90% de 1100 a 1439px de largura (html[data-tarefas], nads.css); os outros sites do nads não mudam
-  useEffect(() => { document.documentElement.setAttribute('data-tarefas', ''); return () => document.documentElement.removeAttribute('data-tarefas'); }, []);
+  // os planos de contas do SCI gravados pelo escritório (26/11/2026) entram no core logo na abertura: o minimum, o Cadastro e a
+  // planilha do SCI já usam o plano atualizado
+  useEffect(() => { repoDosPlanosSci().atual(); }, []);
 
   // no banco: sem conta (ou conta sem departamento), só a entrada
   const operador = sessao?.usuario ? operadorDaConta(sessao.usuario) : null;
@@ -84,6 +85,8 @@ export function AppTarefas() {
             <AvisosDeLiberacao admin={admin} />
             {/* o suporte de leitura (20/10/2026): o balão no canto de baixo, à direita, em toda tela */}
             <BalaoDoSuporte />
+            {/* o modo convidado no centro do topo, só no modo desenvolvedor (26/11/2026) */}
+            <TrocaDeConvidado />
             {/* o mapa de uso do sistema (Gustavo, 20/10/2026): conta as visitas e os cliques, só com o interruptor ligado */}
             <ColetaDeUso />
             {/* o mapa na tela (21/10/2026: "a tela com os botões coloridos"): o admin liga no Uso do sistema */}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { competenciasDoPeriodo, curvaAbc, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, planilhaDoFaturamento, resumoDasEmitidas, type NotasSieg, type SaidasSieg } from '.';
+import { competenciasDoPeriodo, curvaAbc, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, mesesNaReceita, mesesPelaReceita, planilhaDoFaturamento, resumoDasEmitidas, type NotasSieg, type SaidasSieg } from '.';
 
 const saida = (codigo: string, competencia: string, ...valores: number[]): SaidasSieg => ({ codigo, competencia, em: '', series: valores.map((valor, i) => ({ modelo: '55', serie: String(i + 1), numeros: [], canceladas: [], valor })) });
 
@@ -27,6 +27,46 @@ describe('o faturamento dos clientes (Heverton, 20/10/2026)', () => {
     const p = planilhaDoFaturamento(l.slice(0, 1), ['2026-08', '2026-09']);
     expect(p.cabecalho).toEqual(['Cód.', 'Cliente', 'Regime', 'ago/26', 'set/26', 'Total', 'Variação (%)', 'Fonte']);
     expect(p.linhas[0]).toEqual([10, 'A', 'Simples', 1000, 1500, 2500, 50, 'SIEG · NF-e/NFC-e emitidas']);
+  });
+  it('o PGDAS-D (25/11/2026): no Simples, só ele (o mês sem a declaração fica vazio); nos outros regimes, ele e depois o SIEG; sem PGDAS-D, o SIEG', () => {
+    const meses = new Map([['2026-08', new Map([['10', saida('10', '2026-08', 1000)], ['20', saida('20', '2026-08', 400)], ['40', saida('40', '2026-08', 90)]])], ['2026-09', new Map([['10', saida('10', '2026-09', 1500)], ['20', saida('20', '2026-09', 500)]])]]);
+    const doMes = (c: string) => meses.get(c) || new Map();
+    const mesPg = (c: string, receita: number) => ({ competencia: c, receita, interno: receita, externo: 0, rbt12: null, declaracao: null, transmitidaEm: null, origem: 'extrato' as const, consultadoEm: '' });
+    const pg = (codigo: number, ms: Record<string, number>) => ({ codigo, cnpj: '', nome: '', fonte: 'Receita (PGDAS-D)', consultadoEm: '', meses: Object.fromEntries(Object.entries(ms).map(([c, v]) => [c, mesPg(c, v)])) });
+    const pgdas = new Map([[10, pg(10, { '2026-09': 1800 })], [20, pg(20, { '2026-09': 600 })], [30, pg(30, { '2026-09': 700 })]]);
+    const l = linhasDoFaturamento([{ codigo: 10, nome: 'A', regime: 'Simples' }, { codigo: 20, nome: 'B', regime: 'Presumido' }, { codigo: 30, nome: 'C', regime: 'Simples' }, { codigo: 40, nome: 'D', regime: 'Simples' }],
+      ['2026-08', '2026-09'], doMes, false, codigo => pgdas.get(codigo));
+    const porCodigo = (c: number) => l.find(x => x.codigo === c)!;
+    // Simples com o PGDAS-D: o agosto do SIEG não entra
+    expect(porCodigo(10).meses).toEqual({ '2026-08': null, '2026-09': { valor: 1800, fonte: 'Receita' } });
+    expect(porCodigo(10)).toMatchObject({ total: 1800, fontes: ['Receita (PGDAS-D)'] });
+    // fora do Simples: a Receita onde tem, o SIEG no resto
+    expect(porCodigo(20).meses).toEqual({ '2026-08': { valor: 400, fonte: 'SIEG' }, '2026-09': { valor: 600, fonte: 'Receita' } });
+    expect(porCodigo(20).fontes).toEqual(['Receita (PGDAS-D)', 'SIEG · NF-e/NFC-e emitidas']);
+    // sem nota no SIEG, a empresa aparece pela Receita
+    expect(porCodigo(30)).toMatchObject({ total: 700, fontes: ['Receita (PGDAS-D)'] });
+    // Simples sem PGDAS-D ainda (antes da primeira consulta do robô): segue pelo SIEG
+    expect(porCodigo(40)).toMatchObject({ total: 90, fontes: ['SIEG · NF-e/NFC-e emitidas'] });
+  });
+  it('o detalhe pela Receita no Simples (25/11/2026): o total é a receita declarada, as notas seguem do SIEG', () => {
+    const detalhe = mesesDoDetalhe(['2026-08', '2026-09'], c => saida('10', c, c === '2026-08' ? 1000 : 1500));
+    const pg = { codigo: 10, cnpj: '', nome: '', fonte: 'Receita (PGDAS-D)', consultadoEm: '',
+      meses: { '2026-09': { competencia: '2026-09', receita: 1800, interno: 1800, externo: 0, rbt12: null, declaracao: null, transmitidaEm: null, origem: 'extrato' as const, consultadoEm: '' } } };
+    expect(mesesPelaReceita(detalhe, pg, 'Simples').map(m => [m.competencia, m.total, m.nfe, m.variacao])).toEqual([['2026-08', null, 1000, null], ['2026-09', 1800, 1500, null]]);
+    expect(mesesPelaReceita(detalhe, pg, 'Presumido').map(m => m.total)).toEqual([1000, 1500]);
+    expect(mesesPelaReceita(detalhe, null, 'Simples').map(m => m.total)).toEqual([1000, 1500]);
+  });
+  it('a Receita ao lado das notas no detalhe (25/11/2026)', () => {
+    const detalhe = mesesDoDetalhe(['2026-08', '2026-09', '2026-10'], c => (c === '2026-10' ? null : saida('10', c, c === '2026-08' ? 1000 : 1500)));
+    const pg = { codigo: 10, cnpj: '', nome: '', fonte: 'Receita (PGDAS-D)', consultadoEm: '',
+      meses: { '2026-09': { competencia: '2026-09', receita: 1800, interno: 1800, externo: 0, rbt12: null, declaracao: null, transmitidaEm: null, origem: 'extrato' as const, consultadoEm: '' } } };
+    expect(mesesNaReceita(detalhe, pg)).toEqual([
+      { competencia: '2026-08', receita: null, notas: 1000, diferenca: null },
+      { competencia: '2026-09', receita: 1800, notas: 1500, diferenca: 300 },
+      { competencia: '2026-10', receita: null, notas: null, diferenca: null },
+    ]);
+    expect(mesesNaReceita(detalhe, null)).toBeNull();
+    expect(mesesNaReceita(detalhe, { ...pg, meses: {} })).toBeNull();
   });
 });
 

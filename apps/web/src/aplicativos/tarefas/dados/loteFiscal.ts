@@ -42,6 +42,18 @@ export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** como foi: pelo Gmail ou impresso (a entrega na rota do Entregas, entregaId) */
   via: ViaDaGuia;
   entregaId: string;
+  /** a via SCI Report com a publicação ligada (24/11/2026, config/sci): quantas guias foram para o SCI Report e as que não foram */
+  sciReport?: { publicadas: number; falhas: { nome: string; erro: string }[]; erro: string };
+}
+
+/** "publicada no SCI Report" / "2 publicadas; 1 não foi: DAS (falta o código do relatório)"; '' sem a publicação ligada. */
+export function fraseDoSciReport(r: ResultadoDoLoteFiscal['sciReport']): string {
+  if (!r) return '';
+  if (r.erro) return 'não foi ao SCI Report: ' + r.erro;
+  const partes: string[] = [];
+  if (r.publicadas) partes.push(r.publicadas === 1 ? 'publicada no SCI Report' : r.publicadas + ' publicadas no SCI Report');
+  if (r.falhas.length) partes.push((r.falhas.length === 1 ? '1 não foi: ' : r.falhas.length + ' não foram: ') + r.falhas.map(f => f.nome + ' (' + f.erro + ')').join('; '));
+  return partes.join('; ');
 }
 /** Uma guia do Fiscal já arquivada no Drive (fiscalArquivos/{mês}.clientes.<código>.arquivos[]) (plano do Acessórias, 17/11/2026, ficha E15; frase do dono: "Seguir"). */
 export interface GuiaNaPasta {
@@ -159,14 +171,25 @@ const DA_VEZ: Record<t.GrupoDoControleId, readonly [string, string][]> = {
   sn: [['DAS', '']], lp: [['DARF', 'PIS'], ['DARF', 'COFINS'], ['DARF', 'IRPJ'], ['DARF', 'CSLL'], ['DAE', 'ICMS'], ['DAM', 'ISS']],
 };
 
-/** O que o leitor acha, nos exemplos: o tipo pelo nome do arquivo e um cliente do regime do grupo; a apuração é a do mês passado. */
-function leituraDeExemplo(nome: string, k: number, grupo: t.GrupoDoControleId): LeituraDaGuia {
+/** o regime da empresa nos exemplos (o da lista do escritório) */
+const regimeDoExemplo = (codigo: number | null | undefined) => empresas.EMPRESAS.find(e => e.codigo === codigo)?.regime || '';
+// o regime do cliente que o tipo achado pelo nome pede (26/11/2026: o robô acha a empresa e os tipos vêm do regime dela):
+// o DAS é do Simples; a DARF dos federais e o DAM do ISS, do Presumido; o resto, o do lote
+const GRUPO_DO_TIPO: Readonly<Record<string, t.GrupoDoControleId>> = { DAS: 'sn', 'DARF PIS': 'lp', 'DARF COFINS': 'lp', 'DARF IRPJ': 'lp', 'DARF CSLL': 'lp', 'DAM ISS': 'lp' };
+
+/**
+ * O que o leitor acha, nos exemplos: o tipo pelo nome do arquivo e um cliente do regime que o tipo pede (o DAS de uma empresa
+ * do Simples, o DARF PIS de uma do Presumido, em qualquer dos dois relatórios); sem nada no nome, do regime do lote. A
+ * apuração é a do mês passado.
+ */
+function leituraDeExemplo(nome: string, k: number, grupoDoLote: t.GrupoDoControleId): LeituraDaGuia {
   const n = nome.toUpperCase();
+  const achado = PELO_NOME.find(([re]) => re.test(n));
+  const [tipo, tributo] = achado ? [achado[1], achado[2]] : DA_VEZ[grupoDoLote][k % DA_VEZ[grupoDoLote].length];
+  const grupo = GRUPO_DO_TIPO[(tipo + ' ' + tributo).trim()] || grupoDoLote;
   const regime = grupo === 'sn' ? 'Simples' : 'Presumido';
   const doGrupo = empresas.EMPRESAS.filter(e => e.codigo != null && e.regime === regime);
   const cli = doGrupo[(k * 7) % doGrupo.length];
-  const achado = PELO_NOME.find(([re]) => re.test(n));
-  const [tipo, tributo] = achado ? [achado[1], achado[2]] : DA_VEZ[grupo][k % DA_VEZ[grupo].length];
   if (k % 6 === 5) {
     return { acao: 'NAO_IDENTIFICADO', motivo: 'CONTEUDO_SEM_TEXTO', cliente: null, clienteNome: '', tipo: '', tributo: '', competencia: '', valor: '', vencimento: '', nomeFinal: '', destino: [], semTexto: true, coluna: '' };
   }
@@ -186,7 +209,10 @@ function leituraDeExemplo(nome: string, k: number, grupo: t.GrupoDoControleId): 
   };
 }
 
-/** a coluna que vale da guia: a escolhida na revisão sobre a do leitor (a de fora do grupo fica sem coluna) */
+/**
+ * a coluna que vale da guia: a escolhida na revisão sobre a do leitor (a de fora do grupo fica sem coluna). grupo: o da guia,
+ * o do regime da empresa (t.grupoDaGuia; 26/11/2026), não o do relatório onde o lote foi aberto
+ */
 export function colunaQueVale(a: GuiaDoLote, grupo: t.GrupoDoControleId): string {
   const c = a.escolha && typeof a.escolha.coluna === 'string' ? a.escolha.coluna : a.leitura?.coluna || '';
   return t.grupoDoControle(grupo).colunas.some(x => x.id === c) ? c : '';
@@ -315,9 +341,11 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
           if (antes?.status === 'enviado') return antes;
           const [cod, comp] = chave.split('_');
           const codigo = Number(cod);
+          // o Relatório do regime da empresa (26/11/2026), como o robô
+          const grupo = t.grupoDaGuia(regimeDoExemplo(codigo), lote.grupo);
           const valores: Record<string, number> = {};
           for (const i of itens) {
-            for (const p of valoresDaGuia(i, lote.grupo)) valores[p.coluna] = Math.round(((valores[p.coluna] || 0) + p.valor) * 100) / 100;
+            for (const p of valoresDaGuia(i, grupo)) valores[p.coluna] = Math.round(((valores[p.coluna] || 0) + p.valor) * 100) / 100;
           }
           const via = viaDaGuia(lote.vias[String(codigo)]);
           const erro = via === 'email' && codigo % 9 === 0 ? 'o cliente não tem e-mail no cadastro' : '';
@@ -325,7 +353,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
           if (!erro) {
             // a linha do Relatório de exemplo, como o robô faz: só o que está em branco
             const repo = controle();
-            const linha = repo.doMes(comp).linhas.get(codigo) || t.linhaEmBranco(comp, codigo, lote.grupo);
+            const linha = repo.doMes(comp).linhas.get(codigo) || t.linhaEmBranco(comp, codigo, grupo);
             // o "0" não segura: veio guia, vale o valor dela (05/11/2026)
             preenchidos = Object.keys(valores).filter(c => !(linha.valores[c] || '').trim() || /^0(,00)?$/.test((linha.valores[c] || '').trim()));
             const textos = Object.fromEntries(Object.entries(valores).map(([c, v]) => [c, t.valorDoControle(v.toFixed(2).replace('.', ','))]));
@@ -349,7 +377,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
     },
     enviados(competencia) {
       const lista: EnvioDasGuias[] = lotes.flatMap(l => l.resultados.filter(r => r.status === 'enviado' && r.competencia === competencia).map(r => ({
-        id: l.id + '|' + r.chave, codigo: r.codigo, empresa: empresas.EMPRESAS.find(x => x.codigo === r.codigo)?.nome || '', competencia: r.competencia, grupo: l.grupo,
+        id: l.id + '|' + r.chave, codigo: r.codigo, empresa: empresas.EMPRESAS.find(x => x.codigo === r.codigo)?.nome || '', competencia: r.competencia, grupo: t.grupoDaGuia(regimeDoExemplo(r.codigo), l.grupo),
         para: r.para, guias: r.arquivos, guiasDrive: r.salvos.map((x, k) => ({ nome: x.nome, id: 'ex-' + l.id + '-' + k })), enviadoEm: r.enviadoEm, por: l.disparadoPor, via: r.via,
       })));
       return { carregados: true, lista: lista.sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm)) };

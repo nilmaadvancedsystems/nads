@@ -52,6 +52,11 @@
 // Entregas: robo/estado.whatsapp (só leitura, a situação e o QR) e os pedidos em solicitacoesEmail (tipos 'whatsapp',
 // 'whatsapp-conectar', 'whatsapp-desconectar'), em robos/dados/whatsapp.firestore.ts e tarefas/dados/
 // driveDasFerramentas.firestore.ts. Quem fala com o WhatsApp é o robô da nuvem (robo/whatsapp.js), nunca o app. Sem fetch.
+// As guias do SCI Report 24h na Área do Cliente (2026-11-24, liberado pelo usuário: "Libera a exceção"; ele escolheu a
+// busca na hora "por ser mantido frequentemente"): uma função do Firebase no projeto do Entregas, SÓ na pasta funcoes/
+// (o único package.json com firebase-admin, o único firebase.json com "functions", e o funcoes/index.js com o Admin SDK e
+// o fetch só para api-auth.sci.com.br e api-relatorio.sci.com.br). Os tokens da SCI ficam no Secret Manager. O site do
+// cliente fala só com essa função, só em aplicativos/cliente/dados/sciReport.ts (ENDERECO_DA_FUNCAO).
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
@@ -84,6 +89,13 @@ const ONDE_PODE_FETCH_CONTAS = /[\\/]tarefas[\\/]dados[\\/]convite\.firestore\.t
 // para elas não sumirem da hospedagem (28/10/2026, ao corrigir o "Esta tela não abriu" a pedido do Vitor): só nesse
 // arquivo, só "fetch(site + '/'", e o arquivo confere que é um endereço https://<site>.web.app antes de chamar
 const ONDE_PODE_FETCH_SITES = /[\\/]scripts[\\/]sites\.mjs$/;
+// a função do SCI Report (2026-11-24): o Admin SDK e o fetch só no funcoes/index.js, e só para estes endereços
+const PACOTE_DA_FUNCAO = path.join('funcoes', 'package.json');
+const FIREBASE_JSON_DA_FUNCAO = path.join('funcoes', 'firebase.json');
+const ONDE_PODE_FUNCAO = /[\\/]funcoes[\\/]index\.js$/;
+const ENDERECOS_DA_FUNCAO = ['https://api-auth.sci.com.br/', 'https://api-relatorio.sci.com.br/', 'https://cliente.nilmacontabilidade.com', 'https://nilma-cliente.web.app'];
+const ONDE_PODE_FETCH_SCI = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]cliente[\\/]dados[\\/]sciReport\.ts$/;
+const ENDERECO_DA_FUNCAO_SCI = 'https://southamerica-east1-entregas-2e5e2.cloudfunctions.net/guiasDoSciReport';
 
 const achados = [];
 // robo/: o robô do escritório (Gmail, Drive, avisos, arquivador, SIEG, FGTS), movido do Entregas para cá a pedido do
@@ -108,7 +120,7 @@ varrer(raiz, p => {
   const j = JSON.parse(fs.readFileSync(p, 'utf8'));
   for (const campo of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
     for (const dep of Object.keys(j[campo] || {})) {
-      if (PACOTES_PROIBIDOS.test(dep)) achados.push(rel + ': dependência proibida "' + dep + '"');
+      if (PACOTES_PROIBIDOS.test(dep) && !(rel === PACOTE_DA_FUNCAO && dep === 'firebase-admin')) achados.push(rel + ': dependência proibida "' + dep + '"');
       if (dep === 'firebase' && rel !== path.join('apps', 'web', 'package.json')) achados.push(rel + ': "firebase" só pode estar no apps/web');
     }
   }
@@ -124,7 +136,7 @@ varrer(raiz, p => {
   const linhas = semComentarios(fs.readFileSync(p, 'utf8')).split('\n');
   const podeFirebase = ONDE_PODE_FIREBASE.test(p);
   linhas.forEach((l, i) => {
-    if (!podeFirebase) for (const re of TEXTOS_FIREBASE) if (re.test(l)) achados.push(rel + ':' + (i + 1) + ': Firebase fora de dados/*.firestore.ts ("' + re.source + '")');
+    if (!podeFirebase && !ONDE_PODE_FUNCAO.test(p)) for (const re of TEXTOS_FIREBASE) if (re.test(l)) achados.push(rel + ':' + (i + 1) + ': Firebase fora de dados/*.firestore.ts ("' + re.source + '")');
     for (const re of TEXTOS_REDE) {
       if (!re.test(l)) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH.test(p)) continue;
@@ -134,6 +146,10 @@ varrer(raiz, p => {
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_VERSAO.test(p) && l.includes("fetch('/versao.json?t=' + Date.now()")) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_CONTAS.test(p) && l.includes('fetch(c.contasUrl,') && fs.readFileSync(p, 'utf8').includes('c.contasUrl.startsWith(SERVICO_DE_CONTAS)')) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_SITES.test(p) && l.includes("fetch(site + '/'") && fs.readFileSync(p, 'utf8').includes('SITE_DO_NADS.test(site)')) continue;
+      // a função do SCI Report: o fetch só depois de conferir que o endereço é da SCI
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FUNCAO.test(p) && l.includes('fetch(url, init)') && fs.readFileSync(p, 'utf8').includes('ENDERECOS_DA_SCI.some(e => url.startsWith(e))')) continue;
+      // o site do cliente: só a função do SCI Report
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_SCI.test(p) && l.includes('fetch(ENDERECO_DA_FUNCAO,')) continue;
       achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
     }
   });
@@ -147,6 +163,11 @@ varrer(raiz, p => {
   const rel = path.relative(raiz, p);
   if (/\.rules$/.test(nome)) achados.push(rel + ': arquivo de regras do banco não pode ficar no repositório');
   if (nome !== 'firebase.json') return;
+  if (rel === FIREBASE_JSON_DA_FUNCAO) {
+    const chaves = Object.keys(JSON.parse(fs.readFileSync(p, 'utf8')));
+    if (chaves.some(k => k !== 'functions')) achados.push(rel + ': só "functions" é permitido aqui (achei: ' + chaves.join(', ') + ')');
+    return;
+  }
   if (rel !== ONDE_PODE_FIREBASE_JSON) { achados.push(rel + ': o firebase.json só pode ficar em ' + ONDE_PODE_FIREBASE_JSON); return; }
   const extras = Object.keys(JSON.parse(fs.readFileSync(p, 'utf8'))).filter(k => k !== 'hosting');
   if (extras.length) achados.push(rel + ': só "hosting" é permitido (achei: ' + extras.join(', ') + ') — regras e funções do banco não se publicam daqui');
@@ -170,6 +191,17 @@ if (fs.existsSync(rede)) {
   if (outros.length) { console.error('conexoes: rede.ts só pode consultar ' + ENDERECO_DO_IP + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
 }
 // o download do Drive só pode ir para a cópia do robô do Entregas
+// a função do SCI Report e o site do cliente que fala com ela: nenhum outro endereço nos dois arquivos
+const funcao = path.join(raiz, 'funcoes', 'index.js');
+if (fs.existsSync(funcao)) {
+  const outros = (semComentarios(fs.readFileSync(funcao, 'utf8')).match(/https?:\/\/[^'"`\s]+/g) || []).filter(u => !ENDERECOS_DA_FUNCAO.includes(u));
+  if (outros.length) { console.error('conexoes: funcoes/index.js só pode citar ' + ENDERECOS_DA_FUNCAO.join(', ') + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
+}
+const sciDoCliente = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'cliente', 'dados', 'sciReport.ts');
+if (fs.existsSync(sciDoCliente)) {
+  const outros = (semComentarios(fs.readFileSync(sciDoCliente, 'utf8')).match(/https?:\/\/[^'"`\s]+/g) || []).filter(u => u !== ENDERECO_DA_FUNCAO_SCI);
+  if (outros.length) { console.error('conexoes: cliente/dados/sciReport.ts só pode chamar ' + ENDERECO_DA_FUNCAO_SCI + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
+}
 const drive = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'tarefas', 'dados', 'driveDasFerramentas.firestore.ts');
 if (fs.existsSync(drive) && !/url\.startsWith\(LINK_DO_ROBO\)/.test(fs.readFileSync(drive, 'utf8'))) {
   console.error('conexoes: drive.firestore.ts precisa conferir o endereço (url.startsWith(LINK_DO_ROBO)) antes do fetch');

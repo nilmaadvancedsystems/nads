@@ -219,7 +219,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                       <Fragment key={g.nome || 'todos'}>
                         {g.nome && <tr className="dp-grupo"><td colSpan={6 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
-                          <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
+                          <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '') + (c.noSci ? ' cad-linha-sci' : '')}>
                             <td className="num fraco">{c.codigo}</td>
                             <td className="dp-cliente dp-cliente-inteiro">
                               <span className="dp-cliente-nome">{c.nomeNaTela}</span>

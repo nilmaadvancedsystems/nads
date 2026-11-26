@@ -4,7 +4,7 @@ import type { NomeIcone } from '@nads/ui';
 
 export const BASE = '/admin';
 
-export type IdPaginaAdmin = 'visao-geral' | 'robo' | 'saude-robos' | 'arquivador' | 'uso' | 'banco' | 'cota' | 'feedbacks' | 'sistema' | 'registro';
+export type IdPaginaAdmin = 'visao-geral' | 'robo' | 'saude-robos' | 'arquivador' | 'uso' | 'banco' | 'cota' | 'feedbacks' | 'sistema' | 'registro' | 'sci';
 
 export interface PaginaAdmin { id: IdPaginaAdmin; rotulo: string; titulo: string; icone: NomeIcone }
 
@@ -22,6 +22,8 @@ export const PAGINAS_DO_ADMIN: readonly PaginaAdmin[] = [
   // quem mudou o quê nos usuários e nos acessos (22/11/2026, ficha E20)
   { id: 'registro', rotulo: 'Registro de alterações', titulo: 'Registro de alterações', icone: 'clock' },
   { id: 'sistema', rotulo: 'Sistema e agentes', titulo: 'Sistema e agentes', icone: 'settings' },
+  // as APIs da SCI (24/11/2026: "monta o nads para suportar completamente a integracao do sci"): tudo desligado até ligar aqui
+  { id: 'sci', rotulo: 'Integração SCI', titulo: 'Integração SCI', icone: 'link' },
 ];
 
 /**

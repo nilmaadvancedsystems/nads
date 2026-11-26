@@ -113,3 +113,5 @@
 /* (23/11/2026: "scroll desnecessario") na janela larga os motivos em três colunas: cabe tudo sem rolar */
 @media (min-width:760px){.modal.modal-centro .cli-pd .cli-dm-motivos{grid-template-columns:repeat(3,minmax(0,1fr));}}
 .modal.modal-centro > .cli-app.cli-pedido.cli-pd{scrollbar-gutter:auto;}
+
+/* o cartão do RH NET da SCI na grade da equipe (25/11/2026: "integra isso mais bonito"): o mesmo cartão, sem clique */

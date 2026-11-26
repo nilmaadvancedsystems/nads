@@ -9,6 +9,7 @@ import type { empresas, sci } from '@nads/core';
 import { BotaoIcone, Icone, LogoBanco, MenuSuspenso, Segmentado, SeletorMes, useCarregando, useRetorno, Vazio } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { BotaoImportarNoAlterdata } from '../../../../comum/BotaoImportarNoAlterdata';
+import { useBaixarParaOSci } from '../../../../comum/useBaixarParaOSci';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
 import { JanelaDoMes, type AbaDoMes } from './JanelaDoMes';
 import { useComprovantesDoLancatudo } from './useComprovantesDoLancatudo';
@@ -75,7 +76,8 @@ function EmpresaAberta({ empresa, entrada, pagina, minimum }: { empresa: Empresa
   const [regrasAbertas, setRegrasAbertas] = useState(pagina === 'regras');
   const rotuloDoBanco = (b: Vm['banco']) => b.nome + (b.conta ? ' ' + b.conta : '');
   // o tutorial (18/11/2026): sozinho na primeira vez que a tela tem lançamentos; de novo pelo botão Tutorial
-  const tutorial = useTutorialDoLancatudo(vm.pronto && vm.linhas.length > 0 && !regrasAbertas);
+  // no minimum, sem o tutorial: ele ensina a saída para o Alterdata (25/11/2026: "remove alterdata e coloca so sci")
+  const tutorial = useTutorialDoLancatudo(!minimum && vm.pronto && vm.linhas.length > 0 && !regrasAbertas);
   // o extrato, o razão e os comprovantes do mês aqui mesmo, numa janela só (18/11/2026: "tem que ter como adicionar o extrato
   // aqui ou puxar do drive"; "quero a opção de adicionar comprovantes"; "comprovantes e extratos na mesma tela")
   const comp = useComprovantesDoLancatudo(vm);
@@ -115,12 +117,12 @@ function EmpresaAberta({ empresa, entrada, pagina, minimum }: { empresa: Empresa
           </button>
         )}
         {/* o Tutorial por último (18/11/2026: "tutorial fica por último") */}
-        {vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
+        {!minimum && vm.linhas.length > 0 && <button type="button" className="btn btn-ghost" onClick={tutorial.abrir} title="Ver o tutorial desta tela de novo"><Icone nome="ajuda" />Tutorial</button>}
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro lt-dica"><Icone nome="alert" />O banco recusou: {vm.erro}</p>}
       {vm.pronto && !vm.contaDoBanco && <ContaDoBanco vm={vm} rotulo={rotuloDoBanco(vm.banco)} />}
       {vm.semPlano && <p className="registro-dica lt-dica"><Icone nome="ajuda" />A empresa ainda não tem plano de contas no Cadastro: o código da conta vale como for digitado, sem conferir.</p>}
-      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setAbaDoMes('extrato')} verComprovante={comp.ver} servidor={servidor} />
+      <Lancamentos vm={vm} irParaOMes={entrada.setCompetencia} abrirExtrato={() => setAbaDoMes('extrato')} verComprovante={comp.ver} servidor={servidor} soSci={!!minimum} />
     </section>
   );
 }
@@ -145,8 +147,13 @@ function ContaDoBanco({ vm, rotulo }: { vm: Vm; rotulo: string }) {
   );
 }
 
-function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante, servidor }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void; verComprovante: (c: NonNullable<Linha['comprovante']>) => void; servidor: ReturnType<typeof useRazaoDoServidor> }) {
+/**
+ * soSci: o Extratudo dentro do minimum (25/11/2026: "atualiza alterdata numa aplicacao so pro sci?"; "remove alterdata e coloca so
+ * sci"): sem o Atualizar do Alterdata, sem a planilha e o .xls do Alterdata; a saída é só a planilha do SCI.
+ */
+function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante, servidor, soSci }: { vm: Vm; irParaOMes: (competencia: string) => void; abrirExtrato: () => void; verComprovante: (c: NonNullable<Linha['comprovante']>) => void; servidor: ReturnType<typeof useRazaoDoServidor>; soSci: boolean }) {
   const t = vm.totais;
+  const paraOSci = useBaixarParaOSci(vm.empresa.nome, 'extratudo', vm.planilhaParaOAlterdata);
   if (vm.semExtrato) {
     const temOutros = vm.mesesComExtrato.length > 0;
     return (
@@ -196,16 +203,24 @@ function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante, servidor }:
         </div>
         <div className="lt-painel-acoes">
           <div className="lt-painel-botoes" data-tut="lt-exportar">
-            {servidor.disponivel && (
+            {servidor.disponivel && !soSci && (
               <button type="button" className="btn btn-outline lt-atualizar" disabled={servidor.andando} onClick={servidor.atualizar}
                 title="Pede ao robô do Alterdata do servidor o razão e o balancete do mês: o que já está lançado no Alterdata fica em Fora">
                 {servidor.andando ? <span className="btn-spinner" /> : <Icone nome="repeat" />}Atualizar do Alterdata
               </button>
             )}
-            <BotaoImportarNoAlterdata codigo={vm.empresa.codigo} empresa={vm.empresa.nome} lote={vm.lote} origem="lancatudo" planilha={vm.planilhaParaOAlterdata}
-              disabled={!!vm.motivoSemExportar} motivo={vm.motivoSemExportar} quem={vm.quem} baixar={vm.baixarArquivo} />
+            {soSci ? (
+              <button type="button" className="btn btn-secondary" disabled={!!vm.motivoSemExportar || paraOSci.ocupado} onClick={paraOSci.baixar}
+                title={vm.motivoSemExportar || 'A planilha que o SCI importa (Lançamentos contábeis via planilha)'}>
+                <Icone nome="download" width={16} height={16} />Baixar para o SCI
+              </button>
+            ) : (
+              <BotaoImportarNoAlterdata codigo={vm.empresa.codigo} empresa={vm.empresa.nome} lote={vm.lote} origem="lancatudo" planilha={vm.planilhaParaOAlterdata}
+                disabled={!!vm.motivoSemExportar} motivo={vm.motivoSemExportar} quem={vm.quem} baixar={vm.baixarArquivo} />
+            )}
             <MenuSuspenso rotulo="Ações" className="btn btn-primary" titulo="Ações" direita flutuante largura={340} itens={[
-              { rotulo: 'Exportar lançamentos contábeis (.xls) · ' + vm.paraExportar, icone: 'download', desabilitado: !!vm.motivoSemExportar, onClick: vm.baixarArquivo },
+              // o .xls de 10 colunas é o do Alterdata: no minimum, não
+              ...(soSci ? [] : [{ rotulo: 'Exportar lançamentos contábeis (.xls) · ' + vm.paraExportar, icone: 'download' as const, desabilitado: !!vm.motivoSemExportar, onClick: vm.baixarArquivo }]),
               { rotulo: 'Exportar Simples Conferência (Excel)', icone: 'fileText', desabilitado: !!vm.motivoSemExportar, onClick: vm.baixarConferencia },
               ...(vm.contaDoBanco && !vm.contaDoBancoNoCadastro ? [{ rotulo: 'Código contábil do banco: ' + vm.contaDoBanco + ' (trocar)', icone: 'landmark' as const, onClick: vm.abrirPlanoDoBanco }] : []),
               'separador',
@@ -215,7 +230,7 @@ function Lancamentos({ vm, irParaOMes, abrirExtrato, verComprovante, servidor }:
               { rotulo: 'Selecionar os não conciliados', icone: 'alert', onClick: vm.marcarRevisar },
             ]} />
           </div>
-          {servidor.texto && <small className={'lt-painel-nota' + (servidor.comErro ? ' lt-nota-erro' : '')}>{servidor.texto}</small>}
+          {servidor.texto && !soSci && <small className={'lt-painel-nota' + (servidor.comErro ? ' lt-nota-erro' : '')}>{servidor.texto}</small>}
           <small className="lt-painel-nota">{vm.ultimaExportacao || (vm.razaoDoMes ? 'O razão do mês já foi importado: o que já está nele fica em Fora.' : 'Ainda não exportado neste mês.')}</small>
         </div>
       </section>

@@ -5155,7 +5155,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-logo-previa{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:3px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#64748b;overflow:hidden;}
 .ac-logo-previa img{width:100%;height:100%;object-fit:contain;}
 .ac-logo-txt{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0;}
-.ac-logo-acoes{display:flex;gap:8px;}
+.ac-logo-acoes{display:flex;align-items:center;gap:8px;}
 .ac-logo-acoes label.btn{cursor:pointer;}
 .ac-logo-acoes label.btn.disabled{opacity:.55;pointer-events:none;}
 .ac-endereco{display:flex;align-items:center;gap:8px;max-width:100%;margin:0;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);font-size:12px;overflow-wrap:anywhere;}
@@ -6623,6 +6623,8 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .faturamento-tabela thead th.fs-fat-mes{color:var(--accent-ink);box-shadow:inset 0 -2px 0 var(--accent);}
 .fat-linha:hover td.fs-fat-mes{background:color-mix(in srgb,var(--accent) 10%,var(--hover-bg));}
 td.fs-fat-sem{color:var(--ink-faint);}
+/* o mês que veio da Receita (PGDAS-D, 25/11/2026): a bolinha depois do valor, na cor do destaque */
+td .fs-fat-receita{color:var(--accent);font-weight:700;}
 .fs-fat-cartao>.gh-blank{border:0;}
 /* a janela do cliente: o nome grande com as fichas, e o mix NF-e x NFC-e numa barra só */
 .fs-det-cabeca{display:flex;align-items:center;gap:12px;}
@@ -6750,7 +6752,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* Carteira (12/11/2026): o salário, as finanças e as comissões de cada pessoa */
 /* a janela dos Serviços das Comissões (13/11/2026, Vitor: "não to conseguindo mexer"): cabe na tela, o título e o Gravar
    fixos e só o miolo rola (uma barra de rolagem; as tabelas dentro não rolam sozinhas) */
-.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);}
+.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);width:calc(100vw - 32px);max-width:820px;}
 .cart-servicos-janela .registro-topo,.cart-servicos-janela .registro-pe{flex:none;}
 .cart-servicos-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
 .cart-servicos-janela .registro-corpo > *{flex-shrink:0;}
@@ -8566,6 +8568,48 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-razao-tipo span{font-variant-numeric:tabular-nums;font-size:var(--fs-12);opacity:.8;}
 .sci-razao-nada{text-align:center;padding:24px;}
 .sci-razao-pe{margin:10px 2px 0;font-size:var(--fs-12);}
+/* o Extrato → SCI (25/11/2026): a conta bancária, o lote, o selo do saldo do banco, os avisos e a grade com a contrapartida na linha */
+.sci-ext-select{height:32px;min-width:220px;max-width:320px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-13);}
+.sci-ext-lote{height:32px;width:120px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-13);
+  font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.sci-ext-saldo{margin-left:auto;align-items:flex-end;}
+.sci-ext-selo{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:var(--fs-13);font-weight:600;border:1px solid transparent;}
+.sci-ext-selo svg{width:15px;height:15px;}
+.sci-ext-selo.fecha{color:var(--success-ink);background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 35%,transparent);}
+.sci-ext-selo.nao-fecha{color:var(--destructive);background:var(--destructive-soft);border-color:color-mix(in srgb,var(--destructive) 35%,transparent);cursor:help;}
+.sci-ext-selo.sem{color:var(--ink-muted);background:var(--surface-2);}
+.sci-ext-saldo-numeros{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 14px;font-size:var(--fs-12);color:var(--ink-muted);}
+.sci-ext-saldo-numeros b{color:var(--ink);font-weight:600;}
+.sci-ext-entrou{color:light-dark(#1d5fb3,#8ab8ff) !important;}
+.sci-ext-saiu{color:light-dark(#b42318,#ff8f86) !important;}
+.sci-ext-avisos{list-style:none;margin:-4px 0 12px;padding:0;display:flex;flex-direction:column;gap:4px;}
+.sci-ext-avisos li{display:flex;align-items:center;gap:6px;font-size:var(--fs-13);color:var(--danger-ink);}
+.sci-ext-avisos svg{width:14px;height:14px;flex:none;}
+.sci-ext-barra{align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sci-ext-busca{flex:0 1 320px;}
+.sci-ext-busca input[type="text"]{width:100%;}
+.sci-ext-tabela td.sci-ext-hist-banco{max-width:320px;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-13);color:var(--ink);}
+.sci-ext-contra{display:inline-flex;align-items:center;max-width:260px;margin:0 -8px;padding:4px 8px;border:1px dashed transparent;border-radius:8px;background:none;cursor:pointer;
+  font:inherit;text-align:left;color:inherit;transition:background .15s,border-color .15s;}
+.sci-ext-contra:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-border);}
+.sci-ext-contra.vazia{border-color:color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger-ink);font-size:var(--fs-13);font-weight:600;}
+.sci-ext-contra:disabled{cursor:default;}
+.sci-ext-contra .sci-conta-cel{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.sci-ext-acoes{text-align:right;white-space:nowrap;}
+.sci-ext-acoes .icon-btn{width:28px;height:28px;}
+.sci-ext-ok,.sci-ext-problema{display:inline-grid;place-items:center;width:28px;height:28px;vertical-align:middle;}
+.sci-ext-ok svg,.sci-ext-problema svg{width:16px;height:16px;}
+.sci-ext-ok{color:var(--success);}
+.sci-ext-problema{color:var(--danger);cursor:help;}
+.sci-tabela tr.sci-ext-linha-fora > td:not(:last-child){opacity:.45;text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink) 40%,transparent);}
+.sci-ext-regras{margin-top:14px;}
+.sci-ext-regras > .btn{gap:6px;}
+.sci-ext-regras-lista{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.sci-ext-regras-lista li{display:grid;grid-template-columns:minmax(0,1.4fr) auto minmax(0,1.6fr) auto;align-items:center;gap:12px;padding:6px 10px;border-radius:8px;font-size:var(--fs-13);}
+.sci-ext-regras-lista li:nth-child(odd){background:var(--surface-2);}
+.sci-ext-regra-exp{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sci-ext-regras-vazio{margin:6px 12px 0;}
+@media (max-width:980px){.sci-ext-saldo{margin-left:0;align-items:flex-start;}.sci-ext-saldo-numeros{justify-content:flex-start;}}
 /* o lançamento clicado: a linha marcada e os dados dele embaixo da tabela, com a última alteração (25/11/2026) */
 .sci-tabela tr.sci-razao-linha{cursor:pointer;}
 /* o lançamento on-line do fiscal levemente apagado; volta ao normal no hover e quando clicado (25/11/2026) */
@@ -8744,7 +8788,11 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* a tela inicial do minimum (24/11/2026: "Faz uma tela inicial bem bonita, com animações"): no centro, o selo, o título, a
    busca e as empresas do SCI; tudo chega uma vez, de baixo para cima, um atrás do outro (exceção pedida à regra de não
    animar, como a gaveta; nada infinito). Sem movimento pedido pelo sistema, aparece parado */
-.sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 0 64px;
+/* a tela de início ocupa a área toda entre o topo e o rodapé e fica no meio dela (25/11/2026: "Tira a logo do sci e deixe os
+   elementos centralizados na tela"): o main, o .content e o .sci esticam só enquanto ela aparece */
+#app:has(.sci-inicio) > main.main,main.main:has(.sci-inicio) > .content,.content > .sci:has(> .sci-inicio){flex:1 1 auto;display:flex;flex-direction:column;}
+.sci > .sci-inicio{flex:1 1 auto;}
+.sci-inicio{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 0 40px;
   background:radial-gradient(ellipse 60% 45% at 50% 38%,var(--accent-soft),transparent 70%);}
 .sci-inicio > *{animation:sciChega .6s cubic-bezier(.23,1,.32,1) both !important;}
 /* a logo (24/11/2026: no lugar da maletinha): a palavra "minımum" numa serifada bem pesada (a Bodoni MT Black do Office; sem
@@ -8757,8 +8805,6 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* o slogan do minimum, embaixo do nome (25/11/2026) */
 .sci-slogan{display:block;margin-top:6px;font-size:var(--fs-13);font-style:italic;letter-spacing:.02em;color:var(--ink-muted);}
 .sci-inicio > .sci-inicio-marca{animation:sciSelo .7s cubic-bezier(.34,1.56,.64,1) both !important;}
-/* a collab com o SCI (25/11/2026): a logo original do SCI pequena, centrada em cima do minimum ("Bota esse mesmo tamanho, mas centralizado acima") */
-.sci-collab{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);user-select:none;}
 /* menor (24/11/2026: "Diminua o escolha sua empresa") */
 .sci-inicio-titulo{margin:0;font-size:var(--fs-20);line-height:1.2;font-weight:600;letter-spacing:-.01em;color:var(--ink);}
 .sci-inicio-sub{margin:4px 0 20px;font-size:var(--fs-13);color:var(--ink-muted);}
@@ -8766,6 +8812,8 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* embaixo da logo, a mesma altura com ou sem empresa (25/11/2026: "manter a logo nesse lugar fixo"): a escolha e os apps
    trocam aqui dentro, e a logo não se mexe */
 .sci-inicio-corpo{height:150px;width:100%;display:flex;justify-content:center;}
+/* na escolha da empresa (só o botão, desde 25/11/2026), a altura do que tem: o bloco fica no meio da tela, sem vão embaixo */
+.sci-inicio-corpo:has(> .sci-escolha){height:auto;}
 .sci-inicio > .sci-inicio-corpo{animation-delay:.08s !important;}
 .sci-escolha,.sci-apps{display:flex;flex-direction:column;align-items:center;}
 .sci-escolha > *,.sci-apps > *{animation:sciChega .5s cubic-bezier(.23,1,.32,1) both;}
@@ -8780,8 +8828,6 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .sci-escolher:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
 .sci-escolher > svg{flex:none;color:var(--accent);}
 .sci-escolher-rotulo{flex:1;font-weight:500;color:var(--ink);text-align:center;}
-/* sem a linha de baixo, o título leva o espaço até o botão (25/11/2026) */
-.sci-escolha > .sci-inicio-titulo{margin-bottom:20px;}
 .sci-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;font-family:inherit;font-size:11px;
   font-weight:500;color:var(--ink-muted);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--surface);}
 /* a paleta: no centro, sobre a tela desfocada */
@@ -8844,11 +8890,74 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .registro-topo .sci-busca-plano{margin-bottom:0;}
 .sci-plano{max-height:50vh;overflow:auto;}
 @media (max-width:900px){.sci-form{grid-template-columns:1fr 1fr;}.sci-form .sci-largo{grid-column:1/-1;}}
-/* a Tarefas a 90% nas telas médias (25/11/2026: "nesse monitor de 1366x768 parece ta tudo meio grande, ajuste isso"): de 1100 a
-   1439px de largura, a página inteira encolhe junto. O que se põe num ponto da tela pelo JavaScript divide pelo zoom
-   (zoomDaPagina: o menu flutuante, o do botão direito e o arrastar das colunas) */
-@media (min-width:1100px) and (max-width:1439px){
-  html[data-tarefas]{zoom:.9;}
-  /* o 100vh também encolhe com o zoom: a casca volta a ocupar a tela inteira, sem a faixa vazia embaixo do rodapé */
-  html[data-tarefas] body,html[data-tarefas] #app{min-height:calc(100vh / .9);min-height:calc(100dvh / .9);}
-}
+/* os Serviços comissionados no jeito de planilha (26/11/2026): a tabela na largura da janela (o Serviço com o que sobra), a
+   célula é o campo (sem a caixa arredondada; o foco é uma linha da cor de destaque por dentro) e a lixeira vermelha */
+.cart-servicos-tabela{table-layout:fixed;width:100%;}
+.cart-servicos-tabela .cart-servicos-valor{width:24%;}
+.cart-servicos-tabela .cart-servicos-pct{width:16%;}
+.cart-servicos-tabela .cart-servicos-tirar{width:44px;}
+.cart-servicos-tabela td{padding:0;}
+.cart-servicos-tabela td:last-child{text-align:center;}
+.cart-servicos-tabela td input,.cart-servicos-tabela td .campo-reais{width:100%;min-width:0;box-sizing:border-box;border:0;border-radius:0;background:transparent;box-shadow:none;}
+.cart-servicos-tabela td input{height:36px;padding:0 10px;}
+.cart-servicos-tabela td .campo-reais{height:36px;padding-left:10px;max-width:none;}
+.cart-servicos-tabela td .campo-reais input{padding-left:6px;}
+.cart-servicos-tabela td input:focus,.cart-servicos-tabela td .campo-reais:focus-within{outline:none;box-shadow:inset 0 0 0 1px var(--accent);}
+.cart-servicos-tabela td .campo-reais input:focus{box-shadow:none;}
+.cart-servicos-tabela .cart-servicos-tirar-btn{color:var(--destructive);}
+.cart-servicos-tabela .cart-servicos-tirar-btn:hover{color:var(--destructive);background:color-mix(in srgb, var(--destructive) 12%, transparent);}
+/* as Particularidades (26/11/2026): o título de cada parte (Contábil, Fiscal) em cima das seções dela */
+/* cada parte (Contábil, Fiscal) é um dropdown (26/11/2026: "Coloca um dropdown"): o título com a seta, que gira aberto */
+.cad-particularidades-parte{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+/* o título na fonte de sempre, como os títulos das seções (26/11/2026: "Coloca a fonte padrao do sistema nesses nomes") */
+.cad-particularidades-grupo{display:flex;align-items:center;gap:8px;padding:12px 14px;font-size:var(--fs-14);font-weight:600;
+  color:var(--ink);cursor:pointer;list-style:none;user-select:none;border-radius:10px;}
+.cad-particularidades-grupo::-webkit-details-marker{display:none;}
+.cad-particularidades-grupo:hover{background:var(--hover-bg);}
+.cad-particularidades-seta{width:14px;height:14px;transition:transform .15s ease !important;}
+.cad-particularidades-parte[open] > .cad-particularidades-grupo .cad-particularidades-seta{transform:rotate(90deg);}
+.cad-particularidades-parte[open] > .cad-particularidades-grupo{border-bottom:1px solid var(--border);border-radius:10px 10px 0 0;}
+.cad-particularidades-corpo{padding:4px 14px 8px;}
+/* o SCI em primeiro, com a logo dele no título */
+.cad-sci-titulo{display:inline-flex;align-items:center;gap:8px;}
+/* o SCI sem a linha divisória do título, com o espaço antes dos dropdowns */
+.cad-sci-bloco{margin-bottom:12px;}
+/* o plano do SCI com a fonte branca (26/11/2026: "Deixa branca a fonte"), não na cor de destaque do menu */
+.cfg-linha-controle .btn.btn-ghost.cad-sci-plano{color:var(--ink);}
+/* a empresa que está no SCI, na lista do Cadastro: um azul leve na linha para identificar (26/11/2026) */
+tr.cad-linha-sci > td{background:color-mix(in srgb,var(--info, #3b82f6) 14%,transparent);}
+tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20%,transparent);}
+/* Dados da empresa em grade (26/11/2026: "os elementos estao muito baguncados"): o nome em cima, o valor embaixo, em duas colunas;
+   o largo ocupa a linha toda. O "à mão" marca o dado digitado no nads */
+.cad-dados-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px;padding:4px 0 8px;}
+.cad-dado{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.cad-dado.largo{grid-column:1 / -1;}
+.cad-dado-rotulo{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-12);color:var(--ink-muted);}
+.cad-dado-selo{padding:0 6px;border-radius:999px;font-size:var(--fs-11);background:var(--info-soft);color:var(--info);}
+.cad-dado-valor{font-size:var(--fs-14);color:var(--ink);overflow-wrap:anywhere;}
+.cad-dado-valor.vazio{color:var(--ink-faint, var(--ink-muted));}
+.cad-dado-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cad-dado-nota{font-size:var(--fs-12);color:var(--ink-muted);}
+.cad-dado-aviso{font-size:var(--fs-12);color:var(--danger);}
+.cad-dado-edita{display:flex;align-items:center;gap:8px;}
+.cad-dado .input,.cad-dado-edita .input{width:100%;min-width:0;}
+@media (max-width:640px){.cad-dados-grade{grid-template-columns:minmax(0,1fr);}}
+/* o Link do cliente nas linhas da janela da empresa (26/11/2026): o endereço curto, com reticências, e a logo pequena ao lado do botão */
+.ac-link-curto{display:inline-flex;align-items:center;gap:6px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
+.cfg-linha .ac-logo-previa{width:32px;height:32px;border-radius:8px;}
+.cfg-linha .ac-botoes{flex-wrap:wrap;justify-content:flex-end;}
+/* o modo convidado do modo desenvolvedor (26/11/2026): no centro do topo, por cima da barra; o perfil ativo destacado */
+.troca-convidado{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:3000;display:flex;align-items:center;gap:4px;padding:3px;
+  border:1px solid var(--border);border-radius:999px;background:var(--surface);box-shadow:var(--shadow-lg);}
+.troca-convidado-perfil{display:inline-flex;align-items:center;border-radius:999px;}
+.troca-convidado-btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;
+  color:var(--ink-muted);font:inherit;font-size:var(--fs-12);font-weight:600;cursor:pointer;white-space:nowrap;}
+.troca-convidado-btn small{font-weight:400;font-size:var(--fs-11);color:var(--ink-faint, var(--ink-muted));}
+.troca-convidado-btn:hover{color:var(--ink);}
+.troca-convidado-btn.ativo,.troca-convidado-perfil.ativo{background:var(--accent-soft);}
+.troca-convidado-btn.ativo,.troca-convidado-perfil.ativo .troca-convidado-btn{color:var(--accent-ink, var(--ink));}
+.troca-convidado-cfg{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-right:4px;padding:0;border:0;border-radius:999px;
+  background:transparent;color:var(--ink-muted);cursor:pointer;}
+.troca-convidado-cfg:hover{background:var(--hover-bg);color:var(--ink);}
+.troca-convidado-form{display:flex;flex-direction:column;gap:10px;padding:10px;}
+.troca-convidado-form label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);color:var(--ink-muted);}
