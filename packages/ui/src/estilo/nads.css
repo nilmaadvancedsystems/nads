@@ -8917,10 +8917,11 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* as Particularidades (26/11/2026): o título de cada parte (Contábil, Fiscal) em cima das seções dela */
 /* cada parte (Contábil, Fiscal) é um dropdown (26/11/2026: "Coloca um dropdown"): o título com a seta, que gira aberto */
 .cad-particularidades-parte{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
-.cad-particularidades-grupo{display:flex;align-items:center;gap:8px;padding:12px 14px;font-size:var(--fs-12);font-weight:600;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--ink-muted);cursor:pointer;list-style:none;user-select:none;border-radius:10px;}
+/* o título na fonte de sempre, como os títulos das seções (26/11/2026: "Coloca a fonte padrao do sistema nesses nomes") */
+.cad-particularidades-grupo{display:flex;align-items:center;gap:8px;padding:12px 14px;font-size:var(--fs-14);font-weight:600;
+  color:var(--ink);cursor:pointer;list-style:none;user-select:none;border-radius:10px;}
 .cad-particularidades-grupo::-webkit-details-marker{display:none;}
-.cad-particularidades-grupo:hover{color:var(--ink);background:var(--hover-bg);}
+.cad-particularidades-grupo:hover{background:var(--hover-bg);}
 .cad-particularidades-seta{width:14px;height:14px;transition:transform .15s ease !important;}
 .cad-particularidades-parte[open] > .cad-particularidades-grupo .cad-particularidades-seta{transform:rotate(90deg);}
 .cad-particularidades-parte[open] > .cad-particularidades-grupo{border-bottom:1px solid var(--border);border-radius:10px 10px 0 0;}

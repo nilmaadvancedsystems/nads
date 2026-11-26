@@ -29,7 +29,7 @@ export function useJanelaDaEmpresa(rota: string, aba: string, local?: { irPara: 
   const abaDoItem = (id: string) => (comParticularidades && (id === 'contabil' || id === 'fiscal') ? 'particularidades' : id);
   const itens: ItemDoResumo[] = [
     { id: 'regime', rotulo: 'Regime', tem: !!regime, texto: regime || 'não escolhido', aba: 'fiscal' },
-    { id: 'contato', rotulo: 'Contato', tem: !!(c.contato?.email || c.contato?.whatsapp), texto: c.contato?.email || c.contato?.whatsapp || 'sem e-mail e sem WhatsApp', aba: 'empresa' },
+    { id: 'contato', rotulo: 'Contato', tem: !!(c.contato?.email || c.contato?.whatsapp), texto: c.contato?.email || c.contato?.whatsapp || 'sem e-mail e sem WhatsApp', aba: 'contato' },
     { id: 'bancos', rotulo: 'Bancos', tem: contas > 0, texto: contas ? contas + (contas === 1 ? ' conta' : ' contas') : 'nenhuma conta', aba: 'bancos' },
     { id: 'plano', rotulo: 'Plano de contas', tem: c.plano?.contas != null, texto: c.plano?.contas != null ? c.plano.contas.toLocaleString('pt-BR') + ' contas' : 'não importado', aba: 'plano' },
     { id: 'socios', rotulo: 'Sócios', tem: !!c.socios?.length, texto: c.socios?.length ? c.socios.length + (c.socios.length === 1 ? ' sócio' : ' sócios') : 'nenhum', aba: 'empresa' },

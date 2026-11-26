@@ -7,7 +7,7 @@ import { BotaoFechar, Icone, useEntradaAnimada, useIndicador, useJanela } from '
 import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
-import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais, SciDaEmpresa } from '../empresa/DadosDaEmpresa';
+import { AreaDoClienteDaEmpresa, ContatoDaEmpresa, DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais, SciDaEmpresa } from '../empresa/DadosDaEmpresa';
 import { DocumentosDoFiscal } from '../fiscal/DocumentosDoFiscal';
 import { ParcelamentosDaEmpresa } from '../fiscal/ParcelamentosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
@@ -33,6 +33,9 @@ function Aba({ rota, aba, simples, verContabil }: { rota: string; aba: string; s
     // o código de acesso do Simples à mostra em cima dos dados (03/11/2026: "aparecer no cadastro como informação facil")
     case 'empresa': return <><CodigoDoSimplesNoCadastro rota={rota} simples={simples} /><DadosDaEmpresa rota={rota} /></>;
     case 'contabil': return <><SciDaEmpresa rota={rota} /><ParametrosContabeis rota={rota} /></>;
+    // o Contato e a Área do Cliente em abas à parte (26/11/2026: "Contato e area do cliente em menu separado")
+    case 'contato': return <ContatoDaEmpresa rota={rota} />;
+    case 'area-cliente': return <AreaDoClienteDaEmpresa rota={rota} />;
     // os dois Parâmetros numa aba só (26/11/2026): em primeiro o SCI ("nao e contabil nem fiscal, pode deixar em primeiro de
     // todos"); depois o do Contábil (para quem vê o Contábil) e o do Fiscal, cada um num dropdown ("Coloca um dropdown")
     case 'particularidades': return (
@@ -139,7 +142,7 @@ export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
               {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
               <Aba rota={rota} aba={vm.aba} simples={vm.simples} verContabil={vm.verContabil} />
               {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}
-              {vm.aba === 'empresa' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
+              {vm.aba === 'area-cliente' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
             </>}
           </div>
         </div>

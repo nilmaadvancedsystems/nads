@@ -133,8 +133,6 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const vm = useDadosDaEmpresa(rota);
   // a linha nova (vazia) do Adicionar sócio, até ganhar um nome ou um CPF
   const [novo, setNovo] = useState(false);
-  // o e-mail ou o WhatsApp inválido não grava: o aviso fica ao lado, até a próxima tentativa
-  const [erroDoContato, setErroDoContato] = useState<string | null>(null);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   const nr = vm.naReceita;
@@ -206,8 +204,46 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
 
       {vm.consulta.aberta && <JanelaDaReceita consulta={vm.consulta} />}
 
+      {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
+      <ConfigSecao titulo="Sócios" acao={(
+        <>
+          {vm.sociosDaReceita.length > 0 && (
+            <button type="button" className="btn btn-ghost" onClick={() => vm.importarSociosDaReceita(vm.sociosDaReceita)} title={vm.sociosDaReceita.join(', ')}>
+              Usar os da Receita ({vm.sociosDaReceita.length})
+            </button>
+          )}
+          <button type="button" className="btn" disabled={novo} onClick={() => setNovo(true)}><Icone nome="plus" />Adicionar sócio</button>
+        </>
+      )}>
+        {!linhas.length ? <ConfigLinha titulo="Nenhum sócio" /> : linhas.map((so, i) => (
+          <div key={i + '|' + so.nome + '|' + so.cpf} className="cfg-linha cfg-socio">
+            <input type="text" aria-label="Nome do sócio" defaultValue={so.nome} placeholder="Nome completo" autoFocus={i >= vm.socios.length}
+              onBlur={e => { if (e.target.value.trim() !== so.nome) mudar(i, 'nome', e.target.value); }} onKeyDown={enter} />
+            <input type="text" aria-label="CPF do sócio" inputMode="numeric" defaultValue={so.cpf} placeholder="CPF"
+              onBlur={e => { if (e.target.value.replace(/\D/g, '') !== so.cpf) mudar(i, 'cpf', e.target.value); }} onKeyDown={enter} />
+            <BotaoIcone icone="x" pequeno titulo="Tirar o sócio" onClick={() => tirar(i)} />
+          </div>
+        ))}
+      </ConfigSecao>
+    </>
+  );
+}
+
+/**
+ * Contato, numa aba à parte (26/11/2026: "Contato e area do cliente em menu separado"): o e-mail, o WhatsApp e os outros
+ * e-mails da empresa.
+ */
+export function ContatoDaEmpresa({ rota }: { rota: string }) {
+  const vm = useDadosDaEmpresa(rota);
+  // o e-mail ou o WhatsApp inválido não grava: o aviso fica ao lado, até a próxima tentativa
+  const [erroDoContato, setErroDoContato] = useState<string | null>(null);
+  useCarregando(vm.carregando);
+  if (vm.carregando) return null;
+  const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
+  return (
+    <>
       {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
-      <ConfigSecao titulo="Contato">
+      <ConfigSecao titulo="E-mail e WhatsApp">
         <ConfigLinha titulo="E-mail"
           aviso={erroDoContato && erroDoContato.startsWith('E-mail') ? erroDoContato : undefined}>
           <label className="busca-curta" title="O e-mail da empresa">
@@ -233,29 +269,18 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
           </label>
         </ConfigLinha>
       </ConfigSecao>
+    </>
+  );
+}
 
-      {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
-      <ConfigSecao titulo="Sócios" acao={(
-        <>
-          {vm.sociosDaReceita.length > 0 && (
-            <button type="button" className="btn btn-ghost" onClick={() => vm.importarSociosDaReceita(vm.sociosDaReceita)} title={vm.sociosDaReceita.join(', ')}>
-              Usar os da Receita ({vm.sociosDaReceita.length})
-            </button>
-          )}
-          <button type="button" className="btn" disabled={novo} onClick={() => setNovo(true)}><Icone nome="plus" />Adicionar sócio</button>
-        </>
-      )}>
-        {!linhas.length ? <ConfigLinha titulo="Nenhum sócio" /> : linhas.map((so, i) => (
-          <div key={i + '|' + so.nome + '|' + so.cpf} className="cfg-linha cfg-socio">
-            <input type="text" aria-label="Nome do sócio" defaultValue={so.nome} placeholder="Nome completo" autoFocus={i >= vm.socios.length}
-              onBlur={e => { if (e.target.value.trim() !== so.nome) mudar(i, 'nome', e.target.value); }} onKeyDown={enter} />
-            <input type="text" aria-label="CPF do sócio" inputMode="numeric" defaultValue={so.cpf} placeholder="CPF"
-              onBlur={e => { if (e.target.value.replace(/\D/g, '') !== so.cpf) mudar(i, 'cpf', e.target.value); }} onKeyDown={enter} />
-            <BotaoIcone icone="x" pequeno titulo="Tirar o sócio" onClick={() => tirar(i)} />
-          </div>
-        ))}
-      </ConfigSecao>
-      <ConfigSecao titulo="Área do Cliente">
+/** A Área do Cliente, numa aba à parte (26/11/2026): o lembrete de vencimento; o link do cliente vem embaixo (JanelaDaEmpresa). */
+export function AreaDoClienteDaEmpresa({ rota }: { rota: string }) {
+  const vm = useDadosDaEmpresa(rota);
+  useCarregando(vm.carregando);
+  if (vm.carregando) return null;
+  return (
+    <>
+      <ConfigSecao titulo="Lembrete">
         {/* o lembrete de vencimento por cliente (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente") */}
         <ConfigLinha titulo="Lembrete de vencimento" descricao="E-mail ao cliente das guias que vencem logo e que ele ainda não abriu na Área do Cliente.">
           <MenuSuspenso className="btn btn-outline" titulo="Lembrete de vencimento"
