@@ -74,7 +74,7 @@ export function ShadersCi() {
         {/* o olho, ao lado do +, abre o razão do SCI noutra tela; voltou junto do botão central (25/11/2026: "Deixa o icone do olho,
             vai ser bom"): o central só aparece com a tela zerada, o olho sempre */}
         {lancamentos && <button type="button" className="btn btn-outline sci-btn-icone" onClick={() => vm.abrirApp('razao')} title="Visualizar lançamentos do SCI" aria-label="Visualizar lançamentos do SCI"><Icone nome="olho" /></button>}
-        {lancamentos && <button type="button" className="btn btn-outline sci-btn-icone" disabled={!vm.podeExportar} onClick={vm.exportar} title="Planilha do SCI: a planilha para o gerador do SCI (linha inicial 2, descarta 1 no fim)" aria-label="Baixar a Planilha do SCI"><LogoExcel /></button>}
+        {lancamentos && <button type="button" className="btn btn-outline sci-btn-icone" disabled={!vm.podeExportar} onClick={vm.exportar} title="Planilha do SCI: a planilha para o gerador do SCI (linha inicial 2, descarta 0 no fim), pronta para importar" aria-label="Baixar a Planilha do SCI"><LogoExcel /></button>}
         {/* a busca na linha dos botões, para economizar espaço (25/11/2026: "Deixa na mesma linha da barra de pesquisa"), a última da
             fila, na extrema direita (25/11/2026: "Busca na extrema direita, perdao, o ultimo da fila") */}
         {lancamentos && <FiltroEBusca vm={vm} />}
