@@ -5155,7 +5155,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-logo-previa{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:3px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#64748b;overflow:hidden;}
 .ac-logo-previa img{width:100%;height:100%;object-fit:contain;}
 .ac-logo-txt{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0;}
-.ac-logo-acoes{display:flex;gap:8px;}
+.ac-logo-acoes{display:flex;align-items:center;gap:8px;}
 .ac-logo-acoes label.btn{cursor:pointer;}
 .ac-logo-acoes label.btn.disabled{opacity:.55;pointer-events:none;}
 .ac-endereco{display:flex;align-items:center;gap:8px;max-width:100%;margin:0;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);font-size:12px;overflow-wrap:anywhere;}
@@ -8950,3 +8950,7 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .cad-dado-edita{display:flex;align-items:center;gap:8px;}
 .cad-dado .input,.cad-dado-edita .input{width:100%;min-width:0;}
 @media (max-width:640px){.cad-dados-grade{grid-template-columns:minmax(0,1fr);}}
+/* o Link do cliente nas linhas da janela da empresa (26/11/2026): o endereço curto, com reticências, e a logo pequena ao lado do botão */
+.ac-link-curto{display:inline-flex;align-items:center;gap:6px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
+.cfg-linha .ac-logo-previa{width:32px;height:32px;border-radius:8px;}
+.cfg-linha .ac-botoes{flex-wrap:wrap;justify-content:flex-end;}
