@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDoControleContabil, repoDeLegislacaoDp, repoDoArquivoFisico, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights, repoDaConfigSci, repoDosPlanosSci, repoDoRhNet } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDoControleContabil, repoDeLegislacaoDp, repoDoArquivoFisico, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, agindoComoNoTeste, agirComoNoTeste, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights, repoDaConfigSci, repoDosPlanosSci, repoDoRhNet } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -456,7 +456,14 @@ export function useEntradas() {
 /** Os dados de teste do Início (o ⚡ do modo desenvolvedor): o que está ligado e como ligar. */
 export function useTesteDoInicio() {
   useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
-  return { tarefas: testeDoInicioLigado('tarefas'), avisos: testeDoInicioLigado('avisos'), ligar: ligarTesteDoInicio };
+  const equipe = useAcesso().equipe().lista;
+  return {
+    tarefas: testeDoInicioLigado('tarefas'), avisos: testeDoInicioLigado('avisos'), ligar: ligarTesteDoInicio,
+    /** o "Agir como" das tarefas de teste (26/11/2026): quem o Início está sendo (null = quem entrou) e a equipe para escolher */
+    agindo: agindoComoNoTeste(),
+    agirComo: agirComoNoTeste,
+    equipe: equipe.filter(p => p.ativo && p.uid).map(p => ({ uid: p.uid, nome: p.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+  };
 }
 
 /** O delegador de tarefas (a Central de tarefas e o correio), ao vivo. */
