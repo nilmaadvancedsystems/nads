@@ -295,6 +295,53 @@ function criarPortalNoChrome(log) {
   };
 }
 
+// ---------- o lote da noite (26/11/2026, o dono: "pode ir puxando todas as empresas do nads a noite, um pouco cada dia") ----------
+
+/** quantas empresas o robô pede sozinho por noite (cada uma: 35 s de troca de perfil e mais ~1 min no portal) */
+const LOTE_POR_NOITE = 20;
+
+/** A data da noite (aaaa-mm-dd do dia em que a janela abriu às 23h; de madrugada, a noite é a do dia anterior), em Brasília. */
+function noiteDe(ms) {
+  const p = {};
+  for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms))) p[x.type] = x.value;
+  const dia = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) - (Number(p.hour) < 12 ? 86400000 : 0);
+  return new Date(dia).toISOString().slice(0, 10);
+}
+
+/** O último PA que já devia estar declarado: o PGDAS-D vence no dia 20 do mês seguinte (até o dia 20, o mês retrasado). */
+function competenciaAlvo(ms) {
+  const p = {};
+  for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(ms))) p[x.type] = x.value;
+  const voltar = Number(p.day) > 20 ? 1 : 2;
+  const d = new Date(Date.UTC(Number(p.year), Number(p.month) - 1 - voltar, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+/**
+ * As empresas do lote da noite: as do Simples com CNPJ, que ainda não têm o extrato da competência (nem pedido na fila);
+ * primeiro as que nunca foram consultadas, depois as consultadas há mais tempo. empresas: [{ codigo, nome, cnpj, regime }];
+ * resumos: Map código → pgdas/{código} (os dados); naFila: Set dos códigos com pedido pendente ou trabalhando.
+ */
+function planoDaNoite({ empresas, resumos, naFila, competencia, limite = LOTE_POR_NOITE }) {
+  return empresas
+    .filter(e => e.regime === 'Simples' && /^\d{14}$/.test(String(e.cnpj || '')) && Number(e.codigo) > 0 && !naFila.has(Number(e.codigo)))
+    .filter(e => { const r = resumos.get(Number(e.codigo)); const m = r && r.meses && r.meses[competencia]; return !(m && m.origem === 'extrato'); })
+    .map(e => ({ e, consultado: String((resumos.get(Number(e.codigo)) || {}).consultadoEm || '') }))
+    .sort((a, b) => a.consultado.localeCompare(b.consultado) || Number(a.e.codigo) - Number(b.e.codigo))
+    .slice(0, limite)
+    .map(({ e }) => ({ status: 'pendente', modo: 'extrato', cnpj: String(e.cnpj), codigo: Number(e.codigo), empresa: String(e.nome || '').slice(0, 200), competencia }));
+}
+
+/**
+ * O lote automático pode começar? Só depois que o caminho do portal funcionou (um extrato gravado, ou um ensaio que achou o
+ * mês) e não se a noite anterior só deu erro (o portal mudou: alguém precisa olhar antes de pedir mais). '' = pode.
+ */
+function motivoParaNaoPedir({ temResumo, ensaioAchou, ontem }) {
+  if (!temResumo && !ensaioAchou) return 'o caminho do portal ainda não foi provado (falta um ensaio que ache o mês ou um extrato baixado)';
+  if (ontem && ontem.total >= 3 && ontem.prontos === 0 && ontem.erros >= Math.ceil(ontem.total / 2)) return 'o lote da noite anterior só deu erro (' + ontem.erros + ' de ' + ontem.total + '); confira o portal com um ensaio';
+  return '';
+}
+
 // ---------- o módulo (robo-modulo.js pgdas) ----------
 
 function iniciarPgdas(db, log) {
@@ -352,6 +399,54 @@ function iniciarPgdas(db, log) {
     }
   }
 
+  // o lote da noite (26/11/2026): uma vez por noite, dentro da janela, o robô pede sozinho as próximas empresas do Simples.
+  // O lote fica marcado no pedido (lote: a data da noite), então reiniciar o robô não pede de novo.
+  let loteFeitoEm = '';
+  async function loteDaNoite() {
+    const agora = Date.now();
+    if (!P.dentroDaJanelaDoEcac(agora) || pausaLocal.estaPausado(ROBO) || ocupado.parando()) return;
+    const noite = noiteDe(agora);
+    if (loteFeitoEm === noite) return;
+    try {
+      const cfg = (await db.collection('config').doc('pgdas').get()).data() || {};
+      if (cfg.automatico === false) { loteFeitoEm = noite; log('PGDAS: lote da noite desligado (config/pgdas.automatico)'); return; }
+      if (!(await db.collection(COLECAO).where('lote', '==', noite).limit(1).get()).empty) { loteFeitoEm = noite; return; }
+      const resumosSnap = await db.collection('pgdas').get();
+      const resumos = new Map(resumosSnap.docs.map(d => [Number(d.id), d.data() || {}]));
+      const ensaios = await db.collection(COLECAO).where('modo', '==', 'ensaio').limit(50).get();
+      const ensaioAchou = ensaios.docs.some(d => { const x = d.data() || {}; return x.status === 'pronto' && x.resultado && x.resultado.achouOMes === true; });
+      const ontemSnap = await db.collection(COLECAO).where('lote', '==', noiteDe(agora - 86400000)).get();
+      const ontem = ontemSnap.empty ? null : { total: ontemSnap.size, prontos: ontemSnap.docs.filter(d => d.get('status') === 'pronto').length, erros: ontemSnap.docs.filter(d => d.get('status') === 'erro').length };
+      const motivo = motivoParaNaoPedir({ temResumo: resumos.size > 0, ensaioAchou, ontem });
+      if (motivo) { loteFeitoEm = noite; log('PGDAS: sem lote esta noite -', motivo); painel.atividade(ROBO, 'Sem o lote do PGDAS-D esta noite', motivo); return; }
+      // as empresas ativas e o regime que vale (o cadastro do nads e, sem ele, o do Entregas; a mesma regra da Área do Cliente)
+      const R = require('./area-cliente-regras');
+      const cadastro = new Map();
+      for (const d of (await db.collection('cadastro').get()).docs) { const x = d.data() || {}; const c = Number(String(x.codigo == null ? '' : x.codigo).replace(/\D/g, '')); if (c) cadastro.set(c, x); }
+      const empresas = (await require('./clientes-cache').clientesAtivos(db)).docs.map(d => {
+        const x = d.data() || {};
+        const codigo = Number(String(x.codigo != null && x.codigo !== '' ? x.codigo : x.codigoOrigem || '').replace(/\D/g, ''));
+        return { codigo, nome: String(x.nome || x.razaoSocial || ''), cnpj: String(x.documento || '').replace(/\D/g, ''), regime: R.regimeQueVale({ cadastro: cadastro.get(codigo) || null, entregas: x, lista: null }) };
+      });
+      // fora do lote: quem já está na fila e quem já deu erro nesta competência (sem procuração, portal que recusou): esse
+      // volta só pelo "Refazer" da Central, para não ocupar a vaga de outra empresa toda noite
+      const naFila = new Set(fila.map(it => Number(it.dados.codigo)));
+      for (const d of (await db.collection(COLECAO).where('competencia', '==', competenciaAlvo(agora)).get()).docs) {
+        const x = d.data() || {};
+        if (x.status === 'erro' || x.status === 'trabalhando') naFila.add(Number(x.codigo));
+      }
+      const plano = planoDaNoite({ empresas, resumos, naFila, competencia: competenciaAlvo(agora), limite: Number(cfg.porNoite) > 0 ? Math.min(60, Number(cfg.porNoite)) : LOTE_POR_NOITE });
+      const em = new Date().toISOString();
+      for (const p of plano) await db.collection(COLECAO).add(Object.assign(p, { lote: noite, criadoEm: em, criadoPor: 'Robô (lote da noite)', criadoPorUid: 'robo' }));
+      loteFeitoEm = noite;
+      log('PGDAS: lote da noite', noite, '-', plano.length, 'empresa(s) do Simples, competência', competenciaAlvo(agora));
+      if (plano.length) painel.atividade(ROBO, 'Lote da noite do PGDAS-D: ' + plano.length + ' empresa(s)', 'competência ' + competenciaAlvo(agora));
+    } catch (err) { log('PGDAS: o lote da noite não saiu -', err.message); }
+  }
+  const timerDoLote = setInterval(() => { void loteDaNoite(); }, 5 * 60000);
+  if (timerDoLote.unref) timerDoLote.unref();
+  setTimeout(() => { void loteDaNoite(); }, 60000).unref();
+
   // a fila (uma igualdade só: não precisa de índice)
   ouvir('pgdas: pedidos', () => db.collection(COLECAO).where('status', '==', 'pendente'), snap => {
     fila = snap.docs.map(d => ({ ref: d.ref, dados: d.data() || {} }));
@@ -364,4 +459,4 @@ function iniciarPgdas(db, log) {
   log('PGDAS: ligado (atende só das 23h às 8h)');
 }
 
-module.exports = { iniciarPgdas, atenderLote, criarPortalNoChrome, motivoDoPedidoRuim, ordemDaFila, nomeDoPdf, pastaDeEntrada, proximaNoite, COLECAO, PORTAL };
+module.exports = { iniciarPgdas, atenderLote, criarPortalNoChrome, motivoDoPedidoRuim, ordemDaFila, nomeDoPdf, pastaDeEntrada, proximaNoite, noiteDe, competenciaAlvo, planoDaNoite, motivoParaNaoPedir, LOTE_POR_NOITE, COLECAO, PORTAL };
