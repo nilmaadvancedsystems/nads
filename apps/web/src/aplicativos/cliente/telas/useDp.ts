@@ -195,7 +195,13 @@ export function useDp({ token, area, hoje }: DaCasca) {
     // já está pelas guias do FGTS (o mesmo CPF mascarado) não aparece duas vezes
     temRhNet: doRh.length > 0,
     rhnet: mostrarSaidas ? [] : doRh.filter(c => !b || sem(c.nome).includes(b) || c.cpf.includes(busca.trim())).map(c => ({
-      id: c.id, nome: nomeDaPessoa(c.nome), tipo: c.tipo || 'Funcionário',
+      id: c.id, nome: nomeDaPessoa(c.nome), tipo: c.tipo || 'Funcionário', cpf: c.cpf || '—', situacao: c.situacao || 'No sistema de folha',
+      // (26/11/2026: "nao tem como abrir o funcionario com click") a ficha: o que a situação quer dizer
+      explica: c.naFolha ? 'Está na folha do escritório (sistema de folha da SCI).'
+        : c.situacao === 'Recusado' ? 'O departamento pessoal recusou esta admissão. Fale com o escritório para entender o motivo.'
+          : c.situacao === 'Indo para a folha' ? 'O escritório liberou a admissão; ela está indo para a folha.'
+            : 'A admissão chegou ao escritório e está sendo conferida pelo departamento pessoal antes de ir para a folha.',
+      tempo: c.naFolha && c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '',
       // o selo só quando pede atenção: ainda não está na folha
       selo: c.naFolha ? null : c.situacao === 'Recusado' ? { rotulo: 'Recusada', tom: 'ruim' } : c.situacao === 'Indo para a folha' ? { rotulo: 'Liberada', tom: 'neutro' } : { rotulo: 'Em admissão', tom: 'atencao' },
       pe: {
@@ -252,7 +258,7 @@ export function useDp({ token, area, hoje }: DaCasca) {
       .sort((a, b) => (a.x ? ac.ORDEM_DAS_FERIAS[a.x.situacao] : 9) - (b.x ? ac.ORDEM_DAS_FERIAS[b.x.situacao] : 9) || a.f.nome.localeCompare(b.f.nome))
       .map(({ f, x }) => ({ nome: nomeDaPessoa(f.nome), rotulo: x ? ROTULO_DAS_FERIAS[x.situacao] : '', tom: x ? TOM_DAS_FERIAS[x.situacao] : 'neutro', texto: x?.texto ?? '', limite: x?.limite ?? '' })),
     hoje,
-    novaAdmissao: (): PedidoDeAdmissao => ({ nome: '', cpf: '', cargo: '', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '' }),
+    novaAdmissao: (): PedidoDeAdmissao => ({ nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '' }),
     novasFerias: (empregado = ''): PedidoDeFerias => ({ empregado, inicio: '', dias: '30 dias', adiantar13: false, observacoes: '' }),
     novaDemissao: (empregado = ''): PedidoDeDemissao => ({ empregado, ultimoDia: '', motivo: '', aviso: 'Trabalhado', observacoes: '' }),
     dataBr,

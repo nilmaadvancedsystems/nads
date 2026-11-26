@@ -68,13 +68,22 @@ describe('notificacoes', () => {
 
 describe('pedidos do pessoal', () => {
   it('admissão: confere e monta o texto do chamado só com o que foi preenchido', () => {
-    const p = { nome: 'Maria Souza', cpf: '529.982.247-25', cargo: 'Auxiliar', salario: 'R$ 2.000,00', inicio: '01/11/2026', contrato: 'Experiência', observacoes: '' };
+    const p = { nome: 'Maria Souza', cpf: '529.982.247-25', nascimento: '15/03/1995', pis: '', recebePor: 'Por mês (mensalista)', cargo: 'Auxiliar', salario: 'R$ 2.000,00', inicio: '01/11/2026', contrato: 'Experiência', observacoes: '' };
     expect(erroDaAdmissao({ ...p, inicio: '1/11' })).toContain('data de início');
     // (25/11/2026) o CPF é obrigatório e conferido (o pedido vai para o RH NET)
     expect(erroDaAdmissao({ ...p, cpf: '' })).toBe('Escreva o CPF do novo funcionário.');
     expect(erroDaAdmissao({ ...p, cpf: '111.111.111-11' })).toBe('Confira o CPF: os números não batem.');
+    // (26/11/2026) o que a pré-admissão do SCI pede: o nascimento (e 14 anos ou mais), o salário; o PIS, se vier, com 11 números
+    expect(erroDaAdmissao({ ...p, nascimento: '' })).toBe('Escreva a data de nascimento (dd/mm/aaaa).');
+    expect(erroDaAdmissao({ ...p, nascimento: '01/01/2020' })).toMatch(/pelo menos 14 anos/);
+    expect(erroDaAdmissao({ ...p, salario: '' })).toBe('Escreva o salário.');
+    expect(erroDaAdmissao({ ...p, pis: '123' })).toBe('Confira o PIS: são 11 números.');
+    expect(erroDaAdmissao({ ...p, pis: '120.12345.67-8' })).toBe('');
     expect(erroDaAdmissao(p)).toBe('');
     const t = textoDaAdmissao(p);
+    expect(t).toContain('Nascimento: 15/03/1995');
+    expect(t).toContain('Recebe por: Por mês (mensalista)');
+    expect(t).not.toContain('PIS');
     expect(t.split('\n')[0]).toBe('Admissão: Maria Souza (Auxiliar)');
     expect(t).toContain('Salário: R$ 2.000,00');
     expect(t).toContain('CPF: 529.982.247-25');

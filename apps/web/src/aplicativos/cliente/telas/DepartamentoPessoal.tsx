@@ -27,6 +27,8 @@ import { MarcaDaTela } from '../partes/MarcaDaTela';
 import './registro.css';
 
 const CONTRATOS = ['Prazo indeterminado', 'Experiência (45 + 45 dias)', 'Estágio', 'Aprendiz'];
+/** (26/11/2026) como recebe: o "Tipo de colaborador" da pré-admissão do SCI */
+const RECEBE_POR = ['Por mês (mensalista)', 'Por hora (horista)', 'Por dia (diarista)', 'Por comissão'];
 const DIAS = ['30 dias', '20 dias e vender 10', '15 dias (primeira parte)', '10 dias (uma parte)'];
 /** os dias em botões: o número grande e o que é */
 const ROTULO_DOS_DIAS: Record<string, { n: string; t: string }> = {
@@ -155,8 +157,15 @@ export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMud
           <p className="cli-pf-rotulo cli-largo">A pessoa</p>
           <div className="field"><label htmlFor="cli-nome">Nome completo</label><input id="cli-nome" type="text" value={a.nome} onChange={e => mudar({ nome: e.target.value })} placeholder="Como está no documento" /></div>
           <div className="field"><label htmlFor="cli-cpf">CPF</label><input id="cli-cpf" type="text" inputMode="numeric" value={a.cpf} onChange={e => mudar({ cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+          {/* (26/11/2026: "aqui os campos necessarios para a pre admissao") o que a pré-admissão do SCI pede a mais */}
+          <div className="field"><label htmlFor="cli-nasc">Data de nascimento</label><CampoData id="cli-nasc" rotulo="Data de nascimento" valor={a.nascimento ?? ''} onMudar={v => mudar({ nascimento: v })} /></div>
+          <div className="field"><label htmlFor="cli-pis">PIS <span className="cli-pf-opc">opcional</span></label><input id="cli-pis" type="text" inputMode="numeric" value={a.pis ?? ''} onChange={e => mudar({ pis: e.target.value })} placeholder="000.00000.00-0" /></div>
           <p className="cli-pf-rotulo cli-largo">O trabalho</p>
           <div className="field"><label htmlFor="cli-cargo">Cargo</label><input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} placeholder="Ex.: Auxiliar administrativo" /></div>
+          <div className="field">
+            <label>Recebe</label>
+            <CampoEscolha rotulo="Recebe" valor={a.recebePor || RECEBE_POR[0]} opcoes={RECEBE_POR} onMudar={v => mudar({ recebePor: v })} />
+          </div>
           <div className="field"><label htmlFor="cli-sal">Salário</label><input id="cli-sal" type="text" inputMode="decimal" value={a.salario} onChange={e => mudar({ salario: e.target.value })} placeholder="R$ 2.000,00" /></div>
           <div className="field"><label htmlFor="cli-inicio">Primeiro dia</label><CampoData id="cli-inicio" rotulo="Primeiro dia" valor={a.inicio} onMudar={v => mudar({ inicio: v })} /></div>
           <div className="field">
@@ -387,6 +396,36 @@ export function DepartamentoPessoal(props: DaCasca) {
     if (escolha === 'demissao') await abrirPedido('demissao', vm.novaDemissao(f.nome));
   };
 
+  /** (26/11/2026: "nao tem como abrir o funcionario com click") a ficha de quem veio do sistema de folha (RH NET): só o
+   *  que o escritório mostra, sem salário */
+  const fichaDoRh = async (c: VM['rhnet'][number]) => {
+    await modal<null>({
+      titulo: c.nome,
+      corpo: (
+        <div className="cli-app cli-janela cli-ficha">
+          <header className="cli-ficha-cabeca">
+            <Avatar nome={c.nome} tamanho={56} />
+            <div className="cli-ficha-quem">
+              <b className="cli-ficha-nome">{c.nome}</b>
+              <span className="cli-ficha-linha">
+                <span className={'badge ' + (c.selo ? (c.selo.tom === 'ruim' ? 'badge-bad' : 'badge-warn') : 'badge-ok')}>{c.situacao}</span>
+                <span>{c.tipo}</span>
+                {c.tempo && <span>{c.tempo} na empresa</span>}
+              </span>
+            </div>
+          </header>
+          <dl className="cli-ficha-faixa">
+            <div><dt>Entrada</dt><dd>{c.pe.entrada}</dd></div>
+            <div><dt>CPF</dt><dd>{c.cpf}</dd></div>
+          </dl>
+          <p className="hint cli-ficha-sem">{c.explica}</p>
+          <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Para mudar um dado ou mandar um documento, abra uma solicitação.</p>
+        </div>
+      ),
+      botoes: [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
+    });
+  };
+
   const abrirPedido = async (pedido: Pedido, dados: DadosDoPedido, erro = ''): Promise<void> => {
     let atual = dados;
     const enviar = await modal<boolean>({
@@ -474,7 +513,7 @@ export function DepartamentoPessoal(props: DaCasca) {
                     a entrada e o tempo na empresa (ou o CPF mascarado, enquanto aguarda) */}
                 {vm.rhnet.map(c => (
                   <li key={c.id}>
-                    <div className="cli-eq-cartao cli-rg2 cli-rg2-fixo">
+                    <button type="button" className="cli-eq-cartao cli-rg2" onClick={() => void fichaDoRh(c)}>
                       <span className="cli-rg2-topo">
                         <Avatar nome={c.nome} tamanho={44} />
                         <span className="cli-rg2-quem"><b>{c.nome}</b><span className="hint">{c.tipo}</span></span>
@@ -484,7 +523,7 @@ export function DepartamentoPessoal(props: DaCasca) {
                         <span className="cli-rg2-dado"><small>Entrada</small><b>{c.pe.entrada}</b></span>
                         <span className="cli-rg2-dado"><small>{c.pe.rotulo}</small><b>{c.pe.valor}</b></span>
                       </span>
-                    </div>
+                    </button>
                   </li>
                 ))}
               </ul>

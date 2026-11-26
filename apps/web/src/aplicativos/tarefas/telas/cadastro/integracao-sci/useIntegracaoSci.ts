@@ -32,6 +32,22 @@ export function useIntegracaoSci() {
   const rh = useRhNet();
   const pedidosRh = config.rhNet ? rh.pedidos().lista : [];
   const [pedindo, setPedindo] = useState(0);
+  // (26/11/2026: "vai ter uma maneira mais simples de cadastrar token de api de clientes?") o token de cada empresa colado aqui
+  const { tokens, testes } = repo.tokens();
+  const [editando, setEditando] = useState(0);
+  const [tokenTexto, setTokenTexto] = useState('');
+  const [gravandoToken, setGravandoToken] = useState(false);
+  async function gravarToken(codigo: number, tirar = false) {
+    const erro = tirar ? '' : sci.integracao.erroDoToken(tokenTexto);
+    if (erro) { toast(erro); return; }
+    setGravandoToken(true);
+    try {
+      await repo.gravarToken(codigo, tirar ? null : tokenTexto.trim());
+      setEditando(0); setTokenTexto('');
+      toast(tirar ? 'Token tirado. Se houver um no robô, ele volta a valer.' : 'Token gravado. O robô testa em até 1 minuto.');
+    } catch { toast('Não deu para gravar o token. Confira a internet e se você é administrador.'); }
+    finally { setGravandoToken(false); }
+  }
   async function testarRhNet(codigo: number) {
     setPedindo(codigo);
     try { await rh.pedirCadastros(codigo); toast('Pedido ao RH NET na fila do robô.'); }
@@ -72,9 +88,19 @@ export function useIntegracaoSci() {
     rhNet: config.rhNet ? config.empresas.map(codigo => {
       const ultimo = pedidosRh.find(p => p.codigo === codigo) ?? null;
       const situacao = !ultimo ? 'Ainda não testada' : ultimo.status === 'erro' ? 'Não deu: ' + ultimo.erro : ultimo.status === 'concluido' ? ultimo.resumo : 'Na fila do robô…';
-      return { codigo, situacao, tom: !ultimo ? '' : ultimo.status === 'erro' ? 'bad' : ultimo.status === 'concluido' ? 'ok' : 'warn', pedindo: pedindo === codigo };
+      const token = sci.integracao.situacaoDoToken(tokens[String(codigo)], testes[String(codigo)]);
+      return {
+        codigo, situacao, tom: !ultimo ? '' : ultimo.status === 'erro' ? 'bad' : ultimo.status === 'concluido' ? 'ok' : 'warn', pedindo: pedindo === codigo,
+        token: token.texto, tomDoToken: token.tom, temToken: !!tokens[String(codigo)], editando: editando === codigo,
+      };
     }) : null,
     testarRhNet: (codigo: number) => void testarRhNet(codigo),
+    tokenTexto, gravandoToken,
+    mudarToken: setTokenTexto,
+    editarToken: (codigo: number) => { setEditando(codigo); setTokenTexto(''); },
+    cancelarToken: () => { setEditando(0); setTokenTexto(''); },
+    gravarToken: (codigo: number) => void gravarToken(codigo),
+    tirarToken: (codigo: number) => void gravarToken(codigo, true),
     atualizado: config.atualizadoEm ? new Date(config.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + (config.atualizadoPor ? ' por ' + config.atualizadoPor : '') : '',
   };
 }

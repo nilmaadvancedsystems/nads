@@ -7,3 +7,8 @@
 .sci-ok { color: var(--ok, #2e7d32); }
 .sci-bad { color: var(--bad, #c62828); }
 .sci-warn { color: var(--warn, #b26a00); }
+.sci-empresa + .sci-empresa { border-top: 1px solid var(--linha, rgba(127,127,127,.2)); }
+.sci-empresa .cad-chave-texto { display: flex; flex-direction: column; gap: 2px; }
+.sci-botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.sci-token { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 0 0 12px; }
+.sci-token .input { flex: 1 1 260px; min-width: 0; font-family: var(--mono, monospace); }

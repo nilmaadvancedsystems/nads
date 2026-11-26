@@ -115,5 +115,3 @@
 .modal.modal-centro > .cli-app.cli-pedido.cli-pd{scrollbar-gutter:auto;}
 
 /* o cartão do RH NET da SCI na grade da equipe (25/11/2026: "integra isso mais bonito"): o mesmo cartão, sem clique */
-.cli-app .cli-eq-cartao.cli-rg2.cli-rg2-fixo{cursor:default;}
-.cli-app .cli-eq-cartao.cli-rg2.cli-rg2-fixo:hover{border-color:var(--cli-linha);box-shadow:none;transform:none;}

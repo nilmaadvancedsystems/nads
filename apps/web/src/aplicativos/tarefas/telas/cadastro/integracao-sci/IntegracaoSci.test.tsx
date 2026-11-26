@@ -49,5 +49,19 @@ describe('Configurações › Integração SCI', () => {
     expect(screen.getByText('Ainda não testada')).toBeTruthy();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Testar' })); });
     expect(screen.getByText(/Departamentos 2 · Funções 1/)).toBeTruthy();
+
+    // (26/11/2026) o token da empresa colado na tela: colar curto avisa e não grava; o certo grava e o "robô" aprova
+    expect(screen.getByText('Sem token cadastrado aqui')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Colar token' }));
+    const campo = screen.getByLabelText('Token de Cliente da empresa 583') as HTMLInputElement;
+    expect(campo.type).toBe('password');
+    fireEvent.change(campo, { target: { value: 'curto' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gravar token' })); });
+    expect(screen.getByLabelText('Token de Cliente da empresa 583')).toBeTruthy();
+    fireEvent.change(campo, { target: { value: 'tokenDeMentira0123456789abcdefghijklmnopqrstu' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gravar token' })); });
+    expect(screen.queryByLabelText('Token de Cliente da empresa 583')).toBeNull();
+    expect(screen.getByText(/^Funcionando/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Trocar token' })).toBeTruthy();
   });
 });

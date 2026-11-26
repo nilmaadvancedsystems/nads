@@ -135,6 +135,9 @@ export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'cha
 
 export interface PedidoDeAdmissao {
   nome: string; cpf: string; cargo: string; salario: string; inicio: string; contrato: string; observacoes: string;
+  /** (26/11/2026) o que a pré-admissão do SCI pede a mais: o nascimento (obrigatório), o PIS (opcional) e como recebe
+   *  (mensalista, horista...). Opcionais no tipo porque o rascunho antigo de um pedido não tem. */
+  nascimento?: string; pis?: string; recebePor?: string;
   /** a foto do funcionário, opcional (o JPEG 256×256 em base64, sem o prefixo data:) */
   foto?: string;
 }
@@ -149,13 +152,22 @@ export function erroDaAdmissao(p: PedidoDeAdmissao): string {
   if (!p.nome.trim()) return 'Escreva o nome do novo funcionário.';
   // (25/11/2026) o CPF é obrigatório: o pedido vai direto para o sistema de folha (RH NET), que não aceita sem ele
   if (!empresas.cadastro.cpfValido(p.cpf)) return p.cpf.trim() ? 'Confira o CPF: os números não batem.' : 'Escreva o CPF do novo funcionário.';
+  const nascimento = deBr(p.nascimento ?? '');
+  if (!nascimento) return 'Escreva a data de nascimento (dd/mm/aaaa).';
+  const inicio = deBr(p.inicio);
+  if (inicio && nascimento.getFullYear() > inicio.getFullYear() - 14) return 'Confira a data de nascimento: a pessoa precisa ter pelo menos 14 anos.';
+  if ((p.pis ?? '').trim() && (p.pis ?? '').replace(/\D/g, '').length !== 11) return 'Confira o PIS: são 11 números.';
   if (!p.cargo.trim()) return 'Escreva o cargo.';
+  if (!(valorDoSalario(p.salario) > 0)) return 'Escreva o salário.';
   if (!DATA.test(p.inicio)) return 'Escreva a data de início (dd/mm/aaaa).';
   return '';
 }
+/** '2.000,50' ou 'R$ 2000' em número (0 quando não dá) */
+const valorDoSalario = (t: string) => { const n = Number(String(t ?? '').replace(/[^\d,]/g, '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
 export function textoDaAdmissao(p: PedidoDeAdmissao): string {
   return linhas('Admissão: ' + p.nome.trim() + ' (' + p.cargo.trim() + ')', [
-    ['Nome completo', p.nome], ['CPF', p.cpf], ['Cargo', p.cargo], ['Salário', p.salario], ['Início', p.inicio], ['Contrato', p.contrato], ['Observações', p.observacoes],
+    ['Nome completo', p.nome], ['CPF', p.cpf], ['Nascimento', p.nascimento ?? ''], ['PIS', p.pis ?? ''], ['Cargo', p.cargo], ['Salário', p.salario],
+    ['Recebe por', p.recebePor ?? ''], ['Início', p.inicio], ['Contrato', p.contrato], ['Observações', p.observacoes],
     ['Foto', p.foto ? 'enviada junto com o pedido' : ''],
   ]);
 }
