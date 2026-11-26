@@ -163,7 +163,8 @@ export interface RetratoDaReceita {
 export type ReceitaNoCadastro = Partial<Omit<RetratoDaReceita, 'consultadoEm'>> & { conferidoEm: string; por: string };
 
 /** Os planos de contas padrão do SCI (os mesmos do minimum). */
-export type PlanoDoSci = '90113' | '90011';
+/** O número do plano de contas do SCI (90113, 90011 ou um adicionado em Integração SCI; 26/11/2026). */
+export type PlanoDoSci = string;
 
 /** Um regime e a competência em que ele passou a valer (ficha E10). */
 export interface RegimeDesde {

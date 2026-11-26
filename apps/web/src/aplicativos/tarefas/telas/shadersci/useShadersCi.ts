@@ -394,7 +394,7 @@ export function useShadersCi() {
     /** os apps que a pessoa abre: o Extratudo só no modo desenvolvedor */
     apps,
     // o plano e o CNPJ da empresa (o que vai na coluna CNPJ da planilha)
-    planos: sci.PLANOS_DO_SCI,
+    planos: sci.planosDoSci(),
     plano: idDoPlano,
     /** o plano veio do Cadastro: não se escolhe aqui */
     planoDoCadastro: planoDoCadastro !== null,

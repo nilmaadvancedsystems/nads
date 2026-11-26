@@ -1,7 +1,7 @@
 // ViewModel de Cadastro › Empresa: as regras da empresa que os aplicativos seguem. Hoje, "presta serviços?"
 // (Vitor, 30/09/2026: a regra fica no Cadastro): decide a aba Prestados na Importação e os serviços prestados
 // na Conferência. Grava na hora, com o registro no histórico.
-import { empresas, tarefas } from '@nads/core';
+import { empresas, sci, tarefas } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
 import { useNovidade } from '../../../../../comum/novidades';
@@ -230,7 +230,8 @@ export function useDadosDaEmpresa(rota: string) {
     noSci: c.cadastro.noSci === true,
     /** o plano de contas do SCI (24/11/2026: "colocar o plano de contas, referenciar para nao ficar selecionando"); null = falta escolher */
     planoSci: c.cadastro.planoSci ?? null,
-    planosDoSci: empresas.cadastro.PLANOS_DO_SCI,
+    /** os planos do SCI: os que vêm no nads e os adicionados em Integração SCI (26/11/2026) */
+    planosDoSci: sci.planosDoSci().map(p => p.id),
     /** a competência (AAAA-MM) em que a empresa entrou no SCI (26/11/2026); '' = não informada */
     sciDesde: c.cadastro.sciDesde ?? '',
     definirSciDesde(competencia: string) {

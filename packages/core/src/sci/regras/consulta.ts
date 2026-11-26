@@ -6,7 +6,7 @@
 // O SCI põe uma coluna vazia entre cada campo e o título na primeira linha; as colunas são achadas pelo título, não pela posição.
 // O valor vem como número ou como texto no jeito americano ("2,700.00"); a data, como texto ("31/10/2026") ou número do Excel.
 import * as XLSX from 'xlsx';
-import { contaDoPlano, PLANOS_DO_SCI, planoDoSci, semAcento, type IdDoPlanoSci } from './plano';
+import { contaDoPlano, planoDoSci, planosDoSci, semAcento, type IdDoPlanoSci } from './plano';
 
 /** Um lançamento como o SCI mostra na consulta. Na folha, cada partida vem numa linha, com um lado só. */
 export interface LancamentoDaConsulta {
@@ -123,7 +123,7 @@ export function planoDaConsulta(ls: readonly LancamentoDaConsulta[], preferido: 
   const conta = (id: IdDoPlanoSci) => { const p = planoDoSci(id); return codigos.filter(c => contaDoPlano(p, c)).length; };
   let melhor = preferido;
   let max = conta(preferido);
-  for (const { id } of PLANOS_DO_SCI) { const n = conta(id); if (n > max) { melhor = id; max = n; } }
+  for (const { id } of planosDoSci()) { const n = conta(id); if (n > max) { melhor = id; max = n; } }
   return melhor;
 }
 

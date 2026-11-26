@@ -3,7 +3,7 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import {
-  alterarEmLote, buscarHistoricos, buscarNoPlano, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
+  alterarEmLote, buscarHistoricos, buscarNoPlano, diferencasDoPlanoSci, linhasDoTextoDoPlanoSci, planoDaExportacaoDoSci, planosDoSci, textoDoPlanoSci, usarPlanosDoBanco, contaDoPlano, contaForaDoLado, dataDoTexto, diaSemLancamento, feriadoNacional, historicoDoSci, invertido, LANCAMENTO_VAZIO, lancamentoLimpo, lancamentosDoShaderParaOSci, lancamentosDoTexto,
   ladoDaPartida, participanteDoLado, pascoa, problemasDaPartida, problemasDosLancamentos, totaisDoMultiplo, planilhaDoSci, planoDoSci, problemasDoLancamento, resumoDosLancamentos, textoDosLancamentos, valorDoTexto, valorParaTexto, type CamposDoLancamento,
 } from './index';
 import { FERIADOS } from '../tarefas/regras/feriados';
@@ -43,6 +43,50 @@ describe('os planos', () => {
     expect(buscarNoPlano(p113, '01.1.1.02').map(c => c.nome)).toContain('Banco do Brasil S/A');
     expect(buscarNoPlano(p113, 'fornecedores').every(c => c.analitica)).toBe(true);
     expect(buscarNoPlano(p113, 'economica')[0].nome).toBe('Caixa Econômica Federal S/A');
+  });
+});
+
+// 26/11/2026: "Coloca uma opcao de adicionar um plano de contas, ou atualizar o plano"
+describe('os planos adicionados pelo escritório', () => {
+  // a exportação do SCI: a coluna +/- e o título na primeira linha, o nome com o recuo
+  const exportacao = (linhas: (string | number)[][]) => {
+    const ws = XLSX.utils.aoa_to_sheet([['+/-', 'Código', 'Classificação', 'Nome', 'Apelido', 'Grupo', 'Plano padrão'], ...linhas]);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Planilha1');
+    return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
+  };
+  const LINHAS = [['', '1', '01', 'ATIVO', '', 'Ativo', '95000'], ['', '2', '01.1', ' ATIVO CIRCULANTE', '', 'Ativo', '95000'], ['', '3', '01.1.1', '  Caixa', 'CX', 'Ativo', '95000']];
+
+  it('lê a exportação do SCI: o número do plano, as contas e o nome sem o recuo', () => {
+    const r = planoDaExportacaoDoSci(exportacao(LINHAS));
+    expect(r.erro).toBe('');
+    expect(r.id).toBe('95000');
+    expect(r.linhas).toEqual([['1', '01', 'ATIVO', ''], ['2', '01.1', 'ATIVO CIRCULANTE', ''], ['3', '01.1.1', 'Caixa', 'CX']]);
+  });
+
+  it('recusa o arquivo com dois planos ou sem as colunas', () => {
+    expect(planoDaExportacaoDoSci(exportacao([...LINHAS, ['', '4', '01.2', 'X', '', 'Ativo', '90113']])).erro).toContain('mais de um plano');
+    const ws = XLSX.utils.aoa_to_sheet([['A', 'B'], [1, 2]]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'x');
+    expect(planoDaExportacaoDoSci(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer)).erro).toContain('colunas');
+  });
+
+  it('o do banco entra na lista e vale no lugar do que vem no nads; vai e volta do texto', () => {
+    const { linhas } = planoDaExportacaoDoSci(exportacao(LINHAS));
+    expect(linhasDoTextoDoPlanoSci(textoDoPlanoSci(linhas))).toEqual(linhas);
+    usarPlanosDoBanco([{ id: '95000', linhas }, { id: '90113', linhas }]);
+    try {
+      expect(planosDoSci().map(p => p.id)).toEqual(['95000', '90113', '90011']);
+      expect(planoDoSci('95000').contas).toHaveLength(3);
+      expect(planoDoSci('90113').contas).toHaveLength(3);
+      expect(contaDoPlano(planoDoSci('95000'), 'cx')?.analitica).toBe(true);
+    } finally { usarPlanosDoBanco([]); }
+    expect(planoDoSci('90113').contas.length).toBe(716);
+  });
+
+  it('as diferenças pelo código reduzido', () => {
+    const d = diferencasDoPlanoSci([['1', '01', 'A', ''], ['2', '01.1', 'B', '']], [['1', '01', 'A', ''], ['2', '01.1', 'B2', ''], ['3', '01.2', 'C', '']]);
+    expect(d.novas.map(l => l[0])).toEqual(['3']);
+    expect(d.mudaram.map(l => l[0])).toEqual(['2']);
+    expect(d.sairam).toEqual([]);
   });
 });
 

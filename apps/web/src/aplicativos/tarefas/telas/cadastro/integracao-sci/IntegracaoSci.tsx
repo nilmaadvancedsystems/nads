@@ -4,6 +4,7 @@
 import { Dica, Esqueleto, Icone, Interruptor, useCarregando } from '@nads/ui';
 import './integracao-sci.css';
 import { useIntegracaoSci } from './useIntegracaoSci';
+import { PlanosDoSci } from './PlanosDoSci';
 
 export function IntegracaoSci() {
   const vm = useIntegracaoSci();
@@ -90,6 +91,9 @@ export function IntegracaoSci() {
           {vm.gravando ? 'Gravando…' : 'Gravar'}
         </button>
       </div>
+
+      {/* os planos de contas do SCI (26/11/2026): adicionar ou atualizar pela exportação; grava à parte do botão de cima */}
+      <PlanosDoSci />
     </div>
   );
 }

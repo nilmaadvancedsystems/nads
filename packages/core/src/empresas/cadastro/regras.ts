@@ -300,7 +300,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
-    ...(doc.noSci === true ? { noSci: true, ...(PLANOS_DO_SCI.includes(doc.planoSci as PlanoDoSci) ? { planoSci: doc.planoSci as PlanoDoSci } : {}),
+    ...(doc.noSci === true ? { noSci: true, ...(planoSciValido(doc.planoSci) ? { planoSci: doc.planoSci } : {}),
       ...(typeof doc.sciDesde === 'string' && COMPETENCIA.test(doc.sciDesde) ? { sciDesde: doc.sciDesde } : {}) } : {}),
     ...lembreteDoDocumento(doc.lembreteVencimento),
     ...proLaboreDoDocumento(doc.proLabore),
@@ -1084,6 +1084,8 @@ export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null
 
 /** Os planos padrão do SCI que o cadastro aceita. */
 export const PLANOS_DO_SCI: readonly PlanoDoSci[] = ['90113', '90011'];
+/** Qualquer plano do SCI pelo número (os que vêm no nads e os adicionados em Integração SCI, 26/11/2026). */
+const planoSciValido = (v: unknown): v is PlanoDoSci => typeof v === 'string' && /^\d{3,8}$/.test(v);
 
 /**
  * Liga ou desliga "está no SCI", já com o plano de contas, se vier (desligado sai do documento com o plano). Registra no
@@ -1098,7 +1100,7 @@ export function definirNoSci(c: CadastroDaEmpresa, sim: boolean, por: string, ag
     delete resto.sciDesde;
     return registrar(resto, por, agora, 'Está no SCI', 'Não');
   }
-  const p = plano && PLANOS_DO_SCI.includes(plano) ? plano : c.planoSci;
+  const p = plano && planoSciValido(plano) ? plano : c.planoSci;
   if (c.noSci && c.planoSci === p) return c;
   return registrar({ ...c, noSci: true, ...(p ? { planoSci: p } : {}) }, por, agora, 'Está no SCI', p ? 'Sim, plano ' + p : 'Sim');
 }

@@ -55,6 +55,8 @@ import { criarControleContabilFirestore } from './controleContabil.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarConfigSciMemoria, type RepoConfigSci } from './configSci';
 import { criarConfigSciFirestore } from './configSci.firestore';
+import { criarPlanosSciMemoria, type RepoPlanosSci } from './planosSci';
+import { criarPlanosSciFirestore } from './planosSci.firestore';
 import { criarRhNetMemoria, type RepoRhNet } from './rhNet';
 import { criarRhNetFirestore } from './rhNet.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
@@ -715,6 +717,14 @@ let configSci: RepoConfigSci | null = null;
 export function repoDaConfigSci(): RepoConfigSci {
   if (!configSci) configSci = noBanco ? criarConfigSciFirestore(() => quemPede()?.nome || '') : criarConfigSciMemoria();
   return configSci;
+}
+
+let planosSci: RepoPlanosSci | null = null;
+
+/** Os planos de contas do SCI adicionados ou atualizados pelo escritório (26/11/2026): no banco, config/sciPlanos; nos exemplos, na memória. */
+export function repoDosPlanosSci(): RepoPlanosSci {
+  if (!planosSci) planosSci = noBanco ? criarPlanosSciFirestore(() => quemPede()?.nome || '') : criarPlanosSciMemoria();
+  return planosSci;
 }
 
 let rhNet: RepoRhNet | null = null;
