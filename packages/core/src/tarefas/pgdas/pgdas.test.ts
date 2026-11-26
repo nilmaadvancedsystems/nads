@@ -54,6 +54,18 @@ describe('extratoDoPgdas', () => {
     expect(e.anteriores[11]).toEqual({ competencia: '2026-09', interno: 34045.57, externo: 500, total: 34545.57 });
     // a folha (2.3) não entra nos anteriores
     expect(e.anteriores.every(m => m.total !== 5000)).toBe(true);
+    // ela vai para as folhas (26/11/2026, a Projeção do Fator R)
+    expect(e.folhas).toEqual([{ competencia: '2025-10', valor: 5000 }, { competencia: '2025-11', valor: 5000 }]);
+  });
+
+  it('a folha do 2.3 aos pares, como no extrato real; "Nenhuma" ou um número que não fecha deixa sem a folha', () => {
+    const comFolha = (folha: string) => extratoDoPgdas(EXTRATO.replace('10/2025 11/2025 5.000,00 5.000,00', folha)) as ExtratoDoPgdas;
+    expect(comFolha('10/2025 18.619,61 11/2025 18.147,27 12/2025 0,00 Página 2').folhas)
+      .toEqual([{ competencia: '2025-10', valor: 18619.61 }, { competencia: '2025-11', valor: 18147.27 }, { competencia: '2025-12', valor: 0 }]);
+    expect(comFolha('Nenhuma').folhas).toEqual([]);
+    expect(comFolha('10/2025 11/2025 5.000,00').folhas).toEqual([]);
+    // o 2.4 depois da folha não entra
+    expect(comFolha('10/2025 1.000,00 2.4) Fator r 0,28').folhas).toEqual([{ competencia: '2025-10', valor: 1000 }]);
   });
 
   it('o formato real do PGDAS-D 2018 (conferido em 25/11/2026): número sem rótulo, "Apurado em", rótulo depois dos valores, meses aos pares, o DAS pago e as atividades', () => {
@@ -82,6 +94,7 @@ describe('extratoDoPgdas', () => {
     expect(e.anteriores.map(m => [m.competencia, m.total])).toEqual([['2025-11', 1000], ['2025-12', 3000], ['2026-01', 2000]]);
     expect(e.das).toEqual({ numero: '07202600000000001', vencimento: '2026-11-20', valor: 180, pagamento: { data: '2026-11-19', valor: 180 } });
     expect(e.atividades.map(a => a.receita)).toEqual([2000, 1000]);
+    expect(e.folhas).toEqual([]);
     expect(e.atividades[0].descricao).toMatch(/^Revenda de mercadorias, exceto para o exterior - Sem substituição/);
     // sem o pagamento, o DAS fica sem pagamento; a apuração retificadora
     const semPagar = extratoDoPgdas(real.replace(/6\.2\) Informações da Arrecadação[\s\S]*$/, '').replace('Apuração Original', 'Apuração Retificadora')) as ExtratoDoPgdas;
@@ -148,6 +161,25 @@ describe('juntarExtrato', () => {
     // a declaração mais antiga, consultada depois, não volta
     r = juntarExtrato(r, doMes9, EMPRESA, new Date('2026-11-29T02:00:00Z'));
     expect(r.meses['2026-09'].receita).toBe(35000);
+  });
+
+  it('guarda a folha do 2.3 por mês; a declaração transmitida depois vale mais', () => {
+    let r = juntarExtrato(null, e, EMPRESA, agora);
+    expect(r.folhas).toEqual({
+      '2025-10': { competencia: '2025-10', valor: 5000, doPa: '2026-10', transmitidaEm: '2026-11-18T14:05:31', consultadoEm: agora.toISOString() },
+      '2025-11': { competencia: '2025-11', valor: 5000, doPa: '2026-10', transmitidaEm: '2026-11-18T14:05:31', consultadoEm: agora.toISOString() },
+    });
+    // o extrato de 11/2026 traz a folha de 11/2025 de novo, corrigida, e a de 10/2026
+    const doMes11 = { ...e, competencia: '2026-11', transmitidaEm: '2026-12-15T10:00:00', anteriores: [], folhas: [{ competencia: '2025-11', valor: 5100 }, { competencia: '2026-10', valor: 6000 }] };
+    r = juntarExtrato(r, doMes11, EMPRESA, agora);
+    expect(Object.fromEntries(Object.entries(r.folhas || {}).map(([c, f]) => [c, f.valor]))).toEqual({ '2025-10': 5000, '2025-11': 5100, '2026-10': 6000 });
+    // a mais antiga, consultada depois, não volta
+    r = juntarExtrato(r, e, EMPRESA, new Date('2026-12-30T02:00:00Z'));
+    expect(r.folhas?.['2025-11'].valor).toBe(5100);
+    // e o banco devolve igual
+    expect(lerPgdasDaEmpresa(JSON.parse(JSON.stringify(r)))?.folhas).toEqual(r.folhas);
+    // sem folha no extrato, o documento não ganha o campo
+    expect(juntarExtrato(null, { ...e, folhas: [] }, EMPRESA, agora).folhas).toBeUndefined();
   });
 
   it('recusa o extrato de outro CNPJ', () => {

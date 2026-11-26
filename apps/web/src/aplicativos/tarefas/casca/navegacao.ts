@@ -17,7 +17,7 @@ export const BASE = '/tarefas';
  * As páginas do Fiscal que ficam dentro da aba "Ferramentas" (09/11/2026: "coloque uma aba superior, chamada Ferramentas;
  * dentro dela, deixe no menu lateral…"): no alto ficam os relatórios, a REINF, o SIEG e a Ferramentas. Os endereços não mudam.
  */
-export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens', 'tabelas-reforma'];
+export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'fator-r', 'antecipacao-es', 'auditoria-itens', 'tabelas-reforma'];
 
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'prazos' | 'lancatudo' | 'shadersci' | 'controle-contabil' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'arquivo-fisico' | 'carteira' | 'administrativo' | 'insights' | 'desenvolvedor';
 
@@ -107,6 +107,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026);
     // "Calculadora do Simples" no menu, para não repetir o Simples Nacional de Empresas
     { id: 'simples', rotulo: 'Calculadora do Simples', icone: 'recibo', titulo: 'Calculadora do Simples Nacional', secao: 'Ferramentas' },
+    // a projeção do Fator R (26/11/2026: a planilha "PROJEÇÃO FATOR R 6.0" do Fiscal): a receita do PGDAS-D do robô, a folha
+    // do 2.3 dele ou digitada, e o Fator R de cada PA do ano; só o Fiscal e o admin
+    { id: 'fator-r', rotulo: 'Projeção do Fator R', icone: 'barChart', titulo: 'Projeção do Fator R', secao: 'Ferramentas' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
     { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES', secao: 'Ferramentas' },
     // a auditoria tributária dos itens (04/11/2026: o prompt "Gestor Fiscal e Auditor Tributário" virou ferramenta): a
@@ -496,6 +499,7 @@ export function paginasDaEmpresa(dep: string): Pagina[] {
       { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG' },
       { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
       { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
+      { id: 'fator-r', rotulo: 'Projeção do Fator R', icone: 'barChart', titulo: 'Projeção do Fator R' },
       { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
     ] satisfies Pagina[] : []),
     // o balancete e o razão do mês pelo robô do Alterdata (04/11/2026: "quero criar um robo que puxa balancete e planilha

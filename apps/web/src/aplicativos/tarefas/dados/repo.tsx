@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDoControleContabil, repoDeLegislacaoDp, repoDoArquivoFisico, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, agindoComoNoTeste, agirComoNoTeste, perfisFicticios, mudarPerfilFicticio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights, repoDaConfigSci, repoDosPlanosSci, repoDoRhNet } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDoControleContabil, repoDoFatorR, repoDeLegislacaoDp, repoDoArquivoFisico, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, agindoComoNoTeste, agirComoNoTeste, perfisFicticios, mudarPerfilFicticio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights, repoDaConfigSci, repoDosPlanosSci, repoDoRhNet } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -37,6 +37,7 @@ import type { RepoPlanosSci } from './planosSci';
 import type { RepoRhNet } from './rhNet';
 import type { RepoControleTributos } from './controleTributos';
 import type { RepoControleContabil } from './controleContabil';
+import type { RepoFatorR } from './fatorR';
 import type { RepoLegislacaoDp } from './legislacaoDp';
 import type { RepoArquivoFisico } from './arquivoFisico';
 import type { RepoInsights } from './insights';
@@ -348,6 +349,13 @@ export function useControleTributos(): RepoControleTributos {
 /** O Controle contábil, ao vivo (o ano pedido). */
 export function useControleContabil(): RepoControleContabil {
   const repo = repoDoControleContabil();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** A Projeção do Fator R (a empresa pedida, lida uma vez). */
+export function useFatorR(): RepoFatorR {
+  const repo = repoDoFatorR();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
