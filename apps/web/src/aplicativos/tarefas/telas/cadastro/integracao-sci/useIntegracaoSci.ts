@@ -3,8 +3,8 @@
 // ligado e o código do relatório do SCI Report de cada guia. Mexer só muda o rascunho; "Gravar" manda para config/sci.
 import { sci } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
-import { useConfigSci, useRhNet } from '../../../dados/repo';
+import { useMemo, useState } from 'react';
+import { useConfigSci, useRhNet, useTodosOsCadastros } from '../../../dados/repo';
 
 type Config = sci.integracao.ConfigDoSci;
 export type ChaveDoSci = 'areaCliente' | 'publicarGuias' | 'lerDeVolta' | 'enviarXmls' | 'conferirXmls' | 'rhNet';
@@ -46,6 +46,28 @@ export function useIntegracaoSci() {
       setEditando(0); setTokenTexto('');
       toast(tirar ? 'Token tirado. Se houver um no robô, ele volta a valer.' : 'Token gravado. O robô testa em até 1 minuto.');
     } catch { toast('Não deu para gravar o token. Confira a internet e se você é administrador.'); }
+    finally { setGravandoToken(false); }
+  }
+  // (26/11/2026: "como que eu adiciono mais de uma empresa?" / "melhora isso, nao da para entender nada") o "+ Adicionar
+  // empresa" do cartão RH NET: o código e o token num passo só; põe a empresa na lista gravada e grava o token
+  const cadastros = useTodosOsCadastros();
+  const nomes = useMemo(() => { const m = new Map<number, string>(); for (const c of cadastros.porId.values()) if (c.codigo != null) m.set(c.codigo, c.nome); return m; }, [cadastros.porId]);
+  const [adicionando, setAdicionando] = useState(false);
+  const [novoCodigo, setNovoCodigo] = useState('');
+  async function adicionarEmpresa() {
+    const codigo = Number(novoCodigo.trim());
+    if (!Number.isInteger(codigo) || codigo <= 0) { toast('Escreva o código da empresa (só números).'); return; }
+    const erro = sci.integracao.erroDoToken(tokenTexto);
+    if (erro) { toast(erro); return; }
+    setGravandoToken(true);
+    try {
+      if (!config.empresas.includes(codigo)) await repo.salvar({ ...config, empresas: [...config.empresas, codigo] });
+      // o rascunho que estiver aberto também ganha a empresa (para o Gravar de baixo não tirá-la)
+      if (rascunho && !rascunho.empresas.includes(codigo)) { setRascunho({ ...rascunho, empresas: [...rascunho.empresas, codigo] }); setEmpresasTexto(null); }
+      await repo.gravarToken(codigo, tokenTexto.trim());
+      setAdicionando(false); setNovoCodigo(''); setTokenTexto('');
+      toast('Empresa ' + codigo + ' adicionada. O robô testa o token em até 1 minuto.');
+    } catch { toast('Não deu para adicionar. Confira a internet e se você é administrador.'); }
     finally { setGravandoToken(false); }
   }
   async function testarRhNet(codigo: number) {
@@ -90,14 +112,18 @@ export function useIntegracaoSci() {
       const situacao = !ultimo ? 'Ainda não testada' : ultimo.status === 'erro' ? 'Não deu: ' + ultimo.erro : ultimo.status === 'concluido' ? ultimo.resumo : 'Na fila do robô…';
       const token = sci.integracao.situacaoDoToken(tokens[String(codigo)], testes[String(codigo)]);
       return {
-        codigo, situacao, tom: !ultimo ? '' : ultimo.status === 'erro' ? 'bad' : ultimo.status === 'concluido' ? 'ok' : 'warn', pedindo: pedindo === codigo,
+        codigo, nome: nomes.get(codigo) ?? '', situacao, tom: !ultimo ? '' : ultimo.status === 'erro' ? 'bad' : ultimo.status === 'concluido' ? 'ok' : 'warn', pedindo: pedindo === codigo,
         token: token.texto, tomDoToken: token.tom, temToken: !!tokens[String(codigo)], editando: editando === codigo,
       };
     }) : null,
     testarRhNet: (codigo: number) => void testarRhNet(codigo),
-    tokenTexto, gravandoToken,
+    tokenTexto, gravandoToken, adicionando, novoCodigo, mudarNovoCodigo: (v: string) => setNovoCodigo(v.replace(/\D/g, '').slice(0, 6)),
+    abrirAdicionar: () => { setAdicionando(true); setEditando(0); setNovoCodigo(''); setTokenTexto(''); },
+    fecharAdicionar: () => { setAdicionando(false); setNovoCodigo(''); setTokenTexto(''); },
+    adicionarEmpresa: () => void adicionarEmpresa(),
+    nomeDoNovo: nomes.get(Number(novoCodigo)) ?? '',
     mudarToken: setTokenTexto,
-    editarToken: (codigo: number) => { setEditando(codigo); setTokenTexto(''); },
+    editarToken: (codigo: number) => { setEditando(codigo); setAdicionando(false); setTokenTexto(''); },
     cancelarToken: () => { setEditando(0); setTokenTexto(''); },
     gravarToken: (codigo: number) => void gravarToken(codigo),
     tirarToken: (codigo: number) => void gravarToken(codigo, true),

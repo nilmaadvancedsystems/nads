@@ -21,3 +21,9 @@
 .sci-planos-lista summary { cursor: pointer; }
 .sci-planos-lista ul { margin: 6px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; font-size: var(--fs-12); color: var(--ink-muted); }
 .sci-planos-botoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+/* o "+ Adicionar empresa" do RH NET (26/11/2026) */
+.sci-adicionar { align-self: flex-start; margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.sci-nova { display: grid; grid-template-columns: 160px 1fr; gap: 10px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
+.sci-nova .sci-botoes { grid-column: 1 / -1; }
+.sci-nova .input[type=password] { font-family: var(--mono, monospace); }
+@media (max-width: 640px) { .sci-nova { grid-template-columns: 1fr; } }

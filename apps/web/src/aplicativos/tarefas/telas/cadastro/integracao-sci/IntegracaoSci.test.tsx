@@ -41,11 +41,11 @@ describe('Configurações › Integração SCI', () => {
   it('o RH NET: ligado e gravado, cada empresa da lista ganha o Testar, que mostra os cadastros', async () => {
     render(<RetornoProvider><IntegracaoSci /></RetornoProvider>);
     // o cartão só aparece com a chave gravada (o robô lê o que está gravado)
-    expect(screen.queryByText('Empresa 583')).toBeNull();
+    expect(screen.queryByText(/^583( · |$)/)).toBeNull();
     fireEvent.click(screen.getByRole('switch', { name: 'RH NET (folha)' }));
     fireEvent.change(screen.getByLabelText('Códigos das empresas com o SCI ligado'), { target: { value: '583' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gravar' })); });
-    expect(screen.getByText('Empresa 583')).toBeTruthy();
+    expect(screen.getByText(/^583( · |$)/)).toBeTruthy();
     expect(screen.getByText('Ainda não testada')).toBeTruthy();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Testar' })); });
     expect(screen.getByText(/Departamentos 2 · Funções 1/)).toBeTruthy();
@@ -63,5 +63,15 @@ describe('Configurações › Integração SCI', () => {
     expect(screen.queryByLabelText('Token de Cliente da empresa 583')).toBeNull();
     expect(screen.getByText(/^Funcionando/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Trocar token' })).toBeTruthy();
+
+    // (26/11/2026: "como que eu adiciono mais de uma empresa?") o "+ Adicionar empresa": o código e o token num passo só
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar empresa' }));
+    fireEvent.change(screen.getByLabelText('Código da empresa a adicionar'), { target: { value: '20a' } });
+    expect((screen.getByLabelText('Código da empresa a adicionar') as HTMLInputElement).value).toBe('20');
+    fireEvent.change(screen.getByLabelText('Token da empresa a adicionar'), { target: { value: 'outroTokenDeMentira0123456789abcdefghijklmno' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Adicionar' })); });
+    expect(screen.getByText(/^20( · |$)/)).toBeTruthy();
+    expect(screen.getAllByText(/^Funcionando/)).toHaveLength(2);
+    expect((screen.getByLabelText('Códigos das empresas com o SCI ligado') as HTMLInputElement).value).toBe('20, 583');
   });
 });

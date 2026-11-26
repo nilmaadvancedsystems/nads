@@ -46,7 +46,7 @@ export function IntegracaoSci() {
             <div key={e.codigo} className="sci-empresa">
               <div className="cad-chave">
                 <div className="cad-chave-texto">
-                  <b>Empresa {e.codigo}</b>
+                  <b>{e.codigo}{e.nome ? ' · ' + e.nome : ''}</b>
                   <span className={'hint' + (e.tomDoToken ? ' sci-' + e.tomDoToken : '')}>{e.token}</span>
                   <span className={'hint' + (e.tom ? ' sci-' + e.tom : '')}>{e.situacao}</span>
                 </div>
@@ -65,7 +65,26 @@ export function IntegracaoSci() {
                 </div>
               )}
             </div>
-          )) : <p className="hint">Ponha a empresa de teste na lista abaixo e grave.</p>}
+          )) : <p className="hint">Nenhuma empresa ainda.</p>}
+          {vm.adicionando ? (
+            <div className="sci-nova">
+              <label className="cad-campo">
+                <span className="hint">Código da empresa{vm.nomeDoNovo ? ' · ' + vm.nomeDoNovo : ''}</span>
+                <input className="input" type="text" inputMode="numeric" value={vm.novoCodigo} onChange={ev => vm.mudarNovoCodigo(ev.target.value)} placeholder="Ex.: 590" aria-label="Código da empresa a adicionar" autoFocus />
+              </label>
+              <label className="cad-campo">
+                <span className="hint">Token de Cliente da empresa (SCI WEB)</span>
+                <input className="input" type="password" autoComplete="off" spellCheck={false} value={vm.tokenTexto} onChange={ev => vm.mudarToken(ev.target.value)}
+                  onKeyDown={ev => { if (ev.key === 'Enter') vm.adicionarEmpresa(); }} placeholder="Cole o token aqui" aria-label="Token da empresa a adicionar" />
+              </label>
+              <div className="sci-botoes">
+                <button type="button" className="btn" onClick={vm.fecharAdicionar}>Cancelar</button>
+                <button type="button" className="btn btn-primary" disabled={vm.gravandoToken} onClick={vm.adicionarEmpresa}>{vm.gravandoToken ? 'Adicionando…' : 'Adicionar'}</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="btn sci-adicionar" onClick={vm.abrirAdicionar}><Icone nome="plus" width={16} height={16} />Adicionar empresa</button>
+          )}
         </div>
       )}
 
