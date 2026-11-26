@@ -11,6 +11,7 @@ export * from './regras/dias';
 export * from './regras/dePara';
 export * from './regras/balancete';
 export * from './regras/consulta';
+export * from './regras/baixa';
 // Extrato → SCI no minimum (25/11/2026): o PDF do extrato vira a planilha do gerador do SCI
 export * from './regras/extrato';
 // as APIs da SCI (24/11/2026): config/sci, o Integra NET e a publicação no SCI Report
