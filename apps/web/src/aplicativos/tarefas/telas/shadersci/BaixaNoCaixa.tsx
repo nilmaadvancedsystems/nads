@@ -40,7 +40,7 @@ export function BaixaNoCaixa({ min }: { min: VmShadersCi }) {
           )}
         {vm.temConsulta && (
           <button type="button" className="btn btn-primary" disabled={!vm.lancamentos.length} onClick={vm.baixar}
-            title="A planilha do gerador do SCI (modelo nads: linha inicial 2, descarta 1 no fim). As baixas com problema vão na aba Conferir.">
+            title="A planilha do gerador do SCI (modelo nads: linha inicial 2, descarta 0 no fim), pronta para importar. As baixas com problema vão na aba Conferir.">
             <LogoExcel />Baixar planilha do SCI{vm.prontos > 0 && <span className="menu-contador">{vm.prontos}</span>}
           </button>
         )}
@@ -84,7 +84,7 @@ function JanelaDoArquivo({ vm, escolher, fechar }: { vm: VmBaixaNoCaixa; escolhe
 function BaixasAbertas({ vm }: { vm: VmBaixaNoCaixa }) {
   return (
     <>
-      {/* em cima, como no Extrato → SCI: o caixa e o histórico da baixa (o padrão do plano: a conta CX e o 477) e o lote */}
+      {/* em cima, como no Extrato → SCI: o caixa e o histórico da baixa (o padrão do plano: a conta CX e o 477) */}
       <div className="sci-razao-filtros">
         <div className="sci-razao-filtro">
           <label className="sci-razao-rotulo" htmlFor="sci-bx-caixa">Caixa (débito)</label>
@@ -97,10 +97,6 @@ function BaixasAbertas({ vm }: { vm: VmBaixaNoCaixa }) {
           <input id="sci-bx-hist" type="text" className="sci-ext-lote" value={vm.historico} autoComplete="off" onChange={e => vm.mudarHistorico(e.target.value)}
             title={'O número do histórico padrão do SCI (o padrão é o ' + vm.padrao.historico + ')'} />
           <span className="hint">{vm.nomeDoHistorico || 'fora do plano de históricos'}</span>
-        </div>
-        <div className="sci-razao-filtro">
-          <span className="sci-razao-rotulo">Lote</span>
-          <span>{vm.lote}</span>
         </div>
       </div>
 

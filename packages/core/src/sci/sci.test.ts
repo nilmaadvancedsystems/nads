@@ -85,19 +85,21 @@ describe('os lançamentos do SCI', () => {
 });
 
 describe('a planilha do SCI', () => {
-  it('Importar: títulos, os prontos e o Total; Conferir: os com problema e o motivo', () => {
+  // 26/11/2026: "Leva como regra nesses arquivos exportados da sci, eu quero ele 100% pronto, não quero editar. Então remova:
+  // esse total e os dados da coluna lote, deixa vazia!"
+  it('Importar: títulos e os prontos, sem o Total e com o Lote vazio; Conferir: os com problema e o motivo', () => {
     const s = lancamentosParaOSci(lerPlanilhaDoNads(doNads, 'lancatudo.xls'), { cnpjEmpresa: CNPJ, historicoPadrao: '116' });
     s[2].problemas.push('teste');
     const a = abas(planilhaDoSci(s));
     expect(Object.keys(a)).toEqual(['Importar', 'Conferir']);
     expect(a.Importar[0]).toEqual([...COLUNAS_DO_SCI]);
     // só as 11 colunas do gerador (25/11/2026: "Nome da conta D? que isso nao ta no layout")
-    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', 'NADS2611', '11.222.333/0001-81', '', '']);
+    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', '', '11.222.333/0001-81', '', '']);
     expect(a.Importar[0]).toHaveLength(11);
     expect(a.Importar[2].slice(0, 5)).toEqual([46336, 2101, 1201, 830.4, 116]);
-    expect(a.Importar[3][0]).toBe('Total');
-    expect(a.Importar[3][3]).toBeCloseTo(2330.4, 2);
-    expect(a.Importar).toHaveLength(4);
+    expect(a.Importar).toHaveLength(3);
+    expect(a.Importar.flat()).not.toContain('Total');
+    expect(a.Importar.slice(1).map(r => r[7])).toEqual(['', '']);
     expect(a.Conferir[0].slice(11)).toEqual(['Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo']);
     expect(a.Conferir[1][14]).toBe('teste');
   });
@@ -107,11 +109,11 @@ describe('a planilha do SCI', () => {
     expect(Object.keys(abas(planilhaDoSci(s)))).toEqual(['Importar']);
   });
 
-  it('o botão das telas: da planilha do Alterdata para a do SCI, com o lote da origem', () => {
+  it('o botão das telas: da planilha do Alterdata para a do SCI, com a coluna Lote vazia', () => {
     const r = planilhaDoSciDaTela(doNads, 'creditor', { cnpjEmpresa: CNPJ, historicoPadrao: '116' });
     expect(r.nome).toBe('sci_11222333000181_2026-11_creditor.xlsx');
     expect(r.resumo).toMatchObject({ total: 3, prontos: 3 });
-    expect(abas(r.bytes).Importar[1][7]).toBe('CRED2611');
+    expect(abas(r.bytes).Importar[1][7]).toBe('');
     expect(loteDaOrigem('honorários', '2026-11')).toBe('HONO2611');
     expect(loteDaOrigem('', '2026-11')).toBe('NADS2611');
   });

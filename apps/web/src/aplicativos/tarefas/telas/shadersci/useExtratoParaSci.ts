@@ -301,7 +301,7 @@ export function useExtratoParaSci(min: VmShadersCi) {
       const fora = lancamentos.length - prontos.length;
       aviso({
         tom: fora ? 'info' : 'ok', titulo: (prontos.length === 1 ? '1 lançamento' : prontos.length + ' lançamentos') + ' na aba Importar',
-        texto: 'Lote ' + lote + '.' + (fora ? ' ' + (fora === 1 ? '1 linha foi' : fora + ' linhas foram') + ' para a aba Conferir, com o motivo: não entram no SCI.' : ''),
+        texto: fora ? (fora === 1 ? '1 linha foi' : fora + ' linhas foram') + ' para a aba Conferir, com o motivo: não entram no SCI.' : 'Pronta para importar no SCI.',
       });
     },
   };

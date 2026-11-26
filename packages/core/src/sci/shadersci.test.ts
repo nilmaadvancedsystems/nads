@@ -234,8 +234,8 @@ describe('a planilha do SCI', () => {
     const wb = XLSX.read(planilhaDoSci(lsci), { type: 'array' });
     expect(wb.SheetNames).toEqual(['Importar', 'Conferir']);
     const importar = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Importar, { header: 1, raw: true, defval: '' });
-    // títulos, 2 lançamentos e a linha do total (o gerador lê da linha 2 e descarta 1 no fim)
-    expect(importar.length).toBe(4);
+    // títulos e 2 lançamentos, sem a linha do total (o gerador lê da linha 2 e descarta 0 no fim)
+    expect(importar.length).toBe(3);
     expect(importar[2].slice(1, 11)).toEqual([7, 16, 150, 1, 'Depósito', '10', '', '11.222.333/0001-81', '', '120']);
   });
 

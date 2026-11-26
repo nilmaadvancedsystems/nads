@@ -45,7 +45,7 @@ export function ExtratoParaSci({ min }: { min: VmShadersCi }) {
           )}
         {vm.extrato && (
           <button type="button" className="btn btn-primary" disabled={!vm.podeBaixar} onClick={vm.baixar}
-            title="A planilha do gerador do SCI (modelo nads: linha inicial 2, descarta 1 no fim). As linhas com problema vão na aba Conferir.">
+            title="A planilha do gerador do SCI (modelo nads: linha inicial 2, descarta 0 no fim), pronta para importar. As linhas com problema vão na aba Conferir.">
             <LogoExcel />Baixar planilha do SCI{vm.prontos > 0 && <span className="menu-contador">{vm.prontos}</span>}
           </button>
         )}
@@ -147,11 +147,7 @@ function ExtratoAberto({ vm }: { vm: VmExtratoParaSci }) {
             </span>
           </div>
         ))}
-        <div className="sci-razao-filtro">
-          <label className="sci-razao-rotulo" htmlFor="sci-ext-lote">Lote</label>
-          <input id="sci-ext-lote" type="text" className="sci-ext-lote" value={vm.lote} placeholder={vm.loteDoExtrato} maxLength={sci.TAMANHO_DO_LOTE} autoComplete="off"
-            onChange={e => vm.definirLote(e.target.value)} title="Um lote por extrato: para excluir e refazer só este pelo filtro no SCI" />
-        </div>
+        {/* sem o Lote: a coluna vai vazia na planilha (26/11/2026: "os dados da coluna lote, deixa vazia!") */}
         {s && <SaldoDoExtrato s={s} />}
       </div>
       {/* o que falta para baixar: a conta bancária, a conta do banco no SCI, o CNPJ */}
@@ -185,7 +181,7 @@ function ExtratoAberto({ vm }: { vm: VmExtratoParaSci }) {
         </div>
       </section>
       <p className="sci-razao-registros">
-        Prontos para o SCI: <b>{vm.prontos}</b> de <b>{vm.resumo.linhas - vm.resumo.ignoradas}</b> · <b className="num">R$ {sci.valorParaTexto(vm.valorPronto)}</b> · lote <b>{vm.lote}</b>
+        Prontos para o SCI: <b>{vm.prontos}</b> de <b>{vm.resumo.linhas - vm.resumo.ignoradas}</b> · <b className="num">R$ {sci.valorParaTexto(vm.valorPronto)}</b>
       </p>
       <Regras vm={vm} />
       <p className="hint sci-razao-pe">
