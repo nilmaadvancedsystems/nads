@@ -6,7 +6,7 @@ import { ErroDoSci, type BuscarNoSci, type MetodoDoSci } from '../../areaCliente
 import type { CadastroNoRhNetNaArea } from '../../areaCliente/pessoal';
 import {
   admissaoDoRhNet, cadastrosParaArea, clienteIdDoJwt, corpoDaAdmissao, corpoDaLiberacao, corpoDaLiberacaoDaPlanilha, corpoDosLancamentos, empresaIdDoJwt, erroDaAdmissao,
-  erroDoLancamento, itensDoCadastro, lerPaginaDoRhNet, mensagemDoRhNet, CADASTROS_DO_RH, LIBERACAO_DA_PLANILHA, RH_NET, RH_NET_POR_PAGINA,
+  erroDoLancamento, itensDoCadastro, lerPaginaDoRhNet, mensagemDoRhNet, pendenciasDaLiberacao, CADASTROS_DO_RH, LIBERACAO_DA_PLANILHA, RH_NET, RH_NET_POR_PAGINA,
   type AdmissaoNoRhNet, type AdmissaoParaRhNet, type CadastrosDoRhNet, type LancamentoParaRhNet, type RecursoDeCadastroRh, type SituacaoNoRhNet, type TipoDePlanilhaRh,
 } from './rhNet';
 
@@ -117,7 +117,10 @@ export function criarClienteRhNet(deps: { buscar: BuscarNoSci; tokens: () => Tok
     async liberarAdmissoes(lista, situacao, observacao) {
       const { empresaId } = await identificacao();
       if (!lista.length) return;
-      await chamar('POST', '/api/v1/liberacoes/admissoes', corpoDaLiberacao(empresaId, lista, situacao, observacao));
+      const r = await chamar('POST', '/api/v1/liberacoes/admissoes', corpoDaLiberacao(empresaId, lista, situacao, observacao));
+      // o 207 (liberação parcial) volta como sucesso: as que não liberaram vêm em retorno.erros
+      const pendencias = pendenciasDaLiberacao(r);
+      if (pendencias.length) throw new ErroDoSci(207, 'o RH NET não liberou: ' + pendencias.join(' ').slice(0, 280));
     },
     async criarLancamentos(lancamentos, tipo = 'normais') {
       const erro = lancamentos.map(l => erroDoLancamento(l, tipo)).find(Boolean);

@@ -815,6 +815,8 @@ function lerPaginaDoRhNet(resposta) {
 }
 function mensagemDoRhNet(resposta, status) {
 	const r = objeto$1(resposta);
+	const pendencias = pendenciasDaLiberacao(resposta);
+	if (pendencias.length) return ("o RH NET não liberou: " + pendencias.join(" ")).slice(0, 300);
 	const base = texto(r?.mensagem) || "o RH NET respondeu " + status;
 	const erros = objeto$1(r?.erros) || objeto$1(r?.errors);
 	const detalhe = erros ? Object.entries(erros).map(([k, v]) => k + ": " + (Array.isArray(v) ? v.map(texto).join(", ") : texto(v))).join("; ") : "";
@@ -1165,6 +1167,70 @@ function cargosParaArea(funcoes) {
 	}
 	return [...nomes.values()].sort((a, b) => a.localeCompare(b, "pt-BR")).slice(0, 300);
 }
+function pendenciasDaLiberacao(resposta) {
+	const lista = objeto$1(objeto$1(resposta)?.retorno)?.erros;
+	if (!Array.isArray(lista)) return [];
+	const saida = /* @__PURE__ */ new Set();
+	for (const item of lista) {
+		const o = objeto$1(item);
+		if (!o) continue;
+		const erros = objeto$1(o.erros);
+		if (erros) for (const v of Object.values(erros)) for (const m of Array.isArray(v) ? v : [v]) {
+			const t = texto(m).trim();
+			if (t) saida.add(t);
+		}
+		const m = texto(o.mensagem).trim();
+		if (m) saida.add(m);
+	}
+	return [...saida].slice(0, 20);
+}
+function situacaoDaAdmissaoNaEquipe(situacao) {
+	switch (situacao) {
+		case "cadastrado":
+		case "nao_liberado": return {
+			rotulo: "Não liberada",
+			texto: "Pré-admissão no RH NET, ainda não liberada. Confira os dados e libere: o RH NET só aceita com o cadastro completo.",
+			tom: "warn",
+			podeLiberar: true
+		};
+		case "liberado": return {
+			rotulo: "Liberada",
+			texto: "Liberada no RH NET. Falta o SCI do escritório importar para a folha.",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		case "aguardando_integracao": return {
+			rotulo: "Aguardando integração",
+			texto: "O SCI do escritório está importando para a folha.",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		case "integrado": return {
+			rotulo: "Na folha",
+			texto: "Integrada: a pessoa já está na folha do SCI.",
+			tom: "ok",
+			podeLiberar: false
+		};
+		case "recusado": return {
+			rotulo: "Recusada",
+			texto: "O SCI do escritório recusou a admissão. Veja o motivo no RH NET.",
+			tom: "bad",
+			podeLiberar: false
+		};
+		case "enviando": return {
+			rotulo: "Cadastrando",
+			texto: "O robô está cadastrando no RH NET…",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		default: return {
+			rotulo: "Não cadastrada",
+			texto: "Não foi para o RH NET. Cadastre direto lá.",
+			tom: "bad",
+			podeLiberar: false
+		};
+	}
+}
 
 //#endregion
 //#region packages/core/src/sci/integracao/rhNetCliente.ts
@@ -1273,7 +1339,9 @@ function criarClienteRhNet(deps) {
 		async liberarAdmissoes(lista, situacao, observacao) {
 			const { empresaId } = await identificacao();
 			if (!lista.length) return;
-			await chamar("POST", "/api/v1/liberacoes/admissoes", corpoDaLiberacao(empresaId, lista, situacao, observacao));
+			const r = await chamar("POST", "/api/v1/liberacoes/admissoes", corpoDaLiberacao(empresaId, lista, situacao, observacao));
+			const pendencias = pendenciasDaLiberacao(r);
+			if (pendencias.length) throw new ErroDoSci(207, "o RH NET não liberou: " + pendencias.join(" ").slice(0, 280));
 		},
 		async criarLancamentos(lancamentos, tipo = "normais") {
 			const erro = lancamentos.map((l) => erroDoLancamento(l, tipo)).find(Boolean);
@@ -1457,11 +1525,13 @@ exports.lerResumoDoIntegra = lerResumoDoIntegra;
 exports.marcaDoEnviado = marcaDoEnviado;
 exports.mensagemDoRhNet = mensagemDoRhNet;
 exports.nomeNoIntegra = nomeNoIntegra;
+exports.pendenciasDaLiberacao = pendenciasDaLiberacao;
 exports.periodoNoIntegra = periodoNoIntegra;
 exports.publicadasDoRegistro = publicadasDoRegistro;
 exports.relatorioDaGuia = relatorioDaGuia;
 exports.resumoDoIntegra = resumoDoIntegra;
 exports.resumoDosCadastros = resumoDosCadastros;
+exports.situacaoDaAdmissaoNaEquipe = situacaoDaAdmissaoNaEquipe;
 exports.situacaoDeVolta = situacaoDeVolta;
 exports.situacaoDoToken = situacaoDoToken;
 exports.situacaoNoRhNet = situacaoNoRhNet;

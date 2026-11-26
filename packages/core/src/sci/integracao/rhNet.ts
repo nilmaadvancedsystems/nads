@@ -45,6 +45,9 @@ export function lerPaginaDoRhNet(resposta: unknown): PaginaDoRhNet {
 /** A mensagem de erro do RH NET (mensagem e, se vier, a lista de erros de validação), sem dados pessoais do pedido. */
 export function mensagemDoRhNet(resposta: unknown, status: number): string {
   const r = objeto(resposta);
+  // a liberação recusada (400) traz as pendências em retorno.erros, item por item
+  const pendencias = pendenciasDaLiberacao(resposta);
+  if (pendencias.length) return ('o RH NET não liberou: ' + pendencias.join(' ')).slice(0, 300);
   const base = texto(r?.mensagem) || 'o RH NET respondeu ' + status;
   const erros = objeto(r?.erros) || objeto(r?.errors);
   const detalhe = erros ? Object.entries(erros).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.map(texto).join(', ') : texto(v))).join('; ') : '';
@@ -394,4 +397,45 @@ export function cargosParaArea(funcoes: readonly { nome: string }[] | null | und
     if (n && !nomes.has(n.toUpperCase())) nomes.set(n.toUpperCase(), n);
   }
   return [...nomes.values()].sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 300);
+}
+
+/**
+ * (26/11/2026: "pesquisa como faz no rh net e faz baseado nisso") As pendências da liberação de admissão: o RH NET só
+ * libera com o cadastro completo e, quando falta algo, responde 207 (parte liberada) ou 400 (nada liberado) com
+ * retorno.erros = [{ funcionario_contribuinte_id, erros: { campo: [mensagens] } } ou { ..., mensagem }]. Só as mensagens,
+ * sem repetir.
+ */
+export function pendenciasDaLiberacao(resposta: unknown): string[] {
+  const lista = objeto(objeto(resposta)?.retorno)?.erros;
+  if (!Array.isArray(lista)) return [];
+  const saida = new Set<string>();
+  for (const item of lista) {
+    const o = objeto(item);
+    if (!o) continue;
+    const erros = objeto(o.erros);
+    if (erros) for (const v of Object.values(erros)) for (const m of Array.isArray(v) ? v : [v]) { const t = texto(m).trim(); if (t) saida.add(t); }
+    const m = texto(o.mensagem).trim();
+    if (m) saida.add(m);
+  }
+  return [...saida].slice(0, 20);
+}
+
+/** A situação no RH NET → o que a solicitação de admissão da equipe mostra (as mesmas etapas do RH NET). */
+export function situacaoDaAdmissaoNaEquipe(situacao: string): { rotulo: string; texto: string; tom: 'ok' | 'warn' | 'neutral' | 'bad'; podeLiberar: boolean } {
+  switch (situacao) {
+    case 'cadastrado': case 'nao_liberado':
+      return { rotulo: 'Não liberada', texto: 'Pré-admissão no RH NET, ainda não liberada. Confira os dados e libere: o RH NET só aceita com o cadastro completo.', tom: 'warn', podeLiberar: true };
+    case 'liberado':
+      return { rotulo: 'Liberada', texto: 'Liberada no RH NET. Falta o SCI do escritório importar para a folha.', tom: 'neutral', podeLiberar: false };
+    case 'aguardando_integracao':
+      return { rotulo: 'Aguardando integração', texto: 'O SCI do escritório está importando para a folha.', tom: 'neutral', podeLiberar: false };
+    case 'integrado':
+      return { rotulo: 'Na folha', texto: 'Integrada: a pessoa já está na folha do SCI.', tom: 'ok', podeLiberar: false };
+    case 'recusado':
+      return { rotulo: 'Recusada', texto: 'O SCI do escritório recusou a admissão. Veja o motivo no RH NET.', tom: 'bad', podeLiberar: false };
+    case 'enviando':
+      return { rotulo: 'Cadastrando', texto: 'O robô está cadastrando no RH NET…', tom: 'neutral', podeLiberar: false };
+    default:
+      return { rotulo: 'Não cadastrada', texto: 'Não foi para o RH NET. Cadastre direto lá.', tom: 'bad', podeLiberar: false };
+  }
 }

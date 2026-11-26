@@ -137,3 +137,21 @@ describe('RH NET: o cliente da API', () => {
     expect(await criarClienteRhNet({ buscar, tokens: () => ({ parceiro: 'p', empresa: 'e', empresaId: 77 }), agora: () => 0 }).identificacao()).toEqual({ empresaId: 77, clienteId: 0 });
   });
 });
+
+describe('RH NET: a liberação como o RH NET faz (26/11/2026)', () => {
+  it('lê as pendências do 207/400 (os campos ou a mensagem) e a situação vira o que a equipe vê', async () => {
+    const { pendenciasDaLiberacao, situacaoDaAdmissaoNaEquipe, mensagemDoRhNet } = await import('./index');
+    const r = { sucesso: false, status: 207, retorno: { erros: [
+      { funcionario_contribuinte_id: 1, erros: { pis_numero: ['O campo PIS é obrigatório.'], v_quadro_horario_id: ['O campo quadro de horário é obrigatório.'] } },
+      { funcionario_contribuinte_id: 2, mensagem: 'Funcionário desligado.' },
+      { funcionario_contribuinte_id: 3, erros: { pis_numero: ['O campo PIS é obrigatório.'] } },
+    ] } };
+    expect(pendenciasDaLiberacao(r)).toEqual(['O campo PIS é obrigatório.', 'O campo quadro de horário é obrigatório.', 'Funcionário desligado.']);
+    expect(pendenciasDaLiberacao({ sucesso: true, retorno: [] })).toEqual([]);
+    expect(mensagemDoRhNet(r, 400)).toMatch(/^o RH NET não liberou: O campo PIS/);
+    expect(situacaoDaAdmissaoNaEquipe('nao_liberado')).toMatchObject({ rotulo: 'Não liberada', podeLiberar: true });
+    expect(situacaoDaAdmissaoNaEquipe('aguardando_integracao').rotulo).toBe('Aguardando integração');
+    expect(situacaoDaAdmissaoNaEquipe('integrado')).toMatchObject({ rotulo: 'Na folha', tom: 'ok', podeLiberar: false });
+    expect(situacaoDaAdmissaoNaEquipe('recusado').tom).toBe('bad');
+  });
+});

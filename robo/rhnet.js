@@ -105,11 +105,18 @@ async function atenderPedido(db, p) {
     } else if (p.acao === 'liberarAdmissao') {
       const ids = (Array.isArray(d.ids) ? d.ids : [d.id]).map(Number).filter(n => n > 0);
       if (!ids.length) throw new Error('falta o funcionário a liberar');
-      await rh.liberarAdmissoes(ids, d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', String(d.observacao || ''));
+      const chamadoRef = d.chamadoId && typeof d.chamadoId === 'string' ? db.collection('chamados').doc(d.chamadoId) : null;
+      try {
+        await rh.liberarAdmissoes(ids, d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', String(d.observacao || ('Liberado pelo nads (' + String(p.criadoPor || 'escritório') + ')')).slice(0, 250));
+      } catch (err) {
+        // (26/11/2026) o RH NET só libera com o cadastro completo: as pendências aparecem na solicitação
+        if (chamadoRef) await chamadoRef.update({ 'rhnet.erroLiberacao': motivo(err), 'rhnet.tentouEm': agora() }).catch(() => {});
+        throw err;
+      }
       rhnet = { liberadas: ids.length };
       // (26/11/2026: "eu tenho que ter como aprovar pelo nads") a solicitação da Área que pediu a admissão mostra a liberação
       if (d.chamadoId && typeof d.chamadoId === 'string') {
-        await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', 'rhnet.liberadoEm': agora(), 'rhnet.liberadoPor': String(p.criadoPor || '') }).catch(() => {});
+        await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', 'rhnet.liberadoEm': agora(), 'rhnet.liberadoPor': String(p.criadoPor || ''), 'rhnet.erroLiberacao': '' }).catch(() => {});
       }
       resumo = (d.situacao === 'nao_liberado' ? 'Voltou para não liberado: ' : 'Liberou para a folha: ') + ids.length + ' admissão(ões)';
     } else if (p.acao === 'lancamentos') {
@@ -150,6 +157,7 @@ async function atualizarListasDaArea(db, log = () => {}) {
       const marca = JSON.stringify([lista, cargos]);
       if (gravadoNaNuvem.get(codigo) === marca) continue;
       await db.collection(COLECAO_DA_AREA).doc(String(codigo)).set({ codigo, lista, cargos, em: new Date().toISOString() });
+      await acompanharAdmissoes(db, codigo, log);
       gravadoNaNuvem.set(codigo, marca);
       gravadas++;
     } catch (err) { log('RH NET: não consegui ler as pessoas da empresa', codigo, 'para a Área do Cliente -', motivo(err)); }
@@ -198,6 +206,25 @@ async function cadastrosParaArea(db, codigos, log = () => {}) {
     }
   }
   return algum ? todos : null;
+}
+
+/**
+ * A situação de cada admissão pedida pela Área acompanha o RH NET (26/11/2026: "pesquisa como faz no rh net e faz baseado
+ * nisso"): liberado → aguardando integração → integrado, ou recusado (só o SCI do escritório marca). Uma leitura das
+ * admissões da empresa e das solicitações de admissão dela; grava só o que mudou.
+ */
+async function acompanharAdmissoes(db, codigo, log = () => {}) {
+  try {
+    const chamados = await db.collection('chamados').where('tipo', '==', 'admissao').where('codigos', 'array-contains', String(codigo)).get();
+    const comId = chamados.docs.filter(c => Number((c.get('rhnet') || {}).id) > 0);
+    if (!comId.length) return;
+    const situacoes = new Map((await clienteDa(codigo).admissoes()).map(a => [a.id, a.situacao]));
+    for (const c of comId) {
+      const r = c.get('rhnet') || {};
+      const nova = situacoes.get(Number(r.id));
+      if (nova && nova !== r.situacao && !(r.situacao === 'cadastrado' && nova === 'nao_liberado')) await c.ref.update({ 'rhnet.situacao': nova, 'rhnet.vistoEm': agora() });
+    }
+  } catch (err) { log('RH NET: não consegui acompanhar as admissões da empresa', codigo, '-', motivo(err)); }
 }
 
 /** Os cargos (as funções do RH NET) das empresas do link, do que o cadastrosParaArea acabou de ler (sem ler de novo). */

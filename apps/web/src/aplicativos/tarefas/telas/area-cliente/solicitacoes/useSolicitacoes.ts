@@ -4,7 +4,7 @@
 // passos do DP, nota do mês, responder e responder e concluir — e o anexo na resposta ("tem que ter a opcao de subir um
 // arquivo por aqui" / "nao tem como eu enviar um arquivo via area do cliente por aqui"): o arquivo vai pelo Drive para
 // Documentos › Do escritório e a resposta ganha a linha do arquivo. Sem chat: o cliente conversa pelo WhatsApp.
-import { areaCliente as ac } from '@nads/core';
+import { areaCliente as ac, sci } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -134,13 +134,12 @@ export function useSolicitacoes() {
       const r = c.rhnet;
       if (!r || !r.situacao) return null;
       const pedido = r.id ? rh.pedidos().lista.find(p => p.acao === 'liberarAdmissao' && (p.status === 'pendente' || p.status === 'processando') && p.codigo === c.codigos[0]) : undefined;
-      const texto = r.situacao === 'liberado' ? 'Liberada: foi para a folha.'
-        : r.situacao === 'cadastrado' || r.situacao === 'nao_liberado' ? 'Cadastrada como pré-admissão, ainda não liberada. Confira os dados e libere para ir à folha.'
-          : r.situacao === 'enviando' ? 'O robô está cadastrando…'
-            : r.situacao === 'nao-enviado' ? 'Não foi cadastrada: ' + (r.erro || 'faltou algum dado') + '. Cadastre direto no RH NET.'
-              : 'Não deu para cadastrar: ' + (r.erro || 'erro no RH NET') + '.';
-      return { texto, tom: r.situacao === 'liberado' ? 'ok' : r.situacao === 'cadastrado' || r.situacao === 'nao_liberado' ? 'warn' : r.situacao === 'enviando' ? 'neutral' : 'bad',
-        podeLiberar: !!r.id && (r.situacao === 'cadastrado' || r.situacao === 'nao_liberado'), liberando: liberando === c.id || !!pedido };
+      // as mesmas etapas do RH NET (26/11/2026: "pesquisa como faz no rh net e faz baseado nisso")
+      const s = sci.integracao.situacaoDaAdmissaoNaEquipe(r.situacao);
+      const texto = r.situacao === 'nao-enviado' || r.situacao === 'erro' ? 'Não foi para o RH NET: ' + (r.erro || 'faltou algum dado') + '. Cadastre direto lá.' : s.texto;
+      return { rotulo: s.rotulo, texto, tom: s.tom, podeLiberar: !!r.id && s.podeLiberar, liberando: liberando === c.id || !!pedido,
+        // o RH NET só libera com o cadastro completo: o que faltou na última tentativa
+        pendencias: s.podeLiberar && r.erroLiberacao ? r.erroLiberacao.replace(/^o RH NET não liberou: /, '') : '' };
     },
     async liberarNaFolha(c: ChamadoNaEquipe) {
       if (!c.rhnet?.id || !c.codigos[0]) return;
