@@ -78,7 +78,7 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 /** As palavras que dizem a área, na ordem em que valem (a primeira que bate). */
 const AREAS_PELO_NOME: readonly [ac.AreaDoEscritorio, RegExp][] = [
   ['dp', /holerite|contracheque|folha|fgts|ferias|rescis|admiss|demiss|13o|decimo|esocial|inss|pro.?labore|sefip|caged|rais|dirf/],
-  ['fiscal', /\bdas\b|pgdas|simples nacional|darf|\bdae\b|\bdam\b|icms|\biss\b|sped|efd|\bnf-?e\b|nfc-?e|sintegra|dctf|\bgia\b|apuracao|livro fiscal/],
+  ['fiscal', /\bdas\b|pgdas|simples nacional|darf|guia ?pagamento|guia de pagamento|arrecadacao de receitas federais|\bdae\b|\bdam\b|icms|\biss\b|sped|efd|\bnf-?e\b|nfc-?e|sintegra|dctf|\bgia\b|apuracao|livro fiscal/],
   ['contabil', /balancete|balanco|\bdre\b|razao|diario|demonstra|contab|ecd|ecf|lalur|extrato banc/],
   ['societario', /contrato social|alteracao|cnpj|cartao cnpj|alvara|certidao|\bcnd\b|procuracao|honorario|nfs-?e|ata\b|estatuto|junta|inscricao/],
 ];
