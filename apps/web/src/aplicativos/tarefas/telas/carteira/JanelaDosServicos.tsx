@@ -9,10 +9,10 @@ import { useColunasAjustaveis } from '../../../../comum/ColunasAjustaveis';
 import { useJanelaDosServicos, type ColunaDosServicos } from './useCarteiraDaPessoa';
 
 /** O título que ordena (o das Minhas empresas): clicar ordena crescente, de novo decrescente; o triângulo só depois do clique. */
-function Titulo({ vm, coluna, numero, alca, children }: { vm: ReturnType<typeof useJanelaDosServicos>; coluna: ColunaDosServicos; numero?: boolean; alca: ReactNode; children: ReactNode }) {
+function Titulo({ vm, coluna, alca, children }: { vm: ReturnType<typeof useJanelaDosServicos>; coluna: ColunaDosServicos; alca: ReactNode; children: ReactNode }) {
   const ativo = vm.ordem?.coluna === coluna;
   return (
-    <th className={'th-sort' + (numero ? ' num' : '')} onClick={() => vm.ordenar(coluna)} title="Ordenar por esta coluna"
+    <th className="th-sort" onClick={() => vm.ordenar(coluna)} title="Ordenar por esta coluna"
       aria-sort={ativo ? (vm.ordem?.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
       {children}{ativo && <Icone nome="caretDown" className={'th-seta' + (vm.ordem?.dir === 'asc' ? ' cima' : '')} />}
       {alca}
@@ -22,8 +22,10 @@ function Titulo({ vm, coluna, numero, alca, children }: { vm: ReturnType<typeof 
 
 export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
   const vm = useJanelaDosServicos(fechar);
-  const col = useColunasAjustaveis('carteira-servicos', [
-    { id: 'servico', padrao: 220 }, ...(vm.comValor ? [{ id: 'valor', padrao: 150 }] : []), { id: 'pct', padrao: 120 }, { id: 'tirar', padrao: 120 },
+  // as larguras de agora (26/11/2026: "A popup ta apertada, pode aumentar a largura dela"): o Serviço fica com o que sobra da
+  // janela, mais larga; o nome novo da tabela solta as larguras arrastadas antes, que não cabiam
+  const col = useColunasAjustaveis('carteira-servicos-2', [
+    { id: 'servico', padrao: 240 }, ...(vm.comValor ? [{ id: 'valor', padrao: 184 }] : []), { id: 'pct', padrao: 130 }, { id: 'tirar', padrao: 132 },
   ], 'servico');
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
@@ -45,8 +47,8 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
               <thead>
                 <tr>
                   <Titulo vm={vm} coluna="nome" alca={col.alca('servico')}>Serviço</Titulo>
-                  {vm.comValor && <Titulo vm={vm} coluna="valor" numero alca={col.alca('valor')}>Valor do serviço</Titulo>}
-                  <Titulo vm={vm} coluna="percentual" numero alca={col.alca('pct')}>% da comissão</Titulo>
+                  {vm.comValor && <Titulo vm={vm} coluna="valor" alca={col.alca('valor')}>Valor do serviço</Titulo>}
+                  <Titulo vm={vm} coluna="percentual" alca={col.alca('pct')}>% da comissão</Titulo>
                   <th aria-label="Tirar" />
                 </tr>
               </thead>

@@ -6752,7 +6752,7 @@ td .fs-fat-receita{color:var(--accent);font-weight:700;}
 /* Carteira (12/11/2026): o salário, as finanças e as comissões de cada pessoa */
 /* a janela dos Serviços das Comissões (13/11/2026, Vitor: "não to conseguindo mexer"): cabe na tela, o título e o Gravar
    fixos e só o miolo rola (uma barra de rolagem; as tabelas dentro não rolam sozinhas) */
-.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);}
+.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);width:calc(100vw - 32px);max-width:820px;}
 .cart-servicos-janela .registro-topo,.cart-servicos-janela .registro-pe{flex:none;}
 .cart-servicos-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
 .cart-servicos-janela .registro-corpo > *{flex-shrink:0;}
