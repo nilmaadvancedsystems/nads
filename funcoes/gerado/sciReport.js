@@ -196,10 +196,25 @@ function acessoDaArea(token, link, login) {
 //#endregion
 //#region packages/core/src/areaCliente/sciReportCliente.ts
 function publicadosIdDaResposta(resposta) {
-	const lista = resposta && typeof resposta === "object" ? resposta.publicados : null;
-	const primeiro = Array.isArray(lista) && lista[0] && typeof lista[0] === "object" ? lista[0].publicadosId : 0;
-	const n = Number(primeiro);
-	return Number.isInteger(n) && n > 0 ? n : 0;
+	const achar = (x, fundo) => {
+		if (!x || typeof x !== "object" || fundo > 4) return 0;
+		if (Array.isArray(x)) {
+			for (const i of x) {
+				const n = achar(i, fundo + 1);
+				if (n) return n;
+			}
+			return 0;
+		}
+		const o = x;
+		const n = Number(o.publicadosId);
+		if (Number.isInteger(n) && n > 0) return n;
+		for (const v of Object.values(o)) {
+			const m = achar(v, fundo + 1);
+			if (m) return m;
+		}
+		return 0;
+	};
+	return achar(resposta, 0);
 }
 var ErroDoSci = class extends Error {
 	status;
@@ -308,8 +323,13 @@ function criarClienteSciReport(deps) {
 				f.append("arquivo", new Blob([new Uint8Array(pdf)], { type: "application/pdf" }), nomeDoArquivo.replace(/[^\w.-]+/g, "_") || "guia.pdf");
 				return f;
 			}));
-			if (!id) throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
-			return id;
+			if (id) return id;
+			const competencia = campos.anoRef + "-" + campos.mesRef;
+			const venc = String(campos.dataVencimento || "").replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3/$2/$1");
+			const valor = Math.round(Number(campos.valor) * 100);
+			const achada = (await this.publicacoes(Number(campos.empresaId), competencia, competencia)).filter((p) => p.vencimento === venc && Math.round(p.valor * 100) === valor && (!p.relatorioId || p.relatorioId === campos.relatorioId)).sort((x, y) => y.publicadosId - x.publicadosId)[0];
+			if (achada) return achada.publicadosId;
+			throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
 		}
 	};
 }
