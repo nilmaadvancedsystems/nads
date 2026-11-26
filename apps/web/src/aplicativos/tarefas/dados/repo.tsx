@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDoControleContabil, repoDeLegislacaoDp, repoDoArquivoFisico, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, agindoComoNoTeste, agirComoNoTeste, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights, repoDaConfigSci, repoDosPlanosSci, repoDoRhNet } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDoControleContabil, repoDeLegislacaoDp, repoDoArquivoFisico, repoDoLcdpr, repoDoLancatudo, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, agindoComoNoTeste, agirComoNoTeste, perfisFicticios, mudarPerfilFicticio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira, repoDosInsights, repoDaConfigSci, repoDosPlanosSci, repoDoRhNet } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -490,9 +490,17 @@ export function useRepoPessoal(): RepoPessoal {
 
 /** A proteção do login, a equipe e as configurações do nads, ao vivo. */
 export function useAcesso(): RepoAcesso {
+  // os perfis fictícios do modo desenvolvedor entram e saem da equipe com as tarefas de exemplo (26/11/2026)
+  useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
   const repo = repoDeAcesso();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
+}
+
+/** Os perfis fictícios e o "Agir como" (modo desenvolvedor, 26/11/2026): a troca de perfil no centro da tela. */
+export function usePerfisDeTeste() {
+  useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
+  return { perfis: perfisFicticios(), agindo: agindoComoNoTeste(), agirComo: agirComoNoTeste, mudar: mudarPerfilFicticio };
 }
 
 /** Só a regra "presta serviços?" do Cadastro da empresa (null = não informado, ou o cadastro ainda não chegou). */

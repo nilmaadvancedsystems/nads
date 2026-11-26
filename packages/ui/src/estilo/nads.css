@@ -8946,3 +8946,18 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .ac-link-curto{display:inline-flex;align-items:center;gap:6px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
 .cfg-linha .ac-logo-previa{width:32px;height:32px;border-radius:8px;}
 .cfg-linha .ac-botoes{flex-wrap:wrap;justify-content:flex-end;}
+/* o modo convidado do modo desenvolvedor (26/11/2026): no centro do topo, por cima da barra; o perfil ativo destacado */
+.troca-convidado{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:3000;display:flex;align-items:center;gap:4px;padding:3px;
+  border:1px solid var(--border);border-radius:999px;background:var(--surface);box-shadow:var(--shadow-lg);}
+.troca-convidado-perfil{display:inline-flex;align-items:center;border-radius:999px;}
+.troca-convidado-btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;
+  color:var(--ink-muted);font:inherit;font-size:var(--fs-12);font-weight:600;cursor:pointer;white-space:nowrap;}
+.troca-convidado-btn small{font-weight:400;font-size:var(--fs-11);color:var(--ink-faint, var(--ink-muted));}
+.troca-convidado-btn:hover{color:var(--ink);}
+.troca-convidado-btn.ativo,.troca-convidado-perfil.ativo{background:var(--accent-soft);}
+.troca-convidado-btn.ativo,.troca-convidado-perfil.ativo .troca-convidado-btn{color:var(--accent-ink, var(--ink));}
+.troca-convidado-cfg{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-right:4px;padding:0;border:0;border-radius:999px;
+  background:transparent;color:var(--ink-muted);cursor:pointer;}
+.troca-convidado-cfg:hover{background:var(--hover-bg);color:var(--ink);}
+.troca-convidado-form{display:flex;flex-direction:column;gap:10px;padding:10px;}
+.troca-convidado-form label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);color:var(--ink-muted);}

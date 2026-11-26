@@ -15,6 +15,7 @@ import { RepoProvider } from './dados/repo';
 import { useSessao } from './dados/sessao';
 import { AvisosDeLiberacao } from './telas/acesso/AvisosDeLiberacao';
 import { BalaoDoSuporte } from './telas/suporte/BalaoDoSuporte';
+import { TrocaDeConvidado } from './casca/TrocaDeConvidado';
 import { LiberarComputador } from './telas/acesso/LiberarComputador';
 import { useLiberacao } from './telas/acesso/useLiberacao';
 import { AberturaDoLogin } from './telas/entrar/aberturaDoLogin';
@@ -84,6 +85,8 @@ export function AppTarefas() {
             <AvisosDeLiberacao admin={admin} />
             {/* o suporte de leitura (20/10/2026): o balão no canto de baixo, à direita, em toda tela */}
             <BalaoDoSuporte />
+            {/* o modo convidado no centro do topo, só no modo desenvolvedor (26/11/2026) */}
+            <TrocaDeConvidado />
             {/* o mapa de uso do sistema (Gustavo, 20/10/2026): conta as visitas e os cliques, só com o interruptor ligado */}
             <ColetaDeUso />
             {/* o mapa na tela (21/10/2026: "a tela com os botões coloridos"): o admin liga no Uso do sistema */}
