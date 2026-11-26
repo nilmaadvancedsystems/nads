@@ -132,7 +132,7 @@ function JanelaDoRecebido({ vm }: { vm: Vm }) {
           {!p || p.estado === 'buscando' ? <p className="hint">{p?.texto || 'Buscando o arquivo no Drive…'}</p>
             : p.estado === 'erro' ? <p className="hint" role="alert">{p.texto}</p>
             : p.jeito === 'imagem' ? <img src={p.url} alt={p.nome} />
-            : p.jeito === 'pdf' ? <iframe src={p.url} title={p.nome} />
+            : p.jeito === 'pdf' ? <iframe src={p.url + '#navpanes=0&view=FitH'} title={p.nome} />
             : <p className="hint">Este tipo de arquivo não tem prévia. Use “Abrir em outra aba”.</p>}
         </div>
         <dl className="ent-dados">
