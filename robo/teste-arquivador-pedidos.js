@@ -191,6 +191,16 @@ igual('planilha: as regras com o hash confirmado dão o destino (OUTROS DOCUMENT
     igual('cadastro do formulário: os clientes e se a pasta existe', docs.get('robo/arquivadorNovoCadastro').clientes, [{ c: 77, n: 'SEM PASTA EXEMPLO ME', p: false }, { c: 413, n: 'BRAZILIAN FORESTRY EXEMPLO LTDA', p: true }, { c: 568, n: 'BRAZILIAN EXEMPLO LTDA', p: true }]);
   } catch (e) { falhas++; console.log('ERRO', e.stack); }
   finally { try { fs.rmSync(sb, { recursive: true, force: true }); } catch (e) { /* temporário */ } }
+  // (26/11/2026) o reprocesso automático: as pastas-dia dos últimos 3 dias e as levas únicas que ainda não rodaram (a do produtor rural roda uma vez só)
+  {
+    const RP = require('./reprocesso-pedido');
+    const f1 = RP.filtrosDoReprocessoAuto(new Date(2026, 10, 26, 13, 0).getTime(), []);
+    const f2 = RP.filtrosDoReprocessoAuto(new Date(2026, 10, 26, 13, 0).getTime(), f1.levas);
+    const ok = (nome, obtido, esperado) => { total++; if (JSON.stringify(obtido) !== JSON.stringify(esperado)) { falhas++; console.log('FALHOU:', nome, '\n  obtido:  ', JSON.stringify(obtido), '\n  esperado:', JSON.stringify(esperado)); } };
+    ok('reprocesso automático: os 3 últimos dias e a leva única do produtor rural', f1.filtros, ['20261126-NOVO', '20261125-NOVO', '20261124-NOVO', 'PRODUTOR RURAL']);
+    ok('... o id da leva vai para a marca', f1.levas, ['produtor-rural-2026-11-26']);
+    ok('... a leva que já rodou não volta: só os 3 dias', [f2.filtros, f2.levas], [['20261126-NOVO', '20261125-NOVO', '20261124-NOVO'], []]);
+  }
   console.log(falhas ? falhas + ' de ' + total + ' falharam' : 'ok: ' + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })();
