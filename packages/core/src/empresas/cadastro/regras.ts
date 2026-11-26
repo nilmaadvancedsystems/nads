@@ -10,7 +10,7 @@ import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type Banc
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaDoRazao, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
   type AjusteDaEtapa, type AjustesDasEtapas, type RegimeDesde, type SetorDoAjuste,
-  type LembreteDaEmpresa, type PlanoDoSci, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
+  type DadosManuaisDaEmpresa, type LembreteDaEmpresa, type PlanoDoSci, type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -303,6 +303,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(doc.noSci === true ? { noSci: true, ...(planoSciValido(doc.planoSci) ? { planoSci: doc.planoSci } : {}),
       ...(typeof doc.sciDesde === 'string' && COMPETENCIA.test(doc.sciDesde) ? { sciDesde: doc.sciDesde } : {}) } : {}),
     ...lembreteDoDocumento(doc.lembreteVencimento),
+    ...manualDoDocumento(doc.manual),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
     ...regimesDoDocumento(doc.regimes),
@@ -335,6 +336,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
     ...(c.noSci ? { noSci: true, ...(c.planoSci ? { planoSci: c.planoSci } : {}), ...(c.sciDesde ? { sciDesde: c.sciDesde } : {}) } : {}),
+    ...(c.manual && Object.keys(c.manual).length ? { manual: { ...c.manual } } : {}),
     ...(c.lembreteVencimento ? { lembreteVencimento: c.lembreteVencimento } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
@@ -1103,6 +1105,42 @@ export function definirNoSci(c: CadastroDaEmpresa, sim: boolean, por: string, ag
   const p = plano && planoSciValido(plano) ? plano : c.planoSci;
   if (c.noSci && c.planoSci === p) return c;
   return registrar({ ...c, noSci: true, ...(p ? { planoSci: p } : {}) }, por, agora, 'Está no SCI', p ? 'Sim, plano ' + p : 'Sim');
+}
+
+/** Os tamanhos dos dados digitados à mão. */
+export const MAX_DADO_MANUAL: Readonly<Record<keyof DadosManuaisDaEmpresa, number>> = { fantasia: 150, inscricaoEstadual: 30, endereco: 300 };
+const ROTULO_DO_DADO_MANUAL: Readonly<Record<keyof DadosManuaisDaEmpresa, string>> = { fantasia: 'Nome fantasia', inscricaoEstadual: 'Inscrição estadual', endereco: 'Endereço' };
+
+function manualDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'manual'> {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const m: DadosManuaisDaEmpresa = {};
+  for (const k of Object.keys(MAX_DADO_MANUAL) as (keyof DadosManuaisDaEmpresa)[]) {
+    const t = typeof o[k] === 'string' ? (o[k] as string).trim().slice(0, MAX_DADO_MANUAL[k]) : '';
+    if (t) m[k] = t;
+  }
+  return Object.keys(m).length ? { manual: m } : {};
+}
+
+/**
+ * Os dados da empresa digitados à mão (26/11/2026: "queria cadastrar a empresa manualmente tbm"): o nome fantasia, a inscrição
+ * estadual e o endereço; o vazio tira (volta o da Receita ou do Entregas). Só o que mudou vai para o histórico.
+ */
+export function definirDadosManuais(c: CadastroDaEmpresa, mudar: Partial<DadosManuaisDaEmpresa>, por: string, agora: Date): CadastroDaEmpresa {
+  const atual = c.manual || {};
+  const novo: DadosManuaisDaEmpresa = { ...atual };
+  const mudou: string[] = [];
+  for (const k of Object.keys(mudar) as (keyof DadosManuaisDaEmpresa)[]) {
+    if (!(k in MAX_DADO_MANUAL)) continue;
+    const t = String(mudar[k] ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_DADO_MANUAL[k]);
+    if ((atual[k] || '') === t) continue;
+    if (t) novo[k] = t; else delete novo[k];
+    mudou.push(ROTULO_DO_DADO_MANUAL[k] + ': ' + (t || 'como na Receita'));
+  }
+  if (!mudou.length) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.manual;
+  return registrar(Object.keys(novo).length ? { ...resto, manual: novo } : resto, por, agora, 'Dados da empresa', mudou.join(' · '));
 }
 
 /**

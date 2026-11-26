@@ -9,47 +9,110 @@
 // Cada opção numa linha solta (ConfigLinha): o nome, a descrição curta e o controle à direita.
 import { empresas } from '@nads/core';
 import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, LogoSci, MenuSuspenso, SeletorMes, useCarregando } from '@nads/ui';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { JanelaDaReceita } from './JanelaDaReceita';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
 const dataBr = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : iso; };
 const Valor = ({ v }: { v: string }) => <span className={'cfg-valor' + (v ? '' : ' vazio')}>{v || '—'}</span>;
 
+/** Um dado da grade (26/11/2026: "os elementos estao muito baguncados"): o nome em cima, o valor embaixo; largo ocupa as duas colunas. */
+function Dado({ rotulo, valor, largo, manual, children }: { rotulo: string; valor?: ReactNode; largo?: boolean; manual?: boolean; children?: ReactNode }) {
+  const vazio = valor == null || valor === '';
+  return (
+    <div className={'cad-dado' + (largo ? ' largo' : '')}>
+      <span className="cad-dado-rotulo">{rotulo}{manual && <span className="cad-dado-selo" title="Digitado no nads, no lugar do da Receita">à mão</span>}</span>
+      {valor !== undefined && <span className={'cad-dado-valor' + (vazio ? ' vazio' : '')}>{vazio ? '—' : valor}</span>}
+      {children}
+    </div>
+  );
+}
+
 /**
  * A razão social (13/11/2026: "poder trocar a razão social pelo próprio sistema"): só o diretor troca aqui. A troca
  * é só o nome que aparece e que a busca acha; os dados da empresa continuam presos ao nome de sempre (nada se perde).
  */
-function LinhaDaRazaoSocial({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
+function DadoDaRazaoSocial({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const t = vm.trocaDaRazao;
   const abrir = (v: string) => { setTexto(v); setErro(null); setEditando(true); };
   const salvar = () => { const e = vm.trocarRazaoSocial(texto); setErro(e); if (!e) setEditando(false); };
-  const descricao = t
+  const nota = t
     ? <>Trocada por {t.por} em {dataBr(t.em.slice(0, 10))}{t.anteriores[0] ? <> · antes: {t.anteriores[0].nome}</> : null}</>
-    : vm.razaoDaReceita && vm.podeTrocarRazao ? <>Na Receita: {vm.razaoDaReceita}</> : undefined;
+    : vm.razaoDaReceita && vm.podeTrocarRazao ? <>Na Receita: {vm.razaoDaReceita}</> : null;
   if (editando) {
     return (
-      <ConfigLinha titulo="Razão social" descricao="Os extratos, a conferência, as rotinas e as senhas continuam com a empresa." aviso={erro || undefined}>
-        <span className="cfg-razao">
-          <input type="text" aria-label="Razão social nova" value={texto} maxLength={empresas.cadastro.MAX_RAZAO_SOCIAL} autoFocus
+      <Dado rotulo="Razão social" largo>
+        <span className="cad-dado-edita">
+          <input type="text" className="input" aria-label="Razão social nova" value={texto} maxLength={empresas.cadastro.MAX_RAZAO_SOCIAL} autoFocus
             onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') setEditando(false); }} />
-          <button type="button" className="btn btn-primary" onClick={salvar}>Salvar</button>
-          <button type="button" className="btn" onClick={() => setEditando(false)}>Cancelar</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={salvar}>Salvar</button>
+          <button type="button" className="btn btn-sm" onClick={() => setEditando(false)}>Cancelar</button>
         </span>
-      </ConfigLinha>
+        {erro ? <span className="cad-dado-aviso">{erro}</span> : <span className="cad-dado-nota">Os extratos, a conferência, as rotinas e as senhas continuam com a empresa.</span>}
+      </Dado>
     );
   }
   return (
-    <ConfigLinha titulo="Razão social" descricao={descricao}>
-      <span className="cfg-razao">
-        <Valor v={vm.razaoSocial} />
+    <Dado rotulo="Razão social" largo>
+      <span className="cad-dado-linha">
+        <span className="cad-dado-valor">{vm.razaoSocial || '—'}</span>
         {vm.podeTrocarRazao && vm.razaoDaReceita && !t && <button type="button" className="btn btn-sm" onClick={() => abrir(vm.razaoDaReceita)}>Usar a da Receita</button>}
         {vm.podeTrocarRazao && <BotaoIcone icone="lapis" pequeno titulo="Trocar a razão social" onClick={() => abrir(vm.razaoSocial)} />}
       </span>
-    </ConfigLinha>
+      {nota && <span className="cad-dado-nota">{nota}</span>}
+    </Dado>
+  );
+}
+
+/**
+ * A identificação, numa grade de duas colunas, e o Editar (26/11/2026: "queria cadastrar a empresa manualmente tbm, ter essa
+ * opcao"): o CNPJ, o nome fantasia, a inscrição estadual e o endereço digitados à mão valem no lugar dos da Receita; o campo
+ * vazio volta a usar o de lá.
+ */
+function Identificacao({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
+  const d = vm.dados;
+  const [editando, setEditando] = useState(false);
+  const [t, setT] = useState({ cnpj: '', fantasia: '', inscricaoEstadual: '', endereco: '' });
+  const [erro, setErro] = useState<string | null>(null);
+  const cnpj = vm.cnpj ? empresas.cadastro.cnpjFormatado(vm.cnpj) : '';
+  const abrir = () => { setT({ cnpj, fantasia: d.fantasia.valor, inscricaoEstadual: d.inscricaoEstadual.valor, endereco: d.endereco.valor }); setErro(null); setEditando(true); };
+  const salvar = () => { const e = vm.gravarDadosManuais(t); setErro(e); if (!e) setEditando(false); };
+  const campo = (k: keyof typeof t, rotulo: string, dica: string, largo?: boolean, max?: number) => (
+    <Dado rotulo={rotulo} largo={largo}>
+      <input type="text" className="input" aria-label={rotulo} value={t[k]} placeholder={dica} maxLength={max}
+        onChange={e => setT(x => ({ ...x, [k]: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') setEditando(false); }} />
+    </Dado>
+  );
+  const max = empresas.cadastro.MAX_DADO_MANUAL;
+  return (
+    <ConfigSecao titulo="Identificação" acao={editando
+      ? <span className="cfg-razao"><button type="button" className="btn btn-sm" onClick={() => setEditando(false)}>Cancelar</button><button type="button" className="btn btn-primary btn-sm" onClick={salvar}>Salvar</button></span>
+      : <button type="button" className="btn btn-ghost btn-sm" onClick={abrir} title="Digitar os dados da empresa à mão"><Icone nome="lapis" />Editar</button>}>
+      <div className="cad-dados-grade">
+        <DadoDaRazaoSocial vm={vm} />
+        {editando ? (
+          <>
+            {campo('cnpj', 'CNPJ ou CPF', '00.000.000/0000-00')}
+            <Dado rotulo="Código no Alterdata" valor={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : ''} />
+            {campo('fantasia', 'Nome fantasia', 'Como a empresa é conhecida', false, max.fantasia)}
+            {campo('inscricaoEstadual', 'Inscrição estadual', 'Só os números ou ISENTO', false, max.inscricaoEstadual)}
+            {campo('endereco', 'Endereço', 'Rua, número, bairro, cidade/UF, CEP', true, max.endereco)}
+            <span className="cad-dado largo cad-dado-nota">{erro ? <span className="cad-dado-aviso">{erro}</span> : 'Apague o campo para voltar a usar o dado da Receita.'}</span>
+          </>
+        ) : (
+          <>
+            <Dado rotulo="CNPJ" valor={cnpj} />
+            <Dado rotulo="Código no Alterdata" valor={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : ''} />
+            <Dado rotulo="Nome fantasia" valor={d.fantasia.valor} manual={d.fantasia.manual} />
+            <Dado rotulo="Inscrição estadual" valor={d.inscricaoEstadual.valor} manual={d.inscricaoEstadual.manual} />
+            <Dado rotulo="Endereço" valor={d.endereco.valor} manual={d.endereco.manual} largo />
+          </>
+        )}
+      </div>
+    </ConfigSecao>
   );
 }
 
@@ -72,7 +135,6 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const [erroDoContato, setErroDoContato] = useState<string | null>(null);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
-  const d = vm.entregas.dados;
   const nr = vm.naReceita;
   const linhas = [...vm.socios, ...(novo ? [{ nome: '', cpf: '' }] : [])];
   /** grava ao sair do campo: a lista inteira, com esta linha trocada */
@@ -91,14 +153,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const conferido = vm.conferidoNaReceita;
   return (
     <>
-      <ConfigSecao titulo="Identificação">
-        <ConfigLinha titulo="CNPJ"><Valor v={vm.cnpj ? empresas.cadastro.cnpjFormatado(vm.cnpj) : ''} /></ConfigLinha>
-        <LinhaDaRazaoSocial vm={vm} />
-        <ConfigLinha titulo="Nome fantasia"><Valor v={nr.fantasia ?? d?.nomeFantasia ?? ''} /></ConfigLinha>
-        <ConfigLinha titulo="Código no Alterdata"><Valor v={vm.empresa?.codigo != null ? String(vm.empresa.codigo) : ''} /></ConfigLinha>
-        <ConfigLinha titulo="Inscrição estadual"><Valor v={d?.inscricaoEstadual || ''} /></ConfigLinha>
-        <ConfigLinha titulo="Endereço"><Valor v={(nr.endereco ? [nr.endereco, nr.complemento, nr.cep ? 'CEP ' + nr.cep : ''] : [d?.endereco, d?.cidade]).filter(Boolean).join(' · ')} /></ConfigLinha>
-      </ConfigSecao>
+      <Identificacao vm={vm} />
       {/* quem cuida da empresa (17/11/2026: "a função de eu alterar o responsável fiscal e contábil aqui"): o Diretor troca
           direto, sem pedir o aceite; a transferência pedida no departamento cai */}
       <ConfigSecao titulo="Responsáveis">
@@ -130,23 +185,21 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         {!nr.situacao ? (
           <ConfigLinha titulo="Sem consulta" descricao={vm.entregas.carregado ? 'Ninguém consultou o CNPJ desta empresa na Receita ainda. Use Consultar na Receita.' : 'Lendo o Entregas…'} />
         ) : (
-          <>
-            <ConfigLinha titulo="Situação" descricao={[nr.situacaoDesde ? 'desde ' + dataBr(nr.situacaoDesde) : '', nr.motivoSituacao ? nr.motivoSituacao.toLowerCase() : ''].filter(Boolean).join(' · ') || undefined}
-              aviso={!ativa ? 'A empresa não está ativa na Receita.' : undefined}>
-              <span className={'badge ' + (ativa ? 'badge-ok' : 'badge-bad')}>{nr.situacao}</span>
-            </ConfigLinha>
-            <ConfigLinha titulo="Atividade principal" descricao={nr.cnae?.descricao || undefined}><Valor v={nr.cnae?.codigo || ''} /></ConfigLinha>
-            {nr.cnaesSecundarios && (
-              <ConfigLinha titulo="Atividades secundárias" descricao={nr.cnaesSecundarios.map(a => a.codigo + (a.descricao ? ' ' + a.descricao : '')).join(' · ') || undefined}>
-                <Valor v={nr.cnaesSecundarios.length ? String(nr.cnaesSecundarios.length) : 'Nenhuma'} />
-              </ConfigLinha>
-            )}
-            <ConfigLinha titulo="Natureza jurídica"><Valor v={nr.naturezaJuridica || ''} /></ConfigLinha>
-            <ConfigLinha titulo="Porte"><Valor v={nr.porte || ''} /></ConfigLinha>
-            {nr.capitalSocial != null && <ConfigLinha titulo="Capital social"><Valor v={'R$ ' + nr.capitalSocial.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} /></ConfigLinha>}
-            <ConfigLinha titulo="Simples / MEI"><Valor v={simples} /></ConfigLinha>
-            <ConfigLinha titulo="Abertura"><Valor v={dataBr(nr.abertura || '')} /></ConfigLinha>
-          </>
+          // numa grade, como a identificação (26/11/2026)
+          <div className="cad-dados-grade">
+            <Dado rotulo="Situação">
+              <span className="cad-dado-linha"><span className={'badge ' + (ativa ? 'badge-ok' : 'badge-bad')}>{nr.situacao}</span>
+                {nr.situacaoDesde && <span className="cad-dado-nota">desde {dataBr(nr.situacaoDesde)}</span>}</span>
+              {!ativa && <span className="cad-dado-aviso">A empresa não está ativa na Receita.{nr.motivoSituacao ? ' ' + nr.motivoSituacao : ''}</span>}
+            </Dado>
+            <Dado rotulo="Simples / MEI" valor={simples} />
+            <Dado rotulo="Atividade principal" largo valor={nr.cnae ? nr.cnae.codigo + (nr.cnae.descricao ? ' · ' + nr.cnae.descricao : '') : ''} />
+            {nr.cnaesSecundarios && <Dado rotulo="Atividades secundárias" largo valor={nr.cnaesSecundarios.length ? nr.cnaesSecundarios.map(x => x.codigo + (x.descricao ? ' ' + x.descricao : '')).join(' · ') : 'Nenhuma'} />}
+            <Dado rotulo="Natureza jurídica" valor={nr.naturezaJuridica || ''} />
+            <Dado rotulo="Porte" valor={nr.porte || ''} />
+            <Dado rotulo="Capital social" valor={nr.capitalSocial != null ? 'R$ ' + nr.capitalSocial.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''} />
+            <Dado rotulo="Abertura" valor={dataBr(nr.abertura || '')} />
+          </div>
         )}
       </ConfigSecao>
       {vm.consulta.aberta && <JanelaDaReceita consulta={vm.consulta} />}

@@ -72,6 +72,20 @@ export function useDadosDaEmpresa(rota: string) {
     const novo = empresas.cadastro.definirParametrosFiscais(c.cadastro, { [campo]: igual ? null : valor }, c.por, new Date());
     if (novo !== c.cadastro) c.salvar(novo);
   }
+  // os dados que a tela mostra (26/11/2026: "queria cadastrar a empresa manualmente tbm"): o digitado à mão vale primeiro;
+  // sem ele, o da Receita; sem ela, o do Entregas
+  const dados = (() => {
+    const nr = empresas.cadastro.retratoQueVale(c.cadastro.receita, daReceitaNoEntregas);
+    const d = identificacao.dados;
+    const m = c.cadastro.manual || {};
+    const daReceita = {
+      fantasia: nr.fantasia || d?.nomeFantasia || '',
+      inscricaoEstadual: d?.inscricaoEstadual || '',
+      endereco: (nr.endereco ? [nr.endereco, nr.complemento, nr.cep ? 'CEP ' + nr.cep : ''] : [d?.endereco, d?.cidade]).filter(Boolean).join(' · '),
+    };
+    const campo = (k: keyof typeof daReceita) => ({ valor: m[k] || daReceita[k], manual: !!m[k], deLa: daReceita[k] });
+    return { fantasia: campo('fantasia'), inscricaoEstadual: campo('inscricaoEstadual'), endereco: campo('endereco') };
+  })();
   return {
     empresa: c.empresa,
     /** a identificação (Entregas) e o CNPJ do cadastro do nads (as empresas novas, pela Receita) */
@@ -79,6 +93,32 @@ export function useDadosDaEmpresa(rota: string) {
     cnpj,
     /** o Consultar na Receita: a consulta na hora, o antes × depois e o gravar só o escolhido */
     consulta,
+    /**
+     * os dados que a tela mostra (26/11/2026: "queria cadastrar a empresa manualmente tbm"): o digitado à mão vale primeiro;
+     * sem ele, o da Receita; sem ela, o do Entregas. origem diz de onde veio cada um.
+     */
+    dados,
+    /**
+     * grava o que foi digitado: o CNPJ (o mesmo do Cadastro, que confere os números) e os dados à mão; devolve o erro do CNPJ,
+     * ou null quando gravou
+     */
+    gravarDadosManuais(t: { cnpj: string; fantasia: string; inscricaoEstadual: string; endereco: string }): string | null {
+      if (c.carregando) return null;
+      let novo = c.cadastro;
+      if (t.cnpj.replace(/\D/g, '') !== (c.cadastro.cnpj || '') && t.cnpj.replace(/\D/g, '') !== cnpj.replace(/\D/g, '')) {
+        const r = empresas.cadastro.definirDocumento(novo, t.cnpj, c.por, new Date());
+        if ('erro' in r) return r.erro;
+        novo = r;
+      }
+      const daLa = (k: 'fantasia' | 'inscricaoEstadual' | 'endereco', v: string) => {
+        // o mesmo que já vem da Receita ou do Entregas não vira dado à mão
+        const atual = dados[k];
+        return v.trim() === (atual.manual ? '' : atual.deLa).trim() && !atual.manual ? '' : v;
+      };
+      novo = empresas.cadastro.definirDadosManuais(novo, { fantasia: daLa('fantasia', t.fantasia), inscricaoEstadual: daLa('inscricaoEstadual', t.inscricaoEstadual), endereco: daLa('endereco', t.endereco) }, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+      return null;
+    },
     /** o que a Receita diz, para mostrar: o gravado no nads; sem ele, o que o Entregas sabe */
     naReceita: empresas.cadastro.retratoQueVale(c.cadastro.receita, daReceitaNoEntregas),
     /** quando e por quem foi conferido (o do nads; sem ele, o vigia do Entregas) */

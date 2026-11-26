@@ -243,6 +243,11 @@ export interface CadastroDaEmpresa {
    */
   sciDesde?: string;
   /**
+   * Os dados digitados à mão em Cadastro › Dados da empresa (26/11/2026: "queria cadastrar a empresa manualmente tbm, ter essa
+   * opcao"): valem no lugar dos da Receita e do Entregas. O campo vazio volta a usar o de lá.
+   */
+  manual?: DadosManuaisDaEmpresa;
+  /**
    * O lembrete de vencimento ao cliente desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'sim' manda mesmo com o
    * lembrete geral desligado, 'nao' nunca manda; diasAntes troca os dias do escritório. Sem = como o escritório
    * (Robôs › Ajustes).
@@ -391,3 +396,11 @@ export interface TransferenciaDeResponsavel {
 /** Os bancos do relatório de liquidação do Creditor (o Sicoob: Títulos por Período; o Bradesco: Carteira de Cobrança). */
 export type BancoDoRelatorio = 'sicoob' | 'bradesco';
 export const BANCOS_DO_RELATORIO: readonly { id: BancoDoRelatorio; nome: string }[] = [{ id: 'sicoob', nome: 'Sicoob' }, { id: 'bradesco', nome: 'Bradesco' }];
+
+/** Os dados da empresa digitados à mão (26/11/2026). */
+export interface DadosManuaisDaEmpresa {
+  fantasia?: string;
+  inscricaoEstadual?: string;
+  /** o endereço numa linha: rua, número, bairro, cidade/UF, CEP */
+  endereco?: string;
+}

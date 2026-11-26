@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirSciDesde, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirSciDesde, definirDadosManuais, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -419,6 +419,20 @@ describe('a nota de honorário (07/10/2026)', () => {
     const nada = definirNotaDeHonorario(c, null, 'Vitor', AGORA);
     expect('emiteNotaHonorario' in nada).toBe(false);
     expect('emiteNotaHonorario' in documentoDoCadastro(nada)).toBe(false);
+  });
+});
+
+// 26/11/2026: "queria cadastrar a empresa manualmente tbm, ter essa opcao"
+describe('os dados digitados à mão', () => {
+  it('guarda, vai e volta do documento, registra só o que mudou e o vazio tira', () => {
+    const c = definirDadosManuais(vazio(), { fantasia: '  Fito  Alimentos ', inscricaoEstadual: '001.234', endereco: '' }, 'Vitor', AGORA);
+    expect(c.manual).toEqual({ fantasia: 'Fito Alimentos', inscricaoEstadual: '001.234' });
+    expect(c.historico[0]).toMatchObject({ acao: 'Dados da empresa', detalhe: 'Nome fantasia: Fito Alimentos · Inscrição estadual: 001.234' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).manual).toEqual(c.manual);
+    expect(definirDadosManuais(c, { fantasia: 'Fito Alimentos' }, 'Vitor', AGORA)).toBe(c);
+    const sem = definirDadosManuais(definirDadosManuais(c, { fantasia: '' }, 'Vitor', AGORA), { inscricaoEstadual: '' }, 'Vitor', AGORA);
+    expect('manual' in sem).toBe(false);
+    expect('manual' in documentoDoCadastro(sem)).toBe(false);
   });
 });
 

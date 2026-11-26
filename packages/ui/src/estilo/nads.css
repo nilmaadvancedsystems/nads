@@ -8934,3 +8934,18 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 /* a empresa que está no SCI, na lista do Cadastro: um azul leve na linha para identificar (26/11/2026) */
 tr.cad-linha-sci > td{background:color-mix(in srgb,var(--info, #3b82f6) 14%,transparent);}
 tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20%,transparent);}
+/* Dados da empresa em grade (26/11/2026: "os elementos estao muito baguncados"): o nome em cima, o valor embaixo, em duas colunas;
+   o largo ocupa a linha toda. O "à mão" marca o dado digitado no nads */
+.cad-dados-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px;padding:4px 0 8px;}
+.cad-dado{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.cad-dado.largo{grid-column:1 / -1;}
+.cad-dado-rotulo{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-12);color:var(--ink-muted);}
+.cad-dado-selo{padding:0 6px;border-radius:999px;font-size:var(--fs-11);background:var(--info-soft);color:var(--info);}
+.cad-dado-valor{font-size:var(--fs-14);color:var(--ink);overflow-wrap:anywhere;}
+.cad-dado-valor.vazio{color:var(--ink-faint, var(--ink-muted));}
+.cad-dado-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cad-dado-nota{font-size:var(--fs-12);color:var(--ink-muted);}
+.cad-dado-aviso{font-size:var(--fs-12);color:var(--danger);}
+.cad-dado-edita{display:flex;align-items:center;gap:8px;}
+.cad-dado .input,.cad-dado-edita .input{width:100%;min-width:0;}
+@media (max-width:640px){.cad-dados-grade{grid-template-columns:minmax(0,1fr);}}
