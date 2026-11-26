@@ -286,8 +286,8 @@ export function SciDaEmpresa({ rota }: { rota: string }) {
         <Interruptor ligado={vm.noSci} rotulo="Está no SCI" onMudar={() => vm.definirNoSci(!vm.noSci)} />
       </ConfigLinha>
       {vm.noSci && (
-        <ConfigLinha titulo="Desde" descricao="A competência em que a empresa passou a ser lançada no SCI; antes dela, no Alterdata."
-          aviso={vm.sciDesde ? undefined : 'Informe a competência de entrada no SCI.'}>
+        // sem a descrição (26/11/2026: "Remove isso"); o aviso fica enquanto falta a competência
+        <ConfigLinha titulo="Desde" aviso={vm.sciDesde ? undefined : 'Informe a competência de entrada no SCI.'}>
           <SeletorMes valor={vm.sciDesde} onMudar={vm.definirSciDesde} rotulo="Competência de entrada no SCI" semValor="Escolher" />
         </ConfigLinha>
       )}
