@@ -5,7 +5,7 @@
 // dados/documentosDaArea.ts.
 import { areaCliente as ac } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { extrator, tarefas as t } from '@nads/core';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -76,24 +76,36 @@ export function useDocumentos() {
   // a área pelo nome; a empresa pelo CNPJ do PDF (ou o código/nome no nome do arquivo), só entre as que têm Área do Cliente.
   // A pessoa ainda troca
   const gmail = useGmailDoEntregas();
+  // o CNPJ de cada empresa (o cadastro do Entregas): pedido já ao abrir a tela, para estar pronto quando o arquivo chegar
+  const cnpjDoCodigo = gmail.documentos();
   const [adivinhado, setAdivinhado] = useState('');
-  // (26/11/2026: "tenho que poder selecionar mais de um arquivo") olha todos: a área do primeiro que diz; a empresa pelo CNPJ
-  // do nome ou de dentro do PDF de qualquer um deles
-  async function adivinhar(fs: readonly File[]) {
-    const a = fs.map(f => areaPeloNome(f.name)).find(Boolean) ?? null;
-    if (a) setArea(a);
+  // o texto de cada PDF já lido (o CNPJ e a área de dentro do arquivo), para não ler duas vezes
+  const textos = useRef(new Map<File, string>());
+  async function textoDe(f: File): Promise<string> {
+    if (textos.current.has(f)) return textos.current.get(f)!;
+    let texto = '';
+    if (/\.pdf$/i.test(f.name) && f.size <= ac.MAIOR_ENVIO_AO_CLIENTE) {
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        if (extrator.ehPdf(bytes)) texto = t.linhasDasPaginas(await extrator.itensDoPdf(bytes)).map(l => l.join(' ')).join(' ');
+      } catch { /* sem leitura: fica o nome do arquivo */ }
+    }
+    textos.current.set(f, texto);
+    return texto;
+  }
+  // (26/11/2026: "tenho que poder selecionar mais de um arquivo") olha todos; (26/11/2026: "ele tem que ler automatico e
+  // descobrir empresa e setor") a área pelo nome ou, sem ele dizer, pelo texto do PDF; a empresa pelo CNPJ do nome ou do PDF
+  async function adivinhar(fs: readonly File[], cnpjs: ReadonlyMap<number, string>) {
+    let a: ac.AreaDoEscritorio | null = fs.map(f => areaPeloNome(f.name)).find(Boolean) ?? null;
     let e: EmpresaParaEnviar | null = null;
     for (const f of fs) {
-      let cnpjs = cnpjsDoTexto(f.name);
-      if (!cnpjs.length && /\.pdf$/i.test(f.name) && f.size <= ac.MAIOR_ENVIO_AO_CLIENTE) {
-        try {
-          const bytes = new Uint8Array(await f.arrayBuffer());
-          if (extrator.ehPdf(bytes)) cnpjs = cnpjsDoTexto(t.linhasDasPaginas(await extrator.itensDoPdf(bytes)).map(l => l.join(' ')).join(' '));
-        } catch { /* sem leitura: fica o nome do arquivo */ }
-      }
-      e = empresaDoArquivo(empresas, f.name, cnpjs, gmail.documentos());
-      if (e) break;
+      const texto = await textoDe(f);
+      if (!a && texto) a = areaPeloNome(texto);
+      const achados = [...cnpjsDoTexto(f.name), ...cnpjsDoTexto(texto)];
+      e = e ?? empresaDoArquivo(empresas, f.name, achados, cnpjs);
+      if (e && a) break;
     }
+    if (a) setArea(a);
     setEmpresa(atual => atual ?? e);
     setAdivinhado([e ? 'a empresa' : '', a ? 'a área' : ''].filter(Boolean).join(' e '));
   }
@@ -102,6 +114,11 @@ export function useDocumentos() {
   const [vez, setVez] = useState<{ atual: number; total: number } | null>(null);
   const [enviadosAgora, setEnviadosAgora] = useState<string[]>([]);
   const erroDe = (f: File) => ac.erroDoEnvioAoCliente({ nome: f.name, tamanho: f.size });
+  // a lista dos CNPJs chegou depois do arquivo: procura a empresa de novo (só se ninguém escolheu ainda)
+  useEffect(() => {
+    if (arquivos.length && cnpjDoCodigo.size) void adivinhar(arquivos, cnpjDoCodigo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cnpjDoCodigo]);
   // só as empresas com link: o robô do PC só publica a pasta DO ESCRITÓRIO de quem tem acesso (revisão de 26/11/2026)
   const comLink = repo.links().lista;
   const empresas = useMemo(() => daPessoa.empresas.filter(x => x.codigo != null && comLink.some(l => l.codigo === x.codigo)).map(x => ({ codigo: x.codigo as number, nome: x.nome })), [daPessoa.empresas, comLink]);
@@ -186,7 +203,7 @@ export function useDocumentos() {
         if (!fs.length) return;
         const juntos = [...arquivos, ...fs.filter(f => !arquivos.some(x => x.name === f.name && x.size === f.size))];
         setArquivos(juntos); envio.limpar(); setEnviadosAgora([]);
-        void adivinhar(juntos);
+        void adivinhar(juntos, cnpjDoCodigo);
       },
       tirar(nome: string) { setArquivos(l => l.filter(f => f.name !== nome)); },
       /** o que foi adivinhado pelo arquivo ("Empresa e área pelo arquivo; confira") */

@@ -47,6 +47,8 @@ describe('o Enviar ao cliente adivinha a empresa e a área (26/11/2026)', () => 
     expect(areaPeloNome('Guia FGTS outubro.pdf')).toBe('dp');
     expect(areaPeloNome('Balancete 2025.pdf')).toBe('contabil');
     expect(areaPeloNome('Contrato Social.pdf')).toBe('societario');
+    // o DARF da Receita (26/11/2026: "ele tem que ler automatico e descobrir empresa e setor")
+    expect(areaPeloNome('GuiaPagamento_65116459000109_101120261751337017.pdf')).toBe('fiscal');
     expect(areaPeloNome('foto.jpg')).toBeNull();
   });
   it('a empresa pelo CNPJ do PDF, pelo código ou pelo nome', () => {
