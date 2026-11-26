@@ -72,7 +72,7 @@ function DadoDaRazaoSocial({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> })
  * opcao"): o CNPJ, o nome fantasia, a inscrição estadual e o endereço digitados à mão valem no lugar dos da Receita; o campo
  * vazio volta a usar o de lá.
  */
-function Identificacao({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
+function Identificacao({ vm, daReceita, acaoDaReceita }: { vm: ReturnType<typeof useDadosDaEmpresa>; daReceita?: ReactNode; acaoDaReceita?: ReactNode }) {
   const d = vm.dados;
   const [editando, setEditando] = useState(false);
   const [t, setT] = useState({ cnpj: '', fantasia: '', inscricaoEstadual: '', endereco: '' });
@@ -90,7 +90,7 @@ function Identificacao({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
   return (
     <ConfigSecao titulo="Identificação" acao={editando
       ? <span className="cfg-razao"><button type="button" className="btn btn-sm" onClick={() => setEditando(false)}>Cancelar</button><button type="button" className="btn btn-primary btn-sm" onClick={salvar}>Salvar</button></span>
-      : <button type="button" className="btn btn-ghost btn-sm" onClick={abrir} title="Digitar os dados da empresa à mão"><Icone nome="lapis" />Editar</button>}>
+      : <span className="cfg-razao">{acaoDaReceita}<button type="button" className="btn btn-ghost btn-sm" onClick={abrir} title="Digitar os dados da empresa à mão"><Icone nome="lapis" />Editar</button></span>}>
       <div className="cad-dados-grade">
         <DadoDaRazaoSocial vm={vm} />
         {editando ? (
@@ -111,6 +111,8 @@ function Identificacao({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
             <Dado rotulo="Endereço" valor={d.endereco.valor} manual={d.endereco.manual} largo />
           </>
         )}
+        {/* o que a Receita diz, na mesma grade (26/11/2026: "Coloca isso tudo dentro de identificacao") */}
+        {daReceita}
       </div>
     </ConfigSecao>
   );
@@ -153,7 +155,39 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const conferido = vm.conferidoNaReceita;
   return (
     <>
-      <Identificacao vm={vm} />
+      {/* a identificação com o que a Receita diz na mesma grade e o Consultar na Receita no topo (26/11/2026: "Coloca isso tudo
+          dentro de identificacao"); o retrato é o do vigia do Entregas (toda semana) ou o gravado aqui (17/11/2026) */}
+      <Identificacao vm={vm}
+        acaoDaReceita={(
+          <BotaoAcao className="btn btn-sm" carregando={vm.consulta.consultando} textoCarregando="Consultando…" disabled={!vm.consulta.temCnpj}
+            title={vm.consulta.temCnpj ? 'Consultar o CNPJ na Receita agora' : 'A empresa não tem CNPJ'} onClick={() => { void vm.consulta.consultar(); }}>
+            <Icone nome="girar" />Consultar na Receita
+          </BotaoAcao>
+        )}
+        daReceita={(
+          <>
+            {vm.consulta.erro && <span className="cad-dado largo cad-dado-aviso">A consulta não deu certo: {vm.consulta.erro}</span>}
+            {!nr.situacao ? (
+              <span className="cad-dado largo cad-dado-nota">{vm.entregas.carregado ? 'Ninguém consultou o CNPJ desta empresa na Receita ainda. Use Consultar na Receita.' : 'Lendo o Entregas…'}</span>
+            ) : (
+              <>
+                <Dado rotulo="Situação">
+                  <span className="cad-dado-linha"><span className={'badge ' + (ativa ? 'badge-ok' : 'badge-bad')}>{nr.situacao}</span>
+                    {nr.situacaoDesde && <span className="cad-dado-nota">desde {dataBr(nr.situacaoDesde)}</span>}</span>
+                  {!ativa && <span className="cad-dado-aviso">A empresa não está ativa na Receita.{nr.motivoSituacao ? ' ' + nr.motivoSituacao : ''}</span>}
+                </Dado>
+                <Dado rotulo="Simples / MEI" valor={simples} />
+                <Dado rotulo="Atividade principal" largo valor={nr.cnae ? nr.cnae.codigo + (nr.cnae.descricao ? ' · ' + nr.cnae.descricao : '') : ''} />
+                {nr.cnaesSecundarios && <Dado rotulo="Atividades secundárias" largo valor={nr.cnaesSecundarios.length ? nr.cnaesSecundarios.map(x => x.codigo + (x.descricao ? ' ' + x.descricao : '')).join(' · ') : 'Nenhuma'} />}
+                <Dado rotulo="Natureza jurídica" valor={nr.naturezaJuridica || ''} />
+                <Dado rotulo="Porte" valor={nr.porte || ''} />
+                <Dado rotulo="Capital social" valor={nr.capitalSocial != null ? 'R$ ' + nr.capitalSocial.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''} />
+                <Dado rotulo="Abertura" valor={dataBr(nr.abertura || '')} />
+              </>
+            )}
+            {conferido && <span className="cad-dado largo cad-dado-nota">Na Receita: conferido em {dataBr(conferido.em.slice(0, 10))}{conferido.por ? ' por ' + conferido.por : ''}</span>}
+          </>
+        )} />
       {/* quem cuida da empresa (17/11/2026: "a função de eu alterar o responsável fiscal e contábil aqui"): o Diretor troca
           direto, sem pedir o aceite; a transferência pedida no departamento cai */}
       <ConfigSecao titulo="Responsáveis">
@@ -170,38 +204,6 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         ))}
       </ConfigSecao>
 
-      {/* a situação na Receita: o retrato do vigia do Entregas (toda semana) ou o gravado aqui; "Consultar na Receita" pergunta
-          na hora e abre o antes × depois (17/11/2026) */}
-      <ConfigSecao titulo="Na Receita" acao={(
-        <span className="cfg-razao">
-          {conferido && <span className="hint">conferido em {dataBr(conferido.em.slice(0, 10))}{conferido.por ? ' por ' + conferido.por : ''}</span>}
-          <BotaoAcao className="btn" carregando={vm.consulta.consultando} textoCarregando="Consultando…" disabled={!vm.consulta.temCnpj}
-            title={vm.consulta.temCnpj ? 'Consultar o CNPJ na Receita agora' : 'A empresa não tem CNPJ'} onClick={() => { void vm.consulta.consultar(); }}>
-            <Icone nome="girar" />Consultar na Receita
-          </BotaoAcao>
-        </span>
-      )}>
-        {vm.consulta.erro && <ConfigLinha titulo="A consulta não deu certo" aviso={vm.consulta.erro} />}
-        {!nr.situacao ? (
-          <ConfigLinha titulo="Sem consulta" descricao={vm.entregas.carregado ? 'Ninguém consultou o CNPJ desta empresa na Receita ainda. Use Consultar na Receita.' : 'Lendo o Entregas…'} />
-        ) : (
-          // numa grade, como a identificação (26/11/2026)
-          <div className="cad-dados-grade">
-            <Dado rotulo="Situação">
-              <span className="cad-dado-linha"><span className={'badge ' + (ativa ? 'badge-ok' : 'badge-bad')}>{nr.situacao}</span>
-                {nr.situacaoDesde && <span className="cad-dado-nota">desde {dataBr(nr.situacaoDesde)}</span>}</span>
-              {!ativa && <span className="cad-dado-aviso">A empresa não está ativa na Receita.{nr.motivoSituacao ? ' ' + nr.motivoSituacao : ''}</span>}
-            </Dado>
-            <Dado rotulo="Simples / MEI" valor={simples} />
-            <Dado rotulo="Atividade principal" largo valor={nr.cnae ? nr.cnae.codigo + (nr.cnae.descricao ? ' · ' + nr.cnae.descricao : '') : ''} />
-            {nr.cnaesSecundarios && <Dado rotulo="Atividades secundárias" largo valor={nr.cnaesSecundarios.length ? nr.cnaesSecundarios.map(x => x.codigo + (x.descricao ? ' ' + x.descricao : '')).join(' · ') : 'Nenhuma'} />}
-            <Dado rotulo="Natureza jurídica" valor={nr.naturezaJuridica || ''} />
-            <Dado rotulo="Porte" valor={nr.porte || ''} />
-            <Dado rotulo="Capital social" valor={nr.capitalSocial != null ? 'R$ ' + nr.capitalSocial.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''} />
-            <Dado rotulo="Abertura" valor={dataBr(nr.abertura || '')} />
-          </div>
-        )}
-      </ConfigSecao>
       {vm.consulta.aberta && <JanelaDaReceita consulta={vm.consulta} />}
 
       {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
