@@ -243,7 +243,6 @@ export function useJanelaDosServicos(fechar: () => void) {
   const { toast } = useRetorno();
   const salvos = repo.servicos();
   const [lista, setLista] = useState<{ id: string; nome: string; percentual: string; valor: string }[] | null>(null);
-  const [novo, setNovo] = useState('');
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // o valor do serviço (23/11/2026, a novidade 'comissao-quantidade'): a coluna só aparece com a novidade, mas o valor gravado
@@ -257,7 +256,7 @@ export function useJanelaDosServicos(fechar: () => void) {
   const [ordem, setOrdem] = useState<{ coluna: ColunaDosServicos; dir: 'asc' | 'desc'; ids: string[] } | null>(null);
   const naTela = ordem ? [...atual].sort((a, b) => posicao(ordem.ids, a.id) - posicao(ordem.ids, b.id)) : atual;
   return {
-    carregada: salvos.carregada, erro: salvos.erro, lista: naTela, novo, setNovo, erros, salvando, comValor,
+    carregada: salvos.carregada, erro: salvos.erro, lista: naTela, erros, salvando, comValor,
     ordem: ordem ? { coluna: ordem.coluna, dir: ordem.dir } : null,
     ordenar(coluna: ColunaDosServicos) {
       const dir = ordem?.coluna === coluna && ordem.dir === 'asc' ? 'desc' : 'asc';
@@ -265,11 +264,11 @@ export function useJanelaDosServicos(fechar: () => void) {
     },
     mudar: (id: string, campo: 'nome' | 'percentual' | 'valor', v: string) => setLista(atual.map(s => (s.id === id ? { ...s, [campo]: v } : s))),
     tirar: (id: string) => setLista(atual.filter(s => s.id !== id)),
-    acrescentar() {
-      if (!novo.trim()) return;
-      const s = carteira.novoServico(comoServicos(), novo);
-      setLista([...atual, { id: s.id, nome: s.nome, percentual: '', valor: '' }]);
-      setNovo('');
+    /** a linha nova, vazia, no fim (26/11/2026: "um botao de adicionar abaixo"): o id dela, para a tela pôr o cursor no nome */
+    adicionar() {
+      const s = carteira.novoServico(comoServicos(), 'servico');
+      setLista([...atual, { id: s.id, nome: '', percentual: '', valor: '' }]);
+      return s.id;
     },
     async salvar() {
       const l = comoServicos();

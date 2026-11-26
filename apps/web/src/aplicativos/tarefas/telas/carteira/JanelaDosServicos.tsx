@@ -2,31 +2,36 @@
 // cada serviço"): a lista que aparece na janela de registrar a comissão e a % de cada um. Começa com os 9 do Vitor, sem a %.
 // A % própria por pessoa saiu daqui (16/11/2026): fica num lugar do banco que nenhuma tela lê (a comissão escondida).
 // Em tabela (Vitor, 26/11/2026: "coloque em formato de tabela e que possa ajustar as colunas, juntamente com nomeacao crecente ou
-// descrescente quando clica no cabeçalho"): as colunas com a alça (arrastar ajusta, duplo clique volta) e o título que ordena.
+// descrescente quando clica no cabeçalho"): o título que ordena. No jeito de planilha (26/11/2026: "Prefiro um modo tabela
+// auto-ajustavel, sem essas box de borda arredondada, o botao de lixeira vermelho e um botao de adicionar abaixo"): a tabela
+// ocupa a largura da janela (o Serviço fica com o que sobra), a célula é o próprio campo, a lixeira vermelha e o Adicionar embaixo.
 import { BotaoFechar, BotaoIcone, CampoReais, Icone, useJanela } from '@nads/ui';
-import { useRef, type ReactNode } from 'react';
-import { useColunasAjustaveis } from '../../../../comum/ColunasAjustaveis';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useJanelaDosServicos, type ColunaDosServicos } from './useCarteiraDaPessoa';
 
 /** O título que ordena (o das Minhas empresas): clicar ordena crescente, de novo decrescente; o triângulo só depois do clique. */
-function Titulo({ vm, coluna, alca, children }: { vm: ReturnType<typeof useJanelaDosServicos>; coluna: ColunaDosServicos; alca: ReactNode; children: ReactNode }) {
+function Titulo({ vm, coluna, children }: { vm: ReturnType<typeof useJanelaDosServicos>; coluna: ColunaDosServicos; children: ReactNode }) {
   const ativo = vm.ordem?.coluna === coluna;
   return (
     <th className="th-sort" onClick={() => vm.ordenar(coluna)} title="Ordenar por esta coluna"
       aria-sort={ativo ? (vm.ordem?.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
       {children}{ativo && <Icone nome="caretDown" className={'th-seta' + (vm.ordem?.dir === 'asc' ? ' cima' : '')} />}
-      {alca}
     </th>
   );
 }
 
 export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
   const vm = useJanelaDosServicos(fechar);
-  // as larguras de agora (26/11/2026: "A popup ta apertada, pode aumentar a largura dela"): o Serviço fica com o que sobra da
-  // janela, mais larga; o nome novo da tabela solta as larguras arrastadas antes, que não cabiam
-  const col = useColunasAjustaveis('carteira-servicos-2', [
-    { id: 'servico', padrao: 240 }, ...(vm.comValor ? [{ id: 'valor', padrao: 184 }] : []), { id: 'pct', padrao: 130 }, { id: 'tirar', padrao: 132 },
-  ], 'servico');
+  // o Adicionar põe o cursor no nome da linha nova
+  const [focar, setFocar] = useState('');
+  const tabela = useRef<HTMLTableElement>(null);
+  useEffect(() => {
+    if (!focar) return;
+    const campo = tabela.current?.querySelector<HTMLInputElement>('input[data-servico="' + focar + '"]');
+    campo?.focus();
+    campo?.scrollIntoView({ block: 'nearest' });
+    setFocar('');
+  }, [focar]);
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
   return (
@@ -40,36 +45,33 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
           <p className="registro-dica"><Icone nome="lampada" />A comissão sai do valor do serviço × a %. Serviço sem a % não pode ser registrado.{vm.comValor && ' Com o valor, a pessoa só escolhe a quantidade; sem ele, ela digita quanto o cliente pagou.'}</p>
           {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
           <div className="table-wrap">
-            <table className="dp-tabela cart-servicos-tabela" style={col.tabela}>
+            <table ref={tabela} className="dp-tabela cart-servicos-tabela">
               <colgroup>
-                <col style={col.col('servico')} />{vm.comValor && <col style={col.col('valor')} />}<col style={col.col('pct')} /><col style={col.col('tirar')} />
+                <col />{vm.comValor && <col className="cart-servicos-valor" />}<col className="cart-servicos-pct" /><col className="cart-servicos-tirar" />
               </colgroup>
               <thead>
                 <tr>
-                  <Titulo vm={vm} coluna="nome" alca={col.alca('servico')}>Serviço</Titulo>
-                  {vm.comValor && <Titulo vm={vm} coluna="valor" alca={col.alca('valor')}>Valor do serviço</Titulo>}
-                  <Titulo vm={vm} coluna="percentual" alca={col.alca('pct')}>% da comissão</Titulo>
+                  <Titulo vm={vm} coluna="nome">Serviço</Titulo>
+                  {vm.comValor && <Titulo vm={vm} coluna="valor">Valor do serviço</Titulo>}
+                  <Titulo vm={vm} coluna="percentual">% da comissão</Titulo>
                   <th aria-label="Tirar" />
                 </tr>
               </thead>
               <tbody>
                 {vm.lista.map(s => (
                   <tr key={s.id}>
-                    <td><input type="text" value={s.nome} maxLength={80} onChange={e => vm.mudar(s.id, 'nome', e.target.value)} aria-label="Nome do serviço" /></td>
+                    <td><input type="text" data-servico={s.id} value={s.nome} maxLength={80} onChange={e => vm.mudar(s.id, 'nome', e.target.value)} placeholder="O nome do serviço" aria-label="Nome do serviço" /></td>
                     {/* o valor do serviço (23/11/2026): vazio, a pessoa digita na comissão */}
-                    {vm.comValor && <td className="num"><CampoReais valor={s.valor} onMudar={v => vm.mudar(s.id, 'valor', v)} rotulo={'Valor de ' + s.nome} placeholder="a pessoa digita" /></td>}
-                    <td className="num"><input type="text" inputMode="decimal" value={s.percentual} onChange={e => vm.mudar(s.id, 'percentual', e.target.value)} placeholder="0" aria-label={'% de ' + s.nome} /></td>
-                    <td><BotaoIcone icone="lixeira" titulo={'Tirar ' + s.nome} pequeno onClick={() => vm.tirar(s.id)} /></td>
+                    {vm.comValor && <td><CampoReais valor={s.valor} onMudar={v => vm.mudar(s.id, 'valor', v)} rotulo={'Valor de ' + (s.nome || 'serviço novo')} placeholder="a pessoa digita" /></td>}
+                    <td><input type="text" inputMode="decimal" value={s.percentual} onChange={e => vm.mudar(s.id, 'percentual', e.target.value)} placeholder="0" aria-label={'% de ' + (s.nome || 'serviço novo')} /></td>
+                    <td><BotaoIcone icone="lixeira" className="cart-servicos-tirar-btn" titulo={'Tirar ' + (s.nome || 'o serviço novo')} pequeno onClick={() => vm.tirar(s.id)} /></td>
                   </tr>
                 ))}
-                <tr>
-                  <td><input type="text" value={vm.novo} maxLength={80} onChange={e => vm.setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') vm.acrescentar(); }} placeholder="Serviço novo" aria-label="Serviço novo" /></td>
-                  {vm.comValor && <td />}
-                  <td />
-                  <td><button type="button" className="btn btn-outline" disabled={!vm.novo.trim()} onClick={vm.acrescentar}><Icone nome="plus" />Acrescentar</button></td>
-                </tr>
               </tbody>
             </table>
+          </div>
+          <div>
+            <button type="button" className="btn btn-outline" onClick={() => setFocar(vm.adicionar())}><Icone nome="plus" />Adicionar serviço</button>
           </div>
           {vm.erros.length > 0 && <ul className="registro-erros">{vm.erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
