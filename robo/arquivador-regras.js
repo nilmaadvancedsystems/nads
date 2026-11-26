@@ -561,6 +561,9 @@ const LAYOUTS = [   // cabeçalho/título próprio do layout: vale no texto todo
   // o Itaú: o extrato mensal ("EXTRATOMENSAL / AG 5237 CC 99884-3"; o "[B0033]" do nome não é o banco) e o do aplicativo
   // ("NOME / <titular> / AGENCIA/CONTA / 5237 - 99801-7")
   ['ITAU', /^\s*EXTRATOMENSAL\s*\n\s*AG \d{4} CC \d+-\d|^\s*NOME\s*\n[^\n]+\n\s*AGENCIA\/CONTA\s*\n\s*\d{4} - \d{4,7}-\d/m],
+  // (26/11/2026) o extrato do Itaú pelo aplicativo tem o mesmo cabeçalho do Sicredi (a agência de 4 dígitos e a conta de 7 com zeros à frente, "SALDO TOTAL / LIMITE
+  // DA CONTA / UTILIZADO / DISPONÍVEL"): o que é só do Itaú é a aplicação automática ("RENDIMENTOS REND PAGO APLIC AUT MAIS", "SALDO EM APLICAÇÃO AUTOMÁTICA")
+  ['ITAU', /\bAPLIC\s+AUT\s+MAIS|SALDO DISPONIVEL SEM INVESTIMENTOS AUTOMATICOS/],
   // o Sicredi ("AGENCIA 3155CONTA0099034-8 CNPJ … / SALDO TOTALLIMITE DA CONTA"), o BTG ("CONTA CORRENTE - PJ / PDF GERADO EM") e o
   // Santander ("INTERNET BANKING EMPRESARIAL / <titular>AGENCIA: 3504 CONTA: 130098175")
   ['SICREDI', /^\s*AGENCIA \d{4}\s*CONTA\s*\d{5,}-\d\s*CNPJ [\d./-]+[\s\S]{0,300}SALDO TOTAL\s*LIMITE DA CONTA/m],
@@ -4659,6 +4662,119 @@ function guiaAmbientalPaga(entrada, u, bruto, ctx, ev, porHash) {
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: r.c.cliente });
   return Object.assign(base, { acao: 'ARQUIVAR', cliente: r.c.cliente, comoCliente: r.c.como, confianca: Math.min(r.c.conf, 0.9), competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), orgao], nomeFinal: entrada.nome });
 }
+/**
+ * (26/11/2026, decisão do dono) A guia de multa de trânsito (o modelo 9-A do DER/DETRAN: "MULTA DE INFRAÇÃO À LEGISLAÇÃO DE TRÂNSITO / GUIA DE ARRECADAÇÃO DE MULTA"):
+ * CONTÁBIL\PAGAMENTOS DE FORNECEDORES\AAAA\MM\<ÓRGÃO> (DER-MG, DETRAN-MG…), nome original; o mês é o do vencimento. Antes ficava em NÃO IDENTIFICADOS pela decisão do Vitor
+ * de 30/10/2026 (multa do DETRAN). O cliente: o CNPJ/CPF dela, a pasta, o grupo; com só o nome da empresa (a guia não traz o CNPJ: "Grupo Exemplo Mineracao e Florestas") que bate
+ * com a matriz e as filiais de uma raiz, a matriz.
+ */
+function guiaDeMultaDeTransito(entrada, u, bruto, ctx, ev, porHash) {
+  if (!/^[\s\S]{0,200}MULTA DE INFRACAO A LEGISLACAO DE TRANSITO/.test(u) || !/GUIA DE ARRECADACAO DE MULTA/.test(u)) return null;
+  const cad = ctx.cadastro, rel = entrada.rel || entrada.nome || '';
+  const base = { tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', decisaoDoDono: true, fonte: 'guia de multa de trânsito em pagamentos de fornecedores (decisão do dono, 26/11/2026)' };
+  const org = /\bORGAO(?: COMPETENTE \(AUTUADOR\))?\s*\n\s*([A-Z][A-Z .\/-]{1,30})\s*\n/.exec(u);
+  const orgao = org ? org[1].replace(/\s*-\s*/g, '-').replace(/\s+/g, ' ').trim() : null;
+  if (!orgao) return null;
+  ev.push('guia de multa de trânsito do ' + orgao + ': pagamento ao órgão (decisão do dono, 26/11/2026)');
+  let c = null;
+  const r = clienteDoPagamento(rel, bruto, cad, ev, porHash, false);
+  if (!r.erro) c = r.c;
+  else {
+    const nomes = clientesPeloNomeNoTexto(bruto.slice(0, 3000), cad);
+    const mz = nomes.length > 1 ? matrizDaRaiz(nomes, cad, rel) : nomes.length === 1 ? nomes[0] : null;
+    if (mz == null) return Object.assign(base, r.erro);
+    c = { cliente: mz, conf: 0.85, como: 'nome' };
+    ev.push('o cliente pelo nome da empresa na guia (' + nomes.join(', ') + (nomes.length > 1 ? ', a mesma raiz de CNPJ: a matriz ' : ': ') + mz + '); a guia não traz o CNPJ');
+  }
+  const v = dataBr(linhaApos(u, /DATA DE VENCIMENTO/, 40));
+  const z = !v ? (mesNumericoDaPasta(rel) || mesDoNomeDaPasta(rel)) : null;
+  const comp = v ? { mes: +v.slice(3, 5), ano: +v.slice(6) } : z;
+  if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente });
+  ev.push(v ? 'mês pelo vencimento (' + v + ')' : 'mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')');
+  return Object.assign(base, { acao: 'ARQUIVAR', cliente: c.cliente, comoCliente: c.como, confianca: Math.min(c.conf, 0.88), competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), orgao], nomeFinal: entrada.nome });
+}
+/**
+ * (26/11/2026, os NÃO IDENTIFICADOS do produtor rural) O produtor rural pelo CPF/CNPJ do documento: o cliente pessoa física tem uma fazenda por código (o CPF inteiro num e o
+ * CPF com o sufixo da fazenda nos outros: 529.982.247-25 = "…FAZ. BOA VISTA" e "52998224700123" = "…FAZ. RIO CLARO"; CPF e fazendas de exemplo). Vale o 1º CPF/CNPJ do texto que é de cliente (o do emitente
+ * ou o da procedência vem primeiro); entre os códigos do mesmo produtor sai a doméstica, depois o inativo (se houver ativo), depois a fazenda escrita no documento (o nome
+ * depois do " - " da razão ou o fantasia: "BOA VISTA"), por fim o código cujo documento é o próprio CPF. → { cliente, ordem } ou { ambiguos: [códigos] } ou null.
+ */
+function produtorDoDocumento(bruto, cad) {
+  const u = textoDeNome(bruto);   // sem pontuação, com um espaço em volta ("FAZENDA RIO CLARO, S/N" = " FAZENDA RIO CLARO S N ")
+  const docs = documentosDoTexto(bruto, true).filter(d => !ESCRITORIO.has(d.doc));
+  // o DAE estadual escreve o CPF/CNPJ do contribuinte sem pontuação ("Número Identificação\n 36932930668")
+  for (const m of u.matchAll(/NUMERO IDENTIFICACAO\s*\n?\s*(\d{11}|\d{14})(?!\d)/g)) { const doc = m[1]; if (((doc.length === 11 && cpfValido(doc)) || (doc.length === 14 && cnpjValido(doc))) && !ESCRITORIO.has(doc) && !docs.some(d => d.doc === doc)) docs.unshift({ doc, pos: 0 }); }
+  for (let ordem = 0; ordem < docs.length; ordem++) {
+    const d = docs[ordem];
+    let cand = d.doc.length === 11
+      ? [...cad.porCod.values()].filter(c => c.doc && (c.doc === d.doc || (c.doc.length === 14 && c.doc.startsWith(d.doc.slice(0, 9)))))
+      : clientesDoDoc(d.doc, cad).map(x => cad.porCod.get(x)).filter(Boolean);
+    if (!cand.length) continue;
+    let r = cand.filter(c => c.regime !== 'DOMESTICA'); if (r.length) cand = r;
+    r = cand.filter(c => c.ativo !== false); if (r.length) cand = r;
+    if (cand.length > 1) {
+      const fazenda = c => [c.razao, c.fantasia].filter(Boolean).map(n => textoDeNome(norm(n).replace(/^.* - /, '').replace(/^(FAZENDA|FAZ\.?|SITIO|CHACARA)\s+/, '')).trim()).filter(k => k.length >= 4 && !/^(DOMESTICA|FAZENDA|CASA)\b/.test(k));
+      const pela = cand.filter(c => fazenda(c).some(k => u.includes(' ' + k + ' ')));
+      if (pela.length === 1) cand = pela;
+      else { const exato = cand.filter(c => c.doc === d.doc); if (exato.length === 1) cand = exato; }
+    }
+    return cand.length === 1 ? { cliente: cand[0].codigo, ordem } : { ambiguos: cand.map(c => c.codigo) };
+  }
+  return null;
+}
+/**
+ * (26/11/2026, decisões do dono) Os documentos do produtor rural: a NFA-e (a nota fiscal avulsa eletrônica, que não traz a chave de acesso) em FISCAL\PESSOA FISICA\01. DOCUMENTOS FISCAIS\MM\EMITIDOS
+ * (a do carvão, do café e do gado em ESPECÍFICOS\AGRO, como a NF-e; "dd-mm-aaaa - NFA-e nnnnnn - PRODUTOR.pdf"); o DAE da GTA em FISCAL\PESSOA FISICA\03. DAE; a GTA (guia de trânsito animal), a GCA (guia
+ * de controle ambiental do carvão, IEF) e o ITR (recibo e declaração) em SOCIETÁRIO\RURAL\<GTA|GCA|ITR>\ANO, nome original. O cliente: o produtor pelo CPF/CNPJ (e a fazenda escrita), mesmo inativo.
+ */
+function documentoRural(entrada, u, bruto, ctx, ev, porHash) {
+  const topo = u.slice(0, 1500);
+  const nfa = /DOCUMENTO AUXILIAR DA NOTA FISCAL\s*\n?\s*AVULSA ELETRONICA/.test(topo);
+  const gta = !nfa && /GUIA DE TRANSITO ANIMAL \(GTA\)/.test(u.slice(0, 800));
+  const gca = /GUIA DE CONTROLE AMBIENTAL \(GCA\)/.test(u.slice(0, 800));
+  const itr = /IMPOSTO SOBRE A PROPRIEDADE TERRITORIAL RURAL/.test(u.slice(0, 800)) && /\bEXERCICIO\b/.test(u.slice(0, 1500));
+  const daeGta = /DOCUMENTO DE ARRECADACAO ESTADUAL/.test(u.slice(0, 800)) && /GUIA DE TRANSITO ANIMAL|INSTITUTO MINEIRO DE AGROPECUARIA/.test(u);
+  if (!nfa && !gta && !gca && !itr && !daeGta) return null;
+  const cad = ctx.cadastro, rel = entrada.rel || entrada.nome || '';
+  const tipo = nfa ? 'NFA-e PDF' : daeGta ? 'DAE' : gta ? 'GTA' : gca ? 'GCA' : 'ITR';
+  const base = { tipo, setor: nfa || daeGta ? 'FISCAL' : 'FOLHA_SOCIETARIO', decisaoDoDono: true, fonte: 'documento do produtor rural (decisão do dono, 26/11/2026)' };
+  let cli = null, ordem = 0;
+  if (porHash) cli = porHash;
+  else {
+    const p = produtorDoDocumento(bruto, cad);
+    if (p && p.ambiguos) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, candidatos: p.ambiguos, evidencias: ev.concat('o CPF do produtor é de ' + p.ambiguos.length + ' códigos (' + p.ambiguos.join(', ') + ') e o documento não diz qual fazenda') });
+    if (p) { cli = p.cliente; ordem = p.ordem; }
+    else { const nomes = clientesPeloNomeNoTexto(bruto.slice(0, 3000), cad).filter(c => (cad.porCod.get(c) || {}).regime !== 'DOMESTICA'); if (nomes.length === 1) cli = nomes[0]; }
+  }
+  if (cli == null) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('o produtor do documento não é cliente do cadastro (o CPF/CNPJ escrito não bate com nenhum)') });
+  ev.push('documento do produtor rural (' + tipo + '): o cliente ' + cli + ' pelo CPF/CNPJ escrito no documento (decisão do dono, 26/11/2026)');
+  const datas = [...bruto.matchAll(/\b(\d{2})\/(\d{2})\/(20\d{2}|19\d{2})\b/g)].map(m => ({ dia: +m[1], mes: +m[2], ano: +m[3] })).filter(x => x.mes >= 1 && x.mes <= 12 && x.dia >= 1 && x.dia <= 31);
+  const pasta = anoDaPasta(rel);
+  if (nfa) {
+    const d0 = datas[0];
+    const num = (/NFA-E\s*\n\s*(\d{3}\.\d{3}\.\d{3})/.exec(u) || [])[1];
+    if (!d0 || !num) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, cliente: cli, evidencias: ev.concat('o número ou a data da NFA-e não foram lidos') });
+    const lado = ordem === 0 ? 'EMITIDOS' : 'RECEBIDOS';
+    const agro = /CARVAO VEGETAL|\bCARVAO\b/.test(u) ? 'CARVÃO' : /\bCAFE (EM GRAO|CRU|BENEFICIADO|ARABICA|CONILON)/.test(u) ? 'CAFÉ' : /\b(BOVINOS?|GADO|NOVILH[AO]S?|BEZERR[AO]S?)\b/.test(u) ? 'GADO' : null;
+    const nome = (cad.porCod.get(cli) || {}).razao || '';
+    const data = String(d0.dia).padStart(2, '0') + '-' + String(d0.mes).padStart(2, '0') + '-' + d0.ano;
+    return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'doc', confianca: 0.93, competencia: { mes: d0.mes, ano: d0.ano }, fiscal: ['DOCS', lado].concat(agro ? ['ESPECÍFICOS', 'AGRO', agro] : []),
+      nomeFinal: data + ' - NFA-e ' + (+num.replace(/\./g, '')) + ' - ' + nomeNormalizado(nome.replace(/\s+-\s+.*$/, '')) + '.pdf', evidencias: ev.concat('NFA-e ' + num + ': ' + lado + (agro ? '\\ESPECÍFICOS\\AGRO\\' + agro : '')) });
+  }
+  if (daeGta) {
+    const rf = /MES\/ANO DE REFERENCIA\s*\n?\s*(\d{1,2})\/(20\d{2})/.exec(u);
+    const comp = rf && +rf[1] >= 1 && +rf[1] <= 12 ? { mes: +rf[1], ano: +rf[2] } : datas[0] ? { mes: datas[0].mes, ano: datas[0].ano } : null;
+    if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli, evidencias: ev.concat('o mês de referência do DAE não foi lido') });
+    return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'doc', confianca: 0.92, competencia: comp, fiscal: ['DAE'], nomeFinal: entrada.nome, evidencias: ev.concat('DAE da guia de trânsito animal (IMA): FISCAL\\PESSOA FISICA\\03. DAE') });
+  }
+  // GTA, GCA e ITR: SOCIETÁRIO\RURAL\<tipo>\ANO, o ano da emissão (a GTA, a GCA) ou o do exercício (o ITR)
+  let ano = null;
+  if (itr) { const ex = /\bEXERCICIO\s*:?\s*(20\d{2})/.exec(u); ano = ex ? +ex[1] : null; }
+  else { const emi = gta ? dataBr(linhaApos(u, /\bEMISSAO\s*:?/, 40)) : null; ano = emi ? +emi.slice(6) : datas[0] ? datas[0].ano : null; }
+  if (!ano) ano = pasta && pasta.ano ? pasta.ano : null;
+  if (!ano || !anoOk(ano)) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli, evidencias: ev.concat('o ano do documento não foi lido') });
+  return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'doc', confianca: 0.92, competencia: { ano }, caminho: ['SOCIETÁRIO', 'RURAL', tipo, String(ano)], nomeFinal: entrada.nome, evidencias: ev.concat(tipo + ': SOCIETÁRIO\\RURAL\\' + tipo + '\\' + ano + ' (decisão do dono, 26/11/2026)') });
+}
 function decidirPdf(entrada, ctx, ev, porHash) {
   const paginas = Array.isArray(entrada.texto) ? entrada.texto : [String(entrada.texto || '')];
   const bruto = paginas.slice(0, 3).join('\n');
@@ -4668,9 +4784,14 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   { const pd = pagamentoDoDono(entrada, u, bruto, ctx, ev, porHash); if (pd) return pd; }
   { const ct = contratoEntreClientes(entrada, u, bruto, ctx, ev); if (ct) return ct; }
   { const ga = guiaAmbientalPaga(entrada, u, bruto, ctx, ev, porHash); if (ga) return ga; }
+  { const gm = guiaDeMultaDeTransito(entrada, u, bruto, ctx, ev, porHash); if (gm) return gm; }
+  { const dr = documentoRural(entrada, u, bruto, ctx, ev, porHash); if (dr) return dr; }
   // 27/10/2026 (Vitor): o pagamento de fornecedor vale pelo nome e pela pasta de origem, mesmo sem texto (escaneado)
   // o pró-labore (Vitor, 27/10/2026): DEPARTAMENTO PESSOAL\MM\PRÓ-LABORE\, nome original — antes do pagamento de fornecedor
-  if (/\bPRO\s?-?\s?LABORE|PROLABORE/.test(norm(entrada.nome))) {
+  // (26/11/2026, decisão do dono) o comprovante do banco do pagamento do pró-labore ("05-10 TRANSF. BB PARA CEF VITOR - PRÓ-LABORE.pdf", o "Comprovante Pix" do SISBB) é comprovante
+  // de banco (EXTRATOS\…\COMPROVANTES\<BANCO>, como os outros do mesmo zip), não o recibo do DP: o recibo ("RECIBO DE PRÓ-LABORE / LUCRO") continua em DEPARTAMENTO PESSOAL
+  const comprovanteDoBanco = REGRAS_PDF.find(x => x.tipo === 'COMPROVANTE').re.test(u) && !/\bRECIBO DE PRO-?\s?LABORE\b/.test(u);
+  if (!comprovanteDoBanco && /\bPRO\s?-?\s?LABORE|PROLABORE/.test(norm(entrada.nome))) {
     // (Vitor, 05/11/2026) o pró-labore da Denise e da Dilma (sócias do grupo), que vem no movimento da 3M, da SPIROU e da FAST sem o CNPJ no conteúdo: na
     // 413 BRAZILIAN FORESTRY (a matriz do grupo), seja qual for o zip
     const socia = /\b(DENISE|DILMA)\b/.exec(norm(entrada.nome));

@@ -17,6 +17,8 @@ export interface RepoSciReport {
   guias(token: string): Promise<GuiasDoSci>;
   /** a URL temporária do PDF; joga um Error em português quando não dá */
   urlDoPdf(token: string, id: string): Promise<string>;
+  /** (26/11/2026) o PDF em si, para abrir na mesma janela das outras guias; null quando não dá */
+  pdf(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
 }
 
 const SITUACOES = new Set<ac.SituacaoDaGuiaDoSci>(['a vencer', 'vence hoje', 'vencida', 'pagamento informado']);
@@ -67,6 +69,17 @@ export function criarRepoSciReportFuncao(idToken: () => Promise<string> = async 
         return { estado: 'ok', guias: dados.guias.map(lerGuiaDoSci).filter((g): g is ac.GuiaDoSciReport => !!g) };
       } catch { return { estado: 'erro', mensagem: 'Sem internet agora. Confira a conexão e tente de novo.' }; }
     },
+    async pdf(token, id) {
+      // a função busca o PDF na SCI e devolve os bytes (a URL temporária da SCI não abre dentro da página)
+      const corpo = JSON.stringify({ token, guia: id, formato: 'pdf' });
+      const uma = async (login: string) => fetch(ENDERECO_DA_FUNCAO, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(login ? { Authorization: 'Bearer ' + login } : {}) }, body: corpo, cache: 'no-store', referrerPolicy: 'no-referrer' });
+      try {
+        let r = await uma('');
+        if (r.status === 401) { const login = await idToken(); if (login) r = await uma(login); }
+        if (r.status !== 200 || !/pdf/i.test(r.headers.get('Content-Type') ?? '')) return null;
+        return { nome: 'Guia ' + id + '.pdf', arquivo: await r.blob() };
+      } catch { return null; }
+    },
     async urlDoPdf(token, id) {
       const { status, dados } = await pedir({ token, guia: id }).catch(() => ({ status: 0, dados: {} as Record<string, unknown> }));
       const url = typeof dados.url === 'string' && dados.url.startsWith('https://') ? dados.url : '';
@@ -90,10 +103,11 @@ export function criarRepoSciReportExemplo(hoje = new Date()): RepoSciReport {
   return {
     guias: async () => ({ estado: 'ok', guias }),
     urlDoPdf: async () => { throw new Error('No exemplo a guia não abre.'); },
+    pdf: async () => null,
   };
 }
 
 const exemplo = criarRepoSciReportExemplo();
 export const repoSciReport: RepoSciReport = import.meta.env.VITE_FONTE === 'banco'
-  ? (() => { const funcao = criarRepoSciReportFuncao(idTokenDoCliente); return { guias: t => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).guias(t), urlDoPdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).urlDoPdf(t, id) }; })()
+  ? (() => { const funcao = criarRepoSciReportFuncao(idTokenDoCliente); return { guias: t => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).guias(t), urlDoPdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).urlDoPdf(t, id), pdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).pdf(t, id) }; })()
   : exemplo;

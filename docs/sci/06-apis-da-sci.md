@@ -65,6 +65,9 @@ O RH NET **não aceita o token do escritório**. Ele só funciona com o Token de
 | :--- | :--- |
 | Robô da nuvem | O metadado `segredo-sci-rhnet` da VM, com `{ "583": { "token": "..." } }` |
 | Robô do PC (e o teste) | A chave `"rhnet"` no `robo/sci_credenciais.json`, no mesmo formato. Só para o teste, vale também `"empresa": "<token>"` |
+| **A tela (o jeito simples, 26/11/2026)** | Em Integração SCI › RH NET, **Colar token** na linha da empresa. A tela embaralha o token com a chave pública (`CHAVE_PUBLICA_DOS_TOKENS`, em `packages/core/src/sci/integracao/tokens.ts`) e grava só o embaralhado em `config/sciTokens`. Só o robô da nuvem desembaralha, com a chave privada do metadado `segredo-sci-chave`. Em até 1 minuto ele testa (só leitura) e a linha mostra "Funcionando" ou o erro. O da tela vale por cima do metadado |
+
+**A chave dos tokens da tela.** A chave privada fica no metadado `segredo-sci-chave` da VM e, de reserva, em `"chaveDosTokens"` no `robo/sci_credenciais.json` do PC do dono (fora do git). Nunca vai para o repositório. Para trocar o par de chaves: gere um novo, troque a pública no `tokens.ts`, publique, ponha a privada no metadado e cole de novo os tokens. Os antigos deixam de abrir e a linha avisa "cole de novo". Não precisa de regra nova no Firestore: a do `config` (lê quem é do escritório, grava o admin) basta, porque o que fica no banco é ilegível sem a chave privada.
 
 O Token de Parceiro é o mesmo das outras APIs. O número da empresa no RH NET é o **código da empresa no SCI** (o mesmo do nads), e não o número do SCI WEB que vem dentro do token. O primeiro teste (25/11/2026, empresa 590) confirmou isso: com o número do token, o RH NET respondeu "Usuário não está vinculado a essa empresa"; com o código, respondeu os dados. Se o código no SCI for diferente do nads, acrescente `"empresaId"` ao lado do token. A contabilidade (`clienteId`, 17157) vem dentro do token, em `usuario.dados`.
 
@@ -84,7 +87,7 @@ Ele entra no RH NET, mostra o número da empresa e quantos cadastros e admissõe
 - Cadastrar uma admissão a deixa **não liberada**. Só a liberação manda para a folha do SCI, e ela exige o cadastro completo.
 - Os dados pessoais do pedido (CPF, salário) ficam no banco só até o robô atender, dando certo ou não.
 - A SCI marca o RH NET como **beta**: pode mudar sem aviso.
-- O formulário de admissão do DP no nads ainda não existe. A regra e a fila estão prontas; falta decidir quais campos o DP preenche.
+- O pedido de admissão da Área do Cliente vai ao RH NET sem liberar (25/11/2026). Desde 26/11/2026 ele leva o que a pré-admissão do SCI pede: nascimento, PIS (se vier), como recebe (mensalista, horista, diarista, comissionado), a classe, a categoria (101; aprendiz 103; estágio 901), o tipo de contrato (1, prazo indeterminado; em branco para estágio e aprendiz) e os prazos da experiência (45 + 45).
 
 ## Cuidados
 

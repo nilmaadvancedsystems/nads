@@ -15,7 +15,7 @@ const SCI_RELATORIO = "https://api-relatorio.sci.com.br";
 const SCI_POR_PAGINA = 200;
 const SCI_MARGEM_DO_JWT_MS = 3e5;
 const SCI_MESES_NA_AREA = 3;
-const objeto$1 = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : null;
+const objeto$2 = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : null;
 const texto$1 = (v) => typeof v === "string" ? v.trim() : typeof v === "number" && Number.isFinite(v) ? String(v) : "";
 const numero = (v) => {
 	const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
@@ -35,7 +35,7 @@ function dataDoSci(v) {
 	return m[3] + "/" + m[2] + "/" + m[1];
 }
 function lerLoginDoSci(resposta, agora) {
-	const r = objeto$1(resposta);
+	const r = objeto$2(resposta);
 	const token = texto$1(r?.token);
 	if (!token) return null;
 	const validade = numero(r?.validade);
@@ -51,11 +51,11 @@ function sessaoDoSciAindaAceita(s, agora) {
 	return !!s && s.expiraEm > agora;
 }
 function lerEmpresasDoSci(resposta) {
-	const lista = objeto$1(resposta)?.empresas;
+	const lista = objeto$2(resposta)?.empresas;
 	if (!Array.isArray(lista)) return [];
 	const saida = [];
 	for (const x of lista) {
-		const e = objeto$1(x);
+		const e = objeto$2(x);
 		const empresaId = inteiro$1(e?.empresaId);
 		const cnpj = digitos(e?.numeroDocumento);
 		if (Number.isInteger(empresaId) && empresaId > 0 && cnpj) saida.push({
@@ -79,7 +79,7 @@ function competenciaDoSci(mes, ano) {
 	return a + "-" + String(Math.min(m, 12)).padStart(2, "0");
 }
 function lerPublicacaoDoSci(x) {
-	const p = objeto$1(x);
+	const p = objeto$2(x);
 	if (!p) return null;
 	const publicadosId = inteiro$1(p.publicadosId);
 	const empresaId = inteiro$1(p.empresaId);
@@ -105,7 +105,7 @@ function lerPublicacaoDoSci(x) {
 	};
 }
 function lerPaginaDePublicados(resposta) {
-	const pub = objeto$1(objeto$1(resposta)?.publicados);
+	const pub = objeto$2(objeto$2(resposta)?.publicados);
 	const itens = (Array.isArray(pub?.dados) ? pub.dados : []).map(lerPublicacaoDoSci).filter((p) => !!p);
 	const paginaAtual = inteiro$1(pub?.paginaAtual);
 	const ultimaPagina = inteiro$1(pub?.ultimaPagina);
@@ -142,7 +142,7 @@ const ROTULO_DA_SITUACAO_DO_SCI = {
 	"pagamento informado": "Pagamento informado"
 };
 function urlDoPdfDoSci(resposta) {
-	const url = texto$1(objeto$1(resposta)?.urlPdf);
+	const url = texto$1(objeto$2(resposta)?.urlPdf);
 	return /^https:\/\/[^\s]+$/.test(url) ? url : "";
 }
 
@@ -767,17 +767,17 @@ const ROTULO_DA_SITUACAO_RH = {
 };
 const SITUACOES = new Set(Object.keys(ROTULO_DA_SITUACAO_RH));
 const situacaoNoRhNet = (v) => typeof v === "string" && SITUACOES.has(v) ? v : "";
-const objeto = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : null;
+const objeto$1 = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : null;
 const texto = (v) => typeof v === "string" ? v.trim() : typeof v === "number" && Number.isFinite(v) ? String(v) : "";
 const inteiro = (v) => {
 	const n = Number(v);
 	return Number.isInteger(n) && n > 0 ? n : 0;
 };
 function lerPaginaDoRhNet(resposta) {
-	const r = objeto(resposta);
+	const r = objeto$1(resposta);
 	const ret = r?.retorno;
-	const itens = (Array.isArray(ret) ? ret : objeto(ret) ? [ret] : []).map(objeto).filter((x) => !!x);
-	const p = objeto(r?.paginacao);
+	const itens = (Array.isArray(ret) ? ret : objeto$1(ret) ? [ret] : []).map(objeto$1).filter((x) => !!x);
+	const p = objeto$1(r?.paginacao);
 	const paginaAtual = inteiro(p?.pagina_atual) || 1;
 	return {
 		itens,
@@ -787,9 +787,9 @@ function lerPaginaDoRhNet(resposta) {
 	};
 }
 function mensagemDoRhNet(resposta, status) {
-	const r = objeto(resposta);
+	const r = objeto$1(resposta);
 	const base = texto(r?.mensagem) || "o RH NET respondeu " + status;
-	const erros = objeto(r?.erros) || objeto(r?.errors);
+	const erros = objeto$1(r?.erros) || objeto$1(r?.errors);
 	const detalhe = erros ? Object.entries(erros).map(([k, v]) => k + ": " + (Array.isArray(v) ? v.map(texto).join(", ") : texto(v))).join("; ") : "";
 	return (detalhe ? base + " (" + detalhe + ")" : base).slice(0, 300);
 }
@@ -847,10 +847,10 @@ function resumoDosCadastros(c) {
 	return Object.keys(CADASTROS_DO_RH).map((k) => CADASTROS_DO_RH[k].rotulo + " " + c[k].length).join(" · ");
 }
 function lerCadastrosDoRhNet(v) {
-	const o = objeto(v);
+	const o = objeto$1(v);
 	if (!o) return null;
 	const lista = (k) => (Array.isArray(o[k]) ? o[k] : []).flatMap((x) => {
-		const i = objeto(x);
+		const i = objeto$1(x);
 		const id = inteiro(i?.id);
 		const nome = texto(i?.nome);
 		return id && nome ? [{
@@ -874,7 +874,7 @@ function informacoesDoJwt(jwt) {
 		const b64 = partes[1].replace(/-/g, "+").replace(/_/g, "/");
 		const bin = atob(b64 + "=".repeat((4 - b64.length % 4) % 4));
 		const json = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
-		return objeto(json) || {};
+		return objeto$1(json) || {};
 	} catch {
 		return {};
 	}
@@ -888,7 +888,7 @@ const numeroDoJwt = (jwt, chaves) => {
 	return 0;
 };
 function dadosDoUsuarioNoJwt(jwt) {
-	return objeto(objeto(informacoesDoJwt(jwt).usuario)?.dados) || {};
+	return objeto$1(objeto$1(informacoesDoJwt(jwt).usuario)?.dados) || {};
 }
 function empresaIdDoJwt(jwt) {
 	const vinculadas = dadosDoUsuarioNoJwt(jwt).empresasVinculadas;
@@ -909,6 +909,10 @@ const clienteIdDoJwt = (jwt) => inteiro(dadosDoUsuarioNoJwt(jwt).clienteId) || n
 	"clienteId",
 	"cliente"
 ]);
+function fimDoPrazo(inicio, dias) {
+	const [a, m, d] = inicio.split("-").map(Number);
+	return new Date(Date.UTC(a, m - 1, d + dias - 1)).toISOString().slice(0, 10);
+}
 const DIA = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 function erroDaAdmissao(a) {
 	if (!texto(a.nome) || texto(a.nome).length < 3) return "falta o nome completo";
@@ -942,13 +946,23 @@ function corpoDaAdmissao(empresaId, a) {
 		centro_custo_id: a.centroCustoId ?? null,
 		v_quadro_horario_id: a.quadroHorarioId ?? null,
 		v_sindicato_id: a.sindicatoId ?? null,
-		prazo_experiencia: a.experienciaDias ?? null,
+		classe_id: a.classe ?? 0,
+		admissao_tipo_id: 1,
+		categoria_esocial_id: a.categoriaEsocial ?? 101,
+		funcionario_tipo_id: a.remuneracao ?? 0,
+		contrato_tipo_id: a.contratoTipo === void 0 ? 1 : a.contratoTipo,
+		prazo_experiencia: a.experienciaDias ?? 0,
+		prazo_experiencia_fim: a.experienciaDias ? fimDoPrazo(a.admissao, a.experienciaDias) : null,
+		...a.experienciaDias && a.prorrogacaoDias ? {
+			prazo_experiencia_prorrogacao: a.prorrogacaoDias,
+			prazo_experiencia_prorrogacao_fim: fimDoPrazo(a.admissao, a.experienciaDias + a.prorrogacaoDias)
+		} : {},
 		observacao: texto(a.observacao).slice(0, 500) || null,
 		habilita_acesso_modulo_colaborador: false
 	};
 }
 function admissaoDoRhNet(x) {
-	const o = objeto(x);
+	const o = objeto$1(x);
 	const id = inteiro(o?.funcionario_contribuinte_id);
 	if (!o || !id) return null;
 	return {
@@ -1014,7 +1028,7 @@ function cpfMascarado(cpf) {
 	return d.length === 11 ? "***." + d.slice(3, 6) + "." + d.slice(6, 9) + "-**" : "";
 }
 function cadastroParaArea(x, funcoes = /* @__PURE__ */ new Map()) {
-	const o = objeto(x);
+	const o = objeto$1(x);
 	const id = inteiro(o?.funcionario_contribuinte_id);
 	const nome = texto(o?.nome).replace(/\s+/g, " ");
 	if (!o || !id || !nome || o.cadastro_ativo === false || o.cadastroAtivo === false || texto(o.desligamento_data)) return null;
@@ -1041,6 +1055,39 @@ function cadastrosParaArea(itens, funcoes = /* @__PURE__ */ new Map()) {
 	return [...porId.values()].sort((a, b) => a.nome.localeCompare(b.nome));
 }
 const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const REMUNERACAO = [
+	[/hora|horista/, 2],
+	[/dia|diarista/, 1],
+	[/comiss/, 3],
+	[/mes|mensal/, 0]
+];
+function doContratoDaArea(contrato) {
+	const c = semAcento(contrato);
+	if (/estag/.test(c)) return {
+		classe: 2,
+		categoriaEsocial: 901,
+		contratoTipo: null
+	};
+	if (/aprendiz/.test(c)) return {
+		classe: 0,
+		categoriaEsocial: 103,
+		contratoTipo: null
+	};
+	const exp = /experiencia/.test(c) ? /(\d+)\s*\+\s*(\d+)/.exec(c) ?? [
+		"",
+		"45",
+		"45"
+	] : null;
+	return {
+		classe: 0,
+		categoriaEsocial: 101,
+		contratoTipo: 1,
+		...exp ? {
+			experienciaDias: Number(exp[1]),
+			prorrogacaoDias: Number(exp[2])
+		} : {}
+	};
+}
 function admissaoDoPedidoDaArea(texto, funcoes = []) {
 	const campos = /* @__PURE__ */ new Map();
 	for (const linha of String(texto ?? "").split(/\r?\n/)) {
@@ -1057,10 +1104,15 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 	if (!cpf) return { erro: "o pedido veio sem o CPF (o RH NET exige)" };
 	if (!inicio) return { erro: "o pedido veio sem a data de início" };
 	const funcao = cargo ? funcoes.find((f) => semAcento(f.nome) === semAcento(cargo)) : void 0;
+	const contrato = campos.get("contrato") ?? "";
+	const recebe = campos.get("recebe por") ?? "";
+	const nascido = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get("nascimento") ?? "");
+	const pis = (campos.get("pis") ?? "").replace(/\D/g, "");
 	const observacao = [
 		"Pedido pela Área do Cliente.",
 		cargo && "Cargo pedido: " + cargo + ".",
-		campos.get("contrato") && "Contrato: " + campos.get("contrato") + ".",
+		contrato && "Contrato: " + contrato + ".",
+		recebe && "Recebe: " + recebe + ".",
 		campos.get("observacoes") && "Observações: " + campos.get("observacoes")
 	].filter(Boolean).join(" ");
 	const admissao = {
@@ -1068,8 +1120,12 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 		cpf,
 		admissao: inicio[3] + "-" + inicio[2] + "-" + inicio[1],
 		observacao,
+		...nascido ? { nascimento: nascido[3] + "-" + nascido[2] + "-" + nascido[1] } : {},
+		...pis.length === 11 ? { pis } : {},
 		...salario > 0 ? { salario } : {},
-		...funcao ? { funcaoId: funcao.id } : {}
+		...funcao ? { funcaoId: funcao.id } : {},
+		...doContratoDaArea(contrato),
+		remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0
 	};
 	const erro = erroDaAdmissao(admissao);
 	return erro ? { erro } : { admissao };
@@ -1201,7 +1257,111 @@ function criarClienteRhNet(deps) {
 }
 
 //#endregion
+//#region packages/core/src/sci/integracao/tokens.ts
+const CHAVE_PUBLICA_DOS_TOKENS = "MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAuJ+obs/U1uUpDTAINpgC53pdVDpgLocCt6Wz/Mso1v5fql4AJOXxrs87kKRgEw9Z3WbDmZuBXdZ1EujIrPFdtWyXGR7v9daLz71713XkQ6W+O2JBDA43+F1vPvdbWBBFtRvP3lhc8OFPcOJh61fbqTY7rXwnbCivgh+fXC15S6W4rNWBEqINlQGFyOuopH3devy1uteIEWK3r1X8p9r66IxtukeUkmTJfWiRiZKrFQRB9Mwvilngv7P3xGoPvc57E6wgCAFYdRXEObZNYElusDjHmNm+obnXahPbAW4uTG9FrnITH4AUfH/Lp78eucY6FPw9gG/nPyZCJQF+d2bCd3vZQ1j2wIjShbE6t1PVjReMpqOpdvHnRg9maRtG2ajI7KmdgoMFsFLgvsLy3NgwvZLGnlPDH27xTL0Frzp/XlBMQuP5PglQ6LI3tbhr9AGfOlsWz26H8rIjS4GOyf5GFlpVqiSBLw60sCu6zZ8OW2sYnxtJ6r96bjDwMXfFVS6pAgMBAAE=";
+const ALGORITMO = {
+	name: "RSA-OAEP",
+	hash: "SHA-256"
+};
+const sutil = (s) => s ?? globalThis.crypto.subtle;
+const deBase64 = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
+const paraBase64 = (b) => {
+	let s = "";
+	for (const x of new Uint8Array(b)) s += String.fromCharCode(x);
+	return btoa(s);
+};
+function erroDoToken(token) {
+	const t = String(token ?? "").trim();
+	if (!t) return "Cole o token.";
+	if (/\s/.test(t)) return "O token não tem espaços: confira se colou só ele.";
+	if (t.length < 20) return "Token curto demais: confira se colou ele inteiro.";
+	if (t.length > 180) return "Token comprido demais: confira se colou só ele.";
+	return "";
+}
+async function cifrarToken(token, chavePublica = CHAVE_PUBLICA_DOS_TOKENS, subtle) {
+	const erro = erroDoToken(token);
+	if (erro) throw new Error(erro);
+	const chave = await sutil(subtle).importKey("spki", deBase64(chavePublica), ALGORITMO, false, ["encrypt"]);
+	return paraBase64(await sutil(subtle).encrypt(ALGORITMO, chave, new TextEncoder().encode(token.trim())));
+}
+async function decifrarToken(cifrado, chavePrivada, subtle) {
+	const chave = await sutil(subtle).importKey("pkcs8", deBase64(chavePrivada.replace(/\s/g, "")), ALGORITMO, false, ["decrypt"]);
+	return new TextDecoder().decode(await sutil(subtle).decrypt(ALGORITMO, chave, deBase64(cifrado)));
+}
+const objeto = (x) => x && typeof x === "object" && !Array.isArray(x) ? x : null;
+const codigoValido = (k) => /^\d{1,6}$/.test(k);
+function tokensDoDocumento(x) {
+	const saida = {};
+	for (const [k, v] of Object.entries(objeto(objeto(x)?.empresas) ?? {})) {
+		const o = objeto(v);
+		if (!codigoValido(k) || !o || typeof o.cifrado !== "string" || !o.cifrado) continue;
+		saida[k] = {
+			cifrado: o.cifrado,
+			em: String(o.em ?? ""),
+			por: String(o.por ?? "")
+		};
+	}
+	return saida;
+}
+function documentoDosTokens(atuais, codigo, cifrado, por, agora) {
+	const empresas = { ...atuais };
+	if (cifrado) empresas[String(codigo)] = {
+		cifrado,
+		em: agora.toISOString(),
+		por
+	};
+	else delete empresas[String(codigo)];
+	return {
+		empresas,
+		atualizadoEm: agora.toISOString()
+	};
+}
+function testesDoDocumento(x) {
+	const saida = {};
+	for (const [k, v] of Object.entries(objeto(objeto(x)?.empresas) ?? {})) {
+		const o = objeto(v);
+		if (!codigoValido(k) || !o) continue;
+		saida[k] = {
+			ok: o.ok === true,
+			texto: String(o.texto ?? ""),
+			em: String(o.em ?? ""),
+			doToken: String(o.doToken ?? "")
+		};
+	}
+	return saida;
+}
+function tokensParaTestar(tokens, testes) {
+	return Object.keys(tokens).filter((k) => testes[k]?.doToken !== tokens[k].em);
+}
+function situacaoDoToken(token, teste) {
+	if (!token) return {
+		texto: "Sem token cadastrado aqui",
+		tom: ""
+	};
+	const quando = (iso) => {
+		const d = new Date(iso);
+		return isNaN(d.getTime()) ? "" : d.toLocaleString("pt-BR", {
+			dateStyle: "short",
+			timeStyle: "short",
+			timeZone: "America/Sao_Paulo"
+		});
+	};
+	if (!teste || teste.doToken !== token.em) return {
+		texto: "Token gravado em " + quando(token.em) + ". O robô testa em até 1 minuto…",
+		tom: "warn"
+	};
+	return teste.ok ? {
+		texto: "Funcionando (testado em " + quando(teste.em) + ")" + (teste.texto ? ": " + teste.texto : ""),
+		tom: "ok"
+	} : {
+		texto: "Não funcionou: " + (teste.texto || "erro sem explicação") + ". Gere outro token no SCI WEB e cole aqui.",
+		tom: "bad"
+	};
+}
+
+//#endregion
 exports.CADASTROS_DO_RH = CADASTROS_DO_RH;
+exports.CHAVE_PUBLICA_DOS_TOKENS = CHAVE_PUBLICA_DOS_TOKENS;
 exports.CONFIG_DO_SCI_DESLIGADA = CONFIG_DO_SCI_DESLIGADA;
 exports.ErroDoSci = ErroDoSci;
 exports.GUIAS_DO_SCI = GUIAS_DO_SCI;
@@ -1222,6 +1382,7 @@ exports.camposDaPublicacao = camposDaPublicacao;
 exports.chaveDaGuiaNoSci = chaveDaGuiaNoSci;
 exports.chaveDoXml = chaveDoXml;
 exports.chavesDasUrls = chavesDasUrls;
+exports.cifrarToken = cifrarToken;
 exports.clienteIdDoJwt = clienteIdDoJwt;
 exports.codigoDoRelatorio = codigoDoRelatorio;
 exports.conferirComOSci = conferirComOSci;
@@ -1235,7 +1396,9 @@ exports.criarClienteIntegraNet = criarClienteIntegraNet;
 exports.criarClienteRhNet = criarClienteRhNet;
 exports.criarClienteSciReport = criarClienteSciReport;
 exports.dataParaOSci = dataParaOSci;
+exports.decifrarToken = decifrarToken;
 exports.documentoDaConfigDoSci = documentoDaConfigDoSci;
+exports.documentoDosTokens = documentoDosTokens;
 exports.ehEventoDoXml = ehEventoDoXml;
 exports.empresaIdDoJwt = empresaIdDoJwt;
 exports.empresaNoSci = empresaNoSci;
@@ -1243,6 +1406,8 @@ exports.empresasDoTexto = empresasDoTexto;
 exports.erroDaAdmissao = erroDaAdmissao;
 exports.erroDaGuiaParaPublicar = erroDaGuiaParaPublicar;
 exports.erroDoLancamento = erroDoLancamento;
+exports.erroDoToken = erroDoToken;
+exports.fimDoPrazo = fimDoPrazo;
 exports.fraseDaPublicacao = fraseDaPublicacao;
 exports.fraseDoIntegra = fraseDoIntegra;
 exports.idDaPublicacao = idDaPublicacao;
@@ -1262,6 +1427,10 @@ exports.relatorioDaGuia = relatorioDaGuia;
 exports.resumoDoIntegra = resumoDoIntegra;
 exports.resumoDosCadastros = resumoDosCadastros;
 exports.situacaoDeVolta = situacaoDeVolta;
+exports.situacaoDoToken = situacaoDoToken;
 exports.situacaoNoRhNet = situacaoNoRhNet;
+exports.testesDoDocumento = testesDoDocumento;
 exports.tipoNoIntegra = tipoNoIntegra;
+exports.tokensDoDocumento = tokensDoDocumento;
+exports.tokensParaTestar = tokensParaTestar;
 exports.xmlsParaEnviar = xmlsParaEnviar;

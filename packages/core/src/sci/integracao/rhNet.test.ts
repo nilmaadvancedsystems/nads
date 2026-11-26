@@ -57,6 +57,15 @@ describe('RH NET: a regra', () => {
       empresa_id: 900001, tipo_colaborador: 'funcionario', nome: 'MARIA DA SILVA', cpf: '529.982.247-25', admissao_data: '2026-12-01',
       ddd_celular: '38', celular: '998765432', salario_base: 1800, v_funcao_id: 5, departamento_id: null, habilita_acesso_modulo_colaborador: false,
     });
+    // (26/11/2026) os obrigatórios da pré-admissão do SCI vão com o padrão: assalariado, admissão, CLT geral, mensalista, prazo indeterminado
+    expect(corpo).toMatchObject({ classe_id: 0, admissao_tipo_id: 1, categoria_esocial_id: 101, funcionario_tipo_id: 0, contrato_tipo_id: 1, prazo_experiencia: 0, prazo_experiencia_fim: null });
+    expect(corpo).not.toHaveProperty('prazo_experiencia_prorrogacao');
+    // a experiência de 45 + 45 a partir de 01/12: o 1º prazo termina em 14/01 e a prorrogação em 28/02
+    expect(corpoDaAdmissao(900001, { ...ADMISSAO, experienciaDias: 45, prorrogacaoDias: 45, remuneracao: 2 })).toMatchObject({
+      prazo_experiencia: 45, prazo_experiencia_fim: '2027-01-14', prazo_experiencia_prorrogacao: 45, prazo_experiencia_prorrogacao_fim: '2027-02-28', funcionario_tipo_id: 2,
+    });
+    // o estágio: classe 2, categoria 901 e o tipo de contrato em branco para o escritório escolher
+    expect(corpoDaAdmissao(900001, { ...ADMISSAO, classe: 2, categoriaEsocial: 901, contratoTipo: null })).toMatchObject({ classe_id: 2, categoria_esocial_id: 901, contrato_tipo_id: null });
     expect(admissaoDoRhNet({ funcionario_contribuinte_id: 15, situacao: 'nao_liberado', nome: 'MARIA DA SILVA', cpf: '529', admissao_data: '2026-12-01' }))
       .toEqual({ id: 15, situacao: 'nao_liberado', primeiroNome: 'MARIA', admissao: '2026-12-01' });
     expect(corpoDaLiberacao(900001, [15, 15, 0], 'liberado')).toEqual({ empresa_id: 900001, situacao: 'liberado', funcionario_contribuinte_id: [15] });

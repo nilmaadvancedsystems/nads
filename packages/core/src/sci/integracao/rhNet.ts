@@ -166,9 +166,26 @@ export interface AdmissaoParaRhNet {
   centroCustoId?: number;
   quadroHorarioId?: number;
   sindicatoId?: number;
-  /** dias do contrato de experiência */
+  /** dias do contrato de experiência (o 1º prazo) */
   experienciaDias?: number;
+  /** dias da prorrogação da experiência (o 2º prazo) */
+  prorrogacaoDias?: number;
+  /** a classe: 0 assalariado (o padrão), 1 doméstica, 2 estagiário, 3 aposentado, 4 temporário */
+  classe?: 0 | 1 | 2 | 3 | 4;
+  /** como recebe (o "Tipo de colaborador" da tela do SCI): 0 mensalista (o padrão), 1 diarista, 2 horista, 3 comissionado */
+  remuneracao?: 0 | 1 | 2 | 3;
+  /** o tipo de contrato: 1 prazo indeterminado (o padrão); null deixa para o escritório escolher */
+  contratoTipo?: number | null;
+  /** a categoria do eSocial: 101 empregado geral (o padrão), 103 aprendiz, 901 estagiário */
+  categoriaEsocial?: number;
   observacao?: string;
+}
+
+/** O dia 'aaaa-mm-dd' somado de n dias (o 1º dia conta: 45 dias a partir de 01/12 terminam em 14/01). */
+export function fimDoPrazo(inicio: string, dias: number): string {
+  const [a, m, d] = inicio.split('-').map(Number);
+  const fim = new Date(Date.UTC(a, m - 1, d + dias - 1));
+  return fim.toISOString().slice(0, 10);
 }
 
 const DIA = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -198,7 +215,17 @@ export function corpoDaAdmissao(empresaId: number, a: AdmissaoParaRhNet): Record
     mae_nome: texto(a.maeNome).toUpperCase() || null, pis_numero: digitos(a.pis) || null,
     salario_base: a.salario ?? null, v_funcao_id: a.funcaoId ?? null, departamento_id: a.departamentoId ?? null,
     centro_custo_id: a.centroCustoId ?? null, v_quadro_horario_id: a.quadroHorarioId ?? null, v_sindicato_id: a.sindicatoId ?? null,
-    prazo_experiencia: a.experienciaDias ?? null, observacao: texto(a.observacao).slice(0, 500) || null,
+    // (26/11/2026) o que a pré-admissão do SCI marca como obrigatório: a classe, o tipo de admissão, a categoria, como
+    // recebe, o tipo de contrato e o 1º prazo da experiência com o fim (0 e sem fim quando não tem experiência)
+    classe_id: a.classe ?? 0, admissao_tipo_id: 1, categoria_esocial_id: a.categoriaEsocial ?? 101,
+    funcionario_tipo_id: a.remuneracao ?? 0, contrato_tipo_id: a.contratoTipo === undefined ? 1 : a.contratoTipo,
+    prazo_experiencia: a.experienciaDias ?? 0,
+    prazo_experiencia_fim: a.experienciaDias ? fimDoPrazo(a.admissao, a.experienciaDias) : null,
+    ...(a.experienciaDias && a.prorrogacaoDias ? {
+      prazo_experiencia_prorrogacao: a.prorrogacaoDias,
+      prazo_experiencia_prorrogacao_fim: fimDoPrazo(a.admissao, a.experienciaDias + a.prorrogacaoDias),
+    } : {}),
+    observacao: texto(a.observacao).slice(0, 500) || null,
     habilita_acesso_modulo_colaborador: false,
   };
 }
@@ -314,6 +341,19 @@ const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
  * RH NET (25/11/2026; o dono: "pode fazer a 1"). O cargo vira a função quando o nome bate com uma função cadastrada no RH NET
  * da empresa; o cargo pedido, o contrato e as observações vão na observação (o DP confere antes de liberar).
  */
+/** "Recebe por" da Área → o tipo de funcionário do RH NET */
+const REMUNERACAO: [RegExp, 0 | 1 | 2 | 3][] = [[/hora|horista/, 2], [/dia|diarista/, 1], [/comiss/, 3], [/mes|mensal/, 0]];
+
+/** O contrato escolhido na Área → a classe, a categoria, o tipo de contrato e os prazos da experiência no RH NET. O estágio e
+ *  o aprendiz vão sem o tipo de contrato (o escritório escolhe na hora de liberar). */
+function doContratoDaArea(contrato: string): Pick<AdmissaoParaRhNet, 'classe' | 'categoriaEsocial' | 'contratoTipo' | 'experienciaDias' | 'prorrogacaoDias'> {
+  const c = semAcento(contrato);
+  if (/estag/.test(c)) return { classe: 2, categoriaEsocial: 901, contratoTipo: null };
+  if (/aprendiz/.test(c)) return { classe: 0, categoriaEsocial: 103, contratoTipo: null };
+  const exp = /experiencia/.test(c) ? /(\d+)\s*\+\s*(\d+)/.exec(c) ?? ['', '45', '45'] : null;
+  return { classe: 0, categoriaEsocial: 101, contratoTipo: 1, ...(exp ? { experienciaDias: Number(exp[1]), prorrogacaoDias: Number(exp[2]) } : {}) };
+}
+
 export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCadastroRh[] = []): { admissao: AdmissaoParaRhNet } | { erro: string } {
   const campos = new Map<string, string>();
   for (const linha of String(texto ?? '').split(/\r?\n/)) {
@@ -330,11 +370,17 @@ export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCa
   if (!cpf) return { erro: 'o pedido veio sem o CPF (o RH NET exige)' };
   if (!inicio) return { erro: 'o pedido veio sem a data de início' };
   const funcao = cargo ? funcoes.find(f => semAcento(f.nome) === semAcento(cargo)) : undefined;
-  const observacao = ['Pedido pela Área do Cliente.', cargo && 'Cargo pedido: ' + cargo + '.', campos.get('contrato') && 'Contrato: ' + campos.get('contrato') + '.', campos.get('observacoes') && 'Observações: ' + campos.get('observacoes')]
+  const contrato = campos.get('contrato') ?? '';
+  const recebe = campos.get('recebe por') ?? '';
+  const nascido = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get('nascimento') ?? '');
+  const pis = (campos.get('pis') ?? '').replace(/\D/g, '');
+  const observacao = ['Pedido pela Área do Cliente.', cargo && 'Cargo pedido: ' + cargo + '.', contrato && 'Contrato: ' + contrato + '.', recebe && 'Recebe: ' + recebe + '.', campos.get('observacoes') && 'Observações: ' + campos.get('observacoes')]
     .filter(Boolean).join(' ');
   const admissao: AdmissaoParaRhNet = {
     nome, cpf, admissao: inicio[3] + '-' + inicio[2] + '-' + inicio[1], observacao,
+    ...(nascido ? { nascimento: nascido[3] + '-' + nascido[2] + '-' + nascido[1] } : {}), ...(pis.length === 11 ? { pis } : {}),
     ...(salario > 0 ? { salario } : {}), ...(funcao ? { funcaoId: funcao.id } : {}),
+    ...doContratoDaArea(contrato), remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0,
   };
   const erro = erroDaAdmissao(admissao);
   return erro ? { erro } : { admissao };

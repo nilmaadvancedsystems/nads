@@ -18,8 +18,8 @@ export function IntegracaoSci() {
           <h3>O que o nads faz com o SCI</h3>
         </div>
         <p className="hint">
-          Tudo fica desligado até alguém ligar aqui e gravar. Os tokens da SCI (o de Parceiro e o de Cliente) não ficam no nads: vão no
-          metadado da máquina do robô, no arquivo do robô do PC e nos segredos da função da Área do Cliente.
+          Tudo fica desligado até alguém ligar aqui e gravar. O token de cada empresa do RH NET se cola abaixo e fica embaralhado (só o
+          robô da nuvem lê); o de Parceiro e o da contabilidade ficam no robô e nos segredos da função da Área do Cliente.
           {vm.atualizado && <> Gravado em {vm.atualizado}.</>}
         </p>
         {vm.partes.map(p => (
@@ -39,18 +39,52 @@ export function IntegracaoSci() {
           <div className="cad-secao-topo">
             <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="usuario" /></span>
             <h3>RH NET
-              <Dica texto="O RH NET usa o token de cada empresa (gerado no SCI WEB por um usuário dela), que fica no robô, não no nads. O Testar só lê: busca os cadastros da empresa e quantas admissões há." />
+              <Dica texto="O RH NET usa o token de cada empresa (o Token de Cliente gerado no SCI WEB por um usuário dela). Cole aqui: o nads embaralha antes de gravar e só o robô da nuvem consegue ler. O Testar só lê: busca os cadastros da empresa e quantas admissões há." />
             </h3>
           </div>
           {vm.rhNet.length ? vm.rhNet.map(e => (
-            <div key={e.codigo} className="cad-chave">
-              <div className="cad-chave-texto">
-                <b>Empresa {e.codigo}</b>
-                <span className={'hint' + (e.tom ? ' sci-' + e.tom : '')}>{e.situacao}</span>
+            <div key={e.codigo} className="sci-empresa">
+              <div className="cad-chave">
+                <div className="cad-chave-texto">
+                  <b>{e.codigo}{e.nome ? ' · ' + e.nome : ''}</b>
+                  <span className={'hint' + (e.tomDoToken ? ' sci-' + e.tomDoToken : '')}>{e.token}</span>
+                  <span className={'hint' + (e.tom ? ' sci-' + e.tom : '')}>{e.situacao}</span>
+                </div>
+                <div className="sci-botoes">
+                  {!e.editando && <button type="button" className="btn" onClick={() => vm.editarToken(e.codigo)}>{e.temToken ? 'Trocar token' : 'Colar token'}</button>}
+                  <button type="button" className="btn" disabled={e.pedindo} onClick={() => vm.testarRhNet(e.codigo)}>{e.pedindo ? 'Pedindo…' : 'Testar'}</button>
+                </div>
               </div>
-              <button type="button" className="btn" disabled={e.pedindo} onClick={() => vm.testarRhNet(e.codigo)}>{e.pedindo ? 'Pedindo…' : 'Testar'}</button>
+              {e.editando && (
+                <div className="sci-token">
+                  <input className="input" type="password" autoComplete="off" spellCheck={false} value={vm.tokenTexto} onChange={ev => vm.mudarToken(ev.target.value)}
+                    onKeyDown={ev => { if (ev.key === 'Enter') vm.gravarToken(e.codigo); }} placeholder="Token de Cliente da empresa (SCI WEB)" aria-label={'Token de Cliente da empresa ' + e.codigo} autoFocus />
+                  <button type="button" className="btn btn-primary" disabled={vm.gravandoToken} onClick={() => vm.gravarToken(e.codigo)}>{vm.gravandoToken ? 'Gravando…' : 'Gravar token'}</button>
+                  {e.temToken && <button type="button" className="btn" disabled={vm.gravandoToken} onClick={() => vm.tirarToken(e.codigo)}>Tirar</button>}
+                  <button type="button" className="btn" onClick={vm.cancelarToken}>Cancelar</button>
+                </div>
+              )}
             </div>
-          )) : <p className="hint">Ponha a empresa de teste na lista abaixo e grave.</p>}
+          )) : <p className="hint">Nenhuma empresa ainda.</p>}
+          {vm.adicionando ? (
+            <div className="sci-nova">
+              <label className="cad-campo">
+                <span className="hint">Código da empresa{vm.nomeDoNovo ? ' · ' + vm.nomeDoNovo : ''}</span>
+                <input className="input" type="text" inputMode="numeric" value={vm.novoCodigo} onChange={ev => vm.mudarNovoCodigo(ev.target.value)} placeholder="Ex.: 590" aria-label="Código da empresa a adicionar" autoFocus />
+              </label>
+              <label className="cad-campo">
+                <span className="hint">Token de Cliente da empresa (SCI WEB)</span>
+                <input className="input" type="password" autoComplete="off" spellCheck={false} value={vm.tokenTexto} onChange={ev => vm.mudarToken(ev.target.value)}
+                  onKeyDown={ev => { if (ev.key === 'Enter') vm.adicionarEmpresa(); }} placeholder="Cole o token aqui" aria-label="Token da empresa a adicionar" />
+              </label>
+              <div className="sci-botoes">
+                <button type="button" className="btn" onClick={vm.fecharAdicionar}>Cancelar</button>
+                <button type="button" className="btn btn-primary" disabled={vm.gravandoToken} onClick={vm.adicionarEmpresa}>{vm.gravandoToken ? 'Adicionando…' : 'Adicionar'}</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="btn sci-adicionar" onClick={vm.abrirAdicionar}><Icone nome="plus" width={16} height={16} />Adicionar empresa</button>
+          )}
         </div>
       )}
 

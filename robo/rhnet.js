@@ -21,12 +21,18 @@
 //   - os das empresas: o metadado segredo-sci-rhnet da VM, ou "rhnet" em robo/sci_credenciais.json, no formato
 //     { "583": { "token": "..." } } (o número da empresa no RH NET é o código; "empresaId" só se o código no SCI for outro);
 //     para o teste, também vale "empresa": "<token>" (a empresa do comando testar).
+//   - (26/11/2026: "vai ter uma maneira mais simples de cadastrar token de api de clientes?") o token colado na tela de
+//     Configurações › Integração SCI: chega EMBARALHADO em config/sciTokens (a tela usa a chave pública do core) e só este
+//     robô desembaralha, com a chave privada do metadado segredo-sci-chave da VM (ou "chaveDosTokens" no arquivo). O da
+//     tela vale por cima do metadado. Cada token novo é testado (só leitura) e o resultado vai para config/sciTokensTeste.
 const fs = require('fs');
 const S = require('./gerado/sci');
 const SCI = require('./sci');
 
 const TOKENS_MS = 10 * 60 * 1000;
 let guardados = null;
+/** os tokens da tela já desembaralhados, só na memória: { [codigo]: { token } } (iniciarTokensDaTela os mantém) */
+let daTela = {};
 
 /** { parceiro, empresas: { [codigo]: { token, empresaId?, clienteId? } }, avulso } dos lugares de sempre (nunca do banco). */
 async function lerTokens() {
@@ -38,6 +44,8 @@ async function lerTokens() {
   const meta = await SCI.lerMetadado('segredo-sci-rhnet');
   try { if (meta) empresas = JSON.parse(meta) || {}; } catch (e) { /* metadado torto: fica vazio */ }
   if (!Object.keys(empresas).length && arquivo.rhnet && typeof arquivo.rhnet === 'object') empresas = arquivo.rhnet;
+  // o da tela vale por cima (mantém o empresaId/clienteId que o metadado tiver)
+  for (const [codigo, e] of Object.entries(daTela)) empresas = { ...empresas, [codigo]: { ...(empresas[codigo] || {}), token: e.token } };
   const valor = { parceiro, empresas, avulso: String(arquivo.empresa || '').trim() };
   guardados = { em: Date.now(), valor };
   return valor;
@@ -247,6 +255,62 @@ function iniciarAdmissoesDaArea(db, log = () => {}) {
 
 // ---------- o teste pela linha de comando ----------
 
+/** A chave privada que desembaralha os tokens da tela: o metadado segredo-sci-chave, senão "chaveDosTokens" no arquivo. */
+async function chaveDosTokens() {
+  const meta = await SCI.lerMetadado('segredo-sci-chave');
+  if (meta) return meta;
+  try { return String(JSON.parse(fs.readFileSync(SCI.ARQUIVO, 'utf8')).chaveDosTokens || '').trim(); } catch (e) { return ''; }
+}
+
+/** Testa (só leitura) o token de uma empresa: entra e conta os cadastros. Devolve { ok, texto } sem dado pessoal. */
+async function testarToken(codigo, token, parceiro) {
+  const rh = S.criarClienteRhNet({ buscar: SCI.buscar, tokens: async () => ({ parceiro, empresa: token, empresaId: Number(codigo) || undefined }) });
+  try {
+    await rh.identificacao();
+    return { ok: true, texto: S.resumoDosCadastros(await rh.cadastros()) };
+  } catch (err) { return { ok: false, texto: motivo(err) }; }
+}
+
+/**
+ * Os tokens colados na tela (26/11/2026), só no robô da nuvem: ouve config/sciTokens, desembaralha cada um, guarda na
+ * memória (daTela) e testa os que mudaram desde o último teste, gravando o resultado em config/sciTokensTeste. Sem a chave
+ * privada, avisa no log e não faz nada (os tokens do metadado continuam valendo).
+ */
+function iniciarTokensDaTela(db, log = () => {}) {
+  const { ouvir } = require('./ouvinte');
+  if (!globalThis.crypto || !globalThis.crypto.subtle) globalThis.crypto = require('crypto').webcrypto;
+  const refTeste = db.collection('config').doc('sciTokensTeste');
+  let fila = Promise.resolve();
+  ouvir('RH NET: tokens da tela', () => db.collection('config').doc('sciTokens'), snap => {
+    fila = fila.then(async () => {
+      const tokens = S.tokensDoDocumento(snap.exists ? snap.data() : null);
+      const chave = Object.keys(tokens).length ? await chaveDosTokens() : '';
+      if (Object.keys(tokens).length && !chave) { log('RH NET: há tokens na tela, mas falta a chave (metadado segredo-sci-chave)'); return; }
+      const novos = {};
+      for (const [codigo, t] of Object.entries(tokens)) {
+        try { novos[codigo] = { token: (await S.decifrarToken(t.cifrado, chave)).trim(), em: t.em }; }
+        catch (err) { log('RH NET: não deu para ler o token da tela da empresa ' + codigo + ' (chave trocada?)'); }
+      }
+      daTela = novos;
+      guardados = null;
+      clientes.clear();
+      const testes = S.testesDoDocumento((await refTeste.get()).data());
+      const paraTestar = S.tokensParaTestar(tokens, testes);
+      if (!paraTestar.length) return;
+      const { parceiro } = await lerTokens();
+      const empresas = {};
+      for (const codigo of paraTestar) {
+        const r = !novos[codigo] ? { ok: false, texto: 'o robô não conseguiu ler o token gravado; cole de novo' }
+          : !parceiro ? { ok: false, texto: 'falta o Token de Parceiro no robô' }
+            : await testarToken(codigo, novos[codigo].token, parceiro);
+        empresas[codigo] = { ...r, em: agora(), doToken: tokens[codigo].em };
+        log('RH NET: token da tela da empresa ' + codigo + (r.ok ? ' funcionando' : ' não funcionou - ' + r.texto));
+      }
+      await refTeste.set({ empresas }, { merge: true });
+    }).catch(err => log('RH NET: tokens da tela deram erro -', motivo(err)));
+  }, log);
+}
+
 async function testar(codigo) {
   const t = await lerTokens();
   console.log('RH NET: o teste só de leitura' + (codigo ? ' da empresa ' + codigo : ''));
@@ -277,4 +341,4 @@ if (require.main === module) {
   testar(codigo).then(c => process.exit(c), err => { console.log('erro: ' + motivo(err)); process.exit(1); });
 }
 
-module.exports = { atenderPedido, cadastrosParaArea, atualizarListasDaArea, iniciarListasDaArea, atenderAdmissaoDaArea, iniciarAdmissoesDaArea, testar, lerTokens };
+module.exports = { atenderPedido, cadastrosParaArea, atualizarListasDaArea, iniciarListasDaArea, atenderAdmissaoDaArea, iniciarAdmissoesDaArea, iniciarTokensDaTela, testar, lerTokens };

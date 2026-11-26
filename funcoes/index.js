@@ -42,6 +42,14 @@ const sci = criarClienteSciReport({
   segredos: () => ({ parceiro: PARCEIRO.value(), cliente: CLIENTE.value() }),
 });
 
+/** O PDF da guia, na URL temporária que a própria SCI devolveu: só da SCI ou do armazenamento da AWS que ela usa. */
+const PDF_DA_SCI = /^https:\/\/([a-z0-9-]+\.)*(sci\.com\.br|amazonaws\.com)\//;
+function buscarPdfDaSci(url) {
+  if (!PDF_DA_SCI.test(url)) return Promise.reject(new Error('o PDF não veio de um endereço da SCI'));
+  const init = { method: 'GET', signal: globalThis.AbortSignal.timeout(20000) };
+  return fetch(url, init);
+}
+
 const resumos = new Map();
 const area = criarAtendimentoDaArea({
   sci,
@@ -94,6 +102,15 @@ export const guiasDoSciReport = onRequest(
     try {
       const hoje = hojeEmBrasilia();
       const r = guia ? await area.pdf(token, idToken, guia, hoje) : await area.guias(token, idToken, hoje);
+      // (26/11/2026: "tem que parecer que sci report nem existe para o usuario") com formato 'pdf', a função busca o PDF na
+      // URL temporária da SCI e devolve os bytes: a guia abre na mesma janela das outras guias da Área
+      if (guia && corpo.formato === 'pdf' && r.acesso === 'liberado' && typeof r.url === 'string' && r.url.startsWith('https://')) {
+        const p = await buscarPdfDaSci(r.url);
+        const bytes = p.ok ? new Uint8Array(await p.arrayBuffer()) : null;
+        if (!bytes || bytes.length > 15 * 1024 * 1024 || String.fromCharCode(...bytes.subarray(0, 5)) !== '%PDF-') throw new Error('o PDF da SCI não veio (' + p.status + ')');
+        res.set('Content-Type', 'application/pdf'); res.status(200).end(bytes);
+        return;
+      }
       res.status(r.acesso === 'liberado' ? 200 : r.acesso === 'precisa entrar' ? 401 : 403).json(r);
     } catch (e) {
       // só o status e a mensagem da SCI (nunca os tokens nem o link do cliente)

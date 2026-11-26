@@ -167,6 +167,33 @@ function contexto(pedidos, portal, extra = {}) {
     igual('ensaio: pronto, sem banco e sem Drive', [p1.ref.estado.status, p1.ref.estado.resultado.ensaio, banco.size, pdfs.length], ['pronto', true, 0, 0]);
   }
 
+  // ---------- o lote da noite (26/11/2026) ----------
+  igual('a noite: às 23h30 é a do próprio dia', R.noiteDe(Date.parse('2026-11-26T23:30:00-03:00')), '2026-11-26');
+  igual('a noite: às 3h é a do dia anterior', R.noiteDe(Date.parse('2026-11-27T03:00:00-03:00')), '2026-11-26');
+  igual('a competência: depois do dia 20, o mês anterior', R.competenciaAlvo(Date.parse('2026-11-26T23:30:00-03:00')), '2026-10');
+  igual('a competência: até o dia 20, o mês retrasado', R.competenciaAlvo(Date.parse('2026-11-20T23:30:00-03:00')), '2026-09');
+  igual('a competência: em janeiro, volta o ano', R.competenciaAlvo(Date.parse('2027-01-10T23:30:00-03:00')), '2026-11');
+  {
+    const emp = (codigo, regime, cnpj = '99888777000' + String(100 + codigo).slice(-3)) => ({ codigo, nome: 'EMPRESA ' + codigo, cnpj, regime });
+    const empresas = [emp(1, 'Simples'), emp(2, 'Presumido'), emp(3, 'MEI'), emp(4, 'Simples', '123'), emp(5, 'Simples'), emp(6, 'Simples'), emp(7, 'Simples'), emp(8, 'Simples')];
+    const resumos = new Map([
+      [5, { consultadoEm: '2026-11-01T02:00:00Z', meses: { '2026-09': { origem: 'extrato' } } }],
+      [6, { consultadoEm: '2026-10-01T02:00:00Z', meses: { '2026-10': { origem: 'anteriores' } } }],
+      [7, { consultadoEm: '2026-11-25T02:00:00Z', meses: { '2026-10': { origem: 'extrato' } } }],
+    ]);
+    const plano = R.planoDaNoite({ empresas, resumos, naFila: new Set([8]), competencia: '2026-10', limite: 10 });
+    igual('o lote: só o Simples com CNPJ, sem quem já tem o extrato do mês nem quem está na fila; primeiro quem nunca foi consultado',
+      plano.map(p => p.codigo), [1, 6, 5]);
+    igual('o lote: o pedido no formato do robô', R.motivoDoPedidoRuim(plano[0]), '');
+    igual('o lote: extrato da competência', [plano[0].modo, plano[0].competencia], ['extrato', '2026-10']);
+    igual('o lote: no máximo o limite', R.planoDaNoite({ empresas, resumos, naFila: new Set(), competencia: '2026-10', limite: 2 }).length, 2);
+    igual('o lote por noite é de 20', R.LOTE_POR_NOITE, 20);
+  }
+  verdade('o lote não começa antes do caminho do portal ser provado', /não foi provado/.test(R.motivoParaNaoPedir({ temResumo: false, ensaioAchou: false, ontem: null })));
+  igual('o lote começa depois de um ensaio que achou o mês', R.motivoParaNaoPedir({ temResumo: false, ensaioAchou: true, ontem: null }), '');
+  verdade('o lote para se a noite anterior só deu erro', /só deu erro/.test(R.motivoParaNaoPedir({ temResumo: true, ensaioAchou: true, ontem: { total: 20, prontos: 0, erros: 18 } })));
+  igual('o lote segue se a noite anterior teve algum pronto', R.motivoParaNaoPedir({ temResumo: true, ensaioAchou: true, ontem: { total: 20, prontos: 5, erros: 15 } }), '');
+
   // ---------- o robô na Central dos robôs ----------
   const doCatalogo = catalogo.robos.find(r => r.id === 'pgdas');
   verdade('o catálogo tem o robô do PGDAS-D, no servidor', doCatalogo && doCatalogo.maquina === 'servidor');

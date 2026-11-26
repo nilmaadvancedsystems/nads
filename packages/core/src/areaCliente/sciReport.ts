@@ -10,7 +10,7 @@
 //   - PUT /api/v1/publicados/visualiza?publicadoId=: a URL TEMPORÁRIA do PDF. Com o token da contabilidade não marca como
 //     visto no SCI. O "visualiza/{hash}" (sem login, hash = base64 de usuarioId:publicadosId) NÃO é usado.
 // "Pagamento informado" é o que o cliente (ou o escritório) registrou no SCI Report, não a confirmação do banco.
-import { situacaoDaGuia, ROTULO_DA_SITUACAO_DA_GUIA, type SituacaoDaGuia } from './guias';
+import { situacaoDaGuia, ROTULO_DA_SITUACAO_DA_GUIA, type GuiaDoCliente, type SituacaoDaGuia, type TipoDeGuia } from './guias';
 
 export const SCI_AUTH = 'https://api-auth.sci.com.br';
 export const SCI_RELATORIO = 'https://api-relatorio.sci.com.br';
@@ -247,3 +247,55 @@ export function acessoDaArea(token: string, link: LinkDaArea | null, login: Logi
   if (link.exigeSenha !== true) return 'liberado';
   return login?.cliente === true && Array.isArray(login.a) && login.a.includes(token) ? 'liberado' : 'precisa entrar';
 }
+
+// ---------------------------------- como guia normal da Área ----------------------------------
+// (26/11/2026; o dono: "tem que aparecer como um documento normal do nads, nao separado, tem que parecer que sci report nem
+// existe para o usuario") a guia do SCI Report entra na lista de guias da Área como qualquer outra: o tipo pelo nome
+// (DARF PIS, DAS, FGTS…), o "Ver" abre o PDF na mesma janela e a paga vai para Pagas. A que o nads já mandou (o mesmo
+// vencimento e o mesmo valor) não aparece duas vezes.
+
+/** o prefixo do id da guia do SCI Report na lista da Área ("sci-123456"): é por ele que o PDF vem da função */
+export const PREFIXO_DA_GUIA_DO_SCI = 'sci-';
+/** o publicadosId da guia da lista, ou '' se ela não veio do SCI Report */
+export function publicadosIdDaGuia(id: string): string {
+  return id.startsWith(PREFIXO_DA_GUIA_DO_SCI) && /^\d{1,12}$/.test(id.slice(PREFIXO_DA_GUIA_DO_SCI.length)) ? id.slice(PREFIXO_DA_GUIA_DO_SCI.length) : '';
+}
+
+/** O tipo da guia pelo nome do modelo no SCI Report ("DARF PIS" → DARF/PIS; "DAS - Simples Nacional" → DAS). */
+export function tipoDaGuiaDoSci(nome: string): { tipo: TipoDeGuia; tributo?: string } {
+  const n = String(nome ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  const darf = /^DARF\b[\s\-–:]*(.*)$/.exec(n);
+  if (darf) return darf[1].trim() ? { tipo: 'DARF', tributo: darf[1].trim().replace(/\s+/g, ' ').slice(0, 30) } : { tipo: 'DARF' };
+  if (/\bDCTF ?WEB\b/.test(n)) return { tipo: 'DARF', tributo: 'DCTFWeb' };
+  if (/^DAS\b|SIMPLES NACIONAL/.test(n)) return { tipo: 'DAS' };
+  if (/\bFGTS\b/.test(n)) return { tipo: 'FGTS' };
+  if (/^DAE\b|\bICMS\b/.test(n)) return { tipo: 'DAE' };
+  if (/^DAM\b|\bISS\b/.test(n)) return { tipo: 'DAM' };
+  return { tipo: 'outra' };
+}
+
+/** Uma guia paga que veio do SCI Report (o cliente informou o pagamento lá), no formato da aba Pagas. */
+export interface PagaDoSci { id: string; tipo: TipoDeGuia; nome: string; competencia: string; valor: number; pagoEm: string }
+
+/**
+ * As guias do SCI Report como guias normais da Área: as em aberto vão para a lista (id "sci-…", com PDF) e as com
+ * pagamento informado para as pagas. A que já está na lista do nads (o mesmo vencimento e o mesmo valor) fica de fora.
+ */
+export function guiasDoSciNaArea(sci: readonly GuiaDoSciReport[], existentes: readonly Pick<GuiaDoCliente, 'vencimento' | 'valor'>[]): { aPagar: GuiaDoCliente[]; pagas: PagaDoSci[] } {
+  const ja = new Set(existentes.map(g => g.vencimento + '|' + Math.round(g.valor * 100)));
+  const aPagar: GuiaDoCliente[] = [];
+  const pagas: PagaDoSci[] = [];
+  for (const g of sci) {
+    if (ja.has(g.vencimento + '|' + Math.round(g.valor * 100))) continue;
+    const { tipo, tributo } = tipoDaGuiaDoSci(g.nome);
+    const id = PREFIXO_DA_GUIA_DO_SCI + g.id;
+    if (g.situacao === 'pagamento informado') {
+      const nome = tipo === 'outra' ? g.nome : tipo === 'DARF' && tributo ? 'DARF ' + tributo : ROTULO_CURTO[tipo];
+      pagas.push({ id, tipo, nome, competencia: g.competencia, valor: g.valorPago ?? g.valor, pagoEm: g.pagamentoEm ?? g.vencimento });
+      continue;
+    }
+    aPagar.push({ id, tipo, ...(tributo ? { tributo } : {}), competencia: g.competencia, vencimento: g.vencimento, valor: g.valor, situacao: g.situacao, temPdf: true, ...(tipo === 'outra' ? { nome: g.nome } : {}) });
+  }
+  return { aPagar, pagas };
+}
+const ROTULO_CURTO: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS', DAE: 'DAE', DARF: 'DARF', DAM: 'DAM', HON: 'Honorários', outra: 'Guia' };

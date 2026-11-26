@@ -266,8 +266,48 @@ export function colunaDoIcmsDoSimples(receita: string): string {
   if (/SUBST|\bS\.? ?T\b/.test(r)) return /SAIDA/.test(r) ? 'st-sai' : 'st-ent';
   return '';
 }
-/** O tipo de guia de cada coluna (a pasta do Fiscal onde a guia escolhida à mão vai no Drive); fora daqui, sem tipo de guia */
-export const TIPO_DA_COLUNA: Readonly<Record<string, string>> = { das: 'DAS', pis: 'DARF', cofins: 'DARF', irpj: 'DARF', csll: 'DARF', icms: 'DAE', iss: 'DAM' };
+/**
+ * O grupo do Relatório pelo regime da empresa (26/11/2026, no Enviar guias: "o robo vai identificar pela empres e vai trocar
+ * o layout de envio variando isso"): o Simples no Simples Nacional; o Presumido e o Real no Lucro Presumido. Aceita o nome do
+ * Cadastro do nads ("Simples", "Presumido") e o do arquivador ("SIMPLES NACIONAL", "LUCRO PRESUMIDO"). Fora disso (MEI,
+ * isenta, sem regime), null: vale o grupo do relatório onde o lote foi aberto. O mesmo do robô (robo/lote-fiscal.js).
+ */
+export function grupoDoRegime(regime: string | null | undefined): GrupoDoControleId | null {
+  const k = (regime || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/^LUCRO\s+/, '').replace(/\s+NACIONAL$/, '').trim();
+  return GRUPOS_DO_CONTROLE.find(g => g.regimes.some(r => r.toUpperCase() === k))?.id ?? null;
+}
+/** O grupo da guia: o do regime da empresa; sem ele, o do relatório onde o lote foi aberto */
+export const grupoDaGuia = (regime: string | null | undefined, grupoDoLote: GrupoDoControleId): GrupoDoControleId => grupoDoRegime(regime) ?? grupoDoLote;
+
+/**
+ * O tipo de guia de cada coluna, por grupo (a pasta do Fiscal onde a guia escolhida à mão vai no Drive): no Simples o DAS
+ * (e o DAS do parcelamento) e o DAE dos ICMS; no Presumido a DARF dos federais (e a do parcelamento), o DAE do ICMS e o DAM
+ * do ISS. O IBS e a CBS ainda não têm pasta na árvore do Fiscal: ficam sem tipo, como a guia fora das colunas.
+ */
+const TIPO_DA_COLUNA: Readonly<Record<GrupoDoControleId, Readonly<Record<string, string>>>> = {
+  sn: { das: 'DAS', 'icms-ant': 'DAE', 'icms-arroz': 'DAE', 'icms-dif': 'DAE', 'icms-dif-ativo': 'DAE', 'st-ent': 'DAE', 'st-sai': 'DAE', parc: 'DAS' },
+  lp: { pis: 'DARF', cofins: 'DARF', irpj: 'DARF', csll: 'DARF', icms: 'DAE', iss: 'DAM', parc: 'DARF' },
+};
+export const tipoDaColuna = (grupo: GrupoDoControleId, coluna: string): string => TIPO_DA_COLUNA[grupo][coluna] || '';
+
+/**
+ * Os tipos de guia que a pessoa escolhe no Enviar guias, os do grupo da empresa (26/11/2026: no Presumido "pis cofins IRPJ
+ * csll ICMS iss ibs,cbs", e o parcelamento; no Simples, as colunas do Simples): cada um diz a coluna do Relatório e a pasta.
+ */
+export interface TipoDeGuia { coluna: string; rotulo: string; tipo: string }
+export const tiposDeGuiaDoGrupo = (grupo: GrupoDoControleId): TipoDeGuia[] =>
+  grupoDoControle(grupo).colunas.map(c => ({ coluna: c.id, rotulo: c.rotulo, tipo: tipoDaColuna(grupo, c.id) }));
+
+/**
+ * O tipo (a pasta) que vale da guia depois de uma escolha na revisão. Escolhido um tipo no menu (coluna, '' = sem coluna):
+ * o da coluna no grupo da empresa; sem pasta para ela (sem coluna, IBS, CBS), o que o leitor achou; senão OUTRO (sem pasta
+ * no Drive, só vai no envio). Mudou só o cliente ou o mês (coluna undefined): o que já estava escolhido, senão o lido.
+ * Antes, a guia sem tipo lido que ganhava o cliente primeiro ficava OUTRO mesmo depois de escolher a coluna.
+ */
+export function tipoDaEscolha(p: { grupo: GrupoDoControleId; coluna?: string; lido?: string; anterior?: string }): string {
+  if (p.coluna === undefined) return p.anterior || p.lido || 'OUTRO';
+  return tipoDaColuna(p.grupo, p.coluna) || p.lido || 'OUTRO';
+}
 
 /** Em que pé a linha está: entregue (com a entrega escolhida), começada (algo escrito) ou em branco */
 export function situacaoDaLinha(l: LinhaDoControle | undefined): 'entregue' | 'comecada' | 'branco' {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linhasDoProtocolo } from './protocoloDeTributos';
-import { adicionarRetificacao, alternarRetificacaoDaLinha, cabeRetificacao, guardarRetificacao, linhaRetificada, MAX_RETIFICACOES, quadroDeRetificacao, referenciaDaRetificacao, removerRetificacao, retificacaoEmBranco, situacaoDaRetificacao, colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
+import { adicionarRetificacao, alternarRetificacaoDaLinha, cabeRetificacao, guardarRetificacao, linhaRetificada, MAX_RETIFICACOES, quadroDeRetificacao, referenciaDaRetificacao, removerRetificacao, retificacaoEmBranco, situacaoDaRetificacao, colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle, grupoDoRegime, grupoDaGuia, tipoDaColuna, tiposDeGuiaDoGrupo, tipoDaEscolha } from './controleDeTributos';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
@@ -208,5 +208,50 @@ describe('o quadro de retificação do Relatório (16/11/2026: o botão como o d
     expect(situacaoDaRetificacao(r)).toBe('branco');
     expect(situacaoDaRetificacao({ ...r, marcas: { s: 'ok' } })).toBe('comecada');
     expect(situacaoDaRetificacao({ ...r, entregue: 'email' })).toBe('entregue');
+  });
+});
+
+describe('os tipos de guia do Enviar guias pelo regime da empresa (26/11/2026)', () => {
+  it('o grupo vem do regime: Simples no Simples; Presumido e Real no Presumido; o resto fica com o do lote', () => {
+    expect(grupoDoRegime('Simples')).toBe('sn');
+    expect(grupoDoRegime('SIMPLES NACIONAL')).toBe('sn');
+    expect(grupoDoRegime('Presumido')).toBe('lp');
+    expect(grupoDoRegime('LUCRO PRESUMIDO')).toBe('lp');
+    expect(grupoDoRegime('Lucro Real')).toBe('lp');
+    expect(grupoDoRegime('MEI')).toBeNull();
+    expect(grupoDoRegime('')).toBeNull();
+    expect(grupoDoRegime(undefined)).toBeNull();
+    // a empresa do Simples no lote aberto no Presumido usa o Simples; sem regime, o do lote
+    expect(grupoDaGuia('Simples', 'lp')).toBe('sn');
+    expect(grupoDaGuia('Presumido', 'sn')).toBe('lp');
+    expect(grupoDaGuia(null, 'lp')).toBe('lp');
+  });
+
+  it('cada grupo mostra só os tipos dele, com a coluna e a pasta', () => {
+    const lp = tiposDeGuiaDoGrupo('lp');
+    expect(lp.map(x => x.rotulo)).toEqual(['PIS', 'COFINS', 'IRPJ', 'CSLL', 'ICMS', 'ISS', 'IBS', 'CBS', 'Parcelamento']);
+    expect(lp.map(x => x.tipo)).toEqual(['DARF', 'DARF', 'DARF', 'DARF', 'DAE', 'DAM', '', '', 'DARF']);
+    const sn = tiposDeGuiaDoGrupo('sn');
+    expect(sn.map(x => x.coluna)).toEqual(['das', 'icms-ant', 'icms-arroz', 'icms-dif', 'icms-dif-ativo', 'st-ent', 'st-sai', 'parc']);
+    expect(sn.map(x => x.tipo)).toEqual(['DAS', 'DAE', 'DAE', 'DAE', 'DAE', 'DAE', 'DAE', 'DAS']);
+    // nenhum tipo de um grupo aparece no outro (o parcelamento existe nos dois, com a pasta de cada um)
+    expect(sn.some(x => ['pis', 'cofins', 'irpj', 'csll', 'iss', 'ibs', 'cbs'].includes(x.coluna))).toBe(false);
+    expect(lp.some(x => x.coluna === 'das' || x.coluna.startsWith('st-'))).toBe(false);
+    expect(tipoDaColuna('sn', 'pis')).toBe('');
+    expect(tipoDaColuna('lp', 'das')).toBe('');
+  });
+
+  it('o tipo que vale depois da escolha: o da coluna escolhida, senão o lido, senão OUTRO', () => {
+    // a guia sem tipo lido que ganhou o cliente antes (OUTRO) passa a DAE ao escolher o ICMS-ST
+    expect(tipoDaEscolha({ grupo: 'sn', coluna: 'st-ent', lido: '', anterior: 'OUTRO' })).toBe('DAE');
+    expect(tipoDaEscolha({ grupo: 'sn', coluna: 'parc', lido: '' })).toBe('DAS');
+    expect(tipoDaEscolha({ grupo: 'lp', coluna: 'parc', lido: '' })).toBe('DARF');
+    // sem coluna ou sem pasta (IBS): fica o lido; sem lido, OUTRO
+    expect(tipoDaEscolha({ grupo: 'lp', coluna: '', lido: 'DARF' })).toBe('DARF');
+    expect(tipoDaEscolha({ grupo: 'lp', coluna: 'ibs', lido: '' })).toBe('OUTRO');
+    // mudou só o cliente ou o mês: o que já estava (o OUTRO da Antecipação ICMS-ES continua OUTRO)
+    expect(tipoDaEscolha({ grupo: 'lp', lido: 'DAE', anterior: 'OUTRO' })).toBe('OUTRO');
+    expect(tipoDaEscolha({ grupo: 'lp', lido: 'DAE' })).toBe('DAE');
+    expect(tipoDaEscolha({ grupo: 'lp' })).toBe('OUTRO');
   });
 });

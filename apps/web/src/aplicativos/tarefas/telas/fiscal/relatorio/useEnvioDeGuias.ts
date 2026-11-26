@@ -18,6 +18,7 @@ import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, typ
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
 import { useSepararPorCliente } from '../../ferramentas/useSepararPorCliente';
 import { useGuardado } from '../../../../../comum/guardado';
+import { useListaDoCadastro } from '../../cadastro/escolher/useListaDoCadastro';
 
 const MAX_ARQUIVOS = 150;
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -40,14 +41,21 @@ function abrirNaAba(nome: string, endereco: () => Promise<string>, falhou: (moti
   });
 }
 
-/** o que vale da guia: a escolha da revisão sobre a leitura do robô (cliente 0 = ainda não escolhido) */
-export function efetivoDaGuia(a: GuiaDoLote, grupo: RegimeDoRelatorio) {
+/**
+ * o que vale da guia: a escolha da revisão sobre a leitura do robô (cliente 0 = ainda não escolhido). O grupo é o do regime
+ * do cliente (26/11/2026: "o robo vai identificar pela empres e vai trocar o layout de envio variando isso"): a empresa do
+ * Presumido mostra os tipos do Presumido e a do Simples os do Simples, seja qual for o relatório onde o lote foi aberto.
+ */
+export function efetivoDaGuia(a: GuiaDoLote, grupoDe: (codigo: number | null) => t.GrupoDoControleId) {
   const l = a.leitura;
   const e = a.escolha;
+  const codigo = e && e.cliente > 0 ? e.cliente : l?.cliente ?? null;
+  const grupo = grupoDe(codigo);
   return {
-    codigo: e && e.cliente > 0 ? e.cliente : l?.cliente ?? null,
+    codigo,
     competencia: (e && e.competencia) || l?.competencia || '',
     tipo: (e && e.tipo) || l?.tipo || '',
+    grupo,
     coluna: colunaQueVale(a, grupo),
     escolhido: !!e && (e.cliente !== (l?.cliente ?? 0) || e.competencia !== (l?.competencia || '')),
   };
@@ -130,6 +138,11 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     whatsapp: financeiro.telefoneParaWhatsapp(cadastros.porId.get(formatos.slug(e.nome))?.contato?.whatsapp || contatosDoEntregas.get(e.codigo as number)?.whatsapp || (repo.exemplos ? '11999990000' : '')),
   })).sort((a, b) => a.codigo - b.codigo);
   const doCodigo = new Map(clientes.map(c => [c.codigo, c]));
+  // o regime de cada empresa no Cadastro do nads (o mesmo que separa as empresas do Relatório): o grupo de cada guia
+  const listaDoCadastro = useListaDoCadastro();
+  const regimeDe = new Map(listaDoCadastro.linhas.filter(l => l.codigo != null).map(l => [l.codigo as number, l.regime]));
+  const grupoDe = (codigo: number | null) => t.grupoDaGuia(codigo != null ? regimeDe.get(codigo) : '', grupo);
+  const efetivo = (a: GuiaDoLote) => efetivoDaGuia(a, grupoDe);
 
   // a revisão: as lidas por cliente e competência; as que faltam escolher; as tiradas; as que deram erro
   const porChave = new Map<string, { codigo: number; competencia: string; arquivos: GuiaDoLote[] }>();
@@ -140,7 +153,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     if (a.status === 'erro') { if (!escondidas.includes(a.id)) comErro.push(a); continue; }
     if (a.status !== 'lido') continue;
     if (a.fora) { if (!escondidas.includes(a.id)) tirados.push(a); continue; }
-    const x = efetivoDaGuia(a, grupo);
+    const x = efetivo(a);
     if (x.codigo == null || !x.competencia) { faltam.push(a); continue; }
     const chave = x.codigo + '_' + x.competencia;
     if (!porChave.has(chave)) porChave.set(chave, { codigo: x.codigo, competencia: x.competencia, arquivos: [] });
@@ -161,7 +174,9 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   };
   const grupos = [...porChave.entries()].map(([chave, g]) => {
     const email = doCodigo.get(g.codigo)?.email || '';
-    return { chave, ...g, nome: doCodigo.get(g.codigo)?.nome || '', email, whatsapp: doCodigo.get(g.codigo)?.whatsapp || '', via: viaDe(g.codigo, g.competencia, email), resultado: resultadoDe.get(chave) || null };
+    // o grupo do regime da empresa; o do outro relatório aparece na linha (o robô preenche lá)
+    const doCliente = grupoDe(g.codigo);
+    return { chave, ...g, grupo: doCliente, outroRelatorio: doCliente !== grupo ? t.grupoDoControle(doCliente).rotulo : '', nome: doCodigo.get(g.codigo)?.nome || '', email, whatsapp: doCodigo.get(g.codigo)?.whatsapp || '', via: viaDe(g.codigo, g.competencia, email), resultado: resultadoDe.get(chave) || null };
   }).sort((a, b) => a.codigo - b.codigo || a.competencia.localeCompare(b.competencia));
   const pendentes = grupos.filter(g => g.resultado?.status !== 'enviado');
 
@@ -169,7 +184,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const [competenciaEnviados, setCompetenciaEnviados] = useState(competenciaDaTela);
   const doMes = repo.enviados(competenciaEnviados);
   const enviados = doMes.lista.filter(x => x.grupo === grupo);
-  const rotuloDaColuna = (c: string) => CURTO[c] || doGrupo.colunas.find(x => x.id === c)?.rotulo || c;
+  const rotuloDaColuna = (c: string) => CURTO[c] || t.GRUPOS_DO_CONTROLE.flatMap(g => g.colunas).find(x => x.id === c)?.rotulo || c;
 
   // o modelo do e-mail e a prévia com um cliente do lote
   const modelo = repo.modelo();
@@ -227,16 +242,27 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     competenciaDoLote,
     subindo,
     disparando,
-    /** as colunas do Relatório para escolher (e "sem coluna") */
-    colunas: [...doGrupo.colunas.map(c => ({ valor: c.id, rotulo: c.rotulo })), { valor: '', rotulo: 'Sem coluna (só vai no e-mail)' }],
+    /** o que vale da guia, com o grupo do regime da empresa */
+    efetivo,
+    /**
+     * os tipos para escolher na guia (26/11/2026): só os do grupo do regime da empresa (no Presumido PIS, COFINS, IRPJ, CSLL,
+     * ICMS, ISS, IBS, CBS e o parcelamento; no Simples as colunas do Simples), cada um com a coluna do Relatório, e "outro"
+     */
+    tiposDe(a: GuiaDoLote) {
+      const g = efetivo(a).grupo;
+      return { grupo: t.grupoDoControle(g).rotulo, lista: [...t.tiposDeGuiaDoGrupo(g).map(x => ({ valor: x.coluna, rotulo: x.rotulo })), { valor: '', rotulo: 'Outro (só vai no envio, sem coluna)' }] };
+    },
+    /** os tipos de cada grupo, para o texto do subir (o nome curto da coluna) */
+    tiposPorGrupo: t.GRUPOS_DO_CONTROLE.map(g => ({ rotulo: g.rotulo, tipos: t.tiposDeGuiaDoGrupo(g.id).map(x => CURTO[x.coluna] || x.rotulo) })),
     rotuloDaColuna,
     /** o que a guia leva ao Relatório: 'DAS · 1.234,56', ou por que não leva */
     noRelatorio(a: GuiaDoLote): { coluna: string; valor: string; dividida: boolean } {
-      const partes = valoresDaGuia(a, grupo);
+      const doCliente = efetivo(a).grupo;
+      const partes = valoresDaGuia(a, doCliente);
       const texto = (v: number) => t.valorDoControle(v.toFixed(2).replace('.', ','));
       // o DARF de PIS e COFINS juntos (05/11/2026): 'PIS + COFINS' e '19,50 + 90,00'
       if (partes.length > 1) return { coluna: partes.map(p => rotuloDaColuna(p.coluna)).join(' + '), valor: partes.map(p => texto(p.valor)).join(' + '), dividida: true };
-      const c = colunaQueVale(a, grupo);
+      const c = colunaQueVale(a, doCliente);
       const v = valorDaGuia(a.leitura?.valor);
       return { coluna: c ? rotuloDaColuna(c) : '', valor: v != null ? texto(v) : '', dividida: false };
     },
@@ -360,15 +386,15 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
         return true;
       } catch (e) { toast('Não consegui subir: ' + (e instanceof Error ? e.message : String(e))); return false; } finally { setSubindo(null); }
     },
-    /** a escolha da revisão: o que mudar (cliente, coluna ou competência) vale sobre o que o robô leu */
+    /** a escolha da revisão: o que mudar (cliente, tipo/coluna ou competência) vale sobre o que o robô leu */
     async escolher(arquivo: GuiaDoLote, mudar: Partial<EscolhaDaGuia>) {
       if (!atual) return;
-      const x = efetivoDaGuia(arquivo, grupo);
+      const x = efetivo(arquivo);
       const coluna = mudar.coluna ?? (arquivo.escolha?.coluna ?? undefined);
       const escolha: EscolhaDaGuia = {
         cliente: mudar.cliente ?? (x.codigo || 0),
-        // a guia sem tipo lido vai para a pasta do tipo da coluna escolhida (o DAS, a DARF, o DAE ou o DAM)
-        tipo: mudar.tipo ?? (x.tipo || (coluna ? t.TIPO_DA_COLUNA[coluna] : '') || 'OUTRO'),
+        // o tipo escolhido no menu leva a pasta dele, no grupo da empresa (o DAS, a DARF, o DAE ou o DAM); mudou só o cliente ou o mês, fica o que estava
+        tipo: mudar.tipo ?? t.tipoDaEscolha({ grupo: grupoDe(mudar.cliente ?? x.codigo), coluna: mudar.coluna, lido: arquivo.leitura?.tipo || '', anterior: arquivo.escolha?.tipo || '' }),
         competencia: mudar.competencia ?? (x.competencia || competenciaDoLote),
         ...(coluna != null ? { coluna } : {}),
       };
@@ -404,8 +430,8 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
           (noEcontador ? noEcontador + (noEcontador === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = eContador (as guias no Drive, para postar no eContador). ' : '') +
           (noSci ? noSci + (noSci === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = SCI Report (as guias no Drive, para mandar pelo SCI Report). ' : '') +
           (noZap ? noZap + (noZap === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = WhatsApp (a mensagem vai pelo "Abrir no WhatsApp" de cada um). ' : '') +
-          'O robô grava cada guia na pasta do cliente no Drive e preenche o ' + doGrupo.rotulo +
-          ' no Relatório: o valor de cada coluna e o Entregue (e-mail, com a data, impresso, eContador, SCI Report ou WhatsApp), só onde está em branco.' +
+          'O robô grava cada guia na pasta do cliente no Drive e preenche o Relatório do regime de cada empresa (' +
+          [...new Set(pendentes.map(g => t.grupoDoControle(g.grupo).rotulo))].join(' e ') + '): o valor de cada coluna e o Entregue (e-mail, com a data, impresso, eContador, SCI Report ou WhatsApp), só onde está em branco.' +
           (semEmail ? ' ' + semEmail + (semEmail === 1 ? ' cliente está' : ' clientes estão') + ' sem e-mail e vai dar erro.' : '') +
           (semZap ? ' ' + semZap + (semZap === 1 ? ' cliente do WhatsApp está' : ' clientes do WhatsApp estão') + ' sem número no Cadastro e no Entregas.' : '') +
           (faltam.length ? ' ' + faltam.length + (faltam.length === 1 ? ' guia sem cliente fica' : ' guias sem cliente ficam') + ' de fora.' : ''),

@@ -61,9 +61,6 @@ export function AppTarefas() {
   // os planos de contas do SCI gravados pelo escritório (26/11/2026) entram no core logo na abertura: o minimum, o Cadastro e a
   // planilha do SCI já usam o plano atualizado
   useEffect(() => { repoDosPlanosSci().atual(); }, []);
-  // a Tarefas marca a página para o zoom das telas médias (25/11/2026: "nesse monitor de 1366x768 parece ta tudo meio grande, ajuste
-  // isso"): o CSS põe a página a 90% de 1100 a 1439px de largura (html[data-tarefas], nads.css); os outros sites do nads não mudam
-  useEffect(() => { document.documentElement.setAttribute('data-tarefas', ''); return () => document.documentElement.removeAttribute('data-tarefas'); }, []);
 
   // no banco: sem conta (ou conta sem departamento), só a entrada
   const operador = sessao?.usuario ? operadorDaConta(sessao.usuario) : null;
