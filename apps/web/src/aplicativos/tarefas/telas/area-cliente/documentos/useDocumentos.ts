@@ -7,14 +7,19 @@ import { areaCliente as ac } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useAreaCliente, useDriveDoEntregas } from '../../../dados/repo';
+import { extrator, tarefas as t } from '@nads/core';
+import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { useAreaCliente, useDriveDoEntregas, useGmailDoEntregas } from '../../../dados/repo';
 import { useEmpresasDaPessoa } from '../base/useEmpresasDaPessoa';
 import type { RecebidoDoCliente } from '../../../dados/areaCliente';
-import { enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro, rotuloDaArea, type FiltroDosRecebidos } from '../../../dados/documentosDaArea';
+import { areaPeloNome, cnpjsDoTexto, empresaDoArquivo, enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro, rotuloDaArea, type FiltroDosRecebidos } from '../../../dados/documentosDaArea';
 import { bate, dataEHora, haQuanto, mensagemDoErro } from '../base/comum';
 import { useEnviarAoCliente, type EmpresaParaEnviar } from '../base/useEnviarAoCliente';
 import { usePreviaDoRecebido } from './usePreviaDoRecebido';
 import { baixarArquivo } from '../../../../cliente/dados/baixar';
+
+// o pdf.js lê o CNPJ do PDF para achar a empresa (como o Subir a guia do Executor)
+extrator.definirWorkerDoPdf(workerDoPdf);
 
 export type AbaDosDocumentos = 'recebidos' | 'enviados';
 
@@ -67,6 +72,25 @@ export function useDocumentos() {
   const [enviando, setEnviando] = useState(false);
   const [empresa, setEmpresa] = useState<EmpresaParaEnviar | null>(null);
   const [area, setArea] = useState<ac.AreaDoEscritorio>('societario');
+  // a empresa e a área pelo próprio arquivo (26/11/2026, o dono: "ele tem que detectar isso automatico, cliente e setor"):
+  // a área pelo nome; a empresa pelo CNPJ do PDF (ou o código/nome no nome do arquivo), só entre as que têm Área do Cliente.
+  // A pessoa ainda troca
+  const gmail = useGmailDoEntregas();
+  const [adivinhado, setAdivinhado] = useState('');
+  async function adivinhar(f: File) {
+    const a = areaPeloNome(f.name);
+    if (a) setArea(a);
+    let cnpjs: string[] = [];
+    if (/\.pdf$/i.test(f.name) && f.size <= ac.MAIOR_ENVIO_AO_CLIENTE) {
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        if (extrator.ehPdf(bytes)) cnpjs = cnpjsDoTexto(t.linhasDasPaginas(await extrator.itensDoPdf(bytes)).map(l => l.join(' ')).join(' '));
+      } catch { /* sem leitura: fica o nome do arquivo */ }
+    }
+    const e = empresaDoArquivo(empresas, f.name, cnpjs, gmail.documentos());
+    setEmpresa(atual => atual ?? e);
+    setAdivinhado([e ? 'a empresa' : '', a ? 'a área' : ''].filter(Boolean).join(' e '));
+  }
   const [arquivo, setArquivo] = useState<File | null>(null);
   // só as empresas com link: o robô do PC só publica a pasta DO ESCRITÓRIO de quem tem acesso (revisão de 26/11/2026)
   const comLink = repo.links().lista;
@@ -142,11 +166,13 @@ export function useDocumentos() {
     // o enviar ao cliente
     enviar: {
       aberta: enviando,
-      abrir(paraEmpresa?: EmpresaParaEnviar) { setEnviando(true); setEmpresa(paraEmpresa ?? null); setArquivo(null); setArea('societario'); envio.limpar(); },
+      abrir(paraEmpresa?: EmpresaParaEnviar) { setEnviando(true); setEmpresa(paraEmpresa ?? null); setArquivo(null); setArea('societario'); setAdivinhado(''); envio.limpar(); },
       fechar() { if (!envio.ocupado) { setEnviando(false); envio.limpar(); } },
       empresas, empresa, setEmpresa,
       area, setArea, areas: ac.AREAS_DO_ESCRITORIO,
-      arquivo, setArquivo: (f: File | null) => { setArquivo(f); envio.limpar(); },
+      arquivo, setArquivo: (f: File | null) => { setArquivo(f); envio.limpar(); if (f) void adivinhar(f); },
+      /** o que foi adivinhado pelo arquivo ("Empresa e área pelo arquivo; confira") */
+      adivinhado,
       erroDoArquivo: arquivo ? ac.erroDoEnvioAoCliente({ nome: arquivo.name, tamanho: arquivo.size }) : '',
       tamanho: arquivo ? ac.tamanhoLegivel(arquivo.size) : '',
       andamento: envio.andamento,

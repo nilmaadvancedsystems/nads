@@ -188,21 +188,21 @@ function JanelaDeEnviar({ vm }: { vm: Vm }) {
       {pronto ? (
         <Vazio compacto icone="checkCircle" titulo="Enviado" texto={'“' + a.nomeFinal + '” está na pasta da ' + (v.empresa?.nome ?? 'empresa') + '. O cliente vê em Documentos › Do escritório em até 30 minutos.'} />
       ) : <>
-        <div className="field">
-          <span className="field-rotulo">Empresa</span>
-          <BuscaDeEmpresa empresas={v.empresas} escolhida={v.empresa} onEscolher={v.setEmpresa} autoFocus={!v.empresa} />
-          <small className="hint">Só as empresas com acesso à Área do Cliente.</small>
-        </div>
-        <div className="field">
-          <span className="field-rotulo">Área</span>
-          <Segmentado valor={v.area} onMudar={v.setArea} opcoes={v.areas.map(x => ({ valor: x.valor, rotulo: x.rotulo }))} />
-        </div>
         {/* o arquivo com a peça "Escolher arquivos" do nads (fora do .field: a regra do .field label deforma o quadro) */}
         <div>
           <span className="field-rotulo">Arquivo</span>
           <CampoArquivo aceitar="*" arquivo={v.arquivo} onEscolher={f => v.setArquivo(f)} desabilitado={v.ocupado} />
           <p className="hint" style={{ marginTop: 6 }}>{v.arquivo ? v.tamanho + ' · ' : ''}Até 5 MB. Holerite não vai por aqui.</p>
           {v.erroDoArquivo && <p className="hint registro-dica-erro" role="alert">{v.erroDoArquivo}</p>}
+        </div>
+        <div className="field">
+          <span className="field-rotulo">Empresa</span>
+          <BuscaDeEmpresa empresas={v.empresas} escolhida={v.empresa} onEscolher={v.setEmpresa} />
+          <small className="hint">{v.adivinhado ? 'Preenchido pelo arquivo: ' + v.adivinhado + '. Confira antes de enviar.' : 'Vem sozinha pelo arquivo, quando dá. Só as empresas com acesso à Área do Cliente.'}</small>
+        </div>
+        <div className="field">
+          <span className="field-rotulo">Área</span>
+          <Segmentado valor={v.area} onMudar={v.setArea} opcoes={v.areas.map(x => ({ valor: x.valor, rotulo: x.rotulo }))} />
         </div>
         {a.fase === 'enviando' && <p className="hint" role="status">{a.texto}</p>}
         {a.fase === 'erro' && <p className="hint registro-dica-erro" role="alert">{a.texto}</p>}

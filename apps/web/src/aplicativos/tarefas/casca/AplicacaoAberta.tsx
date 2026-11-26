@@ -52,7 +52,6 @@ const BaixarDoSieg = pedaco(() => import('../telas/fiscal/sieg/BaixarDoSieg'), '
 const CalculadoraDoSimples = pedaco(() => import('../telas/fiscal/simples/CalculadoraDoSimples'), 'CalculadoraDoSimples');
 const TabelasDaReforma = pedaco(() => import('../telas/fiscal/reforma/TabelasDaReforma'), 'TabelasDaReforma');
 const ConfiguracoesDoDp = pedaco(() => import('../telas/dp/ConfiguracoesDoDp'), 'ConfiguracoesDoDp');
-const Mandei = pedaco(() => import('../telas/mandei/Mandei'), 'Mandei');
 // a Área do Cliente refeita (26/11/2026): as cinco seções
 const HojeDaArea = pedaco(() => import('../telas/area-cliente/hoje/Hoje'), 'Hoje');
 const SolicitacoesDaArea = pedaco(() => import('../telas/area-cliente/solicitacoes/Solicitacoes'), 'Solicitacoes');
@@ -90,9 +89,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     // as Configurações (28/10/2026): a Equipe e as páginas do admin (as Empresas têm rota própria, CadastroAberto)
     case 'cadastro': return pagina === 'usuarios' ? <UsuariosDoNads /> : pagina === 'releitura' ? <ReleituraDosExtratos /> : <TelaDoAdmin pagina={pagina as IdPaginaAdmin} />;
-    // a Área do Cliente refeita (26/11/2026): Hoje, Solicitações, Documentos, Comunicados e Clientes; o Mandei é à parte
+    // a Área do Cliente refeita (26/11/2026): Hoje, Solicitações, Documentos, Comunicados e Clientes; o Mandei saiu (26/11/2026)
     case 'area-cliente': return pagina === 'solicitacoes' ? <SolicitacoesDaArea /> : pagina === 'documentos' ? <DocumentosDaArea /> : pagina === 'comunicados' ? <ComunicadosAosClientes /> : pagina === 'clientes' ? <ClientesDaArea /> : <HojeDaArea />;
-    case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'financeiro': return <LoginLiberadoNoFinanceiro>{pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'pagar' ? <ContasAPagar /> : pagina === 'comissoes-equipe' ? <ComissoesDaEquipe /> : pagina === 'holerites-equipe' ? <EnviarHolerites /> : pagina === 'insumos-equipe' ? <Insumos /> : pagina === 'equipe' ? <EquipeDoFinanceiro /> : pagina === 'boletos' ? <Boletos /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />}</LoginLiberadoNoFinanceiro>;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
@@ -122,7 +120,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
 /** os endereços da Área do Cliente antes de 26/11/2026 e para onde levam agora */
 const AREA_CLIENTE_ANTES: Record<string, string> = {
   chamados: caminhoDaPagina('area-cliente', 'solicitacoes'), recebidos: caminhoDaPagina('area-cliente', 'documentos'),
-  meus: caminhoDaPagina('mandei', 'meus'), central: caminhoDaPagina('mandei', 'central'),
+  meus: caminhoDaPagina('area-cliente', 'hoje'), central: caminhoDaPagina('area-cliente', 'hoje'),
 };
 
 export function AplicacaoAberta() {
@@ -140,6 +138,8 @@ export function AplicacaoAberta() {
   if (app === 'minhas-tarefas' || (app === 'inicio' && ['minhas', 'delegadas', 'concluidas'].includes(pagina))) return <Navigate to={BASE + '/inicio?aba=' + (pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas')} replace />;
   // a Área do Cliente refeita (26/11/2026): os endereços de antes levam para a seção nova; o Mandei voltou a ser aplicação
   if (app === 'area-cliente' && AREA_CLIENTE_ANTES[pagina]) return <Navigate to={AREA_CLIENTE_ANTES[pagina]} replace />;
+  // o Mandei saiu (26/11/2026: "remove o madei"): o endereço dele leva para a Área do Cliente
+  if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', 'hoje')} replace />;
   // as Comissões da equipe e o Enviar holerites saíram da Carteira para o Financeiro (12/11/2026): os links antigos levam para lá
   if (app === 'carteira' && CARTEIRA_PARA_O_FINANCEIRO[pagina]) return <Navigate to={caminhoDaPagina('financeiro', CARTEIRA_PARA_O_FINANCEIRO[pagina])} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);

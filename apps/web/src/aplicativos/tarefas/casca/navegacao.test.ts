@@ -64,9 +64,9 @@ describe('a Área do Cliente para toda a equipe, o Fiscal também (26/11/2026, o
     expect(vê(op('pleno'))).toBe(true);
     expect(vê({ ...op('pleno'), departamento: 'dp' })).toBe(true);
   });
-  it('as cinco seções; o Mandei é outra aplicação', () => {
+  it('as cinco seções; o Mandei saiu da gaveta (26/11/2026: "remove o madei")', () => {
     expect(paginas(op('pleno'))).toEqual(['hoje', 'solicitacoes', 'documentos', 'comunicados', 'clientes']);
-    expect(aplicacoesDe(op('pleno')).find(a => a.id === 'mandei')?.paginas.map(p => p.id)).toEqual(['meus', 'central']);
+    expect(aplicacoesDe(op('pleno')).some(a => a.id === 'mandei')).toBe(false);
   });
 });
 
