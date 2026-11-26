@@ -92,8 +92,10 @@ export function lerPessoal(x: unknown): ac.ResumoDoPessoal | null {
       id: texto(c.id), nome: texto(c.nome).trim().slice(0, 120), cpf: /^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto(c.cpf)) ? texto(c.cpf) : '',
       tipo: texto(c.tipo).slice(0, 60), entrada: /^\d{4}-\d{2}-\d{2}$/.test(texto(c.entrada)) ? texto(c.entrada) : '', situacao: texto(c.situacao).slice(0, 40),
     }));
+  // os cargos da empresa no RH NET (26/11/2026): só texto curto
+  const rhnetCargos = lista(r.rhnetCargos).map(c => texto(c).trim().slice(0, 80)).filter(Boolean).slice(0, 300);
   return { funcionarios, competencia: COMPETENCIA.test(texto(r.competencia)) ? texto(r.competencia) : '', total: typeof r.total === 'number' ? r.total : 0,
-    ...(historico.length ? { historico } : {}), ...(rhnet.length ? { rhnet } : {}), atualizadoEm: instante(r.atualizadoEm) };
+    ...(historico.length ? { historico } : {}), ...(rhnet.length ? { rhnet } : {}), ...(rhnetCargos.length ? { rhnetCargos } : {}), atualizadoEm: instante(r.atualizadoEm) };
 }
 
 const numeroOuNulo = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);

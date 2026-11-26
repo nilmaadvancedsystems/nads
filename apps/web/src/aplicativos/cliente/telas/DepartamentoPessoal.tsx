@@ -134,8 +134,13 @@ function CalendarioDasFerias({ pedido, hoje, aoMarcar }: { pedido: PedidoDeFeria
  *  (13/11/2026: "melhore visualmente esses dois, principalmente a parte de programar férias"): as férias escolhem a pessoa
  *  por cartões (com o selo das férias de cada um), os dias em botões e mostram a conta (o pagamento, de quando a quando e a
  *  volta); a admissão tem a foto no alto, os campos em dois blocos e o prazo do eSocial pela data. */
-export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar }: { pedido: Pedido; inicial: DadosDoPedido; erro: string; nomes: string[]; equipe: PessoaDasFerias[]; hoje: Date; aoMudar: (d: DadosDoPedido) => void }) {
+/** a opção do Cargo para escrever um que não está no sistema de folha */
+const OUTRO_CARGO = 'Outro cargo (escrever)';
+
+export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar, cargos = [] }: { pedido: Pedido; inicial: DadosDoPedido; erro: string; nomes: string[]; equipe: PessoaDasFerias[]; hoje: Date; aoMudar: (d: DadosDoPedido) => void; cargos?: string[] }) {
   const [d, setD] = useState(inicial);
+  // o Cargo escrito à mão (sem a lista do sistema de folha, ou escolhido "Outro cargo")
+  const [cargoLivre, setCargoLivre] = useState(() => !!(inicial as PedidoDeAdmissao).cargo && !cargos.includes((inicial as PedidoDeAdmissao).cargo));
   // pelo valor de antes (duas mudanças seguidas não se atropelam)
   const mudar = (m: Partial<PedidoDeAdmissao & PedidoDeFerias & PedidoDeDemissao>) => setD(antes => { const novo = { ...antes, ...m } as DadosDoPedido; aoMudar(novo); return novo; });
   const a = d as PedidoDeAdmissao, f = d as PedidoDeFerias, x = d as PedidoDeDemissao;
@@ -161,7 +166,18 @@ export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMud
           <div className="field"><label htmlFor="cli-nasc">Data de nascimento</label><CampoData id="cli-nasc" rotulo="Data de nascimento" valor={a.nascimento ?? ''} onMudar={v => mudar({ nascimento: v })} /></div>
           <div className="field"><label htmlFor="cli-pis">PIS <span className="cli-pf-opc">opcional</span></label><input id="cli-pis" type="text" inputMode="numeric" value={a.pis ?? ''} onChange={e => mudar({ pis: e.target.value })} placeholder="000.00000.00-0" /></div>
           <p className="cli-pf-rotulo cli-largo">O trabalho</p>
-          <div className="field"><label htmlFor="cli-cargo">Cargo</label><input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} placeholder="Ex.: Auxiliar administrativo" /></div>
+          {/* (26/11/2026: "funcao selecionavel puxando do rh net pois os cargos sao variaveis e criados por empresa") com os
+              cargos da empresa no sistema de folha, escolhe da lista; "Outro cargo" abre o campo para escrever */}
+          {cargos.length > 0 ? (
+            <div className="field">
+              <label>Cargo</label>
+              <CampoEscolha rotulo="Cargo" valor={cargoLivre ? OUTRO_CARGO : a.cargo} opcoes={[...cargos, OUTRO_CARGO]}
+                onMudar={v => { if (v === OUTRO_CARGO) { setCargoLivre(true); mudar({ cargo: '' }); } else { setCargoLivre(false); mudar({ cargo: v }); } }} />
+              {cargoLivre && <input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} placeholder="Escreva o cargo" aria-label="Outro cargo" />}
+            </div>
+          ) : (
+            <div className="field"><label htmlFor="cli-cargo">Cargo</label><input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} placeholder="Ex.: Auxiliar administrativo" /></div>
+          )}
           <div className="field">
             <label>Recebe</label>
             <CampoEscolha rotulo="Recebe" valor={a.recebePor || RECEBE_POR[0]} opcoes={RECEBE_POR} onMudar={v => mudar({ recebePor: v })} />
@@ -430,7 +446,7 @@ export function DepartamentoPessoal(props: DaCasca) {
     let atual = dados;
     const enviar = await modal<boolean>({
       titulo: TITULO[pedido],
-      corpo: <FormDoPedido pedido={pedido} inicial={dados} erro={erro} nomes={vm.nomes} equipe={vm.equipeDasFerias} hoje={vm.hoje} aoMudar={d => { atual = d; }} />,
+      corpo: <FormDoPedido pedido={pedido} inicial={dados} erro={erro} nomes={vm.nomes} equipe={vm.equipeDasFerias} hoje={vm.hoje} cargos={vm.cargos} aoMudar={d => { atual = d; }} />,
       botoes: [{ rotulo: pedido === 'admissao' ? 'Enviar ao departamento pessoal' : 'Enviar ao escritório', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!enviar) return;

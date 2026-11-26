@@ -99,6 +99,8 @@ export interface ResumoDoPessoal {
   historico?: MesDaFolha[];
   /** o cadastro no RH NET da SCI (25/11/2026; o dono: "pode mostrar do jeito que sugeriu"): sem salário, CPF mascarado */
   rhnet?: CadastroNoRhNetNaArea[];
+  /** (26/11/2026) os cargos da empresa no RH NET (as funções), para o Cargo da admissão ser escolhido da lista */
+  rhnetCargos?: string[];
   atualizadoEm: string;
 }
 

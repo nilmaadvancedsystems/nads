@@ -253,6 +253,8 @@ export function useDp({ token, area, hoje }: DaCasca) {
     baixar: (id: string) => { void baixar(id); }, baixando,
     // os pedidos
     pedir, nomes: funcionarios.filter(f => f.ativo).map(f => nomeDaPessoa(f.nome)).sort(),
+    // (26/11/2026: "funcao selecionavel puxando do rh net") os cargos da empresa no RH NET, para o Cargo da admissão
+    cargos: area.pessoal?.rhnetCargos ?? [],
     // quem pode sair de férias, para a janela (13/11/2026): a que vence primeiro no alto, com o selo de cada um
     equipeDasFerias: funcionarios.filter(f => f.ativo).map(f => ({ f, x: feriasDe.get(f.id) }))
       .sort((a, b) => (a.x ? ac.ORDEM_DAS_FERIAS[a.x.situacao] : 9) - (b.x ? ac.ORDEM_DAS_FERIAS[b.x.situacao] : 9) || a.f.nome.localeCompare(b.f.nome))

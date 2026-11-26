@@ -721,7 +721,7 @@ const CAMPOS_DO_ESPELHO = {
   recusaRecibo: ['motivo', 'em'],
   // o Registro (12/11/2026): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF mascarado) e os documentos do DP
   // (documentos/{id} com tipo 'dp'; os bytes em documentos/{id}~{n}, com 'de' = o id do documento)
-  pessoal: ['funcionarios', 'competencia', 'total', 'historico', 'rhnet', 'atualizadoEm'],
+  pessoal: ['funcionarios', 'competencia', 'total', 'historico', 'rhnet', 'rhnetCargos', 'atualizadoEm'],
   // o cadastro no RH NET da SCI (25/11/2026): sem salário, CPF mascarado
   cadastroRh: ['id', 'nome', 'cpf', 'tipo', 'entrada', 'situacao'],
   // a folha mês a mês pelas guias do FGTS (13/11/2026): só as somas, nenhum nome

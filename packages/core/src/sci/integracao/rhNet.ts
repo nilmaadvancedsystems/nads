@@ -385,3 +385,13 @@ export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCa
   const erro = erroDaAdmissao(admissao);
   return erro ? { erro } : { admissao };
 }
+
+/** Os nomes das funções do RH NET como o Cargo da admissão da Área mostra: sem repetir, em ordem, no máximo 300 (26/11/2026). */
+export function cargosParaArea(funcoes: readonly { nome: string }[] | null | undefined): string[] {
+  const nomes = new Map<string, string>();
+  for (const f of funcoes ?? []) {
+    const n = String(f?.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (n && !nomes.has(n.toUpperCase())) nomes.set(n.toUpperCase(), n);
+  }
+  return [...nomes.values()].sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 300);
+}

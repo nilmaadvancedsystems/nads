@@ -78,6 +78,7 @@ function JanelaDaSolicitacao({ vm }: { vm: ReturnType<typeof useSolicitacoes> })
   const c = vm.aberto!;
   const arquivoRef = useRef<HTMLInputElement>(null);
   const passos = vm.passosDe(c);
+  const folha = vm.folhaDe(c);
   const and = vm.andamento;
   return (
     <JanelaGrande codigo={c.codigos[0]} titulo={c.empresa} rotulo={'Solicitação ' + c.titulo} onFechar={vm.fechar}
@@ -99,6 +100,15 @@ function JanelaDaSolicitacao({ vm }: { vm: ReturnType<typeof useSolicitacoes> })
                 title={p.feito ? 'Desmarcar este passo e os seguintes' : 'Marcar este passo (e os anteriores)'}
                 onClick={() => void vm.marcarPasso(c.id, p.nome, !p.feito)}>{i + 1}. {p.nome}</button>
             ))}
+          </div>
+        )}
+
+        {/* (26/11/2026: "eu tenho que ter como aprovar pelo nads") a admissão no sistema de folha (RH NET) */}
+        {folha && (
+          <div className="registro-busca" style={{ alignItems: 'center', gap: 12 }}>
+            <Icone nome="usuario" width={16} height={16} />
+            <span style={{ flex: 1, minWidth: 0 }}><b>Sistema de folha (RH NET)</b> <span className={'badge badge-' + folha.tom}>{folha.tom === 'ok' ? 'Liberada' : folha.tom === 'warn' ? 'Não liberada' : folha.tom === 'neutral' ? 'Cadastrando' : 'Não cadastrada'}</span><br /><span className="hint">{folha.texto}</span></span>
+            {folha.podeLiberar && <button type="button" className="btn btn-primary" disabled={folha.liberando} onClick={() => void vm.liberarNaFolha(c)}>{folha.liberando ? 'Liberando…' : 'Liberar para a folha'}</button>}
           </div>
         )}
 

@@ -33,7 +33,7 @@ export interface RepoRhNet {
   /** cadastra a admissão no RH NET sem liberar (a regra confere antes de mandar) */
   pedirAdmissao(codigo: number, admissao: sci.integracao.AdmissaoParaRhNet): Promise<void>;
   /** libera para a folha do SCI (ou volta para não liberado) */
-  pedirLiberacao(codigo: number, ids: number[], situacao: 'liberado' | 'nao_liberado'): Promise<void>;
+  pedirLiberacao(codigo: number, ids: number[], situacao: 'liberado' | 'nao_liberado', chamadoId?: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
