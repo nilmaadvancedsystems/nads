@@ -247,6 +247,15 @@ export function Chamados(props: DaCasca) {
                 </div>
               )}
               <div ref={fim} aria-hidden="true" />
+              {/* (26/11/2026: "libera o cliente para digitar o que quer") o cliente escreve na própria solicitação */}
+              {s.aceitaArquivo && (
+                <div className="cli-sol-escrever">
+                  <textarea rows={2} maxLength={2000} aria-label="Escrever para o escritório" placeholder="Escreva para o escritório…" value={s.escrito}
+                    disabled={s.escrevendo} onChange={e => vm.mudarEscrito(s.id, e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); vm.escrever(s.id); } }} />
+                  <button type="button" className="btn btn-primary" disabled={s.escrevendo || !s.escrito.trim()} onClick={() => vm.escrever(s.id)}>{s.escrevendo ? 'Enviando…' : 'Enviar'}</button>
+                </div>
+              )}
               {(s.aceitaArquivo || s.whatsapp) && (
                 <div className="cli-sol-fim">
                   {s.aceitaArquivo && (

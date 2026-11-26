@@ -32,3 +32,9 @@
 .cli-sol-avaliar-feito { margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .cli-sol-estrelas-fixas { color: #e5a400; letter-spacing: 2px; }
 .cli-sol-estrelas-fixas .apagada { opacity: .3; }
+/* (26/11/2026: "libera o cliente para digitar o que quer") o campo de escrever, em cima do envio de arquivos */
+.cli-app .cli-sol-escrever { display: flex; gap: 10px; align-items: flex-end; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--cli-fio); }
+.cli-app .cli-sol-escrever textarea { flex: 1 1 auto; min-width: 0; min-height: 50px; resize: vertical; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--input-bg); color: var(--ink); font: inherit; font-size: 14px; line-height: 20px; box-shadow: var(--shadow-inset); }
+.cli-app .cli-sol-escrever textarea::placeholder { color: var(--ink-muted); }
+.cli-app .cli-sol-escrever .btn { flex: none; height: 50px; }
+.cli-app .cli-sol-escrever + .cli-sol-fim { margin-top: 0; border-top: 0; padding-top: 10px; }

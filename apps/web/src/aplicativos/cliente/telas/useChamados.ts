@@ -59,6 +59,9 @@ export function useChamados(casca: DaCasca) {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [anexando, setAnexando] = useState('');
+  // (26/11/2026: "libera o cliente para digitar o que quer") a resposta escrita do cliente dentro da solicitação
+  const [escrito, setEscrito] = useState<{ id: string; texto: string }>({ id: '', texto: '' });
+  const [escrevendo, setEscrevendo] = useState('');
   const [erroDoAnexo, setErroDoAnexo] = useState<{ id: string; texto: string }>({ id: '', texto: '' });
   const whatsapp = area.resumo?.escritorio.whatsapp;
   // a avaliação da concluída (plano do Acessórias, 18/11/2026, ficha avaliacao-do-atendimento; frase do dono: "Seguir")
@@ -106,6 +109,7 @@ export function useChamados(casca: DaCasca) {
       avaliar: c.situacao === 'concluido',
       notaDada: notas[c.id] ?? 0,
       anexando: anexando === c.id,
+      escrito: escrito.id === c.id ? escrito.texto : '', escrevendo: escrevendo === c.id,
       erroDoAnexo: erroDoAnexo.id === c.id ? erroDoAnexo.texto : '',
     };
   };
@@ -166,6 +170,20 @@ export function useChamados(casca: DaCasca) {
     } finally { setAvaliando(false); }
   }
 
+  /** o que o cliente escreveu na solicitação vai como uma resposta dele (a mesma fila dos anexos) */
+  async function escrever(id: string) {
+    const texto = escrito.id === id ? escrito.texto.trim() : '';
+    if (!texto) return;
+    setEscrevendo(id);
+    try {
+      await repoAreaCliente.responderChamado(token, id, texto);
+      setEscrito({ id: '', texto: '' });
+      toast('Mensagem enviada ao escritório.');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Não deu para enviar. Tente de novo.');
+    } finally { setEscrevendo(''); }
+  }
+
   /** os arquivos da solicitação: confere todos, manda pela caixa de envios e avisa na própria solicitação */
   async function anexar(id: string, arquivos: File[]) {
     const c = area.chamados.find(x => x.id === id);
@@ -184,6 +202,8 @@ export function useChamados(casca: DaCasca) {
   }
 
   return {
+    mudarEscrito: (id: string, texto: string) => setEscrito({ id, texto }),
+    escrever: (id: string) => void escrever(id),
     filtros: (['todas', 'abertas', 'respondidas', 'concluidas'] as const).map(f => ({
       id: f, rotulo: { todas: 'Todas', abertas: 'Abertas', respondidas: 'Respondidas', concluidas: 'Concluídas' }[f], n: contagem[f], ativo: filtro === f,
     })),
