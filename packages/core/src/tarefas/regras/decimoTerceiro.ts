@@ -26,6 +26,23 @@ export const etapasDaParcela = (parcela: ParcelaDoDecimo) =>
 export function parcelaDoDecimoPronta(ex: Execucao | null, parcela: ParcelaDoDecimo): boolean {
   return etapasDaParcela(parcela).every(etapa => { const s = estadoDa(ex, etapa)?.situacao; return s === 'feita' || s === 'dispensada'; });
 }
+/** As etapas feitas (ou dispensadas), todas. */
+const todasFeitas = (ex: Execucao | null, etapas: readonly string[]) =>
+  etapas.every(etapa => { const s = estadoDa(ex, etapa)?.situacao; return s === 'feita' || s === 'dispensada'; });
+/**
+ * A parcela pronta para ir à rota do Entregas (26/11/2026: "tem 13 que já tá marcado e não puxa lá"): só o papel que o
+ * office boy leva, os Recibos e a Folha. O eSocial, a DCTFWeb e o DARF da 2ª parcela não seguram a entrega.
+ */
+export function parcelaProntaParaEntregar(ex: Execucao | null, parcela: ParcelaDoDecimo): boolean {
+  return todasFeitas(ex, ['d13-' + parcela + '-recibos', 'd13-' + parcela + '-folha']);
+}
+/**
+ * A folha do mês pronta para ir à rota (26/11/2026: "quero poder puxar folha de pagamento também"): os Recibos de
+ * pagamento e a Folha de pagamento feitos na rotina do DP da competência (as etapas dp-recibos e dp-folha).
+ */
+export function folhaProntaParaEntregar(ex: Execucao | null): boolean {
+  return todasFeitas(ex, ['dp-recibos', 'dp-folha']);
+}
 /** A parcela que vale no mês: novembro = a 1ª; dezembro e janeiro = a 2ª (do ano que passou, em janeiro); nos outros, nenhuma. */
 export function parcelaDoMes(hoje = new Date()): { ano: number; parcela: ParcelaDoDecimo } | null {
   const m = hoje.getMonth() + 1;
