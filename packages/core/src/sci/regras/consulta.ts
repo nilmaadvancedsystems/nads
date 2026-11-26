@@ -4,7 +4,7 @@
 // ver: nada volta para o SCI.
 //
 // O SCI põe uma coluna vazia entre cada campo e o título na primeira linha; as colunas são achadas pelo título, não pela posição.
-// O valor vem como número ou como texto no jeito americano ("2,688.75"); a data, como texto ("31/10/2026") ou número do Excel.
+// O valor vem como número ou como texto no jeito americano ("2,700.00"); a data, como texto ("31/10/2026") ou número do Excel.
 import * as XLSX from 'xlsx';
 import { contaDoPlano, PLANOS_DO_SCI, planoDoSci, semAcento, type IdDoPlanoSci } from './plano';
 
@@ -50,7 +50,7 @@ export function dataDaConsulta(v: unknown): string {
 }
 
 /**
- * O valor em centavos: número, ou texto no jeito americano ("2,688.75") ou no brasileiro ("2.688,75"). O separador que vem por
+ * O valor em centavos: número, ou texto no jeito americano ("2,700.00") ou no brasileiro ("2.700,00"). O separador que vem por
  * último é o decimal; com um só, ele é o decimal quando tem até duas casas depois. NaN quando não é valor.
  */
 export function valorDaConsulta(v: unknown): number {
