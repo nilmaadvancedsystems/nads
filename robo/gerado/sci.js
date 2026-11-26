@@ -225,7 +225,8 @@ function criarClienteSciReport(deps) {
 			const d = documento.replace(/\D/g, "");
 			if (empresas.has(d)) return empresas.get(d) ?? null;
 			if (d.length !== 14 && d.length !== 11) return null;
-			const id = empresaDoSciPeloDocumento(lerEmpresasDoSci(await chamar("GET", "/api/v1/empresa/busca/?" + new URLSearchParams({ numeroDocumento: d }).toString())), d);
+			const formatado = d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+			const id = empresaDoSciPeloDocumento(lerEmpresasDoSci(await chamar("GET", "/api/v1/empresa/busca/?" + new URLSearchParams({ numeroDocumento: formatado }).toString())), d);
 			empresas.set(d, id);
 			return id;
 		},

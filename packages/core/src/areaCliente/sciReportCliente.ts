@@ -93,7 +93,10 @@ export function criarClienteSciReport(deps: { buscar: BuscarNoSci; segredos: () 
       const d = documento.replace(/\D/g, '');
       if (empresas.has(d)) return empresas.get(d) ?? null;
       if (d.length !== 14 && d.length !== 11) return null;
-      const id = empresaDoSciPeloDocumento(lerEmpresasDoSci(await chamar('GET', '/api/v1/empresa/busca/?' + new URLSearchParams({ numeroDocumento: d }).toString())), d);
+      // (26/11/2026, o primeiro DAS de teste da 590) a busca da SCI só acha o documento FORMATADO: com só os números ela
+      // responde 204 (vazio) e a guia não era publicada ("a empresa não foi achada no SCI Report pelo CNPJ")
+      const formatado = d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+      const id = empresaDoSciPeloDocumento(lerEmpresasDoSci(await chamar('GET', '/api/v1/empresa/busca/?' + new URLSearchParams({ numeroDocumento: formatado }).toString())), d);
       empresas.set(d, id);
       return id;
     },
