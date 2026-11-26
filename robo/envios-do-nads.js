@@ -355,7 +355,10 @@ async function guiaDoArquivoParaOCliente(db, nome, buffer, codigo) {
   const c = F.camposDaGuiaFiscal(d.tipo, AR.norm((entrada.texto || []).slice(0, 3).join(String.fromCharCode(10))));
   if (!c) return null;
   const competencia = L.competenciaIso(c.competencia) || (d.tipo === 'DAM' ? '' : L.competenciaIso(d.competencia));
-  return guiaDoLote({ tipo: d.tipo, tributo: c.tributo, valor: c.valor, competencia, codigo }, { vencimento: c.vencimento });
+  // o leitor dá o vencimento como "20-04-2026" e o valor como "R$220,00": a guia da Área quer "20/04/2026" (o valor o
+  // guiaDoLote já limpa)
+  const vencimento = String(c.vencimento || '').trim().replace(/^(\d{2})[-.](\d{2})[-.](\d{4})$/, '$1/$2/$3');
+  return guiaDoLote({ tipo: d.tipo, tributo: c.tributo, valor: c.valor, competencia, codigo }, { vencimento });
 }
 
 /** Grava o arquivo da equipe na pasta DO ESCRITÓRIO da empresa (pela API do Drive). Erro em português quando não dá. */
@@ -611,4 +614,4 @@ function iniciarDestinoDosEnvios(db, log) {
 }
 
 module.exports = { envioDoMandeiConferido, extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
-  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente, documentoDoEscritorioNoEspelho };
+  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente, documentoDoEscritorioNoEspelho, guiaDoArquivoParaOCliente };
