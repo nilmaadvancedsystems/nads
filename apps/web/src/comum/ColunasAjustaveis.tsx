@@ -1,7 +1,6 @@
 // Colunas com a largura ajustável (Vitor, 09/11/2026: "deixe possível os ajustes das colunas"): cada título ganha a alça da
 // grade dos meses (arrastar ajusta; duplo clique volta ao padrão). As larguras ficam neste navegador, por tabela. Uma coluna
 // é a flexível: enquanto a pessoa não mexe nela, fica com o que sobra da tela. Passando do que cabe, a tabela rola de lado.
-import { zoomDaPagina } from '@nads/ui';
 import { useState, type CSSProperties, type PointerEvent as EventoDoPonteiro } from 'react';
 
 const CHAVE = 'nads-colunas-';
@@ -38,12 +37,10 @@ export function useColunasAjustaveis(id: string, colunas: readonly ColunaAjustav
     if (!th) return;
     e.preventDefault();
     const x0 = e.clientX;
-    // a tela mede na escala dela; a largura vai em px da página (o zoom da página, zoomDaPagina)
-    const z = zoomDaPagina();
-    const w0 = th.getBoundingClientRect().width / z;
+    const w0 = th.getBoundingClientRect().width;
     let ultimo = px;
     const mover = (ev: PointerEvent) => {
-      ultimo = { ...px, [coluna]: Math.round(Math.max(MENOR, Math.min(MAIOR, w0 + (ev.clientX - x0) / z))) };
+      ultimo = { ...px, [coluna]: Math.round(Math.max(MENOR, Math.min(MAIOR, w0 + ev.clientX - x0))) };
       setEstado({ id, px: ultimo });
     };
     const soltar = () => {

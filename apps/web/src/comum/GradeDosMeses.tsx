@@ -2,7 +2,6 @@
 // meses), com a primeira coluna num tamanho que encolhe um pouco quando há mais meses; a pessoa pode arrastar a borda
 // da primeira coluna (duplo clique volta ao padrão) e, se ela crescer além do que cabe, a grade rola para o lado.
 // O tamanho escolhido fica neste navegador (preferência de quem usa). O valor no mês estreito perde o "R$" (CSS).
-import { zoomDaPagina } from '@nads/ui';
 import { useCallback, useState, type CSSProperties, type PointerEvent as EventoDoPonteiro } from 'react';
 
 const CHAVE = 'nads-grade-coluna-';
@@ -27,11 +26,9 @@ export function useColunaAjustavel(id: string, padrao: string, meses: number) {
     if (!th) return;
     e.preventDefault();
     const x0 = e.clientX;
-    // a tela mede na escala dela; a largura vai em px da página (o zoom da página, zoomDaPagina)
-    const z = zoomDaPagina();
-    const w0 = th.getBoundingClientRect().width / z;
+    const w0 = th.getBoundingClientRect().width;
     let ultimo = w0;
-    const mover = (ev: PointerEvent) => { ultimo = Math.max(60, Math.min(1200, w0 + (ev.clientX - x0) / z)); setPx(ultimo); };
+    const mover = (ev: PointerEvent) => { ultimo = Math.max(60, Math.min(1200, w0 + ev.clientX - x0)); setPx(ultimo); };
     const soltar = () => {
       window.removeEventListener('pointermove', mover);
       window.removeEventListener('pointerup', soltar);
