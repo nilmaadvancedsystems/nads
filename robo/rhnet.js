@@ -184,6 +184,67 @@ async function cadastrosParaArea(db, codigos, log = () => {}) {
   return algum ? todos : null;
 }
 
+// ---------- o pedido de admissão da Área do Cliente (o robô da nuvem) ----------
+// (25/11/2026; o dono: "pode fazer a 1") O cliente pede a admissão pela Área ("Solicitar admissão"); o robô do servidor vira
+// o pedido em chamados/{id} (tipo 'admissao'). Aqui, para a empresa ligada (config/sci.rhNet, na lista e com o token dela),
+// o pedido vai para o RH NET SEM LIBERAR: o DP confere e libera no SCI. O chamado ganha rhnet { situacao, id, erro, em }
+// (só a equipe vê; a Área não copia esse campo). Marca antes de mandar (transação): nunca manda duas vezes, nem tenta de novo
+// sozinho o que deu erro. Pedido com mais de 7 dias não vai (o religar do robô não manda os antigos).
+
+const PRAZO_DO_PEDIDO_MS = 7 * 24 * HORA_MS;
+let filaDasAdmissoes = Promise.resolve();
+
+async function atenderAdmissaoDaArea(db, ref, log = () => {}) {
+  const c = (await ref.get()).data() || {};
+  if (c.tipo !== 'admissao' || c.rhnet || !(Date.now() - Date.parse(String(c.criadoEm || '')) < PRAZO_DO_PEDIDO_MS)) return null;
+  const cfg = await SCI.config(db);
+  const codigo = Number((Array.isArray(c.codigos) ? c.codigos : [])[0]) || 0;
+  if (!cfg.rhNet || !S.empresaNoSci(cfg, codigo)) return null;
+  const t = await lerTokens().catch(() => null);
+  if (!t || !t.parceiro || !(t.empresas[String(codigo)] || {}).token) return null;
+  const marcou = await db.runTransaction(async tx => {
+    const s = await tx.get(ref);
+    if (!s.exists || s.get('rhnet')) return false;
+    tx.update(ref, { rhnet: { situacao: 'enviando', em: agora() } });
+    return true;
+  });
+  if (!marcou) return null;
+  const texto = String(((Array.isArray(c.mensagens) ? c.mensagens : [])[0] || {}).texto || '');
+  const rh = clienteDa(codigo);
+  try {
+    const r = S.admissaoDoPedidoDaArea(texto, (await rh.cadastros()).funcoes);
+    if (r.erro) {
+      await ref.update({ rhnet: { situacao: 'nao-enviado', erro: r.erro, em: agora() } });
+      log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'não foi ao RH NET -', r.erro);
+      return 'nao-enviado';
+    }
+    const criada = await rh.criarAdmissao(r.admissao);
+    await ref.update({ rhnet: { situacao: 'cadastrado', id: criada.id, em: agora() } });
+    log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'foi para o RH NET (não liberado, id', criada.id + ')');
+    // a lista da Área já mostra a pessoa "Em admissão"
+    gravadoNaNuvem.delete(codigo);
+    atualizarListasDaArea(db, log).catch(() => {});
+    return 'cadastrado';
+  } catch (err) {
+    await ref.update({ rhnet: { situacao: 'erro', erro: motivo(err), em: agora() } }).catch(() => {});
+    log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'deu erro no RH NET -', motivo(err));
+    return 'erro';
+  }
+}
+
+/** O robô da nuvem: acompanha os chamados de admissão (só os que chegam ou mudam; um de cada vez). */
+function iniciarAdmissoesDaArea(db, log = () => {}) {
+  const { ouvir } = require('./ouvinte');
+  ouvir('RH NET: admissões da Área do Cliente', () => db.collection('chamados').where('tipo', '==', 'admissao'), snap => {
+    const mudados = typeof snap.docChanges === 'function' ? snap.docChanges().filter(m => m.type !== 'removed').map(m => m.doc) : snap.docs;
+    for (const d of mudados) {
+      if (d.get('rhnet')) continue;
+      filaDasAdmissoes = filaDasAdmissoes.then(() => atenderAdmissaoDaArea(db, d.ref, log)).catch(err => log('RH NET: admissão da Área -', motivo(err)));
+    }
+  }, log);
+  log('RH NET: os pedidos de admissão da Área do Cliente ligados (só agem com config/sci.rhNet)');
+}
+
 // ---------- o teste pela linha de comando ----------
 
 async function testar(codigo) {
@@ -216,4 +277,4 @@ if (require.main === module) {
   testar(codigo).then(c => process.exit(c), err => { console.log('erro: ' + motivo(err)); process.exit(1); });
 }
 
-module.exports = { atenderPedido, cadastrosParaArea, atualizarListasDaArea, iniciarListasDaArea, testar, lerTokens };
+module.exports = { atenderPedido, cadastrosParaArea, atualizarListasDaArea, iniciarListasDaArea, atenderAdmissaoDaArea, iniciarAdmissoesDaArea, testar, lerTokens };

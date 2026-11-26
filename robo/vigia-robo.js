@@ -1149,6 +1149,10 @@ async function iniciar() {
     try {
       tarefa('rhnet-area', () => require('./rhnet').iniciarListasDaArea(db, log));
     } catch (err) { log('lista do RH NET para a Área desligada:', err.message); }
+    // e o pedido de admissão da Área do Cliente vira a admissão do RH NET, sem liberar (25/11/2026, robo/rhnet.js)
+    try {
+      tarefa('rhnet-admissoes', () => require('./rhnet').iniciarAdmissoesDaArea(db, log));
+    } catch (err) { log('admissões da Área no RH NET desligadas:', err.message); }
     // e os boletos de honorários (10/11/2026, nads › Financeiro › Boletos): um e-mail por boleto, só depois do disparo do Diretor
     try {
       tarefa('boletos-financeiro', () => require('./boletos-financeiro').iniciarBoletosFinanceiro(db, {

@@ -68,13 +68,18 @@ describe('notificacoes', () => {
 
 describe('pedidos do pessoal', () => {
   it('admissão: confere e monta o texto do chamado só com o que foi preenchido', () => {
-    const p = { nome: 'Maria Souza', cpf: '', cargo: 'Auxiliar', salario: 'R$ 2.000,00', inicio: '01/11/2026', contrato: 'Experiência', observacoes: '' };
+    const p = { nome: 'Maria Souza', cpf: '529.982.247-25', cargo: 'Auxiliar', salario: 'R$ 2.000,00', inicio: '01/11/2026', contrato: 'Experiência', observacoes: '' };
     expect(erroDaAdmissao({ ...p, inicio: '1/11' })).toContain('data de início');
+    // (25/11/2026) o CPF é obrigatório e conferido (o pedido vai para o RH NET)
+    expect(erroDaAdmissao({ ...p, cpf: '' })).toBe('Escreva o CPF do novo funcionário.');
+    expect(erroDaAdmissao({ ...p, cpf: '111.111.111-11' })).toBe('Confira o CPF: os números não batem.');
     expect(erroDaAdmissao(p)).toBe('');
     const t = textoDaAdmissao(p);
     expect(t.split('\n')[0]).toBe('Admissão: Maria Souza (Auxiliar)');
     expect(t).toContain('Salário: R$ 2.000,00');
-    expect(t).not.toContain('CPF');
+    expect(t).toContain('CPF: 529.982.247-25');
+    // o campo vazio não vai para o texto
+    expect(t).not.toContain('Observações');
   });
   it('férias e demissão pedem o funcionário e a data', () => {
     expect(erroDasFerias({ empregado: '', inicio: '', dias: '30', adiantar13: false, observacoes: '' })).toContain('funcionário');

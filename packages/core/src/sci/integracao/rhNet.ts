@@ -303,3 +303,39 @@ export function cadastrosParaArea(itens: unknown[], funcoes: ReadonlyMap<number,
   for (const x of itens) { const c = cadastroParaArea(x, funcoes); if (c) porId.set(c.id, c); }
   return [...porId.values()].sort((a, b) => a.nome.localeCompare(b.nome));
 }
+
+// ---------------------------------- o pedido de admissão da Área do Cliente ----------------------------------
+
+const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * O pedido de admissão que o cliente manda pela Área do Cliente (o texto que a tela monta, textoDaAdmissao: "Nome completo:
+ * …", "CPF: …", "Cargo: …", "Salário: R$ 2.500,00", "Início: dd/mm/aaaa", "Contrato: …", "Observações: …") → a admissão do
+ * RH NET (25/11/2026; o dono: "pode fazer a 1"). O cargo vira a função quando o nome bate com uma função cadastrada no RH NET
+ * da empresa; o cargo pedido, o contrato e as observações vão na observação (o DP confere antes de liberar).
+ */
+export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCadastroRh[] = []): { admissao: AdmissaoParaRhNet } | { erro: string } {
+  const campos = new Map<string, string>();
+  for (const linha of String(texto ?? '').split(/\r?\n/)) {
+    const m = /^([^:]{2,30}):\s*(.*)$/.exec(linha.trim());
+    if (m) campos.set(semAcento(m[1]), m[2].trim());
+  }
+  const nome = campos.get('nome completo') ?? '';
+  const cpf = (campos.get('cpf') ?? '').replace(/\D/g, '');
+  const cargo = campos.get('cargo') ?? '';
+  const inicio = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get('inicio') ?? '');
+  const salarioTexto = (campos.get('salario') ?? '').replace(/[^\d,.]/g, '');
+  const salario = salarioTexto ? Number(salarioTexto.replace(/\./g, '').replace(',', '.')) : NaN;
+  if (!nome) return { erro: 'o pedido veio sem o nome' };
+  if (!cpf) return { erro: 'o pedido veio sem o CPF (o RH NET exige)' };
+  if (!inicio) return { erro: 'o pedido veio sem a data de início' };
+  const funcao = cargo ? funcoes.find(f => semAcento(f.nome) === semAcento(cargo)) : undefined;
+  const observacao = ['Pedido pela Área do Cliente.', cargo && 'Cargo pedido: ' + cargo + '.', campos.get('contrato') && 'Contrato: ' + campos.get('contrato') + '.', campos.get('observacoes') && 'Observações: ' + campos.get('observacoes')]
+    .filter(Boolean).join(' ');
+  const admissao: AdmissaoParaRhNet = {
+    nome, cpf, admissao: inicio[3] + '-' + inicio[2] + '-' + inicio[1], observacao,
+    ...(salario > 0 ? { salario } : {}), ...(funcao ? { funcaoId: funcao.id } : {}),
+  };
+  const erro = erroDaAdmissao(admissao);
+  return erro ? { erro } : { admissao };
+}

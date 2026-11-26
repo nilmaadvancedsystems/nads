@@ -1040,6 +1040,40 @@ function cadastrosParaArea(itens, funcoes = /* @__PURE__ */ new Map()) {
 	}
 	return [...porId.values()].sort((a, b) => a.nome.localeCompare(b.nome));
 }
+const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+function admissaoDoPedidoDaArea(texto, funcoes = []) {
+	const campos = /* @__PURE__ */ new Map();
+	for (const linha of String(texto ?? "").split(/\r?\n/)) {
+		const m = /^([^:]{2,30}):\s*(.*)$/.exec(linha.trim());
+		if (m) campos.set(semAcento(m[1]), m[2].trim());
+	}
+	const nome = campos.get("nome completo") ?? "";
+	const cpf = (campos.get("cpf") ?? "").replace(/\D/g, "");
+	const cargo = campos.get("cargo") ?? "";
+	const inicio = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get("inicio") ?? "");
+	const salarioTexto = (campos.get("salario") ?? "").replace(/[^\d,.]/g, "");
+	const salario = salarioTexto ? Number(salarioTexto.replace(/\./g, "").replace(",", ".")) : NaN;
+	if (!nome) return { erro: "o pedido veio sem o nome" };
+	if (!cpf) return { erro: "o pedido veio sem o CPF (o RH NET exige)" };
+	if (!inicio) return { erro: "o pedido veio sem a data de início" };
+	const funcao = cargo ? funcoes.find((f) => semAcento(f.nome) === semAcento(cargo)) : void 0;
+	const observacao = [
+		"Pedido pela Área do Cliente.",
+		cargo && "Cargo pedido: " + cargo + ".",
+		campos.get("contrato") && "Contrato: " + campos.get("contrato") + ".",
+		campos.get("observacoes") && "Observações: " + campos.get("observacoes")
+	].filter(Boolean).join(" ");
+	const admissao = {
+		nome,
+		cpf,
+		admissao: inicio[3] + "-" + inicio[2] + "-" + inicio[1],
+		observacao,
+		...salario > 0 ? { salario } : {},
+		...funcao ? { funcaoId: funcao.id } : {}
+	};
+	const erro = erroDaAdmissao(admissao);
+	return erro ? { erro } : { admissao };
+}
 
 //#endregion
 //#region packages/core/src/sci/integracao/rhNetCliente.ts
@@ -1180,6 +1214,7 @@ exports.RH_NET_POR_PAGINA = RH_NET_POR_PAGINA;
 exports.ROTULO_DA_SITUACAO_RH = ROTULO_DA_SITUACAO_RH;
 exports.SITUACAO_NA_AREA = SITUACAO_NA_AREA;
 exports.TIPOS_NO_INTEGRA = TIPOS_NO_INTEGRA;
+exports.admissaoDoPedidoDaArea = admissaoDoPedidoDaArea;
 exports.admissaoDoRhNet = admissaoDoRhNet;
 exports.cadastroParaArea = cadastroParaArea;
 exports.cadastrosParaArea = cadastrosParaArea;

@@ -2,7 +2,7 @@
 // pessoal, o filtro dos documentos, os avisos do sino e o texto dos pedidos do pessoal (admissão, férias e demissão viram
 // um chamado do tipo certo com os dados no texto). Funções puras, testadas em regras.test.ts.
 import type { areaCliente as ac } from '@nads/core';
-import { areaCliente as acValor } from '@nads/core';
+import { areaCliente as acValor, empresas } from '@nads/core';
 const certidaoParaAvisar = acValor.certidaoParaAvisar;
 import type { CertificadoDigital, DocumentoDoCliente, EstadoDaArea } from './areaCliente';
 
@@ -147,6 +147,8 @@ const linhas = (titulo: string, campos: [string, string][]) => [titulo, '', ...c
 /** Confere o pedido de admissão; devolve o erro em português, ou '' se está bom. */
 export function erroDaAdmissao(p: PedidoDeAdmissao): string {
   if (!p.nome.trim()) return 'Escreva o nome do novo funcionário.';
+  // (25/11/2026) o CPF é obrigatório: o pedido vai direto para o sistema de folha (RH NET), que não aceita sem ele
+  if (!empresas.cadastro.cpfValido(p.cpf)) return p.cpf.trim() ? 'Confira o CPF: os números não batem.' : 'Escreva o CPF do novo funcionário.';
   if (!p.cargo.trim()) return 'Escreva o cargo.';
   if (!DATA.test(p.inicio)) return 'Escreva a data de início (dd/mm/aaaa).';
   return '';
