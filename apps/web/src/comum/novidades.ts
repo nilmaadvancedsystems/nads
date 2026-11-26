@@ -96,8 +96,8 @@ export const NOVIDADES = {
    *  todas as empresas na competência, com a situação pelo prazo; por ora só o Fiscal */
   prazos: { desde: '25/11/2026', aprovada: false },
   /** o "Mostrar apenas as minhas" na barra de Minhas empresas (26/11/2026): para quem vê a coluna Responsável, esconde as empresas
-   *  de outra pessoa */
-  'apenas-as-minhas': { desde: '26/11/2026', aprovada: false },
+   *  de outra pessoa; aprovada para todos no mesmo dia ("Liberar para todos") */
+  'apenas-as-minhas': { desde: '26/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
