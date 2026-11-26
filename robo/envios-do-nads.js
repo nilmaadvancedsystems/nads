@@ -303,6 +303,35 @@ function caminhoDoEnvioAoCliente(itens, clienteId, area) {
   return { existente: pai, faltam: alvo.slice(i), caminho: alvo.join('/') };
 }
 
+// O arquivo também vai direto para a Área do Cliente (26/11/2026: "o cliente nao tem acesso ao drive, e para aparecer no
+// chat dele para baixar e na parte de central de documentos"): o mesmo documento que o robô do PC publica a partir da pasta
+// DO ESCRITÓRIO (areasCliente/{token}/documentos/{id}, tipo 'escritorio', e os bytes em {id}~{n}), com o mesmo id
+// (idDoDocumentoDoEscritorio do core, pela empresa e por "<SUBPASTA>/<nome>"), sem esperar o robô do PC nem o Drive deste PC.
+const MAIOR_ARQUIVO_NA_AREA = 5 * 1024 * 1024;
+
+/** O documento do escritório no espelho (lista branca 'documentoEscritorio' do robo/area-cliente-regras.js) e os pedaços. */
+function documentoDoEscritorioNoEspelho(codigo, area, nomeFinal, buffer, agora, idDoDocumento) {
+  const id = idDoDocumento(Number(codigo), SUBPASTA_DA_AREA[area] + '/' + nomeFinal);
+  const pedacos = buffer.length > MAIOR_ARQUIVO_NA_AREA ? [] : pedacosDoPdfCliente(buffer).map(p => ({ base64: p.base64, n: p.n, total: p.total, de: id }));
+  return { doc: { tipo: 'escritorio', id, nome: nomeFinal, area, enviadoEm: agora, tamanho: buffer.length, partes: pedacos.length }, pedacos };
+}
+
+/** Grava o documento em cada link da empresa (sem link, nada). Devolve quantos links receberam. */
+async function documentoNaAreaDoCliente(db, codigo, area, nomeFinal, buffer, log) {
+  const tokens = await tokensDaEmpresa(db, codigo);
+  if (!tokens.length) return 0;
+  const { idDoDocumentoDoEscritorio } = require('./gerado/danfse');
+  const { doc, pedacos } = documentoDoEscritorioNoEspelho(codigo, area, nomeFinal, buffer, new Date().toISOString(), idDoDocumentoDoEscritorio);
+  for (const token of tokens) {
+    const col = db.collection('areasCliente').doc(token).collection('documentos');
+    // os bytes antes do documento (o documento diz quantos pedaços tem)
+    for (const p of pedacos) await col.doc(doc.id + '~' + p.n).set(p);
+    await col.doc(doc.id).set(doc);
+  }
+  log('arquivo do escritório na Área do Cliente:', nomeFinal, '(' + tokens.length + ' link' + (tokens.length > 1 ? 's' : '') + ', ' + pedacos.length + ' pedaço' + (pedacos.length === 1 ? '' : 's') + ')');
+  return tokens.length;
+}
+
 /** Grava o arquivo da equipe na pasta DO ESCRITÓRIO da empresa (pela API do Drive). Erro em português quando não dá. */
 async function gravarParaOCliente(db, drive, envio, c, area) {
   const codigo = String(envio.codigo == null ? '' : envio.codigo).trim();
@@ -392,6 +421,10 @@ function iniciarEnviosDoNads(db, log) {
           if (/não tem pasta|sem a empresa/.test(err.message)) { await apagarPartes(doc.ref); await doc.ref.update({ status: 'erro', erro: err.message, prontoEm: agora() }); return; }
           throw err;
         }
+        // na Área do Cliente já (antes do "pronto": a resposta da solicitação só sai depois, e o cliente já acha o arquivo);
+        // um erro aqui não desfaz o Drive: o robô do PC publica da pasta depois
+        try { await documentoNaAreaDoCliente(db, r.codigo, areaDoCliente, r.nomeFinal, c.buffer, log); }
+        catch (err) { log('arquivo do escritório na Área do Cliente falhou (fica para o robô do PC):', err.message); }
         await apagarPartes(doc.ref);
         await doc.ref.update({
           status: 'pronto', pasta: r.pasta, nomeFinal: r.nomeFinal, jaEstava: r.jaEstava, prontoEm: agora(), direto: true,
@@ -540,4 +573,4 @@ function iniciarDestinoDosEnvios(db, log) {
 }
 
 module.exports = { envioDoMandeiConferido, extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
-  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente };
+  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente, documentoDoEscritorioNoEspelho };

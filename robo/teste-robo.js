@@ -681,6 +681,13 @@ igual('envio comum não é ao cliente', en.areaDoEnvioAoCliente('FITO INDUSTRIA'
 igual('envio ao cliente: o que já existe e o que falta',
   JSON.stringify(en.caminhoDoEnvioAoCliente([{ i: 'a', n: 'Área do Cliente', p: 'c', t: 'd' }, { i: 'b', n: 'DO ESCRITORIO', p: 'a', t: 'd' }], 'c', 'contabil')),
   JSON.stringify({ existente: 'b', faltam: ['CONTÁBIL'], caminho: 'ÁREA DO CLIENTE/DO ESCRITÓRIO/CONTÁBIL' }));
+// o arquivo também vai direto para a Área do Cliente (26/11/2026: "para aparecer no chat dele para baixar"): o mesmo id do robô do PC
+{
+  const r = en.documentoDoEscritorioNoEspelho('292', 'dp', 'Certidão.pdf', Buffer.from('abc'), '2026-11-26T18:00:00Z', (c, cam) => c + '|' + cam);
+  igual('envio ao cliente: o id pela empresa e por SUBPASTA/nome', r.doc.id, '292|DP/Certidão.pdf');
+  igual('envio ao cliente: o documento do escritório', JSON.stringify(r.doc), JSON.stringify({ tipo: 'escritorio', id: '292|DP/Certidão.pdf', nome: 'Certidão.pdf', area: 'dp', enviadoEm: '2026-11-26T18:00:00Z', tamanho: 3, partes: 1 }));
+  igual('envio ao cliente: o pedaço aponta para o documento', r.pedacos[0].de + ' ' + r.pedacos[0].base64, '292|DP/Certidão.pdf YWJj');
+}
 const porCod = new Map([['58', { nome: 'TORNEARIA VOLPONI LTDA' }]]);
 igual('pasta: nome do cadastro pelo código', en.nomeDaPastaDoCliente({ codigo: '58', cliente: '58 - TORNEARIA' }, porCod), 'TORNEARIA VOLPONI LTDA');
 igual('pasta: o nome que veio', en.nomeDaPastaDoCliente({ codigo: '9', cliente: 'X LTDA' }, porCod), 'X LTDA');

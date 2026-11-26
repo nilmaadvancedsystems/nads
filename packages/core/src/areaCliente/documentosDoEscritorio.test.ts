@@ -1,6 +1,6 @@
 // O acervo de documentos do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio).
 import { describe, expect, it } from 'vitest';
-import { areaDaSubpasta, clienteDoEnvioAoCliente, erroDoEnvioAoCliente, idDoDocumentoDoEscritorio } from './documentosDoEscritorio';
+import { anexoDaMensagem, areaDaSubpasta, clienteDoEnvioAoCliente, linhaDoAnexo, erroDoEnvioAoCliente, idDoDocumentoDoEscritorio } from './documentosDoEscritorio';
 
 describe('os documentos do escritório', () => {
   it('a área pela subpasta; o solto é societário', () => {
@@ -32,5 +32,14 @@ describe('o arquivo que a equipe manda ao cliente (26/11/2026)', () => {
     expect(erroDoEnvioAoCliente({ nome: 'a.pdf', tamanho: 6 * 1024 * 1024 })).toMatch(/5 MB/);
     expect(erroDoEnvioAoCliente({ nome: 'Holerite 10-2026.pdf', tamanho: 10 })).toMatch(/Holerite/);
     expect(erroDoEnvioAoCliente({ nome: 'Certidão federal.pdf', tamanho: 10 })).toBe('');
+  });
+});
+
+describe('o anexo na resposta da solicitação (26/11/2026)', () => {
+  it('a linha vai e volta; sem a linha, sem anexo', () => {
+    const t = 'Segue a certidão.' + String.fromCharCode(10, 10) + linhaDoAnexo('CND federal.pdf');
+    expect(anexoDaMensagem(t)).toEqual({ texto: 'Segue a certidão.', nome: 'CND federal.pdf' });
+    expect(anexoDaMensagem(linhaDoAnexo('a (2).pdf'))).toEqual({ texto: '', nome: 'a (2).pdf' });
+    expect(anexoDaMensagem('só texto')).toEqual({ texto: 'só texto', nome: null });
   });
 });

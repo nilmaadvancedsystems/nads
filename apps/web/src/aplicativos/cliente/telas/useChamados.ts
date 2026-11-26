@@ -11,6 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useLocation } from 'react-router';
 import { guardarNota, notasDadas } from '../dados/avaliadas';
+import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
 import { DOCUMENTOS_PARA_PEDIR, erroDoPedidoDeDocumento, partesDaSolicitacao, passoDaSolicitacao, textoDoChamado, textoDoPedidoDeDocumento, textoDosAnexos, whatsappDaSolicitacao } from '../dados/regras';
 import { resumoDasSolicitacoes } from '../dados/solicitacoes';
@@ -38,6 +39,19 @@ export function useChamados(casca: DaCasca) {
   // o pedido que veio com a aba (só na abertura dela)
   const { state } = useLocation();
   const [pedido] = useState(() => (state ?? {}) as PedidoDaTela);
+
+  // o arquivo anexado numa resposta do escritório: o documento "Do escritório" com o mesmo nome (o robô põe na hora do envio)
+  const [baixandoAnexo, setBaixandoAnexo] = useState('');
+  async function baixarAnexo(nome: string) {
+    const doc = area.documentos.find(d => d.nome === nome);
+    if (!doc) { toast('O arquivo ainda está chegando. Tente de novo em alguns minutos ou veja na Central de documentos.'); return; }
+    setBaixandoAnexo(nome);
+    try {
+      const r = await repoAreaCliente.baixarDocumento(token, doc.id);
+      if (!r) toast('Não achamos este arquivo agora. Fale com o escritório.');
+      else baixarArquivo(r.nome, r.arquivo);
+    } finally { setBaixandoAnexo(''); }
+  }
   const [filtro, setFiltro] = useState<FiltroDasSolicitacoes>('todas');
   const [modo, setModo] = useState<'ver' | 'nova'>(pedido.novoChamado ? 'nova' : 'ver');
   const [escolhida, setEscolhida] = useState(pedido.chamado ?? '');
@@ -98,7 +112,15 @@ export function useChamados(casca: DaCasca) {
       pedido: partes.pedido, complementos: partes.complementos,
       // a conversa em ordem, como num chat (23/11/2026: "e para ficar tipo um chat"): depois do pedido, cada mensagem no seu
       // lugar (o arquivo que o cliente mandou depois da resposta fica depois dela)
-      conversa: c.mensagens.slice(1).map((m, i) => ({ chave: i + '-' + m.em, deVoce: m.de === 'cliente', texto: m.texto, quando: quando(m.em), autor: m.de === 'cliente' ? '' : m.autor && m.autor !== 'Escritório' ? m.autor : '' })),
+      // (26/11/2026: "o cliente nao tem acesso ao drive, e para aparecer no chat dele para baixar") a resposta do escritório
+      // com arquivo: a linha do anexo some do texto e vira o arquivo com o Baixar (o documento do escritório com o mesmo nome)
+      conversa: c.mensagens.slice(1).map((m, i) => {
+        const a = m.de === 'cliente' ? { texto: m.texto, nome: null } : ac.anexoDaMensagem(m.texto);
+        return {
+          chave: i + '-' + m.em, deVoce: m.de === 'cliente', texto: a.texto, quando: quando(m.em), autor: m.de === 'cliente' ? '' : m.autor && m.autor !== 'Escritório' ? m.autor : '',
+          anexo: a.nome ? { nome: a.nome, baixar: () => void baixarAnexo(a.nome!), baixando: baixandoAnexo === a.nome } : null,
+        };
+      }),
       respostas: partes.respostas.map(r => ({ texto: r.texto, quando: quando(r.em), autor: r.autor })),
       escolhida: c.id === atualId,
       // o passo atual do pedido do DP (23/11/2026, ficha processos-visiveis)

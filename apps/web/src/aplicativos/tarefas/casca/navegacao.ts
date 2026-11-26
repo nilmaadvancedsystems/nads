@@ -261,12 +261,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'comunicados', rotulo: 'Comunicados', icone: 'sino', titulo: 'Comunicados aos clientes' },
     { id: 'clientes', rotulo: 'Clientes', icone: 'equipe', titulo: 'Clientes com acesso' },
   ] },
-  // o Mandei (19/10/2026), de novo como aplicação própria (26/11/2026, a Área do Cliente refeita): os tickets que o
-  // escritório manda ao cliente por e-mail e WhatsApp, fora do site do cliente
-  { id: 'mandei', nome: 'Mandei', icone: 'aviao', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
-    { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
-  ] },
+  // o Mandei saiu da gaveta (26/11/2026: "remove o madei"); os endereços dele levam para a Área do Cliente
   // o Desenvolvedor (Vitor, 13/11/2026: "quero que a Área do Cliente e a do robô estejam no modo dev do nads"; "um botão que
   // só aparece ou funciona no modo dev"): só com o modo desenvolvedor ligado. Abre, dentro do nads, a Área do Cliente de uma
   // empresa (como o cliente vê) e a Central dos robôs, lendo o banco de verdade e sem gravar nada (rotasDoModoDev.tsx)

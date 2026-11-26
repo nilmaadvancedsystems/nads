@@ -1,7 +1,7 @@
 import type { entregas as e } from '@nads/core';
 import { describe, expect, it } from 'vitest';
 import type { RecebidoDoCliente } from './areaCliente';
-import { enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro } from './documentosDaArea';
+import { areaPeloNome, cnpjsDoTexto, empresaDoArquivo, enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro } from './documentosDaArea';
 
 const agora = new Date('2026-11-26T15:00:00Z');
 const rec = (id: string, tipo: RecebidoDoCliente['tipo'], recebidoEm: string, recusa = false): RecebidoDoCliente => ({
@@ -35,5 +35,28 @@ describe('o que a equipe mandou ao cliente', () => {
       env('c', '@area-do-cliente/fiscal', 'gravando', '2026-11-25'), env('d', '@area-do-cliente/x', 'erro', '2026-11-24'),
     ]);
     expect(r.map(x => [x.id, x.area, x.situacao])).toEqual([['c', 'fiscal', 'fila'], ['a', 'dp', 'pronto']]);
+  });
+});
+
+describe('o Enviar ao cliente adivinha a empresa e a área (26/11/2026)', () => {
+  it('a área pelo nome do arquivo', () => {
+    expect(areaPeloNome('NFS-e 25 - honorários de novembro de 2026.pdf')).toBe('societario');
+    expect(areaPeloNome('PGDASD-EXTRATO-0720263.pdf')).toBe('fiscal');
+    expect(areaPeloNome('Extrato do Simples Nacional - novembro.pdf')).toBe('fiscal');
+    expect(areaPeloNome('Holerite 10-2026.pdf')).toBe('dp');
+    expect(areaPeloNome('Guia FGTS outubro.pdf')).toBe('dp');
+    expect(areaPeloNome('Balancete 2025.pdf')).toBe('contabil');
+    expect(areaPeloNome('Contrato Social.pdf')).toBe('societario');
+    expect(areaPeloNome('foto.jpg')).toBeNull();
+  });
+  it('a empresa pelo CNPJ do PDF, pelo código ou pelo nome', () => {
+    const emp = [{ codigo: 292, nome: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA' }, { codigo: 590, nome: 'TORIBA TECNOLOGIA E GESTAO EMPRESARIAL LTDA' }];
+    const docs = new Map([[292, '11.222.333/0001-81'], [590, '44.555.666/0001-00']]);
+    expect(cnpjsDoTexto('CNPJ: 44.555.666/0001-00 e 44555666000100')).toEqual(['44555666000100']);
+    expect(empresaDoArquivo(emp, 'nota.pdf', ['44555666000100'], docs)?.codigo).toBe(590);
+    expect(empresaDoArquivo(emp, 'nota.pdf', ['44555666000299'], docs)?.codigo).toBe(590);
+    expect(empresaDoArquivo(emp, '292 - extrato.pdf', [], docs)?.codigo).toBe(292);
+    expect(empresaDoArquivo(emp, 'Balancete TORIBA TECNOLOGIA E GESTAO EMPRESARIAL 2025.pdf', [], docs)?.codigo).toBe(590);
+    expect(empresaDoArquivo(emp, 'certidao.pdf', [], docs)).toBeNull();
   });
 });
