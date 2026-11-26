@@ -271,6 +271,56 @@ async function gravarNaPastaDoBanco(db, drive, envio, c) {
 
 const PASTA_DOS_SUBSTITUIDOS = 'SUBSTITUÍDOS';
 
+// ---------- o arquivo que a equipe manda ao cliente (26/11/2026, o módulo Área do Cliente refeito; o dono escolheu
+// "Pelo Drive") ----------
+// A tela (Área do Cliente › Documentos › Enviar ao cliente, e o Anexar da resposta da solicitação) manda pelo mesmo
+// enviosSecretario, com o campo cliente = "@area-do-cliente/<área>" (a regra do banco só aceita os campos de sempre). O
+// robô grava direto em <ano>\<cód> - nome\ÁREA DO CLIENTE\DO ESCRITÓRIO\<ÁREA>\, a pasta que o robô do PC espelha na
+// Central de documentos › Do escritório (robo/area-cliente.js, a cada 30 min). Nunca sobrescreve: nome repetido vira
+// "nome (2).pdf". A marca e as subpastas são as do core (areaCliente/documentosDoEscritorio.ts).
+const MARCA_DO_ENVIO_AO_CLIENTE = '@area-do-cliente/';
+const SUBPASTA_DA_AREA = { fiscal: 'FISCAL', dp: 'DP', contabil: 'CONTÁBIL', societario: 'SOCIETÁRIO' };
+
+/** A área do envio ao cliente ('fiscal' | 'dp' | 'contabil' | 'societario'), ou null: é um envio comum. */
+function areaDoEnvioAoCliente(cliente) {
+  const s = String(cliente || '');
+  if (!s.startsWith(MARCA_DO_ENVIO_AO_CLIENTE)) return null;
+  const area = s.slice(MARCA_DO_ENVIO_AO_CLIENTE.length);
+  return Object.prototype.hasOwnProperty.call(SUBPASTA_DA_AREA, area) ? area : null;
+}
+
+/** O caminho de ÁREA DO CLIENTE/DO ESCRITÓRIO/<ÁREA> na pasta do cliente pelo mapa: o que já existe e o que falta criar. */
+function caminhoDoEnvioAoCliente(itens, clienteId, area) {
+  const k = require('./drive-indice').chaveDeNome;
+  const alvo = ['ÁREA DO CLIENTE', 'DO ESCRITÓRIO', SUBPASTA_DA_AREA[area]];
+  let pai = clienteId;
+  let i = 0;
+  for (; i < alvo.length; i++) {
+    const filho = itens.find(it => it.t === 'd' && it.p === pai && k(it.n) === k(alvo[i]));
+    if (!filho) break;
+    pai = filho.i;
+  }
+  return { existente: pai, faltam: alvo.slice(i), caminho: alvo.join('/') };
+}
+
+/** Grava o arquivo da equipe na pasta DO ESCRITÓRIO da empresa (pela API do Drive). Erro em português quando não dá. */
+async function gravarParaOCliente(db, drive, envio, c, area) {
+  const codigo = String(envio.codigo == null ? '' : envio.codigo).trim();
+  if (!codigo) throw new Error('o envio ao cliente veio sem a empresa');
+  const raiz = (await db.collection('driveIndice').doc('raiz').get()).data() || {};
+  const cli = (raiz.clientes || []).find(x => String(x.codigo == null ? '' : x.codigo).trim() === codigo);
+  if (!cli) throw new Error('a empresa ' + codigo + ' não tem pasta no Drive de ' + (raiz.pastaNome || 'este ano'));
+  const ref = db.collection('driveIndice').doc(cli.id);
+  const partes = Number(((await ref.get()).data() || {}).partes || 0);
+  const itens = [];
+  for (let n = 0; n < partes; n++) itens.push(...((((await ref.collection('partes').doc(String(n)).get()).data()) || {}).itens || []));
+  const cam = caminhoDoEnvioAoCliente(itens, cli.id, area);
+  let pastaId = cam.existente;
+  for (const nome of cam.faltam) pastaId = await driveArquivos.garantirPasta(drive, pastaId, nome);
+  const salvo = await driveArquivos.salvarArquivo(drive, pastaId, c.nome, c.buffer);
+  return { pasta: cli.nomePasta + '/' + cam.caminho, nomeFinal: salvo || c.nome, jaEstava: !salvo, codigo, cliente: String(cli.nome || cli.nomePasta || ''), subpasta: cam.caminho };
+}
+
 /**
  * Tira o extrato antigo do caminho (Vitor, 06/11/2026: "deixa o último fora dessa pasta de substituídos e deixa os antigos
  * nela"): o arquivo vai para SUBSTITUÍDOS, dentro da pasta onde estava; nada é apagado. Só arquivo da pasta da empresa (pelo
@@ -327,6 +377,28 @@ function iniciarEnviosDoNads(db, log) {
         await doc.ref.update({ status: 'erro', erro: c.erro, prontoEm: new Date().toISOString() });
         log('envio pelo nads recusado (' + c.erro + '):', envio.nome);
         painel.erro('envios', 'Arquivo mandado pelo nads recusado: ' + (envio.nome || ''), c.erro);
+        return;
+      }
+      // o arquivo da equipe para o cliente (26/11/2026): direto na pasta DO ESCRITÓRIO; nunca cai no Claudio Secretario
+      // (lá ele seria arquivado em outra pasta e o cliente não veria). Sem a API do Drive (o robô do PC): erro, e a tela avisa
+      const areaDoCliente = envio.criadoPorUid === 'mandei' ? null : areaDoEnvioAoCliente(envio.cliente);
+      if (areaDoCliente) {
+        const agora = () => new Date().toISOString();
+        if (!USAR_DRIVE_API) { await apagarPartes(doc.ref); await doc.ref.update({ status: 'erro', erro: 'este robô não grava no Drive pela API', prontoEm: agora() }); return; }
+        let r;
+        try { r = await gravarParaOCliente(db, driveArquivos.getDrive(), envio, c, areaDoCliente); }
+        catch (err) {
+          // a empresa sem pasta no mapa é definitivo; o Drive fora do ar espera (o catch de fora)
+          if (/não tem pasta|sem a empresa/.test(err.message)) { await apagarPartes(doc.ref); await doc.ref.update({ status: 'erro', erro: err.message, prontoEm: agora() }); return; }
+          throw err;
+        }
+        await apagarPartes(doc.ref);
+        await doc.ref.update({
+          status: 'pronto', pasta: r.pasta, nomeFinal: r.nomeFinal, jaEstava: r.jaEstava, prontoEm: agora(), direto: true,
+          arquivamento: { situacao: 'arquivado', em: agora(), execucao: 'direto', codigo: r.codigo, cliente: r.cliente, subpasta: r.subpasta, final: r.nomeFinal },
+        });
+        log('arquivo ao cliente pelo nads (' + (envio.criadoPor || '?') + '):', c.nome, '->', r.pasta + '/' + r.nomeFinal + (r.jaEstava ? ' (já estava lá)' : ''));
+        painel.atividade('envios', 'Arquivo para a Área do Cliente: ' + c.nome, r.pasta + '/' + r.nomeFinal + (envio.criadoPor ? ' · de ' + envio.criadoPor : ''));
         return;
       }
       // o extrato do mês: direto na pasta do banco (sem esperar o arquivamento); não deu, segue para o Claudio Secretario
@@ -468,4 +540,4 @@ function iniciarDestinoDosEnvios(db, log) {
 }
 
 module.exports = { envioDoMandeiConferido, extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
-  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios };
+  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente };

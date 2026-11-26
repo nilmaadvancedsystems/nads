@@ -1,6 +1,6 @@
 // O acervo de documentos do escritório (plano do Acessórias, 17/11/2026, ficha documentos-do-escritorio).
 import { describe, expect, it } from 'vitest';
-import { areaDaSubpasta, idDoDocumentoDoEscritorio } from './documentosDoEscritorio';
+import { areaDaSubpasta, clienteDoEnvioAoCliente, erroDoEnvioAoCliente, idDoDocumentoDoEscritorio } from './documentosDoEscritorio';
 
 describe('os documentos do escritório', () => {
   it('a área pela subpasta; o solto é societário', () => {
@@ -19,5 +19,18 @@ describe('os documentos do escritório', () => {
     expect(id).not.toBe(idDoDocumentoDoEscritorio(59, 'CONTÁBIL/Balanço 2025.pdf'));
     expect(id).not.toBe(idDoDocumentoDoEscritorio(58, 'CONTÁBIL/Balanço 2024.pdf'));
     expect(idDoDocumentoDoEscritorio(58, 'x'.repeat(500) + '.pdf').length).toBeLessThanOrEqual(128);
+  });
+});
+
+describe('o arquivo que a equipe manda ao cliente (26/11/2026)', () => {
+  it('a marca no campo cliente (a mesma que o robô lê)', () => {
+    expect(clienteDoEnvioAoCliente('dp')).toBe('@area-do-cliente/dp');
+  });
+  it('o arquivo: vazio, grande demais e holerite não vão', () => {
+    expect(erroDoEnvioAoCliente(null)).toBe('Escolha o arquivo.');
+    expect(erroDoEnvioAoCliente({ nome: 'a.pdf', tamanho: 0 })).toMatch(/vazio/);
+    expect(erroDoEnvioAoCliente({ nome: 'a.pdf', tamanho: 6 * 1024 * 1024 })).toMatch(/5 MB/);
+    expect(erroDoEnvioAoCliente({ nome: 'Holerite 10-2026.pdf', tamanho: 10 })).toMatch(/Holerite/);
+    expect(erroDoEnvioAoCliente({ nome: 'Certidão federal.pdf', tamanho: 10 })).toBe('');
   });
 });

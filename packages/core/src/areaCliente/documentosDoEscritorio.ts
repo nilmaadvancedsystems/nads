@@ -47,3 +47,33 @@ export function idDoDocumentoDoEscritorio(codigo: number, caminho: string): stri
   const legivel = semAcento(caminho).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
   return 'esc-' + codigo + '-' + legivel + '-' + resumo(codigo + '|' + caminho);
 }
+
+// ---------- o arquivo que a equipe manda ao cliente pela Tarefas (26/11/2026, o módulo Área do Cliente refeito; o dono
+// escolheu "Pelo Drive") ----------
+// A tela manda pelo enviosSecretario com o campo cliente = MARCA + área; o robô da nuvem grava na subpasta da área
+// (robo/envios-do-nads.js, gravarParaOCliente) e o robô do PC publica na Central › Do escritório.
+
+/** A marca no campo cliente do envio: "@area-do-cliente/dp". */
+export const MARCA_DO_ENVIO_AO_CLIENTE = '@area-do-cliente/';
+/** A subpasta de cada área dentro de DO ESCRITÓRIO. */
+export const SUBPASTA_DA_AREA: Readonly<Record<AreaDoEscritorio, string>> = { fiscal: 'FISCAL', dp: 'DP', contabil: 'CONTÁBIL', societario: 'SOCIETÁRIO' };
+/** As áreas na ordem do seletor, com o rótulo. */
+export const AREAS_DO_ESCRITORIO: readonly { valor: AreaDoEscritorio; rotulo: string }[] = [
+  { valor: 'fiscal', rotulo: 'Fiscal' }, { valor: 'dp', rotulo: 'Departamento Pessoal' }, { valor: 'contabil', rotulo: 'Contábil' }, { valor: 'societario', rotulo: 'Societário' },
+];
+/** O maior arquivo que o cliente consegue baixar pela Área (o robô do PC não publica acima disso). */
+export const MAIOR_ENVIO_AO_CLIENTE = 5 * 1024 * 1024;
+
+/** O campo cliente do envio para a área. */
+export function clienteDoEnvioAoCliente(area: AreaDoEscritorio): string {
+  return MARCA_DO_ENVIO_AO_CLIENTE + area;
+}
+
+/** O erro do arquivo que a equipe quer mandar ao cliente, ou ''. */
+export function erroDoEnvioAoCliente(arquivo: { nome: string; tamanho: number } | null): string {
+  if (!arquivo) return 'Escolha o arquivo.';
+  if (!arquivo.tamanho) return 'O arquivo está vazio.';
+  if (arquivo.tamanho > MAIOR_ENVIO_AO_CLIENTE) return 'O arquivo passa de 5 MB: o cliente não conseguiria baixar.';
+  if (/(holerite|recibo de pagamento|contracheque)/i.test(arquivo.nome)) return 'Holerite não vai pela Área do Cliente (tem o CPF completo do funcionário).';
+  return '';
+}

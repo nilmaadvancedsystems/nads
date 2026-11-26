@@ -65,6 +65,8 @@ export interface RecebidoDoCliente {
   tamanho: number;
   /** o caminho no Drive, para ler (ex.: "292 › 2026 › Bancos") */
   pastaDrive: string;
+  /** o nome final do arquivo na pasta (o robô não repete nome: "extrato (2).pdf"); '' nos antigos: vale o nome (26/11/2026, a prévia nos Recebidos) */
+  arquivoDrive: string;
   recebidoEm: string;
   /** o comprovante mandado pela guia: de que guia é ("Comprovante do FGTS 10/2026"); '' nos outros (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir") */
   guia: string;
@@ -144,7 +146,7 @@ export const enderecoDoLink = (token: string) => ENDERECO_DA_AREA + token;
 /** O texto pronto do WhatsApp com o link da empresa. */
 export function textoDoWhatsApp(empresa: string, endereco: string): string {
   return 'Olá! Aqui é da Nilma Contabilidade. Este é o seu acesso à Área do Cliente da ' + empresa + ': guias, vencimentos, '
-    + 'chamados e envio de documentos. É um link só seu, não compartilhe com outras pessoas:\n' + endereco;
+    + 'solicitações e envio de documentos. É um link só seu, não compartilhe com outras pessoas:\n' + endereco;
 }
 
 export const SITUACOES_DO_CHAMADO: readonly ac.SituacaoDoChamado[] = ['aberto', 'em andamento', 'respondido', 'concluido'];
@@ -205,9 +207,9 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
   // um comunicado de exemplo (22/11/2026, ficha comunicados)
   const comunicados: ac.Comunicado[] = [{ id: 'com-1', titulo: 'Recesso de fim de ano', texto: 'O escritório fecha de 24/12 a 02/01. As guias de dezembro saem até o dia 20.', alvo: { todos: true }, publicarEm: '2026-12-01', ate: '2027-01-02', por: 'Vitor', atualizadoEm: '2026-11-22T10:00:00.000Z' }];
   const recebidos: RecebidoDoCliente[] = [
-    { id: 'rx-1', token: tokenDe(462), codigo: 462, empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', nome: 'extrato-sicoob-setembro.pdf', tipo: 'extrato', tamanho: 482113, pastaDrive: '462 › 2026 › Bancos › Sicoob', recebidoEm: ha(75), guia: '' },
-    { id: 'rx-2', token: tokenDe(515), codigo: 515, empresa: 'A7 MOBILE LTDA', nome: 'nfe-compra-1043.xml', tipo: 'nota', tamanho: 18340, pastaDrive: '515 › 2026 › Notas', recebidoEm: ha(60 * 6), guia: '' },
-    { id: 'rx-3', token: tokenDe(356), codigo: 356, empresa: 'A7 COMERCIO DE VEICULOS LTDA', nome: 'Comprovante DAS 09-2026 - pix.jpg', tipo: 'comprovante', tamanho: 1294870, pastaDrive: '356 › 2026 › Comprovantes', recebidoEm: ha(60 * 30), guia: 'Comprovante do DAS 09/2026' },
+    { id: 'rx-1', token: tokenDe(462), codigo: 462, empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', nome: 'extrato-sicoob-setembro.pdf', tipo: 'extrato', tamanho: 482113, pastaDrive: '2026/462 - 3M EMPREENDIMENTOS FLORESTAIS LTDA/ÁREA DO CLIENTE/10', arquivoDrive: 'extrato-sicoob-setembro.pdf', recebidoEm: ha(75), guia: '' },
+    { id: 'rx-2', token: tokenDe(515), codigo: 515, empresa: 'A7 MOBILE LTDA', nome: 'nfe-compra-1043.xml', tipo: 'nota', tamanho: 18340, pastaDrive: '2026/515 - A7 MOBILE LTDA/ÁREA DO CLIENTE/11', arquivoDrive: 'nfe-compra-1043.xml', recebidoEm: ha(60 * 6), guia: '' },
+    { id: 'rx-3', token: tokenDe(356), codigo: 356, empresa: 'A7 COMERCIO DE VEICULOS LTDA', nome: 'Comprovante DAS 09-2026 - pix.jpg', tipo: 'comprovante', tamanho: 1294870, pastaDrive: '2026/356 - A7 COMERCIO DE VEICULOS LTDA/ÁREA DO CLIENTE/11', arquivoDrive: 'Comprovante DAS 09-2026 - pix.jpg', recebidoEm: ha(60 * 30), guia: 'Comprovante do DAS 09/2026' },
   ];
   const vazio = <T,>(lista: readonly T[]): ListaAoVivo<T> => ({ carregada: true, lista, erro: '' });
   let logos: LogoDaEmpresa[] = [];

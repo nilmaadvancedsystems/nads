@@ -1,25 +1,26 @@
-// O bloco "Link do cliente" na janela da empresa do Cadastro (Vitor, 16/10/2026): liga o BlocoDoLink aos dados e às ações.
-import { BlocoDoLink } from './partes/BlocoDoLink';
-import { PessoasComSenha } from './partes/PessoasComSenha';
+// A Área do Cliente na janela da empresa do Cadastro (Vitor, 16/10/2026). Desde 26/11/2026 (o módulo Área do Cliente
+// refeito: "quero que esse modulo seja completamente refeito… o mais bonito e de facil entendimento possivel") o link, as
+// senhas, a logo e a atividade ficam juntos na Área do Cliente › Clientes; aqui fica só a situação e o atalho para lá.
+import { Icone } from '@nads/ui';
+import { useNavigate } from 'react-router';
+import { caminhoDaPagina } from '../../casca/navegacao';
+import { Selo } from './base/Base';
 import { useLinkDaEmpresa } from './useLinkDaEmpresa';
-import { usePessoasComSenha } from './usePessoasComSenha';
 
-export function LinkDoClienteNaEmpresa({ codigo, nome }: { codigo: number; nome: string }) {
+export function LinkDoClienteNaEmpresa({ codigo }: { codigo: number; nome: string }) {
   const vm = useLinkDaEmpresa(codigo);
-  const { acoes, link } = vm;
-  // as pessoas com senha (18/11/2026: "a area de cliente vai ter senha de acesso", "Uma por pessoa")
-  const pessoas = usePessoasComSenha(codigo, link?.token ?? '', acoes.pode);
-  const e = { codigo, nome };
-  // só o admin vê e mexe no link e nas pessoas com senha (23/11/2026: "apenas adm pode ver e editar isso")
-  if (!acoes.pode) return null;
+  const navegar = useNavigate();
   return (
-    <>
-    <BlocoDoLink endereco={vm.endereco} data={vm.data} podeMexer={acoes.pode} carregando={vm.carregando} ocupado={acoes.ocupada === codigo}
-      aoGerar={() => void acoes.gerar(e)} aoCopiar={() => link && acoes.copiar(link.token)} aoWhatsApp={() => link && acoes.whatsapp(e, link.token)}
-      aoTrocar={() => void acoes.trocar(e)} aoRevogar={() => void acoes.revogar(e)}
-      logo={vm.logo} gravandoLogo={vm.gravandoLogo} aoEnviarLogo={vm.enviarLogo} aoTirarLogo={vm.tirarLogo}
-      guiasAbertas={vm.guiasAbertas} />
-    <PessoasComSenha vm={pessoas} />
-    </>
+    <section className="card" style={{ marginTop: 16 }}>
+      <div className="card-head"><h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icone nome="usuario" width={16} height={16} />Área do Cliente</h3></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {vm.carregando ? <span className="hint">Procurando o link…</span>
+          : vm.link ? <Selo tom="ok">Com acesso desde {vm.data}</Selo> : <Selo tom="neutro">Sem acesso</Selo>}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => navegar(caminhoDaPagina('area-cliente', 'clientes') + '?empresa=' + codigo)}>
+          Link, senhas e logo na Área do Cliente<Icone nome="chevronRight" width={15} height={15} />
+        </button>
+      </div>
+    </section>
   );
 }

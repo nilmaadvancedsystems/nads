@@ -89,7 +89,7 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
   const guiaDoRecebido = (tipo: string, nome: string) => { const g = tipo === 'comprovante' ? ac.guiaDoComprovante(nome) : null; return g ? ac.rotuloDoComprovante(g) : ''; };
   const recebidos = aoVivo<RecebidoDoCliente>(() => query(collection(db, 'areaClienteRecebidos'), orderBy('recebidoEm', 'desc'), limit(400)), (id, x) => ({
     id, token: texto(x.token), codigo: numero(x.codigo), empresa: texto(x.empresa), nome: texto(x.nome),
-    tipo: dentro(TIPOS_DE_ENVIO, x.tipo, 'outro'), tamanho: numero(x.tamanho), pastaDrive: texto(x.pastaDrive), recebidoEm: instante(x.recebidoEm),
+    tipo: dentro(TIPOS_DE_ENVIO, x.tipo, 'outro'), tamanho: numero(x.tamanho), pastaDrive: texto(x.pastaDrive), arquivoDrive: texto(x.arquivoDrive), recebidoEm: instante(x.recebidoEm),
     guia: guiaDoRecebido(texto(x.tipo), texto(x.nome)),
     ...(x.recusa && typeof x.recusa === 'object' && texto((x.recusa as Record<string, unknown>).motivo)
       ? { recusa: { motivo: texto((x.recusa as Record<string, unknown>).motivo), por: texto((x.recusa as Record<string, unknown>).por), em: instante((x.recusa as Record<string, unknown>).em) } } : {}),

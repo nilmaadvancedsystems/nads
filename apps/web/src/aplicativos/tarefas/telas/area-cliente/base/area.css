@@ -1,0 +1,76 @@
+/* O módulo Área do Cliente (26/11/2026). Só peças do catálogo do nads ("essas telas que voce esta fazendo ta toda fora dos
+   elementos predefinidos do nads"): aqui fica apenas o encaixe delas (a janela sem abas, o modal com rodapé, a prévia). */
+
+/* a janela grande (cad-janela) sem as abas da esquerda: um pouco mais estreita */
+.cad-janela.area-janela-sem-abas{width:min(920px,100%);}
+
+/* o modal com o título, o corpo e os botões (o mesmo desenho dos outros modais da Tarefas) */
+.modal.area-modal{max-width:520px;display:flex;flex-direction:column;max-height:calc(100vh - 32px);}
+.modal.area-modal.larga{max-width:880px;}
+.area-modal-topo{display:flex;align-items:flex-start;gap:12px;padding:16px 16px 12px;border-bottom:1px solid var(--border);}
+.area-modal-titulo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:var(--fs-14);}
+.area-modal-corpo{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:12px;}
+.area-modal-corpo .field{margin-bottom:0;}
+.modal.area-modal p{padding:0;margin:0;}
+.area-modal-rodape{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+.area-modal-rodape .area-esquerda{margin-right:auto;}
+
+/* o conteúdo da janela grande: as seções uma embaixo da outra */
+.area-pilha{display:flex;flex-direction:column;gap:20px;}
+.area-pilha > .card{margin-bottom:0;}
+
+/* a prévia do arquivo recebido (imagem ou PDF) */
+.area-previa{min-height:300px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);overflow:hidden;}
+.area-previa img{max-width:100%;max-height:60vh;object-fit:contain;}
+.area-previa iframe{width:100%;height:60vh;border:0;background:#fff;}
+.area-previa .hint{padding:24px;text-align:center;}
+
+/* a resposta ao cliente: a caixa e os botões */
+.area-resposta{display:flex;flex-direction:column;gap:8px;}
+.area-resposta-botoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.area-resposta-botoes .area-esquerda{margin-right:auto;}
+
+/* o ícone do WhatsApp do tamanho dos outros ícones do botão (26/11/2026: "simbolo do whatsapp ta fora dos elementos") */
+.area-wpp{display:inline-flex;width:16px;height:16px;flex:none;}
+.area-wpp svg,.area-wpp img{width:16px;height:16px;display:block;}
+
+/* o Hoje: os dois cartões lado a lado */
+.area-hoje{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px;}
+.area-hoje > .card{margin-bottom:0;}
+@media (max-width:760px){.area-hoje{grid-template-columns:1fr;}}
+
+/* o modal do comunicado: o formulário e, ao lado, como o cliente vê */
+.area-duas{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start;}
+@media (max-width:820px){.area-duas{grid-template-columns:1fr;}}
+
+/* a conversa da solicitação, com o desenho da Área do Cliente (cli-sol-tempo; 26/11/2026: "esse chat ta MUITO feio") */
+.area-sol-tempo{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;}
+.area-sol-evento{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;padding-bottom:16px;}
+.area-sol-evento:last-child{padding-bottom:0;}
+.area-sol-evento:not(:last-child)::before{content:'';position:absolute;top:34px;bottom:2px;left:14px;width:2px;border-radius:2px;background:color-mix(in srgb,var(--border) 60%,transparent);}
+.area-sol-quem{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;overflow:hidden;background:var(--surface-3);color:var(--ink-muted);font-size:11px;font-weight:600;}
+.area-sol-quem img{width:100%;height:100%;object-fit:contain;background:#fff;}
+.area-sol-marca{background:var(--surface);border:1px solid var(--border);padding:6px;}
+.area-sol-marca svg{display:block;height:100%;width:auto;}
+.area-sol-fala{min-width:0;padding:10px 14px;border:1px solid var(--border);border-radius:4px 12px 12px 12px;background:var(--surface-2);}
+.area-sol-evento.escritorio .area-sol-fala{background:color-mix(in srgb,var(--success) 6%,transparent);border-color:color-mix(in srgb,var(--success) 28%,var(--border));}
+.area-sol-evento.esperando .area-sol-fala{border-style:dashed;background:none;}
+.area-sol-evento.esperando .area-sol-fala .hint{margin:0;}
+.area-sol-fala-topo{display:flex;align-items:baseline;gap:8px;margin:0 0 4px;font-size:13px;}
+.area-sol-fala-topo b{font-weight:600;}
+.area-sol-fala-topo .hint{margin:0;font-size:12px;}
+.area-sol-texto{margin:0;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;}
+.area-sol-do-escritorio{padding:1px 7px;border-radius:999px;background:var(--success-soft);color:var(--success-ink);font-size:11px;font-weight:600;}
+
+/* as abas sublinhadas alinhadas com o título da página (26/11/2026: "ta desalinhado") */
+nav.menu.area-menu{padding:0;margin-left:-8px;border-bottom:1px solid var(--border);}
+.modal.area-modal p.hint{font-size:var(--fs-12);color:var(--ink-muted);}
+
+/* as linhas do Hoje (26/11/2026: "refaz isso"): o ícone, duas linhas de texto (o que é e a empresa) e, à direita, o selo
+   com a hora embaixo */
+.area-linhas .ent-linha-abre{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;}
+.area-linhas .ent-linha-abre > div{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.area-linhas .ent-linha-abre > div b,.area-linhas .ent-linha-abre > div .fraco{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.area-linha-icone{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:var(--surface-2);color:var(--ink-muted);}
+.area-linha-fim{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.area-linha-fim .hint{margin:0;}

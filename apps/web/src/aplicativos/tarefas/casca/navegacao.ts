@@ -247,14 +247,23 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'ferramentas', nome: 'Ferramentas', icone: 'wrench', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'documentos', rotulo: 'Documentos', icone: 'fileText', titulo: 'Ferramentas de documentos' },
   ] },
-  // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o
-  // Mandei junto (19/10/2026: "unifique área do cliente e o mandei"): o que o cliente manda (Chamados, Recebidos) e os
-  // tickets que o escritório manda ao cliente (Meus tickets, a Central de todos); /tarefas/mandei/* leva para cá
+  // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Refeita em
+  // 26/11/2026 ("quero que esse modulo seja completamente refeito para suportar e gerenciar de maneira mais simples e
+  // coerente a area do cliente como está hoje, preciso que seja o mais bonito e de facil entendimento possivel"; escolhidas
+  // as "5 seções"): uma seção para cada pergunta da equipe. O que fazer agora (Hoje), o que o cliente pediu (Solicitações),
+  // o que entrou e o que mandamos (Documentos), o que avisamos a todos (Comunicados) e quem tem acesso (Clientes). O Mandei
+  // saiu para a aplicação própria, logo abaixo
   { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem', titulo: 'Solicitações dos clientes' },
-    { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Recebidos' },
+    { id: 'hoje', rotulo: 'Hoje', icone: 'home', titulo: 'Área do Cliente' },
+    { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'mensagem', titulo: 'Solicitações dos clientes' },
+    { id: 'documentos', rotulo: 'Documentos', icone: 'fileText', titulo: 'Documentos dos clientes' },
     // os comunicados aos clientes (22/11/2026, ficha comunicados): a equipe vê; o admin e os diretores publicam
     { id: 'comunicados', rotulo: 'Comunicados', icone: 'sino', titulo: 'Comunicados aos clientes' },
+    { id: 'clientes', rotulo: 'Clientes', icone: 'equipe', titulo: 'Clientes com acesso' },
+  ] },
+  // o Mandei (19/10/2026), de novo como aplicação própria (26/11/2026, a Área do Cliente refeita): os tickets que o
+  // escritório manda ao cliente por e-mail e WhatsApp, fora do site do cliente
+  { id: 'mandei', nome: 'Mandei', icone: 'aviao', grupo: 'Comunicação', pronta: true, paginas: [
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
     { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
   ] },
@@ -331,9 +340,7 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
-    // a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026: "Para quem é do fiscal, não deixe a função área do
-    // cliente ativa ainda"): some da gaveta e o link direto não abre
-    (a.id !== 'area-cliente' || op.admin || op.departamento !== 'fiscal') &&
+    // a Área do Cliente agora também para o Fiscal (26/11/2026, o módulo refeito; o dono escolheu "Sim, ver e responder")
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): o Diretor e quem ele autorizar (09/11/2026)
@@ -386,7 +393,7 @@ const ORDEM_DOS_GRUPOS: readonly Aplicacao['grupo'][] = ['Rotinas', 'Comunicaç�
 export function telasDaNavegacao(): uso.TelaDaNavegacao[] {
   const telas: uso.TelaDaNavegacao[] = [];
   for (const a of APLICACOES) {
-    if (a.id === 'mandei' || a.id === 'desenvolvedor') continue;
+    if (a.id === 'desenvolvedor') continue;
     for (const p of a.paginas) {
       if (p.emDesenvolvimento) continue;
       if (a.id === 'cadastro' && p.id === 'empresas') {

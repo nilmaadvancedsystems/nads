@@ -55,14 +55,18 @@ describe('o Plano de contas do Financeiro é aba (19/11/2026: "pode colocar de v
   });
 });
 
-describe('a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026)', () => {
+describe('a Área do Cliente para toda a equipe, o Fiscal também (26/11/2026, o módulo refeito)', () => {
   const vê = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'area-cliente');
-  it('o Fiscal não vê (nem o diretor); o admin, o Contábil e o DP veem', () => {
-    expect(vê({ ...op('pleno'), departamento: 'fiscal' })).toBe(false);
-    expect(vê({ ...op('diretor'), departamento: 'fiscal' })).toBe(false);
-    expect(vê({ ...op('senior', true), departamento: 'fiscal' })).toBe(true);
+  const paginas = (o: Operador) => aplicacoesDe(o).find(a => a.id === 'area-cliente')?.paginas.map(p => p.id);
+  it('o Fiscal, o Contábil, o DP e o admin veem', () => {
+    expect(vê({ ...op('pleno'), departamento: 'fiscal' })).toBe(true);
+    expect(vê({ ...op('diretor'), departamento: 'fiscal' })).toBe(true);
     expect(vê(op('pleno'))).toBe(true);
     expect(vê({ ...op('pleno'), departamento: 'dp' })).toBe(true);
+  });
+  it('as cinco seções; o Mandei é outra aplicação', () => {
+    expect(paginas(op('pleno'))).toEqual(['hoje', 'solicitacoes', 'documentos', 'comunicados', 'clientes']);
+    expect(aplicacoesDe(op('pleno')).find(a => a.id === 'mandei')?.paginas.map(p => p.id)).toEqual(['meus', 'central']);
   });
 });
 

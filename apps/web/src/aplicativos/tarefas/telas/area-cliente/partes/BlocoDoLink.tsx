@@ -25,7 +25,7 @@ export function BlocoDoLink({ endereco, data, podeMexer, carregando, logo, grava
         {carregando ? <p className="fraco">Procurando o link…</p> : endereco ? (
           <>
             <p className="ac-endereco num" title={endereco}><Icone nome="link" width={16} height={16} />{endereco}</p>
-            <p className="fraco">Link secreto da Área do Cliente{data ? ' · de ' + data : ''}. Quem tem o link vê as guias e abre chamados, sem senha.</p>
+            <p className="fraco">Link secreto da Área do Cliente{data ? ' · de ' + data : ''}. Quem tem o link vê as guias e abre solicitações, sem senha.</p>
           </>
         ) : <p className="fraco">Esta empresa ainda não tem acesso à Área do Cliente.</p>}
         {!carregando && (podeMexer

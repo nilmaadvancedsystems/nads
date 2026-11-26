@@ -674,6 +674,13 @@ igual('nome sem caminho', en.montarEnvio(envioNads, [{ n: 0, dados: Buffer.from(
 igual('faltou pedaço', en.montarEnvio(envioNads, [{ n: 0, dados: Buffer.from('abc') }]).erro, 'faltam partes do arquivo (1 de 2)');
 igual('tamanho diferente do anunciado', en.montarEnvio(envioNads, [{ n: 0, dados: Buffer.from('ab') }, { n: 1, dados: Buffer.from('de') }]).erro, 'o arquivo chegou incompleto');
 igual('competência inválida', en.montarEnvio(Object.assign({}, envioNads, { competencia: '2026-13' }), []).erro, 'competência inválida');
+// o arquivo da equipe para o cliente (26/11/2026): a marca no campo cliente e a pasta DO ESCRITÓRIO pelo mapa
+igual('envio ao cliente: a área pela marca', en.areaDoEnvioAoCliente('@area-do-cliente/dp'), 'dp');
+igual('envio ao cliente: área desconhecida não vale', en.areaDoEnvioAoCliente('@area-do-cliente/outra'), null);
+igual('envio comum não é ao cliente', en.areaDoEnvioAoCliente('FITO INDUSTRIA'), null);
+igual('envio ao cliente: o que já existe e o que falta',
+  JSON.stringify(en.caminhoDoEnvioAoCliente([{ i: 'a', n: 'Área do Cliente', p: 'c', t: 'd' }, { i: 'b', n: 'DO ESCRITORIO', p: 'a', t: 'd' }], 'c', 'contabil')),
+  JSON.stringify({ existente: 'b', faltam: ['CONTÁBIL'], caminho: 'ÁREA DO CLIENTE/DO ESCRITÓRIO/CONTÁBIL' }));
 const porCod = new Map([['58', { nome: 'TORNEARIA VOLPONI LTDA' }]]);
 igual('pasta: nome do cadastro pelo código', en.nomeDaPastaDoCliente({ codigo: '58', cliente: '58 - TORNEARIA' }, porCod), 'TORNEARIA VOLPONI LTDA');
 igual('pasta: o nome que veio', en.nomeDaPastaDoCliente({ codigo: '9', cliente: 'X LTDA' }, porCod), 'X LTDA');
