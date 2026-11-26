@@ -383,7 +383,7 @@ describe('os cartões da empresa (07/10/2026)', () => {
   it('cartão empresarial e vende no cartão: sim, não, não informado; vão e voltam do documento', () => {
     const c = definirCartao(definirCartao(vazio(), 'cartaoEmpresarial', true, 'Vitor', AGORA), 'vendeNoCartao', false, 'Vitor', AGORA);
     expect([c.cartaoEmpresarial, c.vendeNoCartao]).toEqual([true, false]);
-    expect(c.historico[0]).toMatchObject({ acao: 'Vende no cartão', detalhe: 'Não' });
+    expect(c.historico[0]).toMatchObject({ acao: 'Possui maquininha', detalhe: 'Não' });
     const volta = cadastroDoDocumento('FITO', 292, documentoDoCadastro(c));
     expect([volta.cartaoEmpresarial, volta.vendeNoCartao]).toEqual([true, false]);
     expect('cartaoEmpresarial' in definirCartao(c, 'cartaoEmpresarial', null, 'Vitor', AGORA)).toBe(false);

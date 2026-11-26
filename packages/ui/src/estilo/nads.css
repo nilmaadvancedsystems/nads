@@ -8927,5 +8927,10 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .cad-particularidades-corpo{padding:4px 14px 8px;}
 /* o SCI em primeiro, com a logo dele no título */
 .cad-sci-titulo{display:inline-flex;align-items:center;gap:8px;}
+/* o SCI sem a linha divisória do título, com o espaço antes dos dropdowns */
+.cad-sci-bloco{margin-bottom:12px;}
 /* o plano do SCI com a fonte branca (26/11/2026: "Deixa branca a fonte"), não na cor de destaque do menu */
 .cfg-linha-controle .btn.btn-ghost.cad-sci-plano{color:var(--ink);}
+/* a empresa que está no SCI, na lista do Cadastro: um azul leve na linha para identificar (26/11/2026) */
+tr.cad-linha-sci > td{background:color-mix(in srgb,var(--info, #3b82f6) 14%,transparent);}
+tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20%,transparent);}

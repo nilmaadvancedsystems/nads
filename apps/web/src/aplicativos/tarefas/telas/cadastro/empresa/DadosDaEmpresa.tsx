@@ -228,36 +228,41 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
   );
   return (
     <>
-      <ConfigSecao titulo="Cartões">
+      {/* em Despesas e Receitas (26/11/2026: "Despesas: Compras no cartao, Emite nota de honorario. Receitas: Possui Maquininha,
+          Liquidacao de Cobranca, ao marcar sim, que aparece as opcoes") */}
+      <ConfigSecao titulo="Despesas">
         {/* o nome na tela (26/11/2026: "Troca para, Compras no Cartao"); o campo continua o cartaoEmpresarial */}
         <ConfigLinha titulo="Compras no cartão">
           {chave('cartaoEmpresarial', 'Compras no cartão')}
-        </ConfigLinha>
-        {/* o nome na tela (26/11/2026: "Possui Maquininha"); o campo continua o vendeNoCartao */}
-        <ConfigLinha titulo="Possui maquininha">
-          {chave('vendeNoCartao', 'Possui maquininha')}
-        </ConfigLinha>
-      </ConfigSecao>
-      <ConfigSecao titulo="Recebimentos e honorários">
-        {/* o Creditor (Vitor, 08/10/2026): a empresa recebe liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA) */}
-        <ConfigLinha titulo="Liquidação de cobrança (Creditor)">
-          {chave('credLiquidacao', 'Liquidação de cobrança')}
-        </ConfigLinha>
-        {/* de quais bancos vem o relatório (Vitor, 14/10/2026: "checks, Bradesco e Sicoob"): o importar automático procura esses */}
-        <ConfigLinha titulo="Relatório de liquidação">
-          <span style={{ display: 'inline-flex', gap: 16 }}>
-            {empresas.cadastro.BANCOS_DO_RELATORIO.map(b => (
-              <label key={b.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                <input type="checkbox" checked={vm.relatoriosDeLiquidacao.includes(b.id)} onChange={e => vm.marcarRelatorioDeLiquidacao(b.id, e.target.checked)} />
-                {b.nome}
-              </label>
-            ))}
-          </span>
         </ConfigLinha>
         {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
         <ConfigLinha titulo="Emite nota de honorário">
           <Interruptor ligado={vm.emiteNotaHonorario === true} rotulo="Emite nota de honorário" onMudar={() => vm.definirNotaDeHonorario(vm.emiteNotaHonorario !== true)} />
         </ConfigLinha>
+      </ConfigSecao>
+      <ConfigSecao titulo="Receitas">
+        {/* o nome na tela (26/11/2026: "Possui Maquininha"); o campo continua o vendeNoCartao */}
+        <ConfigLinha titulo="Possui maquininha">
+          {chave('vendeNoCartao', 'Possui maquininha')}
+        </ConfigLinha>
+        {/* o Creditor (Vitor, 08/10/2026): a empresa recebe liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA) */}
+        <ConfigLinha titulo="Liquidação de cobrança (Creditor)">
+          {chave('credLiquidacao', 'Liquidação de cobrança')}
+        </ConfigLinha>
+        {/* de quais bancos vem o relatório (Vitor, 14/10/2026: "checks, Bradesco e Sicoob"): o importar automático procura esses;
+            só com a liquidação ligada (26/11/2026: "ao marcar sim, que aparece as opcoes") */}
+        {vm.credLiquidacao === true && (
+          <ConfigLinha titulo="Relatório de liquidação">
+            <span style={{ display: 'inline-flex', gap: 16 }}>
+              {empresas.cadastro.BANCOS_DO_RELATORIO.map(b => (
+                <label key={b.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={vm.relatoriosDeLiquidacao.includes(b.id)} onChange={e => vm.marcarRelatorioDeLiquidacao(b.id, e.target.checked)} />
+                  {b.nome}
+                </label>
+              ))}
+            </span>
+          </ConfigLinha>
+        )}
       </ConfigSecao>
     </>
   );
@@ -272,10 +277,12 @@ export function SciDaEmpresa({ rota }: { rota: string }) {
   const vm = useDadosDaEmpresa(rota);
   if (vm.carregando || !vm.comSci) return null;
   return (
-    <ConfigSecao titulo={<span className="cad-sci-titulo"><LogoSci altura={18} />SCI</span>}>
+    // sem a linha divisória e com a logo na mesma linha do "Está no SCI" (26/11/2026: "Remove essa linha divisoria, coloque tudo na
+    // mesma linha")
+    <div className="cfg-linhas cad-sci-bloco">
       {/* está no SCI (Vitor, 24/11/2026: "ja que sairam do alterdata"): só as ligadas aparecem no minimum */}
       {/* sem as descrições (26/11/2026: "Remove isso") */}
-      <ConfigLinha titulo="Está no SCI">
+      <ConfigLinha titulo={<span className="cad-sci-titulo"><LogoSci altura={18} />Está no SCI</span>}>
         <Interruptor ligado={vm.noSci} rotulo="Está no SCI" onMudar={() => vm.definirNoSci(!vm.noSci)} />
       </ConfigLinha>
       {vm.noSci && (
@@ -293,7 +300,7 @@ export function SciDaEmpresa({ rota }: { rota: string }) {
             itens={vm.planosDoSci.map(p => ({ rotulo: 'Plano ' + p, marcado: vm.planoSci === p, onClick: () => { if (vm.planoSci !== p) vm.definirNoSci(true, p); } }))} />
         </ConfigLinha>
       )}
-    </ConfigSecao>
+    </div>
   );
 }
 

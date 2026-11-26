@@ -43,6 +43,8 @@ export interface LinhaEmpresa {
   atualizado: string;
   /** regime, contato, bancos, plano e sócios: o que já tem */
   itens: ItemDoCadastro[];
+  /** a empresa está no SCI (a linha fica levemente azul; 26/11/2026) */
+  noSci: boolean;
   completos: number;
 }
 
@@ -65,6 +67,7 @@ export function useListaDoCadastro() {
     const contas = c?.bancos ? c.bancos.filter(b => !b.ate) : cad.contasDoEntregas(doRobo);
     const origem: LinhaEmpresa['origem'] = c?.bancos ? 'cadastro' : contas.length ? 'robo' : 'nenhum';
     return {
+      noSci: c?.noSci === true,
       chave: (x.codigo ?? '') + x.nome,
       rota: empresas.rotaDaEmpresa(x),
       codigo: x.codigo,
