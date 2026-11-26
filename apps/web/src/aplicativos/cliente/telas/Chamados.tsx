@@ -3,7 +3,8 @@
 // resposta); à direita o painel: a solicitação escolhida (a situação, o pedido, a resposta do escritório, enviar arquivos
 // e o WhatsApp) ou a nova (o assunto em cartões, depois o formulário). No celular, um de cada vez. Só desenha: o estado e
 // as ações vêm de useChamados.ts.
-import { CampoData, CampoEscolha, Icone, MenuSuspenso, type NomeIcone } from '@nads/ui';
+import { CampoData, CampoEscolha, Icone, MenuSuspenso, formatoPeloNome, type NomeIcone } from '@nads/ui';
+import { IconeDoArquivo } from '../partes/IconeDoArquivo';
 import { useEffect, useId, useRef } from 'react';
 import type { areaCliente as ac } from '@nads/core';
 import { AreaDeSoltar } from '../partes/AreaDeSoltar';
@@ -206,7 +207,15 @@ export function Chamados(props: DaCasca) {
                     <span className="cli-sol-quem" aria-hidden="true"><MarcaDoEscritorio tamanho={30} /></span>
                     <div className="cli-sol-fala">
                       <p className="cli-sol-fala-topo"><b>{m.autor || 'Escritório'}</b>{m.autor && <span className="cli-sol-do-escritorio">Escritório</span>}<span className="hint">{m.quando}</span></p>
-                      <p className="cli-sol-texto">{m.texto}</p>
+                      {m.texto && <p className="cli-sol-texto">{m.texto}</p>}
+                      {/* o arquivo que o escritório mandou na resposta, com o Baixar (26/11/2026) */}
+                      {m.anexo && (
+                        <div className="cli-sol-anexo">
+                          <IconeDoArquivo formato={formatoPeloNome(m.anexo.nome)} tamanho={28} />
+                          <span className="cli-sol-anexo-nome" title={m.anexo.nome}>{m.anexo.nome}</span>
+                          <button type="button" className="btn btn-sm" disabled={m.anexo.baixando} onClick={m.anexo.baixar}><Icone nome="download" width={15} height={15} />{m.anexo.baixando ? 'Baixando…' : 'Baixar'}</button>
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}

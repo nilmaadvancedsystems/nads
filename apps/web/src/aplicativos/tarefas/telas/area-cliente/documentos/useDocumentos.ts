@@ -14,6 +14,7 @@ import { enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltr
 import { bate, dataEHora, haQuanto, mensagemDoErro } from '../base/comum';
 import { useEnviarAoCliente, type EmpresaParaEnviar } from '../base/useEnviarAoCliente';
 import { usePreviaDoRecebido } from './usePreviaDoRecebido';
+import { baixarArquivo } from '../../../../cliente/dados/baixar';
 
 export type AbaDosDocumentos = 'recebidos' | 'enviados';
 
@@ -91,6 +92,22 @@ export function useDocumentos() {
     // o recebido aberto ao lado, com a prévia
     aberto, previa: previa.previa,
     abrir,
+    // as setas da janela (← e →): o anterior e o próximo da lista do filtro
+    ...(() => {
+      const i = aberto ? linhas.findIndex(x => x.id === aberto.id) : -1;
+      return {
+        anterior: i > 0 ? () => abrir(linhas[i - 1]) : undefined,
+        proximo: i >= 0 && i < linhas.length - 1 ? () => abrir(linhas[i + 1]) : undefined,
+        posicao: i >= 0 ? (i + 1) + ' de ' + linhas.length : undefined,
+      };
+    })(),
+    /** baixa o arquivo aberto (já está no navegador) */
+    baixarAberto() {
+      const p = previa.previa;
+      if (p?.blob) baixarArquivo(p.nome, p.blob);
+    },
+    /** "462 · 3M EMPREENDIMENTOS · Extrato do banco · recebido há 1 h" */
+    subDoAberto: (r: RecebidoDoCliente) => r.codigo + ' · ' + r.empresa + ' · ' + (ac.TIPOS_DE_ENVIO.find(t => t.valor === r.tipo)?.rotulo ?? r.tipo) + (r.guia ? ' · ' + r.guia : '') + ' · ' + dataEHora(r.recebidoEm),
     fechar() { setAberto(null); setRecusando(false); previa.fechar(); },
     recusaDe,
     detalhe: (r: RecebidoDoCliente) => [

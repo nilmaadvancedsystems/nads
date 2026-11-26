@@ -38,3 +38,7 @@
 .cli-app .cli-sol-escrever textarea::placeholder { color: var(--ink-muted); }
 .cli-app .cli-sol-escrever .btn { flex: none; height: 50px; }
 .cli-app .cli-sol-escrever + .cli-sol-fim { margin-top: 0; border-top: 0; padding-top: 10px; }
+
+/* o arquivo que o escritório mandou na resposta, com o Baixar (26/11/2026: "para aparecer no chat dele para baixar") */
+.cli-app .cli-sol-anexo{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--surface);}
+.cli-app .cli-sol-anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}

@@ -77,3 +77,22 @@ export function erroDoEnvioAoCliente(arquivo: { nome: string; tamanho: number } 
   if (/(holerite|recibo de pagamento|contracheque)/i.test(arquivo.nome)) return 'Holerite não vai pela Área do Cliente (tem o CPF completo do funcionário).';
   return '';
 }
+
+// ---------- o arquivo anexado na resposta da solicitação (26/11/2026: "o cliente nao tem acesso ao drive, e para aparecer no
+// chat dele para baixar e na parte de central de documentos") ----------
+// A resposta leva no fim a linha do anexo (a conversa só guarda texto); a Área do Cliente acha o documento do escritório com
+// esse nome e mostra o Baixar no lugar da linha.
+const PREFIXO_DO_ANEXO = '📎 Arquivo enviado: ';
+const SUFIXO_DO_ANEXO = ' — está em Documentos › Do escritório.';
+
+/** A linha que vai no fim da resposta quando a equipe anexou um arquivo. */
+export const linhaDoAnexo = (nomeFinal: string) => PREFIXO_DO_ANEXO + nomeFinal + SUFIXO_DO_ANEXO;
+
+/** A resposta separada: o texto sem a linha do anexo e o nome do arquivo (ou null, sem anexo). */
+export function anexoDaMensagem(texto: string): { texto: string; nome: string | null } {
+  const linhas = String(texto || '').split('\n');
+  const i = linhas.findIndex(l => l.startsWith(PREFIXO_DO_ANEXO) && l.endsWith(SUFIXO_DO_ANEXO));
+  if (i < 0) return { texto, nome: null };
+  const nome = linhas[i].slice(PREFIXO_DO_ANEXO.length, linhas[i].length - SUFIXO_DO_ANEXO.length).trim();
+  return { texto: linhas.filter((_, j) => j !== i).join('\n').trim(), nome: nome || null };
+}

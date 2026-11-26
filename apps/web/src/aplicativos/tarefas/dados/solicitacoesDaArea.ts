@@ -81,7 +81,7 @@ export function areaDoAnexo(tipo: string): ac.AreaDoEscritorio {
 }
 
 /** A linha que vai no fim da resposta quando a equipe anexou um arquivo (o cliente vê em Documentos › Do escritório). */
-export const linhaDoAnexo = (nomeFinal: string) => '📎 Arquivo enviado: ' + nomeFinal + ' — está em Documentos › Do escritório.';
+export const linhaDoAnexo = (nomeFinal: string) => ac.linhaDoAnexo(nomeFinal);
 
 /** O texto da resposta: o que foi digitado e, havendo anexo, a linha do arquivo no fim (só ela, se não houver texto). */
 export function textoDaResposta(texto: string, nomeDoAnexo?: string | null): string {

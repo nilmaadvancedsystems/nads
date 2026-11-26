@@ -5,7 +5,8 @@
 // em menu e a busca, a tabela padrão, a janela da empresa do Cadastro e o modal. Só desenha: o estado vem de useDocumentos.ts.
 import { CampoArquivo, Esqueleto, Icone, IconeDeArquivo, Segmentado, Vazio, formatoPeloNome, useCarregando } from '@nads/ui';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
-import { AvisosDaArea, EmpresaDaLinha, JanelaGrande, JanelaPequena, Selo } from '../base/Base';
+import { AvisosDaArea, EmpresaDaLinha, JanelaPequena, Selo } from '../base/Base';
+import { JanelaDoArquivo } from '../../../../cliente/partes/JanelaDoArquivo';
 import { BuscaDeEmpresa } from '../base/BuscaDeEmpresa';
 import { useDocumentos } from './useDocumentos';
 
@@ -118,34 +119,34 @@ function Enviados({ vm }: { vm: Vm }) {
   );
 }
 
-/** O recebido aberto: a prévia, os dados e o Recusar, na janela da empresa do Cadastro. */
+/**
+ * O recebido aberto: a janela de arquivo da Área do Cliente (o PDF em páginas, sem o leitor do navegador; 26/11/2026:
+ * "visualizacao horrivel", "esse jeito aqui ta terrivel"), com o Baixar, o Recusar e as setas pela lista. Enquanto o robô
+ * traz o arquivo (ou se não deu), o modal pequeno diz.
+ */
 function JanelaDoRecebido({ vm }: { vm: Vm }) {
   const r = vm.aberto!;
   const p = vm.previa;
   const recusa = vm.recusaDe(r);
+  const recusar = recusa
+    ? <span className="badge badge-bad" title={recusa}>Recusado</span>
+    : <button type="button" className="btn btn-danger" onClick={vm.recusa.abrir}>Recusar</button>;
   return (
-    <JanelaGrande codigo={r.codigo} titulo={r.empresa} rotulo={'Arquivo ' + r.nome} onFechar={vm.fechar}
-      selo={recusa ? <Selo tom="perigo">Recusado</Selo> : undefined}>
-      <h2 className="cfg-titulo">{r.nome}</h2>
-      <div className="area-pilha">
-        <div className="area-previa">
-          {!p || p.estado === 'buscando' ? <p className="hint">{p?.texto || 'Buscando o arquivo no Drive…'}</p>
-            : p.estado === 'erro' ? <p className="hint" role="alert">{p.texto}</p>
-            : p.jeito === 'imagem' ? <img src={p.url} alt={p.nome} />
-            : p.jeito === 'pdf' ? <iframe src={p.url + '#navpanes=0&view=FitH'} title={p.nome} />
-            : <p className="hint">Este tipo de arquivo não tem prévia. Use “Abrir em outra aba”.</p>}
-        </div>
-        <dl className="ent-dados">
-          {vm.detalhe(r).map(d => <div key={d.rotulo}><dt>{d.rotulo}</dt><dd>{d.valor}</dd></div>)}
-          {recusa && <div><dt>Motivo da recusa</dt><dd>{recusa}</dd></div>}
-        </dl>
-        <div className="area-resposta-botoes">
-          {p?.url && <a className="btn btn-outline" href={p.url} target="_blank" rel="noreferrer"><Icone nome="maximizar" width={16} height={16} />Abrir em outra aba</a>}
-          {!recusa && <button type="button" className="btn btn-danger" onClick={vm.recusa.abrir}>Recusar</button>}
-        </div>
-      </div>
+    <>
+      {p?.estado === 'pronto' && p.arquivo ? (
+        <JanelaDoArquivo arquivo={p.arquivo} sub={vm.subDoAberto(r)} acoes={recusar} onBaixar={vm.baixarAberto} onFechar={vm.fechar}
+          onAnterior={vm.anterior} onProximo={vm.proximo} posicao={vm.posicao} />
+      ) : (
+        <JanelaPequena titulo={r.nome} sub={vm.subDoAberto(r)} onFechar={vm.fechar}
+          rodape={<>{!recusa && <button type="button" className="btn btn-danger" onClick={vm.recusa.abrir}>Recusar</button>}<button type="button" className="btn btn-outline" onClick={vm.fechar}>Fechar</button></>}>
+          {!p || p.estado === 'buscando'
+            ? <p className="hint" role="status"><span className="btn-spinner" aria-hidden="true" /> {p?.texto || 'Buscando o arquivo no Drive…'}</p>
+            : <p className="hint registro-dica-erro" role="alert">{p.texto}</p>}
+          {recusa && <p className="hint">Recusado: {recusa}</p>}
+        </JanelaPequena>
+      )}
       {vm.recusa.aberta && <JanelaDaRecusa vm={vm} />}
-    </JanelaGrande>
+    </>
   );
 }
 
