@@ -681,6 +681,8 @@ igual('envio comum não é ao cliente', en.areaDoEnvioAoCliente('FITO INDUSTRIA'
 igual('envio ao cliente: o que já existe e o que falta',
   JSON.stringify(en.caminhoDoEnvioAoCliente([{ i: 'a', n: 'Área do Cliente', p: 'c', t: 'd' }, { i: 'b', n: 'DO ESCRITORIO', p: 'a', t: 'd' }], 'c', 'contabil')),
   JSON.stringify({ existente: 'b', faltam: ['CONTÁBIL'], caminho: 'ÁREA DO CLIENTE/DO ESCRITÓRIO/CONTÁBIL' }));
+// a guia mandada ao cliente (26/11/2026: "enviei um darf pelo enviar guias e nao leu como darf") fica em ÁREA DO CLIENTE/GUIAS
+igual('envio ao cliente: a guia fora do DO ESCRITÓRIO', en.caminhoDoEnvioAoCliente([{ i: 'a', n: 'ÁREA DO CLIENTE', p: 'c', t: 'd' }], 'c', 'fiscal', true).caminho, 'ÁREA DO CLIENTE/GUIAS');
 // o arquivo também vai direto para a Área do Cliente (26/11/2026: "para aparecer no chat dele para baixar"): o mesmo id do robô do PC
 {
   const r = en.documentoDoEscritorioNoEspelho('292', 'dp', 'Certidão.pdf', Buffer.from('abc'), '2026-11-26T18:00:00Z', (c, cam) => c + '|' + cam);

@@ -105,7 +105,7 @@ function Enviados({ vm }: { vm: Vm }) {
                 <tr key={x.id}>
                   <td className="wrap"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><IconeDeArquivo formato={formatoPeloNome(x.nome)} tamanho={20} />{x.nome}</span></td>
                   <td className="wrap"><EmpresaDaLinha codigo={x.codigo} nome={x.empresa || '—'} /></td>
-                  <td>{x.areaRotulo}</td>
+                  <td>{x.comoGuia ? <span className="badge badge-conferido" title="Lida como guia: está em Guias na Área do Cliente">Guia {x.comoGuia}</span> : x.areaRotulo}</td>
                   <td>{x.situacao === 'pronto' ? <Selo tom="ok" title="Está na pasta; o cliente vê em até 30 minutos">Enviado</Selo>
                     : x.situacao === 'erro' ? <Selo tom="perigo" title={x.erro}>Não foi</Selo> : <Selo tom="aviso">Na fila do robô</Selo>}</td>
                   <td className="fraco" title={x.quandoCompleto}>{x.quando}</td>

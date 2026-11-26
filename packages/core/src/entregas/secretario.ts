@@ -151,6 +151,8 @@ export interface EnvioFeito {
   /** o campo cliente e o código como a tela mandou (26/11/2026: o envio ao cliente, "@area-do-cliente/dp") */
   cliente?: string;
   codigo?: string;
+  /** o envio ao cliente que o robô leu como guia ("DARF IRPJ"; 26/11/2026): foi para as Guias da Área do Cliente */
+  comoGuia?: string;
 }
 
 const txt = (v: unknown) => (v == null ? '' : String(v));
@@ -160,7 +162,7 @@ export function envioFeitoDoDocumento(id: string, d: Record<string, unknown>): E
   const situacao = a && (a.situacao === 'arquivado' || a.situacao === 'nao_identificado' || a.situacao === 'duplicado') ? a.situacao : null;
   return {
     id, nome: txt(d.nomeFinal || d.nome), criadoEm: txt(d.criadoEm), status: andamentoDoEnvio(d).status, pasta: txt(d.pasta), erro: txt(d.erro),
-    cliente: txt(d.cliente), codigo: txt(d.codigo),
+    cliente: txt(d.cliente), codigo: txt(d.codigo), comoGuia: txt(d.comoGuia),
     arquivamento: a && situacao ? {
       situacao, em: txt(a.em), codigo: txt(a.codigo), cliente: txt(a.cliente), subpasta: txt(a.subpasta), final: txt(a.final), motivo: txt(a.motivo),
     } : null,
