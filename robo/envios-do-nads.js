@@ -289,10 +289,13 @@ function areaDoEnvioAoCliente(cliente) {
   return Object.prototype.hasOwnProperty.call(SUBPASTA_DA_AREA, area) ? area : null;
 }
 
-/** O caminho de ÁREA DO CLIENTE/DO ESCRITÓRIO/<ÁREA> na pasta do cliente pelo mapa: o que já existe e o que falta criar. */
-function caminhoDoEnvioAoCliente(itens, clienteId, area) {
+/**
+ * O caminho de ÁREA DO CLIENTE/DO ESCRITÓRIO/<ÁREA> na pasta do cliente pelo mapa: o que já existe e o que falta criar. A guia
+ * fica em ÁREA DO CLIENTE/GUIAS (fora do DO ESCRITÓRIO, que o robô do PC publica como documento: a guia sairia duas vezes).
+ */
+function caminhoDoEnvioAoCliente(itens, clienteId, area, guia = false) {
   const k = require('./drive-indice').chaveDeNome;
-  const alvo = ['ÁREA DO CLIENTE', 'DO ESCRITÓRIO', SUBPASTA_DA_AREA[area]];
+  const alvo = guia ? ['ÁREA DO CLIENTE', 'GUIAS'] : ['ÁREA DO CLIENTE', 'DO ESCRITÓRIO', SUBPASTA_DA_AREA[area]];
   let pai = clienteId;
   let i = 0;
   for (; i < alvo.length; i++) {
@@ -332,8 +335,34 @@ async function documentoNaAreaDoCliente(db, codigo, area, nomeFinal, buffer, log
   return tokens.length;
 }
 
+/**
+ * A guia do arquivo que a equipe mandou ao cliente (26/11/2026, o dono: "enviei um darf pelo enviar guias e nao leu como
+ * darf"): o mesmo leitor do lote do Fiscal (o arquivador decide o tipo; a regra da guia lê o tributo, o valor, o vencimento e o
+ * período de apuração). Devolve a guia no formato do gravarGuiaNaArea (com a empresa escolhida na tela), ou null: não é guia
+ * (DAS, DARF, DAE, DAM) ou faltou o vencimento ou o valor; aí o arquivo segue como documento.
+ */
+async function guiaDoArquivoParaOCliente(db, nome, buffer, codigo) {
+  if (!/\.pdf$/i.test(String(nome || ''))) return null;
+  // na hora (o lote do Fiscal também usa este módulo: sem ciclo no carregamento)
+  const AR = require('./arquivador-regras');
+  const L = require('./lote-dp');
+  const F = require('./lote-fiscal');
+  const novo = require('./arquivador-novo');
+  const ctx = await L.contextoDoArquivador(db);
+  const entrada = await novo.montarEntrada(nome, nome, buffer);
+  const d = AR.decidir(entrada, { cadastro: ctx.cadastro, hoje: new Date() });
+  if (!TIPOS_DOS_LOTES.includes(d.tipo)) return null;
+  const c = F.camposDaGuiaFiscal(d.tipo, AR.norm((entrada.texto || []).slice(0, 3).join(String.fromCharCode(10))));
+  if (!c) return null;
+  const competencia = L.competenciaIso(c.competencia) || (d.tipo === 'DAM' ? '' : L.competenciaIso(d.competencia));
+  // o leitor dá o vencimento como "20-04-2026" e o valor como "R$220,00": a guia da Área quer "20/04/2026" (o valor o
+  // guiaDoLote já limpa)
+  const vencimento = String(c.vencimento || '').trim().replace(/^(\d{2})[-.](\d{2})[-.](\d{4})$/, '$1/$2/$3');
+  return guiaDoLote({ tipo: d.tipo, tributo: c.tributo, valor: c.valor, competencia, codigo }, { vencimento });
+}
+
 /** Grava o arquivo da equipe na pasta DO ESCRITÓRIO da empresa (pela API do Drive). Erro em português quando não dá. */
-async function gravarParaOCliente(db, drive, envio, c, area) {
+async function gravarParaOCliente(db, drive, envio, c, area, guia = false) {
   const codigo = String(envio.codigo == null ? '' : envio.codigo).trim();
   if (!codigo) throw new Error('o envio ao cliente veio sem a empresa');
   const raiz = (await db.collection('driveIndice').doc('raiz').get()).data() || {};
@@ -343,7 +372,7 @@ async function gravarParaOCliente(db, drive, envio, c, area) {
   const partes = Number(((await ref.get()).data() || {}).partes || 0);
   const itens = [];
   for (let n = 0; n < partes; n++) itens.push(...((((await ref.collection('partes').doc(String(n)).get()).data()) || {}).itens || []));
-  const cam = caminhoDoEnvioAoCliente(itens, cli.id, area);
+  const cam = caminhoDoEnvioAoCliente(itens, cli.id, area, guia);
   let pastaId = cam.existente;
   for (const nome of cam.faltam) pastaId = await driveArquivos.garantirPasta(drive, pastaId, nome);
   const salvo = await driveArquivos.salvarArquivo(drive, pastaId, c.nome, c.buffer);
@@ -414,8 +443,13 @@ function iniciarEnviosDoNads(db, log) {
       if (areaDoCliente) {
         const agora = () => new Date().toISOString();
         if (!USAR_DRIVE_API) { await apagarPartes(doc.ref); await doc.ref.update({ status: 'erro', erro: 'este robô não grava no Drive pela API', prontoEm: agora() }); return; }
+        // a guia (DARF, DAS, DAE, DAM) vai para as Guias da Área do Cliente, não para os documentos; a leitura que falhar
+        // não segura o envio (vai como documento)
+        let guia = null;
+        try { guia = await guiaDoArquivoParaOCliente(db, c.nome, c.buffer, String(envio.codigo == null ? '' : envio.codigo).trim()); }
+        catch (err) { log('envio ao cliente: não li como guia (' + c.nome + '):', err.message); }
         let r;
-        try { r = await gravarParaOCliente(db, driveArquivos.getDrive(), envio, c, areaDoCliente); }
+        try { r = await gravarParaOCliente(db, driveArquivos.getDrive(), envio, c, areaDoCliente, !!guia); }
         catch (err) {
           // a empresa sem pasta no mapa é definitivo; o Drive fora do ar espera (o catch de fora)
           if (/não tem pasta|sem a empresa/.test(err.message)) { await apagarPartes(doc.ref); await doc.ref.update({ status: 'erro', erro: err.message, prontoEm: agora() }); return; }
@@ -423,11 +457,18 @@ function iniciarEnviosDoNads(db, log) {
         }
         // na Área do Cliente já (antes do "pronto": a resposta da solicitação só sai depois, e o cliente já acha o arquivo);
         // um erro aqui não desfaz o Drive: o robô do PC publica da pasta depois
-        try { await documentoNaAreaDoCliente(db, r.codigo, areaDoCliente, r.nomeFinal, c.buffer, log); }
-        catch (err) { log('arquivo do escritório na Área do Cliente falhou (fica para o robô do PC):', err.message); }
+        if (guia) {
+          try { await gravarGuiaNaArea(db, guia, c.buffer, log); }
+          catch (err) { log('guia do envio ao cliente na Área falhou:', err.message); }
+        } else {
+          try { await documentoNaAreaDoCliente(db, r.codigo, areaDoCliente, r.nomeFinal, c.buffer, log); }
+          catch (err) { log('arquivo do escritório na Área do Cliente falhou (fica para o robô do PC):', err.message); }
+        }
         await apagarPartes(doc.ref);
         await doc.ref.update({
           status: 'pronto', pasta: r.pasta, nomeFinal: r.nomeFinal, jaEstava: r.jaEstava, prontoEm: agora(), direto: true,
+          // a guia lida (a tela mostra "Guia DARF" em Enviados por mim)
+          ...(guia ? { comoGuia: [guia.tipo, guia.tributo].filter(Boolean).join(' '), guiaVencimento: guia.vencimento, guiaValor: guia.valor } : {}),
           arquivamento: { situacao: 'arquivado', em: agora(), execucao: 'direto', codigo: r.codigo, cliente: r.cliente, subpasta: r.subpasta, final: r.nomeFinal },
         });
         log('arquivo ao cliente pelo nads (' + (envio.criadoPor || '?') + '):', c.nome, '->', r.pasta + '/' + r.nomeFinal + (r.jaEstava ? ' (já estava lá)' : ''));
@@ -573,4 +614,4 @@ function iniciarDestinoDosEnvios(db, log) {
 }
 
 module.exports = { envioDoMandeiConferido, extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente,
-  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente, documentoDoEscritorioNoEspelho };
+  gravarGuiaNaArea, guiaDoLote, guiasDoLoteNaArea, TIPOS_DOS_LOTES, destinoNoArquivamento, iniciarDestinoDosEnvios, areaDoEnvioAoCliente, caminhoDoEnvioAoCliente, documentoDoEscritorioNoEspelho, guiaDoArquivoParaOCliente };

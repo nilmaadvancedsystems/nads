@@ -48,6 +48,8 @@ export interface EnviadoAoCliente {
   criadoEm: string;
   situacao: 'fila' | 'pronto' | 'erro';
   erro: string;
+  /** lido como guia pelo robô ("DARF IRPJ"): foi para as Guias da Área do Cliente */
+  comoGuia: string;
 }
 
 /** Os meus envios que foram para a Área do Cliente, do mais novo ao mais velho. */
@@ -58,7 +60,7 @@ export function enviadosAoCliente(envios: readonly e.EnvioFeito[]): EnviadoAoCli
     if (!c.startsWith(ac.MARCA_DO_ENVIO_AO_CLIENTE)) continue;
     const area = ac.AREAS_DO_ESCRITORIO.find(a => a.valor === c.slice(ac.MARCA_DO_ENVIO_AO_CLIENTE.length))?.valor;
     if (!area) continue;
-    out.push({ id: x.id, nome: x.nome, codigo: x.codigo || '', area, criadoEm: x.criadoEm, situacao: x.status === 'pronto' ? 'pronto' : x.status === 'erro' ? 'erro' : 'fila', erro: x.erro });
+    out.push({ id: x.id, nome: x.nome, codigo: x.codigo || '', area, criadoEm: x.criadoEm, situacao: x.status === 'pronto' ? 'pronto' : x.status === 'erro' ? 'erro' : 'fila', erro: x.erro, comoGuia: x.comoGuia || '' });
   }
   return out.sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
 }
