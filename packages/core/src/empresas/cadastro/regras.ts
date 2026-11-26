@@ -972,7 +972,7 @@ export function definirCartao(c: CadastroDaEmpresa, campo: 'cartaoEmpresarial' |
   const resto: CadastroDaEmpresa = { ...c };
   delete resto[campo];
   const novo = sim == null ? resto : { ...resto, [campo]: sim };
-  return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Cartão empresarial' : campo === 'vendeNoCartao' ? 'Vende no cartão' : 'Liquidação de cobrança (Creditor)', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+  return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Compras no cartão' : campo === 'vendeNoCartao' ? 'Vende no cartão' : 'Liquidação de cobrança (Creditor)', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
 }
 
 // ─── contato (o e-mail e o WhatsApp do Mandei) ──────────────────────────────

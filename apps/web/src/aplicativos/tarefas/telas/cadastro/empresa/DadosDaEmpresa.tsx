@@ -229,8 +229,9 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
   return (
     <>
       <ConfigSecao titulo="Cartões">
-        <ConfigLinha titulo="Cartão empresarial">
-          {chave('cartaoEmpresarial', 'Cartão empresarial')}
+        {/* o nome na tela (26/11/2026: "Troca para, Compras no Cartao"); o campo continua o cartaoEmpresarial */}
+        <ConfigLinha titulo="Compras no cartão">
+          {chave('cartaoEmpresarial', 'Compras no cartão')}
         </ConfigLinha>
         <ConfigLinha titulo="Vende no cartão">
           {chave('vendeNoCartao', 'Vende no cartão')}
