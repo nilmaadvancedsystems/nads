@@ -237,6 +237,11 @@ export interface CadastroDaEmpresa {
    */
   planoSci?: PlanoDoSci;
   /**
+   * A competência (AAAA-MM) em que a empresa passou a ser lançada no SCI (26/11/2026: "Data tambem, porque a partir de tal
+   * competencia entra na sci"); antes dela, no Alterdata. Só com o noSci.
+   */
+  sciDesde?: string;
+  /**
    * O lembrete de vencimento ao cliente desta empresa (17/11/2026, o dono: "quero que a parte de vencimento tenha como escolher por cliente"): 'sim' manda mesmo com o
    * lembrete geral desligado, 'nao' nunca manda; diasAntes troca os dias do escritório. Sem = como o escritório
    * (Robôs › Ajustes).

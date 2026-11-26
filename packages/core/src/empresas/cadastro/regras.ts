@@ -300,7 +300,8 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
-    ...(doc.noSci === true ? { noSci: true, ...(PLANOS_DO_SCI.includes(doc.planoSci as PlanoDoSci) ? { planoSci: doc.planoSci as PlanoDoSci } : {}) } : {}),
+    ...(doc.noSci === true ? { noSci: true, ...(PLANOS_DO_SCI.includes(doc.planoSci as PlanoDoSci) ? { planoSci: doc.planoSci as PlanoDoSci } : {}),
+      ...(typeof doc.sciDesde === 'string' && COMPETENCIA.test(doc.sciDesde) ? { sciDesde: doc.sciDesde } : {}) } : {}),
     ...lembreteDoDocumento(doc.lembreteVencimento),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
@@ -333,7 +334,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
-    ...(c.noSci ? { noSci: true, ...(c.planoSci ? { planoSci: c.planoSci } : {}) } : {}),
+    ...(c.noSci ? { noSci: true, ...(c.planoSci ? { planoSci: c.planoSci } : {}), ...(c.sciDesde ? { sciDesde: c.sciDesde } : {}) } : {}),
     ...(c.lembreteVencimento ? { lembreteVencimento: c.lembreteVencimento } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
@@ -1094,11 +1095,26 @@ export function definirNoSci(c: CadastroDaEmpresa, sim: boolean, por: string, ag
     const resto: CadastroDaEmpresa = { ...c };
     delete resto.noSci;
     delete resto.planoSci;
+    delete resto.sciDesde;
     return registrar(resto, por, agora, 'Está no SCI', 'Não');
   }
   const p = plano && PLANOS_DO_SCI.includes(plano) ? plano : c.planoSci;
   if (c.noSci && c.planoSci === p) return c;
   return registrar({ ...c, noSci: true, ...(p ? { planoSci: p } : {}) }, por, agora, 'Está no SCI', p ? 'Sim, plano ' + p : 'Sim');
+}
+
+/**
+ * A competência (AAAA-MM) em que a empresa entrou no SCI (26/11/2026: "a partir de tal competencia entra na sci"); vazio tira.
+ * Só para a empresa que está no SCI. Registra no histórico.
+ */
+export function definirSciDesde(c: CadastroDaEmpresa, competencia: string, por: string, agora: Date): CadastroDaEmpresa {
+  if (!c.noSci) return c;
+  const v = String(competencia ?? '').trim();
+  if (v && !COMPETENCIA.test(v)) return c;
+  if ((c.sciDesde || '') === v) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.sciDesde;
+  return registrar(v ? { ...resto, sciDesde: v } : resto, por, agora, 'Está no SCI', v ? 'Desde ' + v.slice(5, 7) + '/' + v.slice(0, 4) : 'Sem a competência de entrada');
 }
 
 /** Guarda a conta do crédito e/ou o dia útil do pagamento do pró-labore (o vazio tira). Registra no histórico. */

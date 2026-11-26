@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  camposNulosQueORegraRecusa, comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirNoSci, definirSciDesde, definirLembreteDeVencimento, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -423,6 +423,17 @@ describe('a nota de honorário (07/10/2026)', () => {
 });
 
 describe('está no SCI (24/11/2026)', () => {
+  // 26/11/2026: "Data tambem, porque a partir de tal competencia entra na sci"
+  it('a competência de entrada no SCI: só com a empresa no SCI, vai e volta do documento e sai ao desligar', () => {
+    expect(definirSciDesde(vazio(), '2026-05', 'Vitor', AGORA).sciDesde).toBeUndefined();
+    const c = definirSciDesde(definirNoSci(vazio(), true, 'Vitor', AGORA), '2026-05', 'Vitor', AGORA);
+    expect(c.sciDesde).toBe('2026-05');
+    expect(c.historico[0]).toMatchObject({ acao: 'Está no SCI', detalhe: 'Desde 05/2026' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).sciDesde).toBe('2026-05');
+    expect(definirSciDesde(c, '2026-13', 'Vitor', AGORA)).toBe(c);
+    expect(definirSciDesde(c, '', 'Vitor', AGORA).sciDesde).toBeUndefined();
+    expect('sciDesde' in definirNoSci(c, false, 'Vitor', AGORA)).toBe(false);
+  });
   it('liga e desliga; vai e volta do documento, com o histórico', () => {
     const c = definirNoSci(vazio(), true, 'Vitor', AGORA);
     expect(c.noSci).toBe(true);

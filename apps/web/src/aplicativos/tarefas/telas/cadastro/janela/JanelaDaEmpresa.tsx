@@ -7,7 +7,7 @@ import { BotaoFechar, Icone, useEntradaAnimada, useIndicador, useJanela } from '
 import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
-import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empresa/DadosDaEmpresa';
+import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais, SciDaEmpresa } from '../empresa/DadosDaEmpresa';
 import { DocumentosDoFiscal } from '../fiscal/DocumentosDoFiscal';
 import { ParcelamentosDaEmpresa } from '../fiscal/ParcelamentosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
@@ -18,16 +18,28 @@ import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
 import { CodigoDoSimplesNoCadastro } from '../../senhas/CodigoDoSimplesNoCadastro';
 import { LinkDoClienteNaEmpresa } from '../../area-cliente/LinkDoClienteNaEmpresa';
 
+/** Uma parte das Particularidades (o Contábil, o Fiscal) que abre e fecha no clique do título; começa fechada. */
+function DropdownDasParticularidades({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <details className="cad-particularidades-parte">
+      <summary className="cad-particularidades-grupo"><Icone nome="chevronRight" className="cad-particularidades-seta" />{titulo}</summary>
+      <div className="cad-particularidades-corpo">{children}</div>
+    </details>
+  );
+}
+
 function Aba({ rota, aba, simples, verContabil }: { rota: string; aba: string; simples: boolean; verContabil: boolean }) {
   switch (aba) {
     // o código de acesso do Simples à mostra em cima dos dados (03/11/2026: "aparecer no cadastro como informação facil")
     case 'empresa': return <><CodigoDoSimplesNoCadastro rota={rota} simples={simples} /><DadosDaEmpresa rota={rota} /></>;
-    case 'contabil': return <ParametrosContabeis rota={rota} />;
-    // os dois Parâmetros numa aba só (26/11/2026): o do Contábil (para quem vê o Contábil) e o do Fiscal, cada um com o seu título
+    case 'contabil': return <><SciDaEmpresa rota={rota} /><ParametrosContabeis rota={rota} /></>;
+    // os dois Parâmetros numa aba só (26/11/2026): em primeiro o SCI ("nao e contabil nem fiscal, pode deixar em primeiro de
+    // todos"); depois o do Contábil (para quem vê o Contábil) e o do Fiscal, cada um num dropdown ("Coloca um dropdown")
     case 'particularidades': return (
       <>
-        {verContabil && <><h3 className="cad-particularidades-grupo">Contábil</h3><ParametrosContabeis rota={rota} /></>}
-        <h3 className="cad-particularidades-grupo">Fiscal</h3><ParametrosFiscais rota={rota} />
+        <SciDaEmpresa rota={rota} />
+        {verContabil && <DropdownDasParticularidades titulo="Contábil"><ParametrosContabeis rota={rota} /></DropdownDasParticularidades>}
+        <DropdownDasParticularidades titulo="Fiscal"><ParametrosFiscais rota={rota} /></DropdownDasParticularidades>
       </>
     );
     case 'obrigacoes': return <ObrigacoesDaEmpresa rota={rota} />;

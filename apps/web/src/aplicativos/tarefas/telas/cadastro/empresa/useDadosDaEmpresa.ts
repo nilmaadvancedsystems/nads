@@ -231,6 +231,13 @@ export function useDadosDaEmpresa(rota: string) {
     /** o plano de contas do SCI (24/11/2026: "colocar o plano de contas, referenciar para nao ficar selecionando"); null = falta escolher */
     planoSci: c.cadastro.planoSci ?? null,
     planosDoSci: empresas.cadastro.PLANOS_DO_SCI,
+    /** a competência (AAAA-MM) em que a empresa entrou no SCI (26/11/2026); '' = não informada */
+    sciDesde: c.cadastro.sciDesde ?? '',
+    definirSciDesde(competencia: string) {
+      if (c.carregando) return;
+      const novo = empresas.cadastro.definirSciDesde(c.cadastro, competencia, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     definirNoSci(sim: boolean, plano?: empresas.cadastro.PlanoDoSci) {
       if (c.carregando) return;
       const novo = empresas.cadastro.definirNoSci(c.cadastro, sim, c.por, new Date(), plano);
