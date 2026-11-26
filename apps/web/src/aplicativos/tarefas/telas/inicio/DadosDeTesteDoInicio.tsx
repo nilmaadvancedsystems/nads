@@ -6,9 +6,14 @@ import type { useInicio } from './useInicio';
 import { simularSaudacao, useSaudacaoSimulada } from './saudacaoSimulada';
 import { useNovidade } from '../../../../comum/novidades';
 import { simularEmailPrincipal } from '../../casca/simulacaoDoEmailPrincipal';
+import { useOperador } from '../../casca/operador';
 
 export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof useInicio>['teste'] }) {
   const s = useSaudacaoSimulada();
+  // o "Agir como" (26/11/2026: simular os dois lados do requerer documentos): a equipe de verdade, para o pedido chegar a quem foi
+  // escolhido; só com as tarefas de exemplo ligadas
+  const op = useOperador().operador;
+  const agindo = t.agindo;
   const emailPrincipal = useNovidade('email-principal');
   const turno = (x: 'manha' | 'tarde' | 'noite') => () => simularSaudacao({ turno: s.turno === x ? undefined : x, troca: 0 });
   return (
@@ -38,6 +43,13 @@ export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof us
         // a janela obrigatória do e-mail, como quem entra pelo nome@nilma.local vê ao atualizar (Vitor, 16/11/2026: "dEIXA AQUI,
         // PRA EU COLOCAR A POPUP OBRIGANDO O EMAIL"); simulação: não grava nada nem troca o login
         ...(emailPrincipal ? ['separador' as const, { rotulo: 'E-mail pessoal: pedir agora', icone: 'envelope' as const, onClick: () => simularEmailPrincipal('so-nome') }] : []),
+        ...(t.tarefas ? [
+          'separador' as const,
+          { rotulo: 'Agir como: eu' + (op ? ' (' + op.nome + ')' : ''), icone: 'usuario' as const, marcado: !agindo, onClick: () => t.agirComo(null) },
+          ...t.equipe.filter(p => p.nome !== op?.nome).map(p => ({
+            rotulo: 'Agir como: ' + p.nome, icone: 'usuario' as const, marcado: agindo?.uid === p.uid, onClick: () => t.agirComo(p),
+          })),
+        ] : []),
         'separador',
         { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.tarefas && !t.avisos && !Object.keys(s).length, onClick: () => { t.ligar('tarefas', false); t.ligar('avisos', false); simularSaudacao(null); } },
       ]} />

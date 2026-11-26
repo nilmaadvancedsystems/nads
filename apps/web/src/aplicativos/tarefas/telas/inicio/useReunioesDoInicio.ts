@@ -6,7 +6,7 @@ import { tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { encolherAnexo } from '../../dados/encolherAnexo';
-import { useAcesso, useReunioes, useTarefasDelegadas } from '../../dados/repo';
+import { useAcesso, usePerfisDeTeste, useReunioes, useTarefasDelegadas } from '../../dados/repo';
 import type { QualArquivo } from '../../dados/reunioes';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useSaudacaoSimulada } from './saudacaoSimulada';
@@ -22,7 +22,11 @@ export function useNivelDoInicio() {
   const op = useOperador().operador as Operador;
   const [dev] = useModoDesenvolvedor();
   const simulada = useSaudacaoSimulada();
-  return dev && simulada.nivel ? simulada.nivel : op.nivel;
+  // no modo convidado (26/11/2026), o nível de quem o Início está sendo: o convidado ou a pessoa do "Agir como"
+  const t = usePerfisDeTeste();
+  const equipe = useAcesso().equipe().lista;
+  const sendo = dev && t.agindo ? equipe.find(u => u.uid === t.agindo?.uid) : undefined;
+  return dev && simulada.nivel ? simulada.nivel : sendo ? sendo.nivel : op.nivel;
 }
 
 export function useReunioesDoInicio() {
