@@ -95,6 +95,9 @@ export const NOVIDADES = {
   /** Prazos › Prazos do mês (25/11/2026, plano do Acessórias, ficha E04; o dono: "E03 + E04: Prazos do mês"): as obrigações com prazo de
    *  todas as empresas na competência, com a situação pelo prazo; por ora só o Fiscal */
   prazos: { desde: '25/11/2026', aprovada: false },
+  /** o "Mostrar apenas as minhas" na barra de Minhas empresas (26/11/2026): para quem vê a coluna Responsável, esconde as empresas
+   *  de outra pessoa */
+  'apenas-as-minhas': { desde: '26/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
