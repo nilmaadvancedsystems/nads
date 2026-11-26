@@ -8927,3 +8927,5 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .cad-particularidades-corpo{padding:4px 14px 8px;}
 /* o SCI em primeiro, com a logo dele no título */
 .cad-sci-titulo{display:inline-flex;align-items:center;gap:8px;}
+/* o plano do SCI com a fonte branca (26/11/2026: "Deixa branca a fonte"), não na cor de destaque do menu */
+.cfg-linha-controle .btn.btn-ghost.cad-sci-plano{color:var(--ink);}

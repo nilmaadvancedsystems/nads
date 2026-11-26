@@ -287,7 +287,7 @@ export function SciDaEmpresa({ rota }: { rota: string }) {
         // o plano num menu, como o regime (26/11/2026: "Coloque outra maneira de selecionar o plano que vai vim mais"): a lista cresce
         // sem empurrar a linha
         <ConfigLinha titulo="Plano de contas do SCI" aviso={vm.planoSci ? undefined : 'Escolha o plano: sem ele, o minimum pede a cada vez.'}>
-          <MenuSuspenso rotulo={vm.planoSci ? 'Plano ' + vm.planoSci : 'Escolher'} className="btn btn-ghost" titulo="Plano de contas do SCI" direita largura={200}
+          <MenuSuspenso rotulo={vm.planoSci ? 'Plano ' + vm.planoSci : 'Escolher'} className="btn btn-ghost cad-sci-plano" titulo="Plano de contas do SCI" direita largura={200}
             itens={vm.planosDoSci.map(p => ({ rotulo: 'Plano ' + p, marcado: vm.planoSci === p, onClick: () => { if (vm.planoSci !== p) vm.definirNoSci(true, p); } }))} />
         </ConfigLinha>
       )}
