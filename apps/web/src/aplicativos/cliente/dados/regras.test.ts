@@ -68,7 +68,11 @@ describe('notificacoes', () => {
 
 describe('pedidos do pessoal', () => {
   it('admissão: confere e monta o texto do chamado só com o que foi preenchido', () => {
-    const p = { nome: 'Maria Souza', cpf: '529.982.247-25', nascimento: '15/03/1995', pis: '', recebePor: 'Por mês (mensalista)', cargo: 'Auxiliar', salario: 'R$ 2.000,00', inicio: '01/11/2026', contrato: 'Experiência', observacoes: '' };
+    const p = { nome: 'Maria Souza', cpf: '529.982.247-25', nascimento: '15/03/1995', pis: '', recebePor: 'Por mês (mensalista)', cargo: 'Auxiliar', salario: 'R$ 2.000,00', inicio: '01/11/2026', contrato: 'Experiência', observacoes: '',
+      // (26/11/2026) o cadastro completo que o RH NET exige para liberar
+      sexo: 'Feminino', estadoCivil: 'Solteiro(a)', racaCor: 'Parda', escolaridade: 'Médio completo', maeNome: 'Ana Souza', nascCidade: 'Montes Claros', nascUf: 'MG',
+      rg: 'MG-1.234.567', rgOrgao: 'SSP', rgUf: 'MG', rgEmissao: '10/01/2015', celular: '(38) 99876-5432', cep: '39400-001', logradouroTipo: 'Rua', logradouro: 'Doutor Santos',
+      numero: '100', complemento: '', bairro: 'Centro', cidade: 'Montes Claros', uf: 'MG', horasSemana: '44', noturno: 'Não' };
     expect(erroDaAdmissao({ ...p, inicio: '1/11' })).toContain('data de início');
     // (25/11/2026) o CPF é obrigatório e conferido (o pedido vai para o RH NET)
     expect(erroDaAdmissao({ ...p, cpf: '' })).toBe('Escreva o CPF do novo funcionário.');
@@ -79,11 +83,22 @@ describe('pedidos do pessoal', () => {
     expect(erroDaAdmissao({ ...p, salario: '' })).toBe('Escreva o salário.');
     expect(erroDaAdmissao({ ...p, pis: '123' })).toBe('Confira o PIS: são 11 números.');
     expect(erroDaAdmissao({ ...p, pis: '120.12345.67-8' })).toBe('');
+    // não deixa passar sem o cadastro completo (26/11/2026: "que nao deixa nem passar")
+    expect(erroDaAdmissao({ ...p, sexo: '' })).toBe('Escolha o sexo.');
+    expect(erroDaAdmissao({ ...p, maeNome: '' })).toBe('Escreva o nome da mãe.');
+    expect(erroDaAdmissao({ ...p, rgEmissao: '' })).toMatch(/emissão do RG/);
+    expect(erroDaAdmissao({ ...p, cep: '394' })).toMatch(/CEP/);
+    expect(erroDaAdmissao({ ...p, celular: '9999' })).toMatch(/celular/);
+    expect(erroDaAdmissao({ ...p, uf: '' })).toMatch(/cidade e a UF do endereço/);
+    expect(erroDaAdmissao({ ...p, horasSemana: '60' })).toMatch(/até 44/);
     expect(erroDaAdmissao(p)).toBe('');
     const t = textoDaAdmissao(p);
     expect(t).toContain('Nascimento: 15/03/1995');
     expect(t).toContain('Recebe por: Por mês (mensalista)');
     expect(t).not.toContain('PIS');
+    expect(t).toContain('Cidade de nascimento: Montes Claros/MG');
+    expect(t).toContain('Cidade: Montes Claros/MG');
+    expect(t).not.toContain('Complemento');
     expect(t.split('\n')[0]).toBe('Admissão: Maria Souza (Auxiliar)');
     expect(t).toContain('Salário: R$ 2.000,00');
     expect(t).toContain('CPF: 529.982.247-25');

@@ -260,7 +260,11 @@ export function useDp({ token, area, hoje }: DaCasca) {
       .sort((a, b) => (a.x ? ac.ORDEM_DAS_FERIAS[a.x.situacao] : 9) - (b.x ? ac.ORDEM_DAS_FERIAS[b.x.situacao] : 9) || a.f.nome.localeCompare(b.f.nome))
       .map(({ f, x }) => ({ nome: nomeDaPessoa(f.nome), rotulo: x ? ROTULO_DAS_FERIAS[x.situacao] : '', tom: x ? TOM_DAS_FERIAS[x.situacao] : 'neutro', texto: x?.texto ?? '', limite: x?.limite ?? '' })),
     hoje,
-    novaAdmissao: (): PedidoDeAdmissao => ({ nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '' }),
+    novaAdmissao: (): PedidoDeAdmissao => ({
+      nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '',
+      sexo: '', estadoCivil: '', racaCor: '', escolaridade: '', maeNome: '', nascCidade: '', nascUf: '', rg: '', rgOrgao: 'SSP', rgUf: '', rgEmissao: '',
+      celular: '', cep: '', logradouroTipo: 'Rua', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', horasSemana: '44', noturno: 'Não',
+    }),
     novasFerias: (empregado = ''): PedidoDeFerias => ({ empregado, inicio: '', dias: '30 dias', adiantar13: false, observacoes: '' }),
     novaDemissao: (empregado = ''): PedidoDeDemissao => ({ empregado, ultimoDia: '', motivo: '', aviso: 'Trabalhado', observacoes: '' }),
     dataBr,

@@ -980,6 +980,31 @@ function corpoDaAdmissao(empresaId, a) {
 		categoria_esocial_id: a.categoriaEsocial ?? 101,
 		funcionario_tipo_id: a.remuneracao ?? 0,
 		contrato_tipo_id: a.contratoTipo === void 0 ? 1 : a.contratoTipo,
+		etnia_id: a.etnia ?? null,
+		estado_civil_id: a.estadoCivil ?? null,
+		grau_instrucao_id: a.grauInstrucao ?? null,
+		nacionalidade_id: 105,
+		pais_nacionalidade_id: 105,
+		nascimento_cidade_id: a.nascimentoCidadeIbge ?? null,
+		rg: texto(a.rg) || null,
+		rg_orgao_emissor: texto(a.rgOrgao).toUpperCase() || null,
+		rg_uf: texto(a.rgUf).toUpperCase() || null,
+		rg_emissao: a.rgEmissao || null,
+		...a.endereco ? {
+			endereco_cep: digitos(a.endereco.cep).replace(/^(\d{5})(\d{3})$/, "$1-$2") || null,
+			endereco_logradouro_id: a.endereco.logradouroTipo || null,
+			endereco: texto(a.endereco.logradouro).toUpperCase() || null,
+			endereco_numero: texto(a.endereco.numero) || null,
+			endereco_complemento: texto(a.endereco.complemento).toUpperCase() || null,
+			endereco_bairro: texto(a.endereco.bairro).toUpperCase() || null,
+			endereco_cidade_id: a.endereco.cidadeIbge ?? null
+		} : {},
+		hora_semanal: a.horasSemana ?? 44,
+		hora_mensal: Math.min(220, Math.round((a.horasSemana ?? 44) * 5)),
+		hora_diaria: Math.round((a.horasSemana ?? 44) / 6 * 100) / 100,
+		horario_noturno: a.horarioNoturno ? 1 : 0,
+		fgts_ocorrencia_id: 1,
+		forma_pagamento: 0,
 		prazo_experiencia: a.experienciaDias ?? 0,
 		prazo_experiencia_fim: a.experienciaDias ? fimDoPrazo(a.admissao, a.experienciaDias) : null,
 		...a.experienciaDias && a.prorrogacaoDias ? {
@@ -1137,6 +1162,7 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 	const recebe = campos.get("recebe por") ?? "";
 	const nascido = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get("nascimento") ?? "");
 	const pis = (campos.get("pis") ?? "").replace(/\D/g, "");
+	const completo = cadastroCompletoDoPedido(campos);
 	const observacao = [
 		"Pedido pela Área do Cliente.",
 		cargo && "Cargo pedido: " + cargo + ".",
@@ -1154,10 +1180,14 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 		...salario > 0 ? { salario } : {},
 		...funcao ? { funcaoId: funcao.id } : {},
 		...doContratoDaArea(contrato),
-		remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0
+		remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0,
+		...completo.admissao
 	};
 	const erro = erroDaAdmissao(admissao);
-	return erro ? { erro } : { admissao };
+	return erro ? { erro } : {
+		admissao,
+		cidades: completo.cidades
+	};
 }
 function cargosParaArea(funcoes) {
 	const nomes = /* @__PURE__ */ new Map();
@@ -1230,6 +1260,141 @@ function situacaoDaAdmissaoNaEquipe(situacao) {
 			podeLiberar: false
 		};
 	}
+}
+const OPCOES_DA_ADMISSAO = {
+	sexo: [["Feminino", 0], ["Masculino", 1]],
+	estadoCivil: [
+		["Solteiro(a)", 0],
+		["Casado(a)", 1],
+		["União estável", 6],
+		["Divorciado(a)", 2],
+		["Separado(a) judicialmente", 5],
+		["Viúvo(a)", 3],
+		["Outro", 4]
+	],
+	racaCor: [
+		["Branca", 1],
+		["Parda", 3],
+		["Preta", 4],
+		["Amarela", 0],
+		["Indígena", 2],
+		["Não quero informar", 5]
+	],
+	escolaridade: [
+		["Analfabeto", 1],
+		["Fundamental incompleto (até o 5º ano)", 2],
+		["5º ano completo", 3],
+		["Fundamental incompleto (6º ao 9º ano)", 4],
+		["Fundamental completo", 5],
+		["Médio incompleto", 6],
+		["Médio completo", 7],
+		["Superior incompleto", 8],
+		["Superior completo", 9],
+		["Pós-graduação", 12],
+		["Mestrado", 10],
+		["Doutorado", 11]
+	],
+	logradouro: [
+		["Rua", 1],
+		["Avenida", 2],
+		["Travessa", 37],
+		["Praça", 31],
+		["Alameda", 3],
+		["Estrada", 16],
+		["Rodovia", 4],
+		["Fazenda", 18],
+		["Sítio", 36],
+		["Outros", 5]
+	]
+};
+const UFS = [
+	"AC",
+	"AL",
+	"AM",
+	"AP",
+	"BA",
+	"CE",
+	"DF",
+	"ES",
+	"GO",
+	"MA",
+	"MG",
+	"MS",
+	"MT",
+	"PA",
+	"PB",
+	"PE",
+	"PI",
+	"PR",
+	"RJ",
+	"RN",
+	"RO",
+	"RR",
+	"RS",
+	"SC",
+	"SE",
+	"SP",
+	"TO"
+];
+const codigoDaOpcao = (lista, v) => {
+	const alvo = semAcento(v ?? "");
+	return alvo ? lista.find(([r]) => semAcento(r) === alvo)?.[1] : void 0;
+};
+const cidadeUf = (v) => {
+	const m = /^(.+?)\s*[/-]\s*([A-Za-z]{2})$/.exec(String(v ?? "").trim());
+	return m ? {
+		nome: m[1].trim(),
+		uf: m[2].toUpperCase()
+	} : void 0;
+};
+const diaIso = (v) => {
+	const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v ?? "").trim());
+	return m ? m[3] + "-" + m[2] + "-" + m[1] : void 0;
+};
+function cadastroCompletoDoPedido(campos) {
+	const c = (k) => campos.get(k) ?? "";
+	const O = OPCOES_DA_ADMISSAO;
+	const nascimento = cidadeUf(c("cidade de nascimento"));
+	const cidade = cidadeUf(c("cidade"));
+	const cep = c("cep").replace(/\D/g, "");
+	const celular = c("celular").replace(/\D/g, "");
+	const horas = Number(c("horas por semana").replace(",", "."));
+	return {
+		admissao: {
+			...codigoDaOpcao(O.sexo, c("sexo")) !== void 0 ? { sexo: codigoDaOpcao(O.sexo, c("sexo")) } : {},
+			...codigoDaOpcao(O.estadoCivil, c("estado civil")) !== void 0 ? { estadoCivil: codigoDaOpcao(O.estadoCivil, c("estado civil")) } : {},
+			...codigoDaOpcao(O.racaCor, c("raca/cor")) !== void 0 ? { etnia: codigoDaOpcao(O.racaCor, c("raca/cor")) } : {},
+			...codigoDaOpcao(O.escolaridade, c("escolaridade")) !== void 0 ? { grauInstrucao: codigoDaOpcao(O.escolaridade, c("escolaridade")) } : {},
+			...c("nome da mae") ? { maeNome: c("nome da mae") } : {},
+			...c("rg") ? { rg: c("rg") } : {},
+			...c("orgao emissor") ? { rgOrgao: c("orgao emissor") } : {},
+			.../^[A-Za-z]{2}$/.test(c("uf do rg")) ? { rgUf: c("uf do rg").toUpperCase() } : {},
+			...diaIso(c("emissao do rg")) ? { rgEmissao: diaIso(c("emissao do rg")) } : {},
+			...celular.length >= 10 ? { celular } : {},
+			...cep.length === 8 && c("logradouro") ? { endereco: {
+				cep,
+				logradouroTipo: codigoDaOpcao(O.logradouro, c("tipo de logradouro")) ?? 1,
+				logradouro: c("logradouro"),
+				numero: c("numero") || "S/N",
+				...c("complemento") ? { complemento: c("complemento") } : {},
+				bairro: c("bairro")
+			} } : {},
+			...horas > 0 && horas <= 44 ? { horasSemana: horas } : {},
+			...c("trabalha a noite") ? { horarioNoturno: /^sim/i.test(c("trabalha a noite")) } : {}
+		},
+		cidades: {
+			...nascimento ? { nascimento } : {},
+			...cidade && cep.length === 8 ? { endereco: {
+				...cidade,
+				cep
+			} } : {}
+		}
+	};
+}
+function codigoIbgeDaCidade(lista, nome) {
+	const alvo = semAcento(nome).replace(/[^a-z0-9 ]/g, "");
+	const achadas = lista.filter((m) => semAcento(m.nome).replace(/[^a-z0-9 ]/g, "") === alvo);
+	return achadas.length === 1 && /^\d{7}$/.test(String(achadas[0].id)) ? Number(achadas[0].id) : 0;
 }
 
 //#endregion
@@ -1472,11 +1637,13 @@ exports.INTEGRA_NET = INTEGRA_NET;
 exports.INTEGRA_POR_LOTE = INTEGRA_POR_LOTE;
 exports.LIBERACAO_DA_PLANILHA = LIBERACAO_DA_PLANILHA;
 exports.MAIOR_PDF_NO_SCI = MAIOR_PDF_NO_SCI;
+exports.OPCOES_DA_ADMISSAO = OPCOES_DA_ADMISSAO;
 exports.RH_NET = RH_NET;
 exports.RH_NET_POR_PAGINA = RH_NET_POR_PAGINA;
 exports.ROTULO_DA_SITUACAO_RH = ROTULO_DA_SITUACAO_RH;
 exports.SITUACAO_NA_AREA = SITUACAO_NA_AREA;
 exports.TIPOS_NO_INTEGRA = TIPOS_NO_INTEGRA;
+exports.UFS = UFS;
 exports.admissaoDoPedidoDaArea = admissaoDoPedidoDaArea;
 exports.admissaoDoRhNet = admissaoDoRhNet;
 exports.cadastroParaArea = cadastroParaArea;
@@ -1489,6 +1656,7 @@ exports.chavesDasUrls = chavesDasUrls;
 exports.cifrarToken = cifrarToken;
 exports.clienteIdDoJwt = clienteIdDoJwt;
 exports.codigoDoRelatorio = codigoDoRelatorio;
+exports.codigoIbgeDaCidade = codigoIbgeDaCidade;
 exports.conferirComOSci = conferirComOSci;
 exports.configDoSci = configDoSci;
 exports.corpoDaAdmissao = corpoDaAdmissao;

@@ -208,6 +208,41 @@ async function cadastrosParaArea(db, codigos, log = () => {}) {
   return algum ? todos : null;
 }
 
+// ---------- o cadastro completo (26/11/2026: "quero verificacao na tela de registro, que nao deixa nem passar") ----------
+// O RH NET só libera com o cadastro completo. O que a tela da Área não sabe em código, o robô completa: o código IBGE da
+// cidade do endereço (pelo CEP, no ViaCEP) e o da cidade de nascimento (pela lista de municípios da UF, no IBGE); e, quando
+// a empresa tem um só sindicato e um só quadro de horário no RH NET, esses dois. O resto o escritório completa no RH NET.
+const IBGE = 'https://servicodados.ibge.gov.br/api/v1/localidades/estados/';
+const municipios = new Map();
+async function buscarJson(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function completarAdmissao(r, cadastros, log = () => {}) {
+  const a = r.admissao;
+  const c = r.cidades || {};
+  try {
+    if (c.endereco && a.endereco) {
+      const v = await buscarJson('https://viacep.com.br/ws/' + String(c.endereco.cep).replace(/\D/g, '') + '/json/');
+      if (v && /^\d{7}$/.test(String(v.ibge || ''))) a.endereco.cidadeIbge = Number(v.ibge);
+    }
+  } catch (err) { log('RH NET: não achei a cidade do CEP da admissão -', motivo(err)); }
+  const pelaLista = async (cidade) => {
+    if (!cidade || !/^[A-Z]{2}$/.test(cidade.uf)) return 0;
+    if (!municipios.has(cidade.uf)) municipios.set(cidade.uf, (await buscarJson(IBGE + cidade.uf + '/municipios')).map(m => ({ id: Number(m.id), nome: String(m.nome) })));
+    return S.codigoIbgeDaCidade(municipios.get(cidade.uf), cidade.nome);
+  };
+  try {
+    // o CEP geral da cidade (39400-000) o ViaCEP não acha: vai pelo nome e a UF
+    if (c.endereco && a.endereco && !a.endereco.cidadeIbge) { const id = await pelaLista(c.endereco); if (id) a.endereco.cidadeIbge = id; }
+    const id = await pelaLista(c.nascimento);
+    if (id) a.nascimentoCidadeIbge = id;
+  } catch (err) { log('RH NET: não achei uma cidade da admissão no IBGE -', motivo(err)); }
+  if (!a.sindicatoId && cadastros.sindicatos.length === 1) a.sindicatoId = cadastros.sindicatos[0].id;
+  if (!a.quadroHorarioId && cadastros.quadrosHorario.length === 1) a.quadroHorarioId = cadastros.quadrosHorario[0].id;
+}
+
 /**
  * A situação de cada admissão pedida pela Área acompanha o RH NET (26/11/2026: "pesquisa como faz no rh net e faz baseado
  * nisso"): liberado → aguardando integração → integrado, ou recusado (só o SCI do escritório marca). Uma leitura das
@@ -262,7 +297,9 @@ async function atenderAdmissaoDaArea(db, ref, log = () => {}) {
   const texto = String(((Array.isArray(c.mensagens) ? c.mensagens : [])[0] || {}).texto || '');
   const rh = clienteDa(codigo);
   try {
-    const r = S.admissaoDoPedidoDaArea(texto, (await rh.cadastros()).funcoes);
+    const cadastros = await rh.cadastros();
+    const r = S.admissaoDoPedidoDaArea(texto, cadastros.funcoes);
+    if (!r.erro) await completarAdmissao(r, cadastros, log);
     if (r.erro) {
       await ref.update({ rhnet: { situacao: 'nao-enviado', erro: r.erro, em: agora() } });
       log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'não foi ao RH NET -', r.erro);

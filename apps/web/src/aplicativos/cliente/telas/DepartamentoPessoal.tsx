@@ -18,7 +18,7 @@ import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { ACEITA_FOTO, fotoQuadrada, urlDaFoto } from '../partes/foto';
 import { Vazio } from '../partes/Vazio';
 import { AVISOS_DA_DEMISSAO, MOTIVOS_DA_DEMISSAO, avisosDoMotivo, contaDaAdmissao, contaDasFerias, marcarNoCalendario, mesDasFerias, primeiraDataDasFerias, type PedidoDeAdmissao, type PedidoDeDemissao, type PedidoDeFerias } from '../dados/regras';
-import { formatos } from '@nads/core';
+import { formatos, sci } from '@nads/core';
 import { Colunas } from './Administrativo';
 import { useDp, type DadosDoPedido, type Pedido } from './useDp';
 import type { DaCasca } from './useAreaCliente';
@@ -134,6 +134,11 @@ function CalendarioDasFerias({ pedido, hoje, aoMarcar }: { pedido: PedidoDeFeria
  *  (13/11/2026: "melhore visualmente esses dois, principalmente a parte de programar férias"): as férias escolhem a pessoa
  *  por cartões (com o selo das férias de cada um), os dias em botões e mostram a conta (o pagamento, de quando a quando e a
  *  volta); a admissão tem a foto no alto, os campos em dois blocos e o prazo do eSocial pela data. */
+/** as opções do cadastro completo (26/11/2026), as mesmas que o robô lê para o RH NET */
+const OPC = sci.integracao.OPCOES_DA_ADMISSAO;
+const rotulos = (l: readonly (readonly [string, number])[]) => l.map(([r]) => r);
+const UFS = [...sci.integracao.UFS];
+
 /** a opção do Cargo para escrever um que não está no sistema de folha */
 const OUTRO_CARGO = 'Outro cargo (escrever)';
 
@@ -164,7 +169,31 @@ export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMud
           <div className="field"><label htmlFor="cli-cpf">CPF</label><input id="cli-cpf" type="text" inputMode="numeric" value={a.cpf} onChange={e => mudar({ cpf: e.target.value })} placeholder="000.000.000-00" /></div>
           {/* (26/11/2026: "aqui os campos necessarios para a pre admissao") o que a pré-admissão do SCI pede a mais */}
           <div className="field"><label htmlFor="cli-nasc">Data de nascimento</label><CampoData id="cli-nasc" rotulo="Data de nascimento" valor={a.nascimento ?? ''} onMudar={v => mudar({ nascimento: v })} /></div>
+          {/* (26/11/2026: "quero verificacao na tela de registro, que nao deixa nem passar") o cadastro completo que o RH NET
+              exige para liberar; o Enviar só passa com tudo preenchido */}
+          <div className="field"><label>Sexo</label><CampoEscolha rotulo="Sexo" valor={a.sexo ?? ''} opcoes={rotulos(OPC.sexo)} onMudar={v => mudar({ sexo: v })} /></div>
+          <div className="field"><label>Estado civil</label><CampoEscolha rotulo="Estado civil" valor={a.estadoCivil ?? ''} opcoes={rotulos(OPC.estadoCivil)} onMudar={v => mudar({ estadoCivil: v })} /></div>
+          <div className="field"><label>Raça/cor</label><CampoEscolha rotulo="Raça/cor" valor={a.racaCor ?? ''} opcoes={rotulos(OPC.racaCor)} onMudar={v => mudar({ racaCor: v })} /></div>
+          <div className="field"><label>Escolaridade</label><CampoEscolha rotulo="Escolaridade" valor={a.escolaridade ?? ''} opcoes={rotulos(OPC.escolaridade)} onMudar={v => mudar({ escolaridade: v })} /></div>
+          <div className="field cli-largo"><label htmlFor="cli-mae">Nome da mãe</label><input id="cli-mae" type="text" value={a.maeNome ?? ''} onChange={e => mudar({ maeNome: e.target.value })} placeholder="Como está no documento" /></div>
+          <div className="field"><label htmlFor="cli-nasc-cid">Cidade de nascimento</label><input id="cli-nasc-cid" type="text" value={a.nascCidade ?? ''} onChange={e => mudar({ nascCidade: e.target.value })} placeholder="Ex.: Montes Claros" /></div>
+          <div className="field"><label>UF de nascimento</label><CampoEscolha rotulo="UF de nascimento" valor={a.nascUf ?? ''} opcoes={UFS} onMudar={v => mudar({ nascUf: v })} /></div>
+          <p className="cli-pf-rotulo cli-largo">O documento</p>
+          <div className="field"><label htmlFor="cli-rg">RG</label><input id="cli-rg" type="text" value={a.rg ?? ''} onChange={e => mudar({ rg: e.target.value })} placeholder="Número do RG" /></div>
+          <div className="field"><label htmlFor="cli-rg-emi">Emissão do RG</label><CampoData id="cli-rg-emi" rotulo="Emissão do RG" valor={a.rgEmissao ?? ''} onMudar={v => mudar({ rgEmissao: v })} /></div>
+          <div className="field"><label htmlFor="cli-rg-org">Órgão emissor</label><input id="cli-rg-org" type="text" value={a.rgOrgao ?? ''} onChange={e => mudar({ rgOrgao: e.target.value.toUpperCase() })} placeholder="Ex.: SSP" /></div>
+          <div className="field"><label>UF do RG</label><CampoEscolha rotulo="UF do RG" valor={a.rgUf ?? ''} opcoes={UFS} onMudar={v => mudar({ rgUf: v })} /></div>
           <div className="field"><label htmlFor="cli-pis">PIS <span className="cli-pf-opc">opcional</span></label><input id="cli-pis" type="text" inputMode="numeric" value={a.pis ?? ''} onChange={e => mudar({ pis: e.target.value })} placeholder="000.00000.00-0" /></div>
+          <p className="cli-pf-rotulo cli-largo">Contato e endereço</p>
+          <div className="field"><label htmlFor="cli-cel">Celular</label><input id="cli-cel" type="tel" inputMode="tel" value={a.celular ?? ''} onChange={e => mudar({ celular: e.target.value })} placeholder="(38) 99999-9999" /></div>
+          <div className="field"><label htmlFor="cli-cep">CEP</label><input id="cli-cep" type="text" inputMode="numeric" value={a.cep ?? ''} onChange={e => mudar({ cep: e.target.value })} placeholder="00000-000" /></div>
+          <div className="field"><label>Tipo</label><CampoEscolha rotulo="Tipo de logradouro" valor={a.logradouroTipo ?? 'Rua'} opcoes={rotulos(OPC.logradouro)} onMudar={v => mudar({ logradouroTipo: v })} /></div>
+          <div className="field"><label htmlFor="cli-log">Rua</label><input id="cli-log" type="text" value={a.logradouro ?? ''} onChange={e => mudar({ logradouro: e.target.value })} placeholder="Ex.: Doutor Santos" /></div>
+          <div className="field"><label htmlFor="cli-num">Número</label><input id="cli-num" type="text" value={a.numero ?? ''} onChange={e => mudar({ numero: e.target.value })} placeholder="Ex.: 100 ou S/N" /></div>
+          <div className="field"><label htmlFor="cli-comp">Complemento <span className="cli-pf-opc">opcional</span></label><input id="cli-comp" type="text" value={a.complemento ?? ''} onChange={e => mudar({ complemento: e.target.value })} placeholder="Apto, casa, fundos…" /></div>
+          <div className="field"><label htmlFor="cli-bairro">Bairro</label><input id="cli-bairro" type="text" value={a.bairro ?? ''} onChange={e => mudar({ bairro: e.target.value })} /></div>
+          <div className="field"><label htmlFor="cli-cid">Cidade</label><input id="cli-cid" type="text" value={a.cidade ?? ''} onChange={e => mudar({ cidade: e.target.value })} placeholder="Ex.: Montes Claros" /></div>
+          <div className="field"><label>UF</label><CampoEscolha rotulo="UF do endereço" valor={a.uf ?? ''} opcoes={UFS} onMudar={v => mudar({ uf: v })} /></div>
           <p className="cli-pf-rotulo cli-largo">O trabalho</p>
           {/* (26/11/2026: "funcao selecionavel puxando do rh net pois os cargos sao variaveis e criados por empresa") com os
               cargos da empresa no sistema de folha, escolhe da lista; "Outro cargo" abre o campo para escrever */}
@@ -188,6 +217,8 @@ export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMud
             <label>Contrato</label>
             <CampoEscolha rotulo="Contrato" valor={a.contrato} opcoes={CONTRATOS} onMudar={v => mudar({ contrato: v })} />
           </div>
+          <div className="field"><label htmlFor="cli-horas">Horas por semana</label><input id="cli-horas" type="text" inputMode="numeric" value={a.horasSemana ?? '44'} onChange={e => mudar({ horasSemana: e.target.value.replace(/[^\d,]/g, '') })} placeholder="44" /></div>
+          <div className="field"><label>Trabalha à noite (22h às 5h)?</label><CampoEscolha rotulo="Trabalha à noite" valor={a.noturno ?? 'Não'} opcoes={['Não', 'Sim']} onMudar={v => mudar({ noturno: v })} /></div>
           {contaA ? (
             <ul className="cli-pf-resumo cli-largo">
               <PassoDoResumo icone="clock" rotulo="Registro no eSocial até" valor={contaA.registrarAte} detalhe="um dia antes do primeiro dia" />
