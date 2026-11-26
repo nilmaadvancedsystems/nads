@@ -21,12 +21,23 @@ export function documentoDoDecimo(parcela: '1' | '2', ano: number): { tipo: stri
   return { tipo: tipoPelaChave(parcela === '1' ? 'decimo_terceiro_1' : 'decimo_terceiro_2')?.rotulo || '', competencia: ano + '-' + (parcela === '1' ? '11' : '12') };
 }
 
-/** Cada empresa e o que acontece com ela; doMes: as entregas da competência da parcela (as da rota e as já feitas). */
-export function decimoParaARota(p: {
-  parcela: '1' | '2'; ano: number; empresas: readonly EmpresaDoDecimo[]; clientes: readonly ClienteDaRota[];
+/** O documento do DP que vai para a rota: o tipo no Entregas e a competência ('Folha de Pagamento', '2026-10'). */
+export interface DocumentoDoDp { tipo: string; competencia: string }
+
+/**
+ * A folha do mês na rota (26/11/2026: "quero poder puxar folha de pagamento também"): o documento "Folha de Pagamento" do
+ * Entregas, na competência da folha.
+ */
+export function documentoDaFolha(competencia: string): DocumentoDoDp {
+  return { tipo: tipoPelaChave('folha_pagamento')?.rotulo || '', competencia };
+}
+
+/** Cada empresa e o que acontece com ela; doMes: as entregas da competência do documento (as da rota e as já feitas). */
+export function dpParaARota(p: {
+  documento: DocumentoDoDp; empresas: readonly EmpresaDoDecimo[]; clientes: readonly ClienteDaRota[];
   doMes: readonly Pick<Entrega, 'clienteId' | 'competencia' | 'status' | 'itens'>[];
 }): LinhaDoDecimo[] {
-  const { tipo, competencia } = documentoDoDecimo(p.parcela, p.ano);
+  const { tipo, competencia } = p.documento;
   const porCodigo = new Map(p.clientes.filter(c => c.ativo && c.codigoOrigem).map(c => [c.codigoOrigem.trim(), c]));
   const ORDEM: Record<SituacaoDoDecimo, number> = { vai: 0, 'na-rota': 1, entregue: 2, 'sem-cadastro': 3, 'falta-marcar': 4 };
   return p.empresas.map((e): LinhaDoDecimo => {
@@ -41,11 +52,24 @@ export function decimoParaARota(p: {
   }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao] || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-/** A parada do 13º de um cliente: o documento da parcela, sem valor, na região dele e com o vencimento da lei. */
-export function entregaDoDecimo(cliente: ClienteDaRota, parcela: '1' | '2', ano: number): EntregaNova {
-  const { tipo, competencia } = documentoDoDecimo(parcela, ano);
+/** O 13º: a mesma conta, com o documento da parcela. */
+export function decimoParaARota(p: {
+  parcela: '1' | '2'; ano: number; empresas: readonly EmpresaDoDecimo[]; clientes: readonly ClienteDaRota[];
+  doMes: readonly Pick<Entrega, 'clienteId' | 'competencia' | 'status' | 'itens'>[];
+}): LinhaDoDecimo[] {
+  return dpParaARota({ documento: documentoDoDecimo(p.parcela, p.ano), empresas: p.empresas, clientes: p.clientes, doMes: p.doMes });
+}
+
+/** A parada de um documento do DP: o documento, sem valor, na região do cliente e com o vencimento da lei. */
+export function entregaDoDp(cliente: ClienteDaRota, documento: DocumentoDoDp): EntregaNova {
+  const { tipo, competencia } = documento;
   return {
     modo: 'rota', para: { tipo: 'cliente', cliente }, competencia, vencimento: vencimentoAutomatico(competencia, [{ tipo }]) || '',
     itens: [{ tipo, valor: null }], zona: cliente.zona, codigoPagamento: null, foto: null, fotoEhGuia: false,
   };
+}
+
+/** A parada do 13º de um cliente: o documento da parcela. */
+export function entregaDoDecimo(cliente: ClienteDaRota, parcela: '1' | '2', ano: number): EntregaNova {
+  return entregaDoDp(cliente, documentoDoDecimo(parcela, ano));
 }

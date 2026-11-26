@@ -1,5 +1,5 @@
-// A janela "13º do DP" da Rota (11/11/2026): as empresas do DP que recebem pelo office boy com o 13º da parcela pronto, e
-// "Pôr na rota". Só desenha: o estado e as ações estão em useJanelaDoDecimoDoDp.
+// A janela "Folha e 13º do DP" da Rota (11/11/2026; a folha do mês em 26/11/2026): as empresas do DP que recebem pelo office
+// boy com a folha ou o 13º da parcela pronto (os Recibos e a Folha marcados), e "Pôr na rota". Só desenha: o estado e as ações estão em useJanelaDoDecimoDoDp.
 import { BotaoAcao, Esqueleto, Icone } from '@nads/ui';
 import { MolduraDaJanela } from './MolduraDaJanela';
 import { useJanelaDoDecimoDoDp } from './useJanelaDoDecimoDoDp';
@@ -16,9 +16,9 @@ export function JanelaDoDecimoDoDp({ onFechar }: { onFechar: () => void }) {
           <Icone nome="plus" />Pôr na rota{vm.quantasVao ? ' (' + vm.quantasVao + ')' : ''}
         </BotaoAcao>
       </>}>
-      <div className="chip-row" role="group" aria-label="Parcela">
-        {vm.parcelas.map(p => (
-          <button key={p.valor} type="button" className={'chip-f' + (vm.parcela === p.valor ? ' on' : '')} aria-pressed={vm.parcela === p.valor} onClick={() => vm.setParcela(p.valor)}>{p.rotulo}</button>
+      <div className="chip-row" role="group" aria-label="O que vai para a rota">
+        {vm.opcoes.map(p => (
+          <button key={p.valor} type="button" className={'chip-f' + (vm.escolhido === p.valor ? ' on' : '')} aria-pressed={vm.escolhido === p.valor} onClick={() => vm.setEscolhido(p.valor)}>{p.rotulo}</button>
         ))}
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}

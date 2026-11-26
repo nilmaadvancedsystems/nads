@@ -3,7 +3,7 @@
 // medido, arrastar ou Alt+↑/↓ para mudar a ordem, o sino do lembrete, o aviso que faz desviar, "Assinar" e "Assinar as N";
 // Ler guia e Protocolo; e os cartões Vencendo, Atestados para buscar e Obrigações do mês), Ordem fixa (o admin), Protocolos
 // (as feitas no período, para imprimir; o fechamento do dia) e Qualidade (o admin: sem região, endereço impreciso).
-import { entregas, tarefas as t } from '@nads/core';
+import { entregas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -205,7 +205,8 @@ export function useRotaDeEntregas() {
     adicionarARota: () => navegar(caminhoDaPagina('entregas', 'nova')),
     organizarPelaFixa: admin && entregas.temOrdemFixa(fixa) && naRota.lista.length > 1 ? () => void organizarPelaFixa() : null,
     organizando,
-    decimoDoDp: t.parcelaDoMes() ? { aberto: decimoAberto, abrir: () => setDecimoAberto(true), fechar: () => setDecimoAberto(false) } : null,
+    // a folha do mês o ano todo e o 13º na época (26/11/2026: "quero poder puxar folha de pagamento também")
+    decimoDoDp: { aberto: decimoAberto, abrir: () => setDecimoAberto(true), fechar: () => setDecimoAberto(false) },
     lerGuia: sabeLerGuia() ? () => janelas.abrir({ tipo: 'lerGuia' }) : null,
     protocoloDaRota() {
       const hojeConf = entregas.confirmadasHoje([hoje.lista]).filter(e => e.status === 'confirmada');

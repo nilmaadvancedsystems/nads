@@ -66,7 +66,7 @@ function Paradas({ vm }: { vm: Vm }) {
             {vm.lerGuia && <button type="button" className="btn btn-outline" onClick={vm.lerGuia}><Icone nome="codigoBarras" />Ler guia</button>}
             {vm.organizarPelaFixa && <BotaoAcao className="btn btn-outline" carregando={vm.organizando} textoCarregando="Organizando…" onClick={vm.organizarPelaFixa}><Icone nome="list" />Organizar pela ordem fixa</BotaoAcao>}
             <button type="button" className="btn btn-outline" onClick={vm.protocoloDaRota}><Icone nome="printer" />Protocolo</button>
-            {vm.decimoDoDp && <button type="button" className="btn btn-outline" onClick={vm.decimoDoDp.abrir}><Icone nome="caminhao" />13º do DP</button>}
+            {vm.decimoDoDp && <button type="button" className="btn btn-outline" onClick={vm.decimoDoDp.abrir}><Icone nome="caminhao" />Folha e 13º do DP</button>}
             <button type="button" className="btn btn-primary" onClick={vm.adicionarARota}><Icone nome="plus" />Adicionar à rota</button>
           </span>
         </div>

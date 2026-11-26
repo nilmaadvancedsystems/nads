@@ -1,9 +1,9 @@
 // O 13º do DP na rota do Entregas (11/11/2026): quando a parcela está pronta e quem vai para a rota.
 import { describe, expect, it } from 'vitest';
 import { clienteDaRotaDoDocumento } from './documentos';
-import { decimoParaARota, documentoDoDecimo, entregaDoDecimo } from './decimoDoDp';
+import { decimoParaARota, documentoDaFolha, documentoDoDecimo, dpParaARota, entregaDoDecimo, entregaDoDp } from './decimoDoDp';
 import { execucaoNova, fazer } from '../tarefas/regras/execucao';
-import { etapasDaParcela, parcelaDoDecimoPronta, parcelaDoMes } from '../tarefas/regras/decimoTerceiro';
+import { etapasDaParcela, folhaProntaParaEntregar, parcelaDoDecimoPronta, parcelaDoMes, parcelaProntaParaEntregar } from '../tarefas/regras/decimoTerceiro';
 
 const cliente = (id: string, cod: string, extra: Record<string, unknown> = {}) =>
   clienteDaRotaDoDocumento(id, { nome: 'EMPRESA ' + cod, codigoOrigem: cod, ativo: true, zona: 'central', ...extra });
@@ -53,5 +53,33 @@ describe('quem do DP vai para a rota com o 13º', () => {
       para: { tipo: 'cliente', cliente: { id: 'a' } },
     });
     expect(entregaDoDecimo(clientes[0], '2', 2026).vencimento).toBe('2026-12-18');
+  });
+});
+
+describe('o que vai para a rota: só o papel do office boy (26/11/2026)', () => {
+  const marcar = (etapas: string[], comp = '2026-13') => etapas.reduce((ex, etapa) => fazer(ex, etapa, 'Sávio', new Date(2026, 10, 26)).execucao, execucaoNova('EMPRESA 10', 10, comp, 'dp'));
+  it('o 13º: com Recibos e Folha marcados já vai, mesmo sem o eSocial, a DCTFWeb e o DARF da 2ª parcela', () => {
+    const papel = marcar(['d13-2-recibos', 'd13-2-folha']);
+    expect(parcelaDoDecimoPronta(papel, '2')).toBe(false);
+    expect(parcelaProntaParaEntregar(papel, '2')).toBe(true);
+    expect(parcelaProntaParaEntregar(marcar(['d13-2-recibos']), '2')).toBe(false);
+    expect(parcelaProntaParaEntregar(papel, '1')).toBe(false);
+    expect(parcelaProntaParaEntregar(null, '1')).toBe(false);
+  });
+  it('a folha do mês: os Recibos de pagamento e a Folha de pagamento da rotina do DP', () => {
+    expect(folhaProntaParaEntregar(marcar(['dp-recibos', 'dp-folha'], '2026-10'))).toBe(true);
+    expect(folhaProntaParaEntregar(marcar(['dp-folha'], '2026-10'))).toBe(false);
+    expect(folhaProntaParaEntregar(null)).toBe(false);
+  });
+  it('a folha na rota: o documento "Folha de Pagamento" da competência, e a folha de outro mês não segura', () => {
+    const doc = documentoDaFolha('2026-10');
+    expect(doc).toEqual({ tipo: 'Folha de Pagamento', competencia: '2026-10' });
+    const clientes = [cliente('a', '10'), cliente('b', '23')];
+    const doMes = [{ clienteId: 'b', competencia: '2026-09', status: 'pendente' as const, itens: [{ tipo: doc.tipo, valor: null }] }];
+    const l = dpParaARota({ documento: doc, empresas: [{ codigo: 10, nome: 'A', pronta: true }, { codigo: 23, nome: 'B', pronta: true }], clientes, doMes });
+    expect(l.map(x => x.codigo + ':' + x.situacao)).toEqual(['10:vai', '23:vai']);
+    const parada = entregaDoDp(clientes[0], doc);
+    expect(parada.itens).toEqual([{ tipo: 'Folha de Pagamento', valor: null }]);
+    expect(parada.competencia).toBe('2026-10');
   });
 });
