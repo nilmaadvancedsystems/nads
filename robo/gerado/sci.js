@@ -295,7 +295,23 @@ const GUIAS_DO_SCI = [
 	},
 	{
 		chave: "DAE-ICMS",
-		rotulo: "DAE do ICMS"
+		rotulo: "DAE do ICMS normal"
+	},
+	{
+		chave: "DAE-ANTECIPACAO",
+		rotulo: "DAE da antecipação do ICMS"
+	},
+	{
+		chave: "DAE-DIFAL",
+		rotulo: "DAE do diferencial de alíquota"
+	},
+	{
+		chave: "DAE-ST-ENTRADA",
+		rotulo: "DAE do ICMS-ST de entrada"
+	},
+	{
+		chave: "DAE-ST-SAIDA",
+		rotulo: "DAE do ICMS-ST de saída"
 	},
 	{
 		chave: "DAM-ISS",
@@ -374,9 +390,19 @@ function empresasDoTexto(texto) {
 	return [...new Set(String(texto ?? "").split(/[^\d]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
 }
 const empresaNoSci = (c, codigo) => c.empresas.includes(Number(codigo));
-function chaveDaGuiaNoSci(tipo, tributo) {
+const DAE_PELA_COLUNA = {
+	"icms-ant": "DAE-ANTECIPACAO",
+	"icms-arroz": "DAE-ANTECIPACAO",
+	"icms-dif": "DAE-DIFAL",
+	"icms-dif-ativo": "DAE-DIFAL",
+	"st-ent": "DAE-ST-ENTRADA",
+	"st-sai": "DAE-ST-SAIDA",
+	icms: "DAE-ICMS"
+};
+function chaveDaGuiaNoSci(tipo, tributo, coluna = "") {
 	const t = String(tipo ?? "").toUpperCase().trim();
 	const tr = String(tributo ?? "").toUpperCase().trim();
+	if (t === "DAE" && DAE_PELA_COLUNA[String(coluna ?? "").trim()]) return DAE_PELA_COLUNA[String(coluna).trim()];
 	if (t === "DAS") return "DAS";
 	if (t === "FGTS") return "FGTS";
 	if (t === "DARF") return [
@@ -389,8 +415,8 @@ function chaveDaGuiaNoSci(tipo, tributo) {
 	if (t === "DAM" && tr === "ISS") return "DAM-ISS";
 	return "OUTRA";
 }
-function relatorioDaGuia(c, tipo, tributo) {
-	const chave = chaveDaGuiaNoSci(tipo, tributo);
+function relatorioDaGuia(c, tipo, tributo, coluna = "") {
+	const chave = chaveDaGuiaNoSci(tipo, tributo, coluna);
 	return c.relatorios[chave] || (chave.startsWith("DARF-") ? c.relatorios.DARF : "") || c.relatorios.OUTRA || "";
 }
 

@@ -20,7 +20,12 @@ export const GUIAS_DO_SCI = [
   { chave: 'DARF-IRPJ', rotulo: 'DARF do IRPJ' },
   { chave: 'DARF-CSLL', rotulo: 'DARF da CSLL' },
   { chave: 'DARF', rotulo: 'DARF (outros)' },
-  { chave: 'DAE-ICMS', rotulo: 'DAE do ICMS' },
+  { chave: 'DAE-ICMS', rotulo: 'DAE do ICMS normal' },
+  // (26/11/2026: "Pode separar") o DAE por coluna do Relatório: cada um com o modelo dele no SCI Report
+  { chave: 'DAE-ANTECIPACAO', rotulo: 'DAE da antecipação do ICMS' },
+  { chave: 'DAE-DIFAL', rotulo: 'DAE do diferencial de alíquota' },
+  { chave: 'DAE-ST-ENTRADA', rotulo: 'DAE do ICMS-ST de entrada' },
+  { chave: 'DAE-ST-SAIDA', rotulo: 'DAE do ICMS-ST de saída' },
   { chave: 'DAM-ISS', rotulo: 'DAM do ISS' },
   { chave: 'FGTS', rotulo: 'FGTS' },
   { chave: 'OUTRA', rotulo: 'Outras guias' },
@@ -88,9 +93,16 @@ export function empresasDoTexto(texto: string): number[] {
 export const empresaNoSci = (c: ConfigDoSci, codigo: number | string) => c.empresas.includes(Number(codigo));
 
 /** A chave da guia no SCI pelo tipo e pelo tributo que o leitor de guias do nads devolve (DAS; DARF + PIS; DAE + ICMS…). */
-export function chaveDaGuiaNoSci(tipo: string, tributo: string): ChaveDaGuiaNoSci {
+/** A coluna do Relatório do DAE → a chave dele (a antecipação e o arroz são antecipação; o dif. de uso e o do ativo, diferencial). */
+const DAE_PELA_COLUNA: Record<string, ChaveDaGuiaNoSci> = {
+  'icms-ant': 'DAE-ANTECIPACAO', 'icms-arroz': 'DAE-ANTECIPACAO', 'icms-dif': 'DAE-DIFAL', 'icms-dif-ativo': 'DAE-DIFAL',
+  'st-ent': 'DAE-ST-ENTRADA', 'st-sai': 'DAE-ST-SAIDA', icms: 'DAE-ICMS',
+};
+
+export function chaveDaGuiaNoSci(tipo: string, tributo: string, coluna = ''): ChaveDaGuiaNoSci {
   const t = String(tipo ?? '').toUpperCase().trim();
   const tr = String(tributo ?? '').toUpperCase().trim();
+  if (t === 'DAE' && DAE_PELA_COLUNA[String(coluna ?? '').trim()]) return DAE_PELA_COLUNA[String(coluna).trim()];
   if (t === 'DAS') return 'DAS';
   if (t === 'FGTS') return 'FGTS';
   if (t === 'DARF') return (['PIS', 'COFINS', 'IRPJ', 'CSLL'].includes(tr) ? 'DARF-' + tr : 'DARF') as ChaveDaGuiaNoSci;
@@ -100,7 +112,7 @@ export function chaveDaGuiaNoSci(tipo: string, tributo: string): ChaveDaGuiaNoSc
 }
 
 /** O código do relatório da guia (a chave dela, senão o de "Outras guias"); '' quando o escritório não disse nenhum. */
-export function relatorioDaGuia(c: ConfigDoSci, tipo: string, tributo: string): string {
-  const chave = chaveDaGuiaNoSci(tipo, tributo);
+export function relatorioDaGuia(c: ConfigDoSci, tipo: string, tributo: string, coluna = ''): string {
+  const chave = chaveDaGuiaNoSci(tipo, tributo, coluna);
   return c.relatorios[chave] || (chave.startsWith('DARF-') ? c.relatorios.DARF : '') || c.relatorios.OUTRA || '';
 }

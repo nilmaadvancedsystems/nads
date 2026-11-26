@@ -96,7 +96,7 @@ async function publicarGuias(db, { codigo, cnpj, guias }) {
     for (const g of guias) {
       const descricao = [g.tipo === 'OUTRO' ? '' : g.tipo, g.tributo].filter(Boolean).join(' ') || g.nome;
       const guia = { competencia: g.competencia, vencimento: g.vencimento, valor: Number(g.valor) || 0, descricao };
-      const relatorioId = S.relatorioDaGuia(cfg, g.tipo, g.tributo);
+      const relatorioId = S.relatorioDaGuia(cfg, g.tipo, g.tributo, g.coluna || '');
       const erro = S.erroDaGuiaParaPublicar(guia, relatorioId, r.empresaId || null, g.pdf ? g.pdf.length : 0);
       if (erro) { r.falhas.push({ nome: g.nome, erro }); continue; }
       try {

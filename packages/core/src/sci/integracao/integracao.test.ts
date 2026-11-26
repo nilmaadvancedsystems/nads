@@ -40,6 +40,17 @@ describe('SCI: a configuração (config/sci)', () => {
     expect(chaveDaGuiaNoSci('DARF', 'cofins')).toBe('DARF-COFINS');
     expect(chaveDaGuiaNoSci('DAE', 'ICMS')).toBe('DAE-ICMS');
     expect(chaveDaGuiaNoSci('GPS', '')).toBe('OUTRA');
+    // (26/11/2026) o DAE pela coluna do Relatório: cada tipo com o modelo dele no SCI Report
+    expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms-dif-ativo')).toBe('DAE-DIFAL');
+    expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms-dif')).toBe('DAE-DIFAL');
+    expect(chaveDaGuiaNoSci('DAE', '', 'icms-arroz')).toBe('DAE-ANTECIPACAO');
+    expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'st-ent')).toBe('DAE-ST-ENTRADA');
+    expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'st-sai')).toBe('DAE-ST-SAIDA');
+    expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms')).toBe('DAE-ICMS');
+    expect(chaveDaGuiaNoSci('DAE', 'ICMS', '')).toBe('DAE-ICMS');
+    expect(relatorioDaGuia(configDoSci({ relatorios: { 'DAE-ICMS': 'DAEN', 'DAE-DIFAL': 'DAEA' } }), 'DAE', 'ICMS', 'icms-dif-ativo')).toBe('DAEA');
+    // sem o código do diferencial, não cai no do ICMS normal
+    expect(relatorioDaGuia(configDoSci({ relatorios: { 'DAE-ICMS': 'DAEN' } }), 'DAE', 'ICMS', 'st-ent')).toBe('');
     expect(relatorioDaGuia(c, 'DAS', '')).toBe('0001');
     expect(relatorioDaGuia(c, 'DARF', 'PIS')).toBe('0002');
     expect(relatorioDaGuia(c, 'DAM', 'ISS')).toBe('0009');
