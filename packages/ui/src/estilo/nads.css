@@ -8898,3 +8898,7 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
   /* o 100vh também encolhe com o zoom: a casca volta a ocupar a tela inteira, sem a faixa vazia embaixo do rodapé */
   html[data-tarefas] body,html[data-tarefas] #app{min-height:calc(100vh / .9);min-height:calc(100dvh / .9);}
 }
+/* os Serviços comissionados em tabela (26/11/2026): as colunas ajustáveis (a alça no título) e os campos do tamanho da coluna */
+.cart-servicos-tabela{table-layout:fixed;}
+.cart-servicos-tabela thead th{position:relative;}
+.cart-servicos-tabela td input,.cart-servicos-tabela td .campo-reais{width:100%;min-width:0;box-sizing:border-box;}
