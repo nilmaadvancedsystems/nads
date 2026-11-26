@@ -8898,7 +8898,19 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
   /* o 100vh também encolhe com o zoom: a casca volta a ocupar a tela inteira, sem a faixa vazia embaixo do rodapé */
   html[data-tarefas] body,html[data-tarefas] #app{min-height:calc(100vh / .9);min-height:calc(100dvh / .9);}
 }
-/* os Serviços comissionados em tabela (26/11/2026): as colunas ajustáveis (a alça no título) e os campos do tamanho da coluna */
-.cart-servicos-tabela{table-layout:fixed;}
-.cart-servicos-tabela thead th{position:relative;}
-.cart-servicos-tabela td input,.cart-servicos-tabela td .campo-reais{width:100%;min-width:0;box-sizing:border-box;}
+/* os Serviços comissionados no jeito de planilha (26/11/2026): a tabela na largura da janela (o Serviço com o que sobra), a
+   célula é o campo (sem a caixa arredondada; o foco é uma linha da cor de destaque por dentro) e a lixeira vermelha */
+.cart-servicos-tabela{table-layout:fixed;width:100%;}
+.cart-servicos-tabela .cart-servicos-valor{width:24%;}
+.cart-servicos-tabela .cart-servicos-pct{width:16%;}
+.cart-servicos-tabela .cart-servicos-tirar{width:44px;}
+.cart-servicos-tabela td{padding:0;}
+.cart-servicos-tabela td:last-child{text-align:center;}
+.cart-servicos-tabela td input,.cart-servicos-tabela td .campo-reais{width:100%;min-width:0;box-sizing:border-box;border:0;border-radius:0;background:transparent;box-shadow:none;}
+.cart-servicos-tabela td input{height:36px;padding:0 10px;}
+.cart-servicos-tabela td .campo-reais{height:36px;padding-left:10px;max-width:none;}
+.cart-servicos-tabela td .campo-reais input{padding-left:6px;}
+.cart-servicos-tabela td input:focus,.cart-servicos-tabela td .campo-reais:focus-within{outline:none;box-shadow:inset 0 0 0 1px var(--accent);}
+.cart-servicos-tabela td .campo-reais input:focus{box-shadow:none;}
+.cart-servicos-tabela .cart-servicos-tirar-btn{color:var(--destructive);}
+.cart-servicos-tabela .cart-servicos-tirar-btn:hover{color:var(--destructive);background:color-mix(in srgb, var(--destructive) 12%, transparent);}
