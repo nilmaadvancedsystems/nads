@@ -8914,3 +8914,6 @@ td.sci-mp-tirar{text-align:center;padding-left:4px;padding-right:8px;}
 .cart-servicos-tabela td .campo-reais input:focus{box-shadow:none;}
 .cart-servicos-tabela .cart-servicos-tirar-btn{color:var(--destructive);}
 .cart-servicos-tabela .cart-servicos-tirar-btn:hover{color:var(--destructive);background:color-mix(in srgb, var(--destructive) 12%, transparent);}
+/* as Particularidades (26/11/2026): o título de cada parte (Contábil, Fiscal) em cima das seções dela */
+.cad-particularidades-grupo{margin:28px 0 4px;font-size:var(--fs-12);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);}
+.cad-particularidades-grupo:first-of-type{margin-top:4px;}

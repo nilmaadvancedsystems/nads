@@ -24,13 +24,16 @@ export function useJanelaDaEmpresa(rota: string, aba: string, local?: { irPara: 
   const contas = (c.bancos || []).filter(b => !b.ate).length;
   // as abas do Contábil só para o Contábil (06/11/2026: "quem é do fiscal, não é para ter acesso a coisas do contábil")
   const visiveis = abasDoCadastroDe(useOperador().operador);
+  // com as Particularidades, o que era da aba do Contábil ou da do Fiscal (o regime) aparece nela
+  const comParticularidades = visiveis.some(a => a.id === 'particularidades');
+  const abaDoItem = (id: string) => (comParticularidades && (id === 'contabil' || id === 'fiscal') ? 'particularidades' : id);
   const itens: ItemDoResumo[] = [
     { id: 'regime', rotulo: 'Regime', tem: !!regime, texto: regime || 'não escolhido', aba: 'fiscal' },
     { id: 'contato', rotulo: 'Contato', tem: !!(c.contato?.email || c.contato?.whatsapp), texto: c.contato?.email || c.contato?.whatsapp || 'sem e-mail e sem WhatsApp', aba: 'empresa' },
     { id: 'bancos', rotulo: 'Bancos', tem: contas > 0, texto: contas ? contas + (contas === 1 ? ' conta' : ' contas') : 'nenhuma conta', aba: 'bancos' },
     { id: 'plano', rotulo: 'Plano de contas', tem: c.plano?.contas != null, texto: c.plano?.contas != null ? c.plano.contas.toLocaleString('pt-BR') + ' contas' : 'não importado', aba: 'plano' },
     { id: 'socios', rotulo: 'Sócios', tem: !!c.socios?.length, texto: c.socios?.length ? c.socios.length + (c.socios.length === 1 ? ' sócio' : ' sócios') : 'nenhum', aba: 'empresa' },
-  ].filter(i => visiveis.some(a => a.id === i.aba));
+  ].map(i => ({ ...i, aba: abaDoItem(i.aba) })).filter(i => visiveis.some(a => a.id === i.aba));
   // o aviso de cada aba: o que falta nela
   const falta = (id: string) => itens.filter(i => i.aba === id && !i.tem).length;
   return {
@@ -43,6 +46,8 @@ export function useJanelaDaEmpresa(rota: string, aba: string, local?: { irPara: 
     abas: visiveis.filter(a => a.id !== 'simples' || temCodigoDoSimples(regime)).map(a => ({ ...a, ativa: a.id === aba, pendente: vivo.carregada ? falta(a.id) : 0 })),
     aba,
     abaAberta: visiveis.find(a => a.id === aba) || null,
+    /** a pessoa vê o Contábil (a parte do Contábil nas Particularidades) */
+    verContabil: visiveis.some(a => a.grupo === 'Contábil'),
     resumo: {
       carregado: vivo.carregada,
       cnpj: c.cnpj ? empresas.cadastro.cnpjFormatado(c.cnpj) : '',

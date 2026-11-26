@@ -20,6 +20,8 @@ export function CadastroAberto() {
   // quem não mexe no cadastro (o pleno, o júnior) não abre a lista nem pelo endereço (19/10/2026)
   if (!podeMexerNoCadastro(op)) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
   if (!existe) return <Navigate to={caminhoDoCadastro(null)} replace />;
+  // o endereço antigo dos Parâmetros (do Contábil ou do Fiscal) abre as Particularidades, onde eles estão desde 26/11/2026
+  if (!abaExiste && (aba === 'contabil' || aba === 'fiscal') && abasDoCadastroDe(op).some(a => a.id === 'particularidades')) return <Navigate to={caminhoDoCadastro(empresa, 'particularidades')} replace />;
   if (!abaExiste) return <Navigate to={caminhoDoCadastro(empresa)} replace />;
   return (
     <TopoProvider>
