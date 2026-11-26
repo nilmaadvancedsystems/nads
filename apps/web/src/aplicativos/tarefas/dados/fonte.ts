@@ -603,7 +603,20 @@ export const testeDoInicioLigado = (q: DadosDeTesteDoInicio) => !!teste[q];
 export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
   // os avisos de exemplo levam junto as reuniões de exemplo (as Notificações do Início novo)
   if (q === 'avisos') { teste.avisos = ligar ? criarAvisosMemoria(true) : null; teste.reunioes = ligar ? criarReunioesMemoria(quemDasTarefas, true) : null; }
-  else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
+  else { teste.tarefas = ligar ? criarTarefasDelegadasMemoria(() => agindoComo || quemDasTarefas(), true) : null; if (!ligar) agindoComo = null; }
+  teste.ver++;
+  for (const f of ouvintesDoTeste) f();
+}
+
+/**
+ * O "Agir como" das tarefas de teste (26/11/2026: "quero simular a rotina de requerer documentos, por parte de quem ta pedindo e por
+ * parte de quem ta recebendo"): com as tarefas de exemplo ligadas, o Início passa a ser o de outra pessoa da equipe (só na memória;
+ * nada vai para o banco). null = volta a ser quem entrou.
+ */
+let agindoComo: { uid: string; nome: string } | null = null;
+export const agindoComoNoTeste = () => agindoComo;
+export function agirComoNoTeste(p: { uid: string; nome: string } | null) {
+  agindoComo = teste.tarefas ? p : null;
   teste.ver++;
   for (const f of ouvintesDoTeste) f();
 }
