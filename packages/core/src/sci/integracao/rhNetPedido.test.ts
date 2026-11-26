@@ -69,3 +69,13 @@ describe('o cadastro completo da admissão da Área vai ao RH NET', () => {
     expect(codigoIbgeDaCidade([{ id: 3143302, nome: 'Montes Claros' }], 'Outra')).toBe(0);
   });
 });
+
+describe('completar uma admissão que já está no RH NET (26/11/2026: "coloca aqui para a pessoa mesmo liberar")', () => {
+  it('o pedido traz o número dela lá; sem ele, é admissão nova', async () => {
+    const { admissaoDoPedidoDaArea } = await import('./index');
+    const r = admissaoDoPedidoDaArea(pedido({ 'ID no RH NET': '33203703' }));
+    expect('admissao' in r && r.idNoRhNet).toBe(33203703);
+    const nova = admissaoDoPedidoDaArea(pedido());
+    expect('admissao' in nova && nova.idNoRhNet).toBeUndefined();
+  });
+});

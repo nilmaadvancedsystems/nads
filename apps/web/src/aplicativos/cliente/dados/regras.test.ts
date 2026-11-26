@@ -99,6 +99,10 @@ describe('pedidos do pessoal', () => {
     expect(t).toContain('Cidade de nascimento: Montes Claros/MG');
     expect(t).toContain('Cidade: Montes Claros/MG');
     expect(t).not.toContain('Complemento');
+    // completar a que já está no sistema de folha: o título e o número dela lá
+    const c = textoDaAdmissao({ ...p, idNoRhNet: '33203703' });
+    expect(c.split(String.fromCharCode(10))[0]).toBe('Completar admissão: Maria Souza (Auxiliar)');
+    expect(c).toContain('ID no RH NET: 33203703');
     expect(t.split('\n')[0]).toBe('Admissão: Maria Souza (Auxiliar)');
     expect(t).toContain('Salário: R$ 2.000,00');
     expect(t).toContain('CPF: 529.982.247-25');

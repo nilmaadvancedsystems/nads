@@ -59,7 +59,13 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
                       <Icone nome={g.acao.icone} width={18} height={18} />
                     </button>
                   )}
-                  {g.pedirNova && <button type="button" className="cli-ini-pedir-nova" onClick={g.pedirNova}>Pedir guia nova<Icone nome="chevronRight" width={15} height={15} /></button>}
+                  {(g.pedirNova || g.jaPaguei) && (
+                    <span className="cli-ini-depois">
+                      {g.pedirNova && <button type="button" className="cli-ini-pedir-nova" onClick={g.pedirNova}>Pedir guia nova<Icone nome="chevronRight" width={15} height={15} /></button>}
+                      {/* (26/11/2026: "remover isso da tela em algum botao? caso a pessoa ja tenha pago") */}
+                      {g.jaPaguei && g.tom === 'vencida' && <button type="button" className="cli-ini-ja-paguei" onClick={g.jaPaguei}><Icone nome="check" width={15} height={15} />Já paguei</button>}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

@@ -144,6 +144,8 @@ export interface PedidoDeAdmissao {
   rg?: string; rgOrgao?: string; rgUf?: string; rgEmissao?: string;
   celular?: string; cep?: string; logradouroTipo?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string;
   horasSemana?: string; noturno?: string;
+  /** (26/11/2026) completar uma admissão que já está no sistema de folha (o número dela lá): vai liberada para o DP importar */
+  idNoRhNet?: string;
   /** a foto do funcionário, opcional (o JPEG 256×256 em base64, sem o prefixo data:) */
   foto?: string;
 }
@@ -192,7 +194,8 @@ export function erroDaAdmissao(p: PedidoDeAdmissao): string {
 /** '2.000,50' ou 'R$ 2000' em número (0 quando não dá) */
 const valorDoSalario = (t: string) => { const n = Number(String(t ?? '').replace(/[^\d,]/g, '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
 export function textoDaAdmissao(p: PedidoDeAdmissao): string {
-  return linhas('Admissão: ' + p.nome.trim() + ' (' + p.cargo.trim() + ')', [
+  return linhas((p.idNoRhNet ? 'Completar admissão: ' : 'Admissão: ') + p.nome.trim() + ' (' + p.cargo.trim() + ')', [
+    ['ID no RH NET', p.idNoRhNet ?? ''],
     ['Nome completo', p.nome], ['CPF', p.cpf], ['Nascimento', p.nascimento ?? ''],
     ['Sexo', p.sexo ?? ''], ['Estado civil', p.estadoCivil ?? ''], ['Raça/cor', p.racaCor ?? ''], ['Escolaridade', p.escolaridade ?? ''],
     ['Nome da mãe', p.maeNome ?? ''], ['Cidade de nascimento', p.nascCidade && p.nascUf ? p.nascCidade.trim() + '/' + p.nascUf : ''],

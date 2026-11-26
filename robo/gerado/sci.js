@@ -1184,9 +1184,11 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 		...completo.admissao
 	};
 	const erro = erroDaAdmissao(admissao);
+	const idNoRhNet = Number((campos.get("id no rh net") ?? "").replace(/\D/g, "")) || 0;
 	return erro ? { erro } : {
 		admissao,
-		cidades: completo.cidades
+		cidades: completo.cidades,
+		...idNoRhNet ? { idNoRhNet } : {}
 	};
 }
 function cargosParaArea(funcoes) {
@@ -1491,6 +1493,16 @@ function criarClienteRhNet(deps) {
 		async cadastrosParaArea() {
 			const funcoes = new Map(itensDoCadastro("funcoes", await listar(CADASTROS_DO_RH.funcoes.caminho)).map((f) => [f.id, f.nome]));
 			return cadastrosParaArea(await listar("/api/v1/admissoes"), funcoes);
+		},
+		async atualizarAdmissao(id, a) {
+			const erro = erroDaAdmissao(a);
+			if (erro) throw new ErroDoSci(0, erro);
+			if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, "falta o número do funcionário no RH NET");
+			const { empresaId } = await identificacao();
+			await chamar("PUT", "/api/v1/admissoes", {
+				...corpoDaAdmissao(empresaId, a),
+				funcionario_contribuinte_id: id
+			});
 		},
 		async criarAdmissao(a) {
 			const erro = erroDaAdmissao(a);

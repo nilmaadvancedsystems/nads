@@ -9,7 +9,9 @@ import { Icone, MenuSuspenso, type ItemMenu } from '@nads/ui';
 import type { GuiaPaga } from '../dados/areaCliente';
 import { SiglaDaGuia } from './SiglaDaGuia';
 
-export function LinhaGuiaDoMes({ guia, codigo, quando, destaque, escolhida, dia, ocupado, onVer, onBaixar, onCopiar, onPedirNova, onComprovante, comprovanteEm }: {
+export function LinhaGuiaDoMes({ guia, codigo, quando, destaque, escolhida, dia, ocupado, onVer, onBaixar, onCopiar, onPedirNova, onComprovante, comprovanteEm, onJaPaguei }: {
+  /** "Já paguei: tirar da lista" (26/11/2026) */
+  onJaPaguei?: (guia: ac.GuiaDoCliente) => void;
   guia: ac.GuiaDoCliente; codigo?: string; /** a frase curta (dados/guiasDoMes.quandoVence) */ quando: { texto: string; tom: '' | 'vencida' | 'hoje' }; /** o Baixar carmim (a próxima a pagar) */ destaque: boolean;
   /** o dia escolhido no calendário */ escolhida: boolean; dia: number; ocupado: boolean;
   onVer: (id: string) => void; onBaixar: (id: string) => void; onCopiar: (codigo: string) => void; onPedirNova: (guia: ac.GuiaDoCliente) => void;
@@ -24,6 +26,7 @@ export function LinhaGuiaDoMes({ guia, codigo, quando, destaque, escolhida, dia,
     ...(vencida && guia.temPdf ? [{ rotulo: 'Baixar a vencida', icone: 'download' as const, desabilitado: ocupado, onClick: () => onBaixar(guia.id) }] : []),
     ...(!vencida && codigo && guia.temPdf ? [{ rotulo: 'Copiar o código de barras', icone: 'copiar' as const, onClick: () => onCopiar(codigo) }] : []),
     // (17/11/2026, ficha comprovante-da-guia) um item no "⋯", não um botão novo na linha (R10)
+    ...(onJaPaguei ? [{ rotulo: 'Já paguei: tirar da lista', icone: 'check' as const, onClick: () => onJaPaguei(guia) }] : []),
     ...(onComprovante ? [{ rotulo: 'Já paguei: mandar o comprovante', icone: 'upload' as const, onClick: () => onComprovante(guia) }] : []),
   ];
   // (16/11/2026, revisão de consistência: "muita informação") sem o PDF, o botão principal vira Copiar código, como nas

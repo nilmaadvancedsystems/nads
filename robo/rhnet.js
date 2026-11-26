@@ -305,6 +305,29 @@ async function atenderAdmissaoDaArea(db, ref, log = () => {}) {
       log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'não foi ao RH NET -', r.erro);
       return 'nao-enviado';
     }
+    // (26/11/2026: "coloca aqui para a pessoa mesmo liberar, ela vai terminar de preencher os 36 campos e ela libera para o
+    // cara do dp importar") o pedido que completa uma admissão já no RH NET: só se ela é desta empresa e ainda não foi
+    // liberada; troca o cadastro inteiro (PUT) e libera para o DP importar
+    if (r.idNoRhNet) {
+      const da = (await rh.admissoes()).find(x => x.id === r.idNoRhNet);
+      if (!da || (da.situacao !== 'nao_liberado' && da.situacao !== '')) {
+        const erro = !da ? 'a admissão não é desta empresa no RH NET' : 'a admissão já foi liberada';
+        await ref.update({ rhnet: { situacao: 'nao-enviado', erro, em: agora() } });
+        return 'nao-enviado';
+      }
+      await rh.atualizarAdmissao(r.idNoRhNet, r.admissao);
+      try {
+        await rh.liberarAdmissoes([r.idNoRhNet], 'liberado', 'Completado e liberado pelo cliente na Área do Cliente');
+        await ref.update({ rhnet: { situacao: 'liberado', id: r.idNoRhNet, liberadoPor: 'o cliente', liberadoEm: agora(), em: agora() } });
+        log('RH NET: a admissão', r.idNoRhNet, 'da empresa', codigo, 'foi completada e liberada pelo cliente');
+      } catch (err) {
+        await ref.update({ rhnet: { situacao: 'nao_liberado', id: r.idNoRhNet, erroLiberacao: motivo(err), em: agora() } });
+        log('RH NET: a admissão', r.idNoRhNet, 'da empresa', codigo, 'foi completada, mas não liberou -', motivo(err));
+      }
+      gravadoNaNuvem.delete(codigo);
+      atualizarListasDaArea(db, log).catch(() => {});
+      return 'cadastrado';
+    }
     const criada = await rh.criarAdmissao(r.admissao);
     await ref.update({ rhnet: { situacao: 'cadastrado', id: criada.id, em: agora() } });
     log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'foi para o RH NET (não liberado, id', criada.id + ')');

@@ -25,6 +25,13 @@ import type { DaCasca, PedidoDaTela } from './useAreaCliente';
 import { curto, topoDoEixo, type ColunaDoGrafico } from './useAdministrativo';
 
 export type Pedido = 'admissao' | 'ferias' | 'demissao';
+/** a admissão em branco (com os padrões: SSP, Rua, 44 horas, não trabalha à noite) */
+const criarAdmissaoVazia = (): PedidoDeAdmissao => ({
+  nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '',
+  sexo: '', estadoCivil: '', racaCor: '', escolaridade: '', maeNome: '', nascCidade: '', nascUf: '', rg: '', rgOrgao: 'SSP', rgUf: '', rgEmissao: '',
+  celular: '', cep: '', logradouroTipo: 'Rua', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', horasSemana: '44', noturno: 'Não',
+});
+
 export type DadosDoPedido = PedidoDeAdmissao | PedidoDeFerias | PedidoDeDemissao;
 const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 /** 'aaaa-mm' → '10/2026' */
@@ -202,6 +209,8 @@ export function useDp({ token, area, hoje }: DaCasca) {
           : c.situacao === 'Indo para a folha' ? 'O escritório liberou a admissão; ela está indo para a folha.'
             : 'A admissão chegou ao escritório e está sendo conferida pelo departamento pessoal antes de ir para a folha.',
       tempo: c.naFolha && c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '',
+      // a admissão ainda não liberada: a empresa completa o cadastro e libera (26/11/2026)
+      podeCompletar: c.situacao === 'Aguardando o escritório',
       // o selo só quando pede atenção: ainda não está na folha
       selo: c.naFolha ? null : c.situacao === 'Recusado' ? { rotulo: 'Recusada', tom: 'ruim' } : c.situacao === 'Indo para a folha' ? { rotulo: 'Liberada', tom: 'neutro' } : { rotulo: 'Em admissão', tom: 'atencao' },
       pe: {
@@ -260,11 +269,12 @@ export function useDp({ token, area, hoje }: DaCasca) {
       .sort((a, b) => (a.x ? ac.ORDEM_DAS_FERIAS[a.x.situacao] : 9) - (b.x ? ac.ORDEM_DAS_FERIAS[b.x.situacao] : 9) || a.f.nome.localeCompare(b.f.nome))
       .map(({ f, x }) => ({ nome: nomeDaPessoa(f.nome), rotulo: x ? ROTULO_DAS_FERIAS[x.situacao] : '', tom: x ? TOM_DAS_FERIAS[x.situacao] : 'neutro', texto: x?.texto ?? '', limite: x?.limite ?? '' })),
     hoje,
-    novaAdmissao: (): PedidoDeAdmissao => ({
-      nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '',
-      sexo: '', estadoCivil: '', racaCor: '', escolaridade: '', maeNome: '', nascCidade: '', nascUf: '', rg: '', rgOrgao: 'SSP', rgUf: '', rgEmissao: '',
-      celular: '', cep: '', logradouroTipo: 'Rua', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', horasSemana: '44', noturno: 'Não',
+    /** (26/11/2026: "coloca aqui para a pessoa mesmo liberar") completar a admissão que está no sistema de folha: o nome e o
+     *  primeiro dia já vêm; o resto a pessoa preenche (o RH NET troca o cadastro inteiro) e vai liberado para o DP importar */
+    completarAdmissao: (c: { id: string; nome: string; entrada: string }): PedidoDeAdmissao => ({
+      ...criarAdmissaoVazia(), nome: c.nome, inicio: c.entrada !== '—' ? c.entrada : '', idNoRhNet: c.id.replace(/\D/g, ''),
     }),
+    novaAdmissao: (): PedidoDeAdmissao => criarAdmissaoVazia(),
     novasFerias: (empregado = ''): PedidoDeFerias => ({ empregado, inicio: '', dias: '30 dias', adiantar13: false, observacoes: '' }),
     novaDemissao: (empregado = ''): PedidoDeDemissao => ({ empregado, ultimoDia: '', motivo: '', aviso: 'Trabalhado', observacoes: '' }),
     dataBr,

@@ -446,7 +446,7 @@ export function DepartamentoPessoal(props: DaCasca) {
   /** (26/11/2026: "nao tem como abrir o funcionario com click") a ficha de quem veio do sistema de folha (RH NET): só o
    *  que o escritório mostra, sem salário */
   const fichaDoRh = async (c: VM['rhnet'][number]) => {
-    await modal<null>({
+    const escolha = await modal<'completar' | null>({
       titulo: c.nome,
       corpo: (
         <div className="cli-app cli-janela cli-ficha">
@@ -466,19 +466,25 @@ export function DepartamentoPessoal(props: DaCasca) {
             <div><dt>CPF</dt><dd>{c.cpf}</dd></div>
           </dl>
           <p className="hint cli-ficha-sem">{c.explica}</p>
-          <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Para mudar um dado ou mandar um documento, abra uma solicitação.</p>
+          {c.podeCompletar
+            ? <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Falta completar o cadastro. Preencha tudo e libere: o departamento pessoal só importa para a folha.</p>
+            : <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Para mudar um dado ou mandar um documento, abra uma solicitação.</p>}
         </div>
       ),
-      botoes: [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
+      // (26/11/2026: "coloca aqui para a pessoa mesmo liberar") a admissão não liberada: a própria empresa completa e libera
+      botoes: c.podeCompletar
+        ? [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }, { rotulo: 'Completar e liberar', valor: 'completar', variante: 'btn-primary' }]
+        : [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
     });
+    if (escolha === 'completar') await abrirPedido('admissao', vm.completarAdmissao({ id: c.id, nome: c.nome, entrada: c.pe.entrada }));
   };
 
   const abrirPedido = async (pedido: Pedido, dados: DadosDoPedido, erro = ''): Promise<void> => {
     let atual = dados;
     const enviar = await modal<boolean>({
-      titulo: TITULO[pedido],
+      titulo: pedido === 'admissao' && (dados as PedidoDeAdmissao).idNoRhNet ? 'Completar o cadastro e liberar' : TITULO[pedido],
       corpo: <FormDoPedido pedido={pedido} inicial={dados} erro={erro} nomes={vm.nomes} equipe={vm.equipeDasFerias} hoje={vm.hoje} cargos={vm.cargos} aoMudar={d => { atual = d; }} />,
-      botoes: [{ rotulo: pedido === 'admissao' ? 'Enviar ao departamento pessoal' : 'Enviar ao escritório', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+      botoes: [{ rotulo: pedido === 'admissao' ? ((dados as PedidoDeAdmissao).idNoRhNet ? 'Completar e liberar para a folha' : 'Enviar ao departamento pessoal') : 'Enviar ao escritório', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!enviar) return;
     const problema = await vm.pedir(pedido, atual);

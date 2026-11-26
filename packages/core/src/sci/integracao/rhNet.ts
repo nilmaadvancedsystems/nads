@@ -385,7 +385,7 @@ function doContratoDaArea(contrato: string): Pick<AdmissaoParaRhNet, 'classe' | 
   return { classe: 0, categoriaEsocial: 101, contratoTipo: 1, ...(exp ? { experienciaDias: Number(exp[1]), prorrogacaoDias: Number(exp[2]) } : {}) };
 }
 
-export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCadastroRh[] = []): { admissao: AdmissaoParaRhNet; cidades?: CidadesDoPedido } | { erro: string } {
+export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCadastroRh[] = []): { admissao: AdmissaoParaRhNet; cidades?: CidadesDoPedido; idNoRhNet?: number } | { erro: string } {
   const campos = new Map<string, string>();
   for (const linha of String(texto ?? '').split(/\r?\n/)) {
     const m = /^([^:]{2,30}):\s*(.*)$/.exec(linha.trim());
@@ -416,8 +416,10 @@ export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCa
     ...completo.admissao,
   };
   const erro = erroDaAdmissao(admissao);
+  // (26/11/2026: "coloca aqui para a pessoa mesmo liberar") o pedido que COMPLETA uma admissão já no RH NET traz o número dela
+  const idNoRhNet = Number((campos.get('id no rh net') ?? '').replace(/\D/g, '')) || 0;
   // as cidades em texto: o robô procura o código IBGE pelo nome e a UF
-  return erro ? { erro } : { admissao, cidades: completo.cidades };
+  return erro ? { erro } : { admissao, cidades: completo.cidades, ...(idNoRhNet ? { idNoRhNet } : {}) };
 }
 
 /** Os nomes das funções do RH NET como o Cargo da admissão da Área mostra: sem repetir, em ordem, no máximo 300 (26/11/2026). */
