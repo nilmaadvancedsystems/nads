@@ -8,7 +8,7 @@
 //     Fiscal (29/10/2026: segmento, monofásico, ICMS-ST, antecipação, DIFAL, retenções, benefício, parcelamento…).
 // Cada opção numa linha solta (ConfigLinha): o nome, a descrição curta e o controle à direita.
 import { empresas } from '@nads/core';
-import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, LogoSci, MenuSuspenso, Segmentado, SeletorMes, useCarregando } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, LogoSci, MenuSuspenso, SeletorMes, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaDaReceita } from './JanelaDaReceita';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
@@ -272,7 +272,8 @@ export function SciDaEmpresa({ rota }: { rota: string }) {
   return (
     <ConfigSecao titulo={<span className="cad-sci-titulo"><LogoSci altura={18} />SCI</span>}>
       {/* está no SCI (Vitor, 24/11/2026: "ja que sairam do alterdata"): só as ligadas aparecem no minimum */}
-      <ConfigLinha titulo="Está no SCI" descricao="As empresas que saíram do Alterdata: só as ligadas aparecem no minimum.">
+      {/* sem as descrições (26/11/2026: "Remove isso") */}
+      <ConfigLinha titulo="Está no SCI">
         <Interruptor ligado={vm.noSci} rotulo="Está no SCI" onMudar={() => vm.definirNoSci(!vm.noSci)} />
       </ConfigLinha>
       {vm.noSci && (
@@ -283,10 +284,11 @@ export function SciDaEmpresa({ rota }: { rota: string }) {
       )}
       {/* ligada, pede o plano de contas do SCI (24/11/2026: "referenciar para nao ficar selecionando"): o minimum abre nele */}
       {vm.noSci && (
-        <ConfigLinha titulo="Plano de contas do SCI" descricao="O minimum abre a empresa neste plano."
-          aviso={vm.planoSci ? undefined : 'Escolha o plano: sem ele, o minimum pede a cada vez.'}>
-          <Segmentado<empresas.cadastro.PlanoDoSci | ''> valor={vm.planoSci ?? ''} onMudar={p => { if (p) vm.definirNoSci(true, p); }}
-            opcoes={vm.planosDoSci.map(p => ({ valor: p, rotulo: 'Plano ' + p }))} />
+        // o plano num menu, como o regime (26/11/2026: "Coloque outra maneira de selecionar o plano que vai vim mais"): a lista cresce
+        // sem empurrar a linha
+        <ConfigLinha titulo="Plano de contas do SCI" aviso={vm.planoSci ? undefined : 'Escolha o plano: sem ele, o minimum pede a cada vez.'}>
+          <MenuSuspenso rotulo={vm.planoSci ? 'Plano ' + vm.planoSci : 'Escolher'} className="btn btn-ghost" titulo="Plano de contas do SCI" direita largura={200}
+            itens={vm.planosDoSci.map(p => ({ rotulo: 'Plano ' + p, marcado: vm.planoSci === p, onClick: () => { if (vm.planoSci !== p) vm.definirNoSci(true, p); } }))} />
         </ConfigLinha>
       )}
     </ConfigSecao>
