@@ -57,6 +57,21 @@ const MODELO = { config: 'envioFiscal', padrao: MODELO_PADRAO, chip: 'Fiscal', r
 // ---------- funções puras (testadas sem rede) ----------
 
 /**
+ * O grupo do Relatório pelo regime da empresa (26/11/2026, no Enviar guias: "o robo vai identificar pela empres e vai trocar o
+ * layout de envio variando isso"): o Simples no Simples Nacional; o Presumido e o Real no Lucro Presumido; o resto (MEI,
+ * isenta, sem regime), null: vale o grupo do lote. Aceita o regime do arquivador ("SIMPLES NACIONAL") e o do nads ("Simples").
+ * O mesmo de packages/core (tarefas, grupoDoRegime).
+ */
+function grupoDoRegime(regime) {
+  const k = String(regime || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/^LUCRO\s+/, '').replace(/\s+NACIONAL$/, '').trim();
+  return k === 'SIMPLES' ? 'sn' : k === 'PRESUMIDO' || k === 'REAL' ? 'lp' : null;
+}
+/** O grupo de cada cliente (o código) pelo regime no cadastro do arquivador; sem regime de grupo, o do lote */
+function grupoDoClientePeloCadastro(cadastro, grupoDoLote) {
+  return codigo => grupoDoRegime(((cadastro && cadastro.porCod && cadastro.porCod.get(Number(codigo))) || {}).regime) || grupoDoLote;
+}
+
+/**
  * A coluna do Relatório da guia, conforme o grupo do lote ('' = sem coluna: vai no e-mail e não preenche valor). O mesmo de
  * packages/core (tarefas, colunaDaGuia): o DAS no Simples; a DARF do PIS, da COFINS, do IRPJ e da CSLL, o DAE do ICMS e o
  * DAM do ISS no Presumido; o parcelamento, sem coluna (o período da parcela não é o da apuração).
@@ -120,7 +135,7 @@ function leituraDaGuia(d, guia, entrada, grupo) {
  * destinoManual(codigo, tipo, competencia, nome) -> { destino, nome } ou null: a pasta da guia escolhida à mão (a árvore do
  * regime do cliente); sem ela, a guia vai no e-mail e não é gravada no Drive.
  */
-function doGuia(a, grupo, destinoManual) {
+function doGuia(a, grupoDe, destinoManual) {
   if (!a || a.fora) return null;
   const l = a.leitura || {};
   const e = a.escolha || null;
@@ -128,8 +143,12 @@ function doGuia(a, grupo, destinoManual) {
   const codigo = e && Number.isInteger(e.cliente) && e.cliente > 0 ? e.cliente : l.cliente;
   const competencia = (e && e.competencia) || l.competencia;
   if (!Number.isInteger(codigo) || !COMPETENCIA.test(competencia || '')) return null;
+  // o grupo do regime do cliente (26/11/2026; grupoDe(codigo)), ou o do lote quando vem o grupo direto
+  const grupo = typeof grupoDe === 'function' ? grupoDe(codigo) : grupoDe;
+  const doGrupo = c => ((COLUNAS[grupo] || []).includes(c) ? c : '');
   const tipo = (e && e.tipo) || l.tipo || 'OUTRO';
-  const coluna = e && typeof e.coluna === 'string' ? (COLUNAS[grupo] || []).includes(e.coluna) ? e.coluna : '' : l.coluna || '';
+  // a coluna lida vale só no grupo do cliente (trocado na revisão por um de outro regime, a guia fica sem coluna)
+  const coluna = e && typeof e.coluna === 'string' ? doGrupo(e.coluna) : doGrupo(l.coluna || '');
   // mudou o cliente, o tipo ou a competência: a pasta pela árvore do regime, com o nome original; senão, a do arquivador
   const mudou = !!e && (codigo !== l.cliente || tipo !== (l.tipo || 'OUTRO') || competencia !== l.competencia);
   let destino = l.destino || [];
@@ -142,15 +161,15 @@ function doGuia(a, grupo, destinoManual) {
   // as partes do DARF de mais de um tributo, quando a pessoa não escolheu uma coluna só
   const partes = !(e && typeof e.coluna === 'string') && Array.isArray(l.partes) && l.partes.length > 1
     ? l.partes.filter(p => (COLUNAS[grupo] || []).includes(p.coluna)).map(p => ({ coluna: p.coluna, valor: L.valorNumero(p.valor) })) : [];
-  return { codigo, competencia, tipo, tributo: mudou ? '' : l.tributo || '', coluna, nome, destino, valor: L.valorNumero(l.valor), partes };
+  return { codigo, competencia, grupo, tipo, tributo: mudou ? '' : l.tributo || '', coluna, nome, destino, valor: L.valorNumero(l.valor), partes };
 }
 
 /** As guias do lote por cliente e competência ('58_2026-09' -> [arquivo + vai]), e as que ficam de fora. */
-function gruposFiscais(arquivos, grupo, destinoManual) {
+function gruposFiscais(arquivos, grupoDe, destinoManual) {
   const porChave = new Map();
   const fora = [];
   for (const a of arquivos) {
-    const x = doGuia(a, grupo, destinoManual);
+    const x = doGuia(a, grupoDe, destinoManual);
     if (!x) { fora.push(a); continue; }
     const chave = x.codigo + '_' + x.competencia;
     if (!porChave.has(chave)) porChave.set(chave, []);
@@ -354,7 +373,8 @@ async function lerLote(db, ref, lote, log, deps) {
       const entrada = await novo.montarEntrada(String(a.nome || 'arquivo.pdf'), String(a.nome || ''), buffer);
       const d = R.decidir(entrada, { cadastro: ctx.cadastro, hoje: new Date() });
       const u = R.norm((entrada.texto || []).slice(0, 3).join('\n'));
-      await doc.ref.update({ status: 'lido', leitura: leituraDaGuia(d, camposDaGuiaFiscal(d.tipo, u), entrada, grupo), hash: entrada.hash || '' });
+      // a coluna pelo grupo do regime do cliente achado (26/11/2026), não pelo relatório onde o lote foi aberto
+      await doc.ref.update({ status: 'lido', leitura: leituraDaGuia(d, camposDaGuiaFiscal(d.tipo, u), entrada, grupoDoClientePeloCadastro(ctx.cadastro, grupo)(d.cliente)), hash: entrada.hash || '' });
     } catch (err) {
       await doc.ref.update({ status: 'erro', erro: String(err.message || err).slice(0, 300) });
     }
@@ -490,12 +510,13 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
 async function dispararLote(db, ref, lote, deps) {
   const { log } = deps;
   if (!(await quemPode(db, lote.disparadoPorUid))) throw new Error('só o Fiscal e o administrador disparam o lote de guias');
-  const grupo = lote.grupo === 'lp' ? 'lp' : 'sn';
+  const grupoDoLote = lote.grupo === 'lp' ? 'lp' : 'sn';
   await ref.update({ status: 'disparando', disparandoEm: new Date().toISOString() });
   const ctx = await L.contextoDoArquivador(db);
   const docs = (await ref.collection('arquivos').get()).docs;
   const arquivos = docs.map(d => Object.assign({ id: d.id, ref: d.ref }, d.data())).filter(a => a.status === 'lido' || a.escolha);
-  const { porChave } = gruposFiscais(arquivos, grupo, destinoPeloArquivador(ctx));
+  // cada cliente no Relatório do regime dele (26/11/2026): o do lote só para quem não tem regime de grupo no cadastro
+  const { porChave } = gruposFiscais(arquivos, grupoDoClientePeloCadastro(ctx.cadastro, grupoDoLote), destinoPeloArquivador(ctx));
   const ativos = await require('./clientes-cache').clientesAtivos(db, m => log(m));
   const drive = deps.getDrive();
   const DA = require('./drive-arquivos');
@@ -535,6 +556,7 @@ async function dispararLote(db, ref, lote, deps) {
     // disparar de novo (depois de corrigir o e-mail de quem deu erro) não manda outra vez para quem já recebeu
     if (lote.resultados && lote.resultados[chave] && lote.resultados[chave].status === 'enviado') { enviados++; continue; }
     const { codigo, competencia } = itens[0].vai;
+    const grupo = itens[0].vai.grupo || grupoDoLote;
     const via = ['impresso', 'econtador', 'scireport', 'zap'].includes(vias[String(codigo)]) ? vias[String(codigo)] : 'email';
     const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
@@ -634,7 +656,7 @@ function iniciarLoteFiscal(db, deps) {
 module.exports = {
   iniciarLoteFiscal,
   // puras, pro teste
-  colunaDaGuia, colunaDoIcmsDoSimples, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
+  grupoDoRegime, grupoDoClientePeloCadastro, colunaDaGuia, colunaDoIcmsDoSimples, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
   diaIso, entregaDoImpresso, idsDosAnexos, jaNaRota, linhaComADataDaEntrega, dataDaEntregaDoImpresso,
   MODELO_PADRAO, COLUNAS, COLECAO,
 };

@@ -1137,6 +1137,16 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('fiscal: um grupo por cliente e competência da apuração; o fora e o sem cliente ficam de fora', [[...gf.porChave.keys()], gf.fora.map(a => a.nome)], [['58_2026-09', '77_2026-09'], ['fora.pdf', 'sem.pdf']]);
   igual('fiscal: os valores por coluna (somados; sem coluna e a coluna tirada na revisão não contam)', F.valoresPorColuna(gf.porChave.get('58_2026-09')), { pis: 1234.56, cofins: 150.5 });
   igual('fiscal: a coluna escolhida que não é do grupo fica sem coluna; o escolhido à mão vai pela árvore do regime', [gf.porChave.get('77_2026-09')[0].vai.coluna, gf.porChave.get('77_2026-09')[0].vai.destino.join('/')], ['', '2026/77 - X/FISCAL/SIMPLES NACIONAL/01. DAS']);
+  // o grupo pelo regime da empresa (26/11/2026: "o robo vai identificar pela empres e vai trocar o layout de envio variando isso")
+  igual('fiscal: o grupo pelo regime do cadastro (o do arquivador e o do nads); o resto fica com o do lote', ['SIMPLES NACIONAL', 'LUCRO PRESUMIDO', 'LUCRO REAL', 'Simples', 'Presumido', 'MEI', '', undefined].map(F.grupoDoRegime), ['sn', 'lp', 'lp', 'sn', 'lp', null, null, null]);
+  const cadastroDoTeste = { porCod: new Map([[58, { regime: 'LUCRO PRESUMIDO' }], [77, { regime: 'SIMPLES NACIONAL' }], [90, { regime: 'MEI' }]]) };
+  const grupoDe = F.grupoDoClientePeloCadastro(cadastroDoTeste, 'lp');
+  igual('fiscal: cada cliente no grupo do regime dele; sem regime de grupo, o do lote', [grupoDe(58), grupoDe(77), grupoDe(90), grupoDe(123)], ['lp', 'sn', 'lp', 'lp']);
+  const gr = F.gruposFiscais(guias, grupoDe, manual);
+  igual('fiscal: no lote aberto no Presumido, o DAS da empresa do Simples vai na coluna DAS e no Relatório do Simples', [gr.porChave.get('77_2026-09')[0].vai.coluna, gr.porChave.get('77_2026-09')[0].vai.grupo, gr.porChave.get('58_2026-09')[0].vai.grupo], ['das', 'sn', 'lp']);
+  igual('fiscal: os valores do cliente do Presumido continuam nas colunas do Presumido', F.valoresPorColuna(gr.porChave.get('58_2026-09')), { pis: 1234.56, cofins: 150.5 });
+  const trocado = F.gruposFiscais([{ nome: 'pis.pdf', leitura: lg, escolha: { cliente: 77, tipo: 'DARF', competencia: '2026-09' } }], grupoDe, manual);
+  igual('fiscal: a coluna lida (PIS) não vale quando a revisão troca para um cliente do Simples', trocado.porChave.get('77_2026-09')[0].vai.coluna, '');
   igual('fiscal: o texto do valor no Relatório', [F.textoDoValor(1234.5), F.textoDoValor(1234567.891), F.textoDoValor(0.5)], ['1.234,50', '1.234.567,89', '0,50']);
   igual('fiscal: o dia do envio é o de Brasília', F.diaEmBrasilia(new Date('2026-11-01T01:00:00Z')), '2026-10-31');
   const envio = { competencia: '2026-09', codigo: 58, grupo: 'lp', valores: { pis: 1234.56, cofins: 150.5 }, dia: '2026-10-20', agora: '2026-10-20T13:00:00.000Z', quem: 'robô' };
