@@ -9,7 +9,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { SITUACOES_DO_CHAMADO, type ChamadoNaEquipe } from '../../../dados/areaCliente';
-import { useAreaCliente } from '../../../dados/repo';
+import { useAreaCliente, useRhNet } from '../../../dados/repo';
 import {
   FILTROS_DA_SITUACAO, FILTROS_DO_TIPO, areaDoAnexo, contagemPorSituacao, estrelas, filtrarSolicitacoes, filtroInicial,
   passosDaSolicitacao, rotuloDoTipo, textoDaResposta, type FiltroDaSituacao, type FiltroDoTipo,
@@ -21,6 +21,9 @@ import { useEmpresasDaPessoa } from '../base/useEmpresasDaPessoa';
 export function useSolicitacoes() {
   const repo = useAreaCliente();
   const { toast } = useRetorno();
+  // (26/11/2026: "eu tenho que ter como aprovar pelo nads") a admissão no RH NET: a situação e o Liberar para a folha
+  const rh = useRhNet();
+  const [liberando, setLiberando] = useState('');
   const envio = useEnviarAoCliente();
   // só as empresas da pessoa (26/11/2026: "a pessoa vai ver apenas as empresas dela")
   const daPessoa = useEmpresasDaPessoa();
@@ -124,6 +127,27 @@ export function useSolicitacoes() {
       }
       catch (e) { toast('Não deu para responder: ' + mensagemDoErro(e)); }
       finally { setEnviando(false); }
+    },
+
+    /** a admissão no sistema de folha (RH NET) desta solicitação, como a tela mostra; null quando não foi para lá */
+    folhaDe(c: ChamadoNaEquipe) {
+      const r = c.rhnet;
+      if (!r || !r.situacao) return null;
+      const pedido = r.id ? rh.pedidos().lista.find(p => p.acao === 'liberarAdmissao' && (p.status === 'pendente' || p.status === 'processando') && p.codigo === c.codigos[0]) : undefined;
+      const texto = r.situacao === 'liberado' ? 'Liberada: foi para a folha.'
+        : r.situacao === 'cadastrado' || r.situacao === 'nao_liberado' ? 'Cadastrada como pré-admissão, ainda não liberada. Confira os dados e libere para ir à folha.'
+          : r.situacao === 'enviando' ? 'O robô está cadastrando…'
+            : r.situacao === 'nao-enviado' ? 'Não foi cadastrada: ' + (r.erro || 'faltou algum dado') + '. Cadastre direto no RH NET.'
+              : 'Não deu para cadastrar: ' + (r.erro || 'erro no RH NET') + '.';
+      return { texto, tom: r.situacao === 'liberado' ? 'ok' : r.situacao === 'cadastrado' || r.situacao === 'nao_liberado' ? 'warn' : r.situacao === 'enviando' ? 'neutral' : 'bad',
+        podeLiberar: !!r.id && (r.situacao === 'cadastrado' || r.situacao === 'nao_liberado'), liberando: liberando === c.id || !!pedido };
+    },
+    async liberarNaFolha(c: ChamadoNaEquipe) {
+      if (!c.rhnet?.id || !c.codigos[0]) return;
+      setLiberando(c.id);
+      try { await rh.pedirLiberacao(c.codigos[0], [c.rhnet.id], 'liberado', c.id); toast('Pedido de liberação na fila do robô. Em instantes vai para a folha.'); }
+      catch (e) { toast('Não deu para liberar: ' + mensagemDoErro(e)); }
+      finally { setLiberando(''); }
     },
 
     /** os passos do pedido do DP (23/11/2026, ficha processos-visiveis): o cliente vê só o último marcado */

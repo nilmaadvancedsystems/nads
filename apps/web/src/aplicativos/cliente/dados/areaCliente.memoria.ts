@@ -237,7 +237,8 @@ function pessoalDeExemplo(hoje: Date): ac.ResumoDoPessoal {
     { id: 'rh1', nome: 'ROBERTO EXEMPLO', cpf: '***.982.247-**', tipo: 'Sócio – pró-labore', entrada: '2021-01-04', situacao: 'Na folha' },
     { id: 'rh2', nome: 'LUCIA MODELO', cpf: '***.117.448-**', tipo: 'Auxiliar administrativo', entrada: mesAtras(hoje, -1) + '-01', situacao: 'Aguardando o escritório' },
   ];
-  return { funcionarios, competencia: ultimo, total: 15800, historico, rhnet, atualizadoEm: comHora(hoje, 7, 30) };
+  const rhnetCargos = ['Auxiliar administrativo', 'Gerente', 'Motorista', 'Vendedor externo', 'Vendedor interno'];
+  return { funcionarios, competencia: ultimo, total: 15800, historico, rhnet, rhnetCargos, atualizadoEm: comHora(hoje, 7, 30) };
 }
 
 /** O faturamento de exemplo (12/11/2026): 12 meses de notas emitidas, como o robô monta pelo SIEG (o mês de hoje ainda sem dado). */

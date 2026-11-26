@@ -118,7 +118,7 @@ export function Chamados(props: DaCasca) {
                     formulário do RH; o documento com a lista; a dúvida e o outro assunto com o texto livre */}
                 {vm.doDp && vm.dadosDp ? (
                   <div className="cli-sol-form cli-sol-form-dp">
-                    <FormDoPedido key={vm.tipo} pedido={vm.tipo as 'admissao' | 'ferias' | 'demissao'} inicial={vm.dadosDp} erro={vm.erro} nomes={vm.nomes} equipe={vm.equipe} hoje={vm.hoje} aoMudar={vm.mudarDadosDp} />
+                    <FormDoPedido key={vm.tipo} pedido={vm.tipo as 'admissao' | 'ferias' | 'demissao'} inicial={vm.dadosDp} erro={vm.erro} nomes={vm.nomes} cargos={vm.cargos} equipe={vm.equipe} hoje={vm.hoje} aoMudar={vm.mudarDadosDp} />
                   </div>
                 ) : (
                   <div className="cli-sol-form">

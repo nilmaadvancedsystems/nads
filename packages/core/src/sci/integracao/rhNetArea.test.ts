@@ -28,3 +28,11 @@ describe('RH NET na Área do Cliente (25/11/2026)', () => {
     expect(cadastrosParaArea([novo, socio, socio]).map(c => c.id)).toEqual(['rh15', 'rh99']);
   });
 });
+
+describe('os cargos da empresa no RH NET para a admissão da Área (26/11/2026)', () => {
+  it('sem repetir (nem por maiúscula), em ordem, sem vazio', async () => {
+    const { cargosParaArea } = await import('./index');
+    expect(cargosParaArea([{ nome: 'Vendedor' }, { nome: '  Auxiliar   administrativo ' }, { nome: 'VENDEDOR' }, { nome: '' }])).toEqual(['Auxiliar administrativo', 'Vendedor']);
+    expect(cargosParaArea(null)).toEqual([]);
+  });
+});

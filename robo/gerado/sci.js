@@ -1157,6 +1157,14 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 	const erro = erroDaAdmissao(admissao);
 	return erro ? { erro } : { admissao };
 }
+function cargosParaArea(funcoes) {
+	const nomes = /* @__PURE__ */ new Map();
+	for (const f of funcoes ?? []) {
+		const n = String(f?.nome ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+		if (n && !nomes.has(n.toUpperCase())) nomes.set(n.toUpperCase(), n);
+	}
+	return [...nomes.values()].sort((a, b) => a.localeCompare(b, "pt-BR")).slice(0, 300);
+}
 
 //#endregion
 //#region packages/core/src/sci/integracao/rhNetCliente.ts
@@ -1406,6 +1414,7 @@ exports.admissaoDoRhNet = admissaoDoRhNet;
 exports.cadastroParaArea = cadastroParaArea;
 exports.cadastrosParaArea = cadastrosParaArea;
 exports.camposDaPublicacao = camposDaPublicacao;
+exports.cargosParaArea = cargosParaArea;
 exports.chaveDaGuiaNoSci = chaveDaGuiaNoSci;
 exports.chaveDoXml = chaveDoXml;
 exports.chavesDasUrls = chavesDasUrls;

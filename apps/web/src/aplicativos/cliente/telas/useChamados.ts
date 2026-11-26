@@ -251,7 +251,7 @@ export function useChamados(casca: DaCasca) {
     tipos: ac.TIPOS_DE_CHAMADO, tipo, rotuloDoTipo: ac.TIPOS_DE_CHAMADO.find(t => t.valor === tipo)?.rotulo ?? '',
     escolherTipo,
     // o formulário de cada assunto (23/11/2026: "cada solicitacao tenha uma tela diferente")
-    doDp: tipo !== '' && ehDoDp(tipo), dadosDp, mudarDadosDp: setDadosDp, nomes: dp.nomes, equipe: dp.equipeDasFerias, hoje: dp.hoje,
+    doDp: tipo !== '' && ehDoDp(tipo), dadosDp, mudarDadosDp: setDadosDp, nomes: dp.nomes, cargos: dp.cargos, equipe: dp.equipeDasFerias, hoje: dp.hoje,
     documentos: DOCUMENTOS_PARA_PEDIR, documento, mudarDocumento: setDocumento, prazo, mudarPrazo: setPrazo,
     prioridades: PRIORIDADES, prioridade, mudarPrioridade: setPrioridade,
     titulo, mudarTitulo: setTitulo, texto, mudarTexto: setTexto, anexo, mudarAnexo: setAnexo,

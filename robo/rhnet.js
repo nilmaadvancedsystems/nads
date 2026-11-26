@@ -107,6 +107,10 @@ async function atenderPedido(db, p) {
       if (!ids.length) throw new Error('falta o funcionário a liberar');
       await rh.liberarAdmissoes(ids, d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', String(d.observacao || ''));
       rhnet = { liberadas: ids.length };
+      // (26/11/2026: "eu tenho que ter como aprovar pelo nads") a solicitação da Área que pediu a admissão mostra a liberação
+      if (d.chamadoId && typeof d.chamadoId === 'string') {
+        await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', 'rhnet.liberadoEm': agora(), 'rhnet.liberadoPor': String(p.criadoPor || '') }).catch(() => {});
+      }
       resumo = (d.situacao === 'nao_liberado' ? 'Voltou para não liberado: ' : 'Liberou para a folha: ') + ids.length + ' admissão(ões)';
     } else if (p.acao === 'lancamentos') {
       const n = await rh.criarLancamentos(Array.isArray(d.lancamentos) ? d.lancamentos : [], d.tipo || 'normais');
@@ -140,9 +144,12 @@ async function atualizarListasDaArea(db, log = () => {}) {
   for (const codigo of ligadas) {
     try {
       const lista = await clienteDa(codigo).cadastrosParaArea();
-      const marca = JSON.stringify(lista);
+      // (26/11/2026: "funcao selecionavel puxando do rh net pois os cargos sao variaveis e criados por empresa") os nomes
+      // das funções da empresa no RH NET, para o Cargo da admissão na Área ser escolhido da lista
+      const cargos = await clienteDa(codigo).cadastros().then(c => S.cargosParaArea(c.funcoes)).catch(() => []);
+      const marca = JSON.stringify([lista, cargos]);
       if (gravadoNaNuvem.get(codigo) === marca) continue;
-      await db.collection(COLECAO_DA_AREA).doc(String(codigo)).set({ codigo, lista, em: new Date().toISOString() });
+      await db.collection(COLECAO_DA_AREA).doc(String(codigo)).set({ codigo, lista, cargos, em: new Date().toISOString() });
       gravadoNaNuvem.set(codigo, marca);
       gravadas++;
     } catch (err) { log('RH NET: não consegui ler as pessoas da empresa', codigo, 'para a Área do Cliente -', motivo(err)); }
@@ -182,7 +189,8 @@ async function cadastrosParaArea(db, codigos, log = () => {}) {
     try {
       const d = await db.collection(COLECAO_DA_AREA).doc(String(codigo)).get();
       const lista = d.exists && Array.isArray(d.get('lista')) ? d.get('lista') : [];
-      lidoNoServidor.set(Number(codigo), { em: Date.now(), lista });
+      const cargos = d.exists && Array.isArray(d.get('cargos')) ? d.get('cargos') : [];
+      lidoNoServidor.set(Number(codigo), { em: Date.now(), lista, cargos });
       todos.push(...lista);
     } catch (err) {
       log('RH NET: não consegui ler a lista da empresa', codigo, 'para a Área do Cliente -', motivo(err));
@@ -190,6 +198,13 @@ async function cadastrosParaArea(db, codigos, log = () => {}) {
     }
   }
   return algum ? todos : null;
+}
+
+/** Os cargos (as funções do RH NET) das empresas do link, do que o cadastrosParaArea acabou de ler (sem ler de novo). */
+function cargosParaArea(codigos) {
+  const todos = new Set();
+  for (const codigo of codigos || []) for (const c of (lidoNoServidor.get(Number(codigo)) || {}).cargos || []) todos.add(String(c));
+  return [...todos].sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 300);
 }
 
 // ---------- o pedido de admissão da Área do Cliente (o robô da nuvem) ----------
@@ -341,4 +356,4 @@ if (require.main === module) {
   testar(codigo).then(c => process.exit(c), err => { console.log('erro: ' + motivo(err)); process.exit(1); });
 }
 
-module.exports = { atenderPedido, cadastrosParaArea, atualizarListasDaArea, iniciarListasDaArea, atenderAdmissaoDaArea, iniciarAdmissoesDaArea, iniciarTokensDaTela, testar, lerTokens };
+module.exports = { atenderPedido, cadastrosParaArea, cargosParaArea, atualizarListasDaArea, iniciarListasDaArea, atenderAdmissaoDaArea, iniciarAdmissoesDaArea, iniciarTokensDaTela, testar, lerTokens };
