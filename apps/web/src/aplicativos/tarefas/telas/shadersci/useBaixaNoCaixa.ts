@@ -35,15 +35,15 @@ function consultaDeExemplo(): sci.LancamentoDaConsulta[] {
   const venda = (dia: string, nota: string, cliente: string, nome: string, valor: number) =>
     l(dia, { debito: '16', credito: '265', valor, historico: '29', complemento: nota + ' - ' + nome, documento: nota, participanteD: cliente });
   return [
-    venda('05', '101', '900', 'MERCADO FICTICIO LTDA', 255978),
-    venda('05', '102', '901', 'PADARIA EXEMPLO ME', 132403),
-    venda('13', '103', '900', 'MERCADO FICTICIO LTDA', 177160),
-    venda('20', '104', '902', 'PREFEITURA DE TESTE', 217570),
-    venda('21', '105', '901', 'PADARIA EXEMPLO ME', 48990),
+    venda('05', '101', '900', 'MERCADO FICTICIO LTDA', 250000),
+    venda('05', '102', '901', 'PADARIA EXEMPLO ME', 130000),
+    venda('13', '103', '900', 'MERCADO FICTICIO LTDA', 180000),
+    venda('20', '104', '902', 'PREFEITURA DE TESTE', 220000),
+    venda('21', '105', '901', 'PADARIA EXEMPLO ME', 50000),
     // a 102 já foi baixada no SCI: fica fora
-    l('06', { debito: '5', credito: '16', valor: 132403, historico: '477', complemento: '102 - PADARIA EXEMPLO ME', documento: '102', participanteC: '901', tipo: '' }),
-    l('28', { debito: '284', credito: '200', valor: 268875, complemento: 'Provisão de impostos' }),
-    l('28', { credito: '169', valor: 144269, complemento: 'Líquido da folha', tipo: 'Lançamento on-line folha' }),
+    l('06', { debito: '5', credito: '16', valor: 130000, historico: '477', complemento: '102 - PADARIA EXEMPLO ME', documento: '102', participanteC: '901', tipo: '' }),
+    l('28', { debito: '284', credito: '200', valor: 270000, complemento: 'Provisão de impostos' }),
+    l('28', { credito: '169', valor: 140000, complemento: 'Líquido da folha', tipo: 'Lançamento on-line folha' }),
   ];
 }
 

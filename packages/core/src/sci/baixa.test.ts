@@ -35,8 +35,8 @@ describe('a baixa das vendas no caixa', () => {
       // a baixa da 102 já está no SCI
       l({ debito: '5', credito: '16', valor: 5000, historico: '477', documento: '102', participanteC: '901' }),
       // a provisão e a folha não são vendas
-      l({ debito: '284', credito: '200', valor: 268875 }),
-      l({ credito: '169', valor: 144269, tipo: 'Lançamento on-line folha' }),
+      l({ debito: '284', credito: '200', valor: 270000 }),
+      l({ credito: '169', valor: 140000, tipo: 'Lançamento on-line folha' }),
     ];
     const r = baixasDaConsulta(ls, p113, baixaPadrao(p113));
     expect(r.baixas.map(b => b.documento)).toEqual(['101']);
