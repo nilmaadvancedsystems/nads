@@ -15,6 +15,7 @@ import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { LogoDoMinimum } from './LogoDoMinimum';
 import { Paleta, type ItemDaPaleta } from './Paleta';
 import { BaixaNoCaixa } from './BaixaNoCaixa';
+import { BalanceteDoSci } from './BalanceteDoSci';
 import { ExtratoParaSci } from './ExtratoParaSci';
 import { RazaoDoSci, temConsultaDoSci } from './RazaoDoSci';
 import { useShadersCi, type ColunaDosLancamentos, type Formulario, type VmShadersCi } from './useShadersCi';
@@ -82,8 +83,29 @@ export function ShadersCi() {
       {/* o Extratudo é o Lançatudo, com a empresa daqui: o mesmo leitor de extrato do fluxo de tarefas do Contábil */}
       {/* o Extrato → SCI (25/11/2026): o PDF do extrato direto na planilha do SCI, só no navegador */}
       {/* a Baixa no caixa (26/11/2026): as vendas da consulta do SCI viram a baixa D Caixa × C Clientes, na planilha do SCI */}
-      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'contabilizacao' ? <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'baixa' ? <BaixaNoCaixa min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
+      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'contabilizacao' ? <Contabilizacao vm={vm} /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'baixa' ? <BaixaNoCaixa min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
     </section>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------- a Contabilização
+type AbaDaContabilizacao = 'lancamentos' | 'balancete' | 'extratos';
+const CHAVE_DA_ABA = 'nads-minimum-contabilizacao-aba';
+/**
+ * A Contabilização (27/11/2026): os lançamentos do SCI e, na etapa 2 do Vitor ("robo puxar o balancete no sci para verificar os
+ * saldos"), o balancete; as duas pelo robô do PC. A aba fica lembrada neste navegador.
+ */
+function Contabilizacao({ vm }: { vm: VmShadersCi }) {
+  const [aba, setAba] = useState<AbaDaContabilizacao>(() => { try { const a = localStorage.getItem(CHAVE_DA_ABA); return a === 'balancete' || a === 'extratos' ? a : 'lancamentos'; } catch { return 'lancamentos'; } });
+  const mudar = (a: AbaDaContabilizacao) => { setAba(a); try { localStorage.setItem(CHAVE_DA_ABA, a); } catch { /* sem armazenamento */ } };
+  return (
+    <>
+      <div className="sci-contab-abas">
+        <Segmentado<AbaDaContabilizacao> valor={aba} onMudar={mudar} opcoes={[{ valor: 'lancamentos', rotulo: 'Lançamentos' }, { valor: 'balancete', rotulo: 'Balancete' }, { valor: 'extratos', rotulo: 'Extratos' }]} />
+      </div>
+      {/* os extratos (27/11/2026: "pra poder puxar os extratos"): o Extrato → SCI, com o Drive, o e-mail e os recebidos */}
+      {aba === 'balancete' ? <BalanceteDoSci key="balancete" vm={vm} /> : aba === 'extratos' ? <ExtratoParaSci key="extratos" min={vm} naContabilizacao /> : <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" />}
+    </>
   );
 }
 

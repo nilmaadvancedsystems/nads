@@ -1,5 +1,5 @@
 // A Projeção do Fator R no banco do Entregas (26/11/2026): fatorR/{ano}_{código}, um documento por empresa e ano, e o
-// pgdas/{código} da empresa (só leitura; o robô do e-CAC grava). Abrir uma empresa lê os três anos e o PGDAS-D dela, uma vez
+// pgdas/{código} da empresa (o robô do e-CAC grava; desde 27/11/2026 o PDF do extrato subido aqui também junta nele). Abrir uma empresa lê os três anos e o PGDAS-D dela, uma vez
 // (getDoc, sem ouvir); gravar atualiza a cópia da tela. Lê e grava o Fiscal e o admin (regras do banco).
 import { tarefas as t } from '@nads/core';
 import { doc, getDoc, writeBatch as writeBatchBruto } from 'firebase/firestore';
@@ -39,6 +39,19 @@ export function criarFatorRFirestore(quem: () => string): RepoFatorR {
         mudou();
       }, () => { empresas.set(k, { carregada: true, falhou: true, anos: new Map(anos.map(a => [a, f.fatorRVazio(a, codigo)])), pgdas: null, pgdasConsultadoEm: '' }); mudou(); });
       return empresas.get(k) as EmpresaDoFatorR;
+    },
+    async extratoNoFaturamento(empresa, extrato) {
+      // o resumo de agora (o robô pode ter gravado depois que a tela abriu) com o extrato junto; o mês que o robô já tem
+      // vale o mais novo (juntarExtrato)
+      const ref = doc(db, 'pgdas', String(empresa.codigo));
+      const atual = t.pgdas.lerPgdasDaEmpresa((await getDoc(ref)).data());
+      const novo = t.pgdas.juntarExtrato(atual, extrato, empresa, new Date());
+      const b = writeBatch(db);
+      b.set(ref, JSON.parse(JSON.stringify(novo)) as Record<string, unknown>);
+      await b.commit();
+      for (const [k, v] of empresas) if (k.startsWith(empresa.codigo + ':') && v.carregada) empresas.set(k, { ...v, pgdas: novo, pgdasConsultadoEm: novo.consultadoEm || '' });
+      mudou();
+      return true;
     },
     async salvar(docs) {
       if (!docs.length) return;

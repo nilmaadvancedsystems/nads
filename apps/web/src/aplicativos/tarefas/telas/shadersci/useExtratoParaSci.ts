@@ -12,6 +12,7 @@ import { ocrQueAvisa } from '../../../../comum/ocr';
 import { useOperador } from '../../casca/operador';
 import { useCadastro, useRepoLancatudo } from '../../dados/repo';
 import { loteParaAPlanilha } from './loteDaPlanilha';
+import { useBuscaDoExtrato } from './useBuscaDoExtrato';
 import type { VmShadersCi } from './useShadersCi';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
@@ -60,6 +61,15 @@ function lerGuardado(codigo: number | null): Guardado {
     };
   } catch { return VAZIO; }
 }
+/**
+ * O extrato que a aba Extratos tem da empresa (27/11/2026): as linhas (para o balancete pagar pelo banco o que o extrato mostra) e a
+ * conta do banco no SCI digitada lá. null = nenhum extrato.
+ */
+export function extratoDaEmpresa(codigo: number | null): { arquivo: string; linhas: { data: string; valor: number; historico: string }[]; contaDoBanco: string } | null {
+  const g = lerGuardado(codigo);
+  if (!g.extrato) return null;
+  return { arquivo: g.extrato.arquivo, linhas: g.extrato.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico })), contaDoBanco: g.contasDosBancos[g.extrato.banco] || g.contasDosBancos[''] || '' };
+}
 function gravarGuardado(codigo: number, g: Guardado) {
   try { localStorage.setItem(PREFIXO + codigo, JSON.stringify(g)); } catch { /* sem espaço: fica só na tela */ }
 }
@@ -67,7 +77,7 @@ function gravarGuardado(codigo: number, g: Guardado) {
 /** O filtro da grade: todas, só as em branco (sem contrapartida), só as com problema, só as prontas, só as fora. */
 export type FiltroDoExtratoSci = 'todas' | 'branco' | 'problema' | 'prontas' | 'fora';
 
-export interface ContaBancariaDoExtrato { id: string; nome: string; marca: string; rotulo: string; contaDoCadastro: string }
+export interface ContaBancariaDoExtrato { id: string; nome: string; marca: string; rotulo: string; contaDoCadastro: string; /** o número da conta (a busca no Drive) */ conta: string }
 
 const ROTULO_ORIGEM: Record<sci.OrigemNoExtratoSci, string> = {
   pessoa: 'Escolhida na linha', minimum: 'Pela regra do minimum', regra: 'Pela regra do Lançatudo', aprendida: 'Aprendida do favorecido (Lançatudo)',
@@ -109,7 +119,7 @@ export function useExtratoParaSci(min: VmShadersCi) {
 
   // ---- a conta bancária: as do Cadastro; a do extrato pelo banco do texto dele
   const bancos = useMemo((): ContaBancariaDoExtrato[] => (cad.cadastro.bancos || []).map(b => ({
-    id: b.id, nome: b.nome, marca: b.marca, contaDoCadastro: b.contaContabil || '',
+    id: b.id, nome: b.nome, marca: b.marca, contaDoCadastro: b.contaContabil || '', conta: b.conta || '',
     rotulo: [b.nome, b.apelido, b.conta && 'c/c ' + b.conta].filter(Boolean).join(' · '),
   })), [cad.cadastro.bancos]);
   const extrato = guardado.extrato;
@@ -218,6 +228,9 @@ export function useExtratoParaSci(min: VmShadersCi) {
     }
   }
 
+  // puxar o extrato sem subir à mão (27/11/2026): o Drive, os recebidos e o e-mail, como na etapa dos extratos do Tarefas
+  const puxar = useBuscaDoExtrato({ codigo, bancos, importar });
+
   return {
     carregado: cad.carregada && lancatudo.carregada,
     empresa,
@@ -231,6 +244,8 @@ export function useExtratoParaSci(min: VmShadersCi) {
     extrato: extrato ? { arquivo: extrato.arquivo, importadoEm: extrato.importadoEm, ocr: !!extrato.ocr } : null,
     lendo,
     importar,
+    /** puxar o extrato: o Drive, os recebidos e o e-mail */
+    puxar,
     carregarExemplo: () => { guardar(g => ({ ...g, extrato: { ...extratoDeExemplo(), banco: bancos.length === 1 ? bancos[0].id : '' } })); setFiltro('todas'); },
     /** tira o extrato da tela (as regras e o histórico padrão ficam) */
     limpar: () => guardar(g => ({ ...g, extrato: null })),

@@ -74,6 +74,8 @@ export interface RecebidoDoCliente {
   guia: string;
   /** a recusa do escritório, quando o robô já tratou (22/11/2026, Documentos do cliente) */
   recusa?: { motivo: string; por: string; em: string };
+  /** a aprovação do escritório, quando o robô já tratou (27/11/2026: "nao tem botao de aprovar") */
+  aprovado?: { por: string; em: string };
 }
 
 /** Uma coleção ao vivo: `erro` diz por que não leu (regra do banco), e a lista fica vazia. */
@@ -103,6 +105,8 @@ export interface RepoAreaCliente {
   apagarComunicado(id: string): Promise<void>;
   /** recusa o arquivo com o motivo que o cliente vê (22/11/2026, Documentos do cliente): grava areaClienteRecusas/{id}; o robô faz o resto. Erro em português */
   recusar(id: string, motivo: string): Promise<void>;
+  /** aprova o arquivo (27/11/2026: "Conferido e cliente vê"): grava areaClienteAprovacoes/{id}; o robô da nuvem faz o resto. Erro em português */
+  aprovar(id: string): Promise<void>;
   /** gera o link da empresa (se ela já tem, devolve o que existe) */
   gerar(empresa: EmpresaDoLink): Promise<LinkDaEmpresa>;
   /** cria outro token e apaga o antigo: o link velho para de funcionar */
@@ -247,6 +251,10 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
       if (erro) throw new Error(erro);
       const r = recebidos.find(x => x.id === id);
       if (r) r.recusa = { motivo: motivo.trim(), por: 'Você (exemplo)', em: new Date().toISOString() };
+    },
+    async aprovar(id) {
+      const r = recebidos.find(x => x.id === id);
+      if (r && !r.recusa) r.aprovado = { por: 'Você (exemplo)', em: new Date().toISOString() };
     },
     async gerar(e) {
       const ja = links.find(l => l.codigo === e.codigo);

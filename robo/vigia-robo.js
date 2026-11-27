@@ -1098,6 +1098,9 @@ async function iniciar() {
   catch (err) { log('aviso da REINF do nads desligado:', err.message); }
   try { require('./envios-do-portal').iniciarEnviosDoPortal(db, log); }
   catch (err) { log('documentos pelo link desligados:', err.message); }
+  // a aprovação do arquivo que o cliente mandou (27/11/2026: "nao tem botao de aprovar"): marca o recebido e o recibo do cliente
+  try { require('./aprovacoes-area-cliente').iniciarAprovacoesDaArea(db, log); }
+  catch (err) { log('aprovações da Área do Cliente desligadas:', err.message); }
   // Arquivo mandado pelo nads (Tarefas › Drive) para a pasta Claudio Secretario.
   painel.modulo('envios', 'Envios do nads', true);
   try { tarefa('envios-do-nads', () => require('./envios-do-nads').iniciarEnviosDoNads(db, log)); }

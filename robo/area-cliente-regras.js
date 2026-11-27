@@ -205,7 +205,9 @@ function reciboDoEnvio(e) {
   // a recusa do escritório, com o motivo que o cliente vê (22/11/2026, Documentos do cliente)
   const motivo = e.recusa && typeof e.recusa.motivo === 'string' ? e.recusa.motivo.trim().slice(0, 300) : '';
   const em = e.recusa && typeof e.recusa.em === 'string' ? e.recusa.em : '';
-  return Object.assign({ id: e.id, nome: e.nome, tipo: TIPOS_EN.has(e.tipo) ? e.tipo : 'outro', tamanho: e.tamanho, recebidoEm: e.recebidoEm }, motivo ? { recusa: { motivo, em } } : {});
+  // a aprovação do escritório (27/11/2026), só sem recusa
+  const aprovadoEm = !motivo && e.aprovado && typeof e.aprovado.em === 'string' ? e.aprovado.em : '';
+  return Object.assign({ id: e.id, nome: e.nome, tipo: TIPOS_EN.has(e.tipo) ? e.tipo : 'outro', tamanho: e.tamanho, recebidoEm: e.recebidoEm }, motivo ? { recusa: { motivo, em } } : {}, aprovadoEm ? { aprovado: { em: aprovadoEm } } : {});
 }
 
 // =====================================================================================================================
@@ -717,7 +719,7 @@ const CAMPOS_DO_ESPELHO = {
   passoChamado: ['nome', 'n', 'total'],
   mensagem: ['de', 'autor', 'texto', 'em'],
   // a recusa do escritório, com o motivo que o cliente vê (22/11/2026, Documentos do cliente)
-  recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm', 'recusa'],
+  recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm', 'recusa', 'aprovado'],
   recusaRecibo: ['motivo', 'em'],
   // o Registro (12/11/2026): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF mascarado) e os documentos do DP
   // (documentos/{id} com tipo 'dp'; os bytes em documentos/{id}~{n}, com 'de' = o id do documento)

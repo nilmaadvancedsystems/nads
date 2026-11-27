@@ -22,6 +22,8 @@ function lerGuardado(codigo: number | null, prefixo = PREFIXO): Guardado | null 
   if (codigo == null) return null;
   try { const g = JSON.parse(localStorage.getItem(prefixo + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.lancamentos) ? g : null; } catch { return null; }
 }
+/** os lançamentos do SCI que a Contabilização puxou para a empresa (o balancete abre cada conta com eles; 27/11/2026) */
+export const lancamentosDaContabilizacao = (codigo: number | null): sci.LancamentoDaConsulta[] => lerGuardado(codigo, PREFIXO_DA_CONTABILIZACAO)?.lancamentos || [];
 /** a empresa já tem a consulta do SCI importada neste navegador (os Lançamentos escondem o "Quero visualizar lançamentos") */
 export const temConsultaDoSci = (codigo: number | null) => !!lerGuardado(codigo);
 function gravarGuardado(codigo: number, g: Guardado | null, prefixo = PREFIXO) {
@@ -458,9 +460,13 @@ const MESES_LONGOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'
  * setas, os 12 meses em grade e os atalhos do ano inteiro (o 00 do SCI) e de tudo (00/0000). O clique no Vitor pede ao robô do PC
  * e a planilha entra na tela quando volta.
  */
-function PuxarDoSci({ robo, temLancamentos = false, grande = false }: { robo: RoboDoSci; temLancamentos?: boolean; /** a barra larga da tela vazia */ grande?: boolean }) {
+export function PuxarDoSci({ robo, temLancamentos = false, grande = false, semTudo = false }: {
+  robo: RoboDoSci; temLancamentos?: boolean; /** a barra larga da tela vazia */ grande?: boolean; /** sem o "Tudo" (00/0000): o balancete é de um período */ semTudo?: boolean;
+}) {
   // o que foi pedido por último fica escolhido (27/11/2026: voltava para o "Ano todo" quando a planilha chegava); sem pedido, tudo
-  const [competencia, setCompetencia] = useState(() => (/^\d{2}\/\d{4}$/.test(robo.competencia) ? robo.competencia : '00/0000'));
+  // (no balancete, o ano de hoje inteiro)
+  const [competencia, setCompetencia] = useState(() => (/^\d{2}\/\d{4}$/.test(robo.competencia) && !(semTudo && robo.competencia.endsWith('/0000'))
+    ? robo.competencia : semTudo ? '00/' + new Date().getFullYear() : '00/0000'));
   const [aberto, setAberto] = useState(false);
   const [anoDaGrade, setAnoDaGrade] = useState(() => (competencia.endsWith('/0000') ? new Date().getFullYear() : Number(competencia.slice(3))));
   const ref = useRef<HTMLSpanElement>(null);
@@ -506,9 +512,9 @@ function PuxarDoSci({ robo, temLancamentos = false, grande = false }: { robo: Ro
               );
             })}
           </div>
-          <div className="sci-comp-atalhos">
+          <div className={'sci-comp-atalhos' + (semTudo ? ' so-um' : '')}>
             <button type="button" className={'sci-comp-atalho' + (competencia === '00/' + anoDaGrade ? ' escolhido' : '')} onClick={() => escolher('00/' + anoDaGrade)}>{anoDaGrade} inteiro</button>
-            <button type="button" className={'sci-comp-atalho' + (tudo ? ' escolhido' : '')} onClick={() => escolher('00/0000')}>{rotuloDoTudo}</button>
+            {!semTudo && <button type="button" className={'sci-comp-atalho' + (tudo ? ' escolhido' : '')} onClick={() => escolher('00/0000')}>{rotuloDoTudo}</button>}
           </div>
         </div>
       )}
@@ -522,7 +528,7 @@ function PuxarDoSci({ robo, temLancamentos = false, grande = false }: { robo: Ro
 }
 
 /** O andamento do robô do SCI: a barra, o passo do roteiro e o Cancelar; o erro, quando não deu. */
-function SituacaoDoRobo({ robo }: { robo: RoboDoSci }) {
+export function SituacaoDoRobo({ robo }: { robo: RoboDoSci }) {
   const barra = robo.andando || robo.lendo;
   const texto = robo.erro || (robo.lendo ? 'A planilha chegou: lendo os lançamentos…'
     : robo.andando ? (robo.conectando ? 'Chamando o robô do PC de ' + robo.rotulo + '…' : 'Puxando ' + rotuloDaCompetenciaDoSci(robo.competencia) + ' do SCI' + (robo.etapa ? ' · ' + robo.etapa : '')) : '');

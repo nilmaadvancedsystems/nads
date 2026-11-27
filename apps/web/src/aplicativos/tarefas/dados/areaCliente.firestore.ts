@@ -3,6 +3,7 @@
 //   areasClientePorEmpresa/{codigo} { token, atualizadoEm }                                (para achar o link da empresa)
 //   chamados/{id}                   a equipe lê e grava (responder, mudar a situação); o robô cria e espelha para o cliente
 //   areaClienteRecebidos/{id}       a equipe lê; só o robô grava
+//   areaClienteAprovacoes/{id}      a equipe cria a aprovação do recebido (27/11/2026); o robô da nuvem trata
 //   logosDasEmpresas/{codigo}       { logo, atualizadoEm, por } (12/11/2026): o admin e os diretores gravam; o robô leva a
 //                                   logo para o espelho do link (resumo/marca). PRECISA da regra nova no banco (Vitor):
 //                                   docs/area-do-cliente/contrato.md, "A logo da empresa".
@@ -94,6 +95,9 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     guia: guiaDoRecebido(texto(x.tipo), texto(x.nome)),
     ...(x.recusa && typeof x.recusa === 'object' && texto((x.recusa as Record<string, unknown>).motivo)
       ? { recusa: { motivo: texto((x.recusa as Record<string, unknown>).motivo), por: texto((x.recusa as Record<string, unknown>).por), em: instante((x.recusa as Record<string, unknown>).em) } } : {}),
+    // a aprovação que o robô da nuvem anotou (27/11/2026)
+    ...(x.aprovado && typeof x.aprovado === 'object'
+      ? { aprovado: { por: texto((x.aprovado as Record<string, unknown>).por), em: instante((x.aprovado as Record<string, unknown>).em) } } : {}),
   }));
 
   // os comunicados aos clientes (22/11/2026, ficha comunicados): o robô do PC espelha para os links do alvo
@@ -211,6 +215,15 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
       if (!pedido) throw new Error(ac.erroDaRecusa(motivo) || 'Entre de novo para recusar.');
       try { await setDoc(doc(db, 'areaClienteRecusas', id), pedido); }
       catch (e) { throw new Error(/permission/i.test(String((e as { code?: string }).code ?? e)) ? 'O banco não deixou recusar (este arquivo já foi recusado, ou falta a regra nova).' : 'Não deu para recusar agora. Tente de novo.', { cause: e }); }
+    },
+    // a aprovação (27/11/2026: "nao tem botao de aprovar"; "Conferido e cliente vê"): um recebido, uma aprovação; o robô da
+    // nuvem marca o recebido e o recibo do cliente (robo/aprovacoes-area-cliente.js)
+    async aprovar(id) {
+      const conta = contaDoEntregas();
+      const pedido = ac.pedidoDeAprovacao(quem(), conta?.uid ?? '', new Date());
+      if (!pedido) throw new Error('Entre de novo para aprovar.');
+      try { await setDoc(doc(db, 'areaClienteAprovacoes', id), pedido); }
+      catch (e) { throw new Error(/permission/i.test(String((e as { code?: string }).code ?? e)) ? 'O banco ainda não deixa aprovar (falta a regra nova do Vitor), ou este arquivo já foi aprovado.' : 'Não deu para aprovar agora. Tente de novo.', { cause: e }); }
     },
     async responder(id, resposta) {
       const agora = new Date().toISOString();

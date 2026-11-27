@@ -13,7 +13,7 @@ import { useDocumentos } from './useDocumentos';
 
 type Vm = ReturnType<typeof useDocumentos>;
 
-const SITUACOES = ['novos', 'todos', 'recusados'] as const;
+const SITUACOES = ['novos', 'todos', 'aprovados', 'recusados'] as const;
 
 export function Documentos() {
   const vm = useDocumentos();
@@ -56,9 +56,9 @@ function Recebidos({ vm }: { vm: Vm }) {
     <>
       <Barra vm={vm}>
         {/* os filtros da barra em menu, como no DP (26/11/2026: "nao gostei desses filtros") */}
-        <MenuDeFiltro rotulo="Situação" todos={'Todos (' + conta('todos') + ')'} valor={vm.filtro === 'novos' || vm.filtro === 'recusados' ? vm.filtro : ''}
+        <MenuDeFiltro rotulo="Situação" todos={'Todos (' + conta('todos') + ')'} valor={vm.filtro === 'novos' || vm.filtro === 'aprovados' || vm.filtro === 'recusados' ? vm.filtro : ''}
           mudar={v => vm.setFiltro((v || 'todos') as typeof vm.filtro)}
-          opcoes={[{ valor: 'novos', rotulo: 'Novos (' + conta('novos') + ')' }, { valor: 'recusados', rotulo: 'Recusados (' + conta('recusados') + ')' }]} />
+          opcoes={[{ valor: 'novos', rotulo: 'Novos (' + conta('novos') + ')' }, { valor: 'aprovados', rotulo: 'Aprovados (' + conta('aprovados') + ')' }, { valor: 'recusados', rotulo: 'Recusados (' + conta('recusados') + ')' }]} />
         <MenuDeFiltro rotulo="Tipo" todos="Todos os tipos" valor={tipo ? tipo.valor : ''} mudar={v => vm.setFiltro((v || 'todos') as typeof vm.filtro)}
           opcoes={tipos.map(t => ({ valor: t.valor, rotulo: t.rotulo + ' (' + t.conta + ')' }))} />
       </Barra>
@@ -72,7 +72,7 @@ function Recebidos({ vm }: { vm: Vm }) {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><IconeDeArquivo formato={formatoPeloNome(r.nome)} tamanho={20} />{r.nome}</span>
               {r.guia && <div className="hint">{r.guia}</div>}
             </td>
-            <td>{recusa ? <Selo tom="perigo" title={recusa}>Recusado</Selo> : <Selo tom="neutro">{t}</Selo>}</td>
+            <td>{recusa ? <Selo tom="perigo" title={recusa}>Recusado</Selo> : r.aprovado ? <Selo tom="ok" title={'Aprovado' + (r.aprovado.por ? ' por ' + r.aprovado.por : '')}>Aprovado</Selo> : <Selo tom="neutro">{t}</Selo>}</td>
             <td className="num">{tamanho}</td>
             <td className="fraco" title={quandoCompleto}>{quando}</td>
           </tr>
@@ -149,9 +149,14 @@ function JanelaDoRecebido({ vm }: { vm: Vm }) {
   const r = vm.aberto!;
   const p = vm.previa;
   const recusa = vm.recusaDe(r);
-  const recusar = recusa
-    ? <span className="badge badge-bad" title={recusa}>Recusado</span>
-    : <button type="button" className="btn btn-danger" onClick={vm.recusa.abrir}>Recusar</button>;
+  // o Aprovar e o Recusar no topo (27/11/2026: "nao tem botao de aprovar"); decidido, fica o selo
+  const aprovado = vm.aprovadoDe(r);
+  const recusar = recusa ? <span className="badge badge-bad" title={recusa}>Recusado</span>
+    : aprovado ? <span className="badge badge-ok">Aprovado</span>
+    : <>
+        <button type="button" className="btn" disabled={vm.aprovando} onClick={() => void vm.aprovar(r)}><Icone nome="check" width={16} height={16} />{vm.aprovando ? 'Aprovando…' : 'Aprovar'}</button>
+        <button type="button" className="btn btn-danger" onClick={vm.recusa.abrir}>Recusar</button>
+      </>;
   return (
     <>
       {p?.estado === 'pronto' && p.arquivo ? (
@@ -159,7 +164,7 @@ function JanelaDoRecebido({ vm }: { vm: Vm }) {
           onAnterior={vm.anterior} onProximo={vm.proximo} posicao={vm.posicao} />
       ) : (
         <JanelaPequena titulo={r.nome} sub={vm.subDoAberto(r)} onFechar={vm.fechar}
-          rodape={<>{!recusa && <button type="button" className="btn btn-danger" onClick={vm.recusa.abrir}>Recusar</button>}<button type="button" className="btn btn-outline" onClick={vm.fechar}>Fechar</button></>}>
+          rodape={<>{recusar}<button type="button" className="btn btn-outline" onClick={vm.fechar}>Fechar</button></>}>
           {!p || p.estado === 'buscando'
             ? <p className="hint" role="status"><span className="btn-spinner" aria-hidden="true" /> {p?.texto || 'Buscando o arquivo no Drive…'}</p>
             : <p className="hint registro-dica-erro" role="alert">{p.texto}</p>}

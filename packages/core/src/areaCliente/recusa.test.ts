@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { erroDaRecusa, pedidoDeRecusa, recusaLida } from './recusa';
+import { aprovacaoLida, erroDaRecusa, pedidoDeAprovacao, pedidoDeRecusa, recusaLida } from './recusa';
 import { reciboDoEnvio } from './envios';
 
 describe('a recusa do documento (22/11/2026)', () => {
@@ -21,5 +21,19 @@ describe('a recusa do documento (22/11/2026)', () => {
     const base = { id: 'a', nome: 'x.pdf', tipo: 'extrato', tamanho: 1, recebidoEm: '2026-11-01' };
     expect(reciboDoEnvio(base).recusa).toBeUndefined();
     expect(reciboDoEnvio({ ...base, recusa: { motivo: 'É de outro mês', em: '2026-11-02' } }).recusa).toEqual({ motivo: 'É de outro mês', em: '2026-11-02' });
+  });
+});
+
+describe('a aprovação do recebido (27/11/2026: "nao tem botao de aprovar")', () => {
+  it('o pedido e a leitura', () => {
+    expect(pedidoDeAprovacao(' Ana ', 'u1', new Date('2026-11-27T10:00:00Z'))).toEqual({ por: 'Ana', porUid: 'u1', em: '2026-11-27T10:00:00.000Z', tratada: false });
+    expect(pedidoDeAprovacao('Ana', '', new Date())).toBeNull();
+    expect(aprovacaoLida({ por: 'Ana', porUid: 'u1', em: 'x' })).toEqual({ por: 'Ana', em: 'x' });
+    expect(aprovacaoLida({ por: 'Ana' })).toBeNull();
+  });
+  it('o recibo do cliente: aprovado só sem recusa', () => {
+    const base = { id: 'a', nome: 'x.pdf', tipo: 'extrato', tamanho: 1, recebidoEm: 'r' };
+    expect(reciboDoEnvio({ ...base, aprovado: { em: 'e' } }).aprovado).toEqual({ em: 'e' });
+    expect(reciboDoEnvio({ ...base, aprovado: { em: 'e' }, recusa: { motivo: 'ilegível', em: 'r' } }).aprovado).toBeUndefined();
   });
 });

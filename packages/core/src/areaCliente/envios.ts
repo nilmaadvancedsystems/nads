@@ -14,6 +14,8 @@ export interface ReciboDeEnvio {
   recebidoEm: string;
   /** o escritório recusou, com o motivo que o cliente vê (22/11/2026, Documentos do cliente) */
   recusa?: { motivo: string; em: string };
+  /** o escritório conferiu e aprovou (27/11/2026: "nao tem botao de aprovar"; escolhido "Conferido e cliente vê") */
+  aprovado?: { em: string };
 }
 
 /** O envio como o robô o guarda: com o caminho no Drive, a situação do processamento, erro e tentativas (nada disso sai). */
@@ -24,6 +26,7 @@ export interface EnvioInterno {
   tamanho: number;
   recebidoEm: string;
   recusa?: { motivo?: unknown; em?: unknown } | null;
+  aprovado?: { em?: unknown } | null;
 }
 
 export const TIPOS_DE_ENVIO: { valor: TipoDeEnvio; rotulo: string }[] = [
@@ -64,7 +67,9 @@ export function erroDoEnvio(arquivo: { nome: string; tamanho: number }): string 
 export function reciboDoEnvio(e: EnvioInterno): ReciboDeEnvio {
   const motivo = typeof e.recusa?.motivo === 'string' ? e.recusa.motivo.trim().slice(0, 300) : '';
   const em = typeof e.recusa?.em === 'string' ? e.recusa.em : '';
-  return { id: e.id, nome: e.nome, tipo: (TIPOS.has(e.tipo) ? e.tipo : 'outro') as TipoDeEnvio, tamanho: e.tamanho, recebidoEm: e.recebidoEm, ...(motivo ? { recusa: { motivo, em } } : {}) };
+  // aprovado só vale sem recusa (a recusa é a última palavra)
+  const aprovadoEm = !motivo && e.aprovado && typeof e.aprovado.em === 'string' ? e.aprovado.em : '';
+  return { id: e.id, nome: e.nome, tipo: (TIPOS.has(e.tipo) ? e.tipo : 'outro') as TipoDeEnvio, tamanho: e.tamanho, recebidoEm: e.recebidoEm, ...(motivo ? { recusa: { motivo, em } } : {}), ...(aprovadoEm ? { aprovado: { em: aprovadoEm } } : {}) };
 }
 
 /** "2,3 MB", "480 KB". */

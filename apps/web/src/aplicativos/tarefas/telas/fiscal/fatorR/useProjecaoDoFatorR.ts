@@ -145,10 +145,15 @@ export function useProjecaoDoFatorR() {
       try {
         const bytes = new Uint8Array(await arquivo.arrayBuffer());
         const texto = areaCliente.textoDoPdf(await extrator.itensDoPdf(bytes));
-        const r = f.comOExtrato(dados.anos, t.pgdas.extratoDoPgdas(texto), { codigo: empresa.codigo as number, cnpj }, anos);
-        if ('erro' in r) { setErro(r.erro); return; }
+        const extrato = t.pgdas.extratoDoPgdas(texto);
+        const r = f.comOExtrato(dados.anos, extrato, { codigo: empresa.codigo as number, cnpj }, anos);
+        if ('erro' in r || !extrato) { setErro('erro' in r ? r.erro : 'Este PDF não é um extrato do PGDAS-D.'); return; }
+        // o mesmo extrato vai para o faturamento (a relação do Fiscal e a Área do Cliente), como se o robô do e-CAC tivesse baixado
+        const noFaturamento = await fr.extratoNoFaturamento({ codigo: empresa.codigo as number, cnpj, nome: empresa.nome }, extrato)
+          .catch(() => false);
         await gravar(r.docs, 'Extrato de ' + f.mesAno(r.pa) + ': ' + r.receitas + (r.receitas === 1 ? ' mês' : ' meses') + ' de receita'
-          + (r.folhas ? ' e ' + r.folhas + (r.folhas === 1 ? ' mês' : ' meses') + ' de folha' : ' (sem a folha: o extrato não trouxe o item 2.3)') + '.');
+          + (r.folhas ? ' e ' + r.folhas + (r.folhas === 1 ? ' mês' : ' meses') + ' de folha' : ' (sem a folha: o extrato não trouxe o item 2.3)') + '.'
+          + (noFaturamento ? ' Também foi para o faturamento.' : ' Não deu para levar ao faturamento agora.'));
       } catch (e) {
         setErro('Não deu para ler o PDF: ' + ((e as Error)?.message || 'arquivo com problema'));
       } finally { setLendoPdf(false); }

@@ -37,3 +37,20 @@ export function recusaLida(x: unknown): { motivo: string; por: string; em: strin
   if (erroDaRecusa(motivo)) return null;
   return { motivo, por: typeof o.por === 'string' ? o.por.slice(0, 80) : '', em: typeof o.em === 'string' ? o.em : '' };
 }
+
+// ---------- a aprovação (27/11/2026: "nao tem botao de aprovar"; o dono escolheu "Conferido e cliente vê") ----------
+// A equipe aprova um recebido: grava areaClienteAprovacoes/{id do recebido} { por, porUid, em, tratada: false }; o robô da
+// nuvem marca o recebido (areaClienteRecebidos/{id}.aprovado) e o recibo do cliente (o "Aprovado pelo escritório").
+
+/** O pedido de aprovação (o que a tela grava); null sem quem aprova. */
+export function pedidoDeAprovacao(por: string, porUid: string, agora: Date): { por: string; porUid: string; em: string; tratada: false } | null {
+  if (!porUid) return null;
+  return { por: (por || 'Escritório').trim().slice(0, 80), porUid, em: agora.toISOString(), tratada: false };
+}
+
+/** A aprovação como o robô a lê (a torta vira null). */
+export function aprovacaoLida(x: unknown): { por: string; em: string } | null {
+  const o = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+  if (typeof o.porUid !== 'string' || !o.porUid) return null;
+  return { por: typeof o.por === 'string' ? o.por.slice(0, 80) : '', em: typeof o.em === 'string' ? o.em : '' };
+}

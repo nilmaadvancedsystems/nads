@@ -3,25 +3,28 @@
 // se o extrato fecha com o saldo do banco; embaixo, a grade (o débito e o crédito de cada linha, a contrapartida trocada na própria
 // linha, a regra criada a partir dela) e a planilha do gerador do SCI. No jeito do Razão do SCI. Só desenha: tudo vem do ViewModel.
 import { sci } from '@nads/core';
-import { Icone, LogoExcel, MenuSuspenso } from '@nads/ui';
+import { Icone, LogoExcel, LogoSci, MenuSuspenso } from '@nads/ui';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { BalaoDeGuia } from './BalaoDeGuia';
 import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
+import { JanelaBuscarNoEmail } from '../../etapas/extrator/telas/tarefa/JanelaBuscarNoEmail';
 import { Paleta } from './Paleta';
+import { rotuloDoMes } from './useBuscaDoExtrato';
 import { useExtratoParaSci, type FiltroDoExtratoSci, type VmExtratoParaSci } from './useExtratoParaSci';
 import type { VmShadersCi } from './useShadersCi';
 
 const valor = (c: number) => sci.valorParaTexto(Math.abs(c));
 const comSinal = (c: number) => (c < 0 ? '−' : '') + valor(c);
 
-export function ExtratoParaSci({ min }: { min: VmShadersCi }) {
+/** naContabilizacao: a aba Extratos da Contabilização (27/11/2026): sem extrato, a tela de puxar (Drive, e-mail, recebidos) */
+export function ExtratoParaSci({ min, naContabilizacao = false }: { min: VmShadersCi; naContabilizacao?: boolean }) {
   const vm = useExtratoParaSci(min);
   const campo = useRef<HTMLInputElement>(null);
   const escolher = () => campo.current?.click();
-  // sem extrato, a janela de trazer o arquivo já abre, como no Visualizar lançamentos
-  const [janela, setJanela] = useState(() => !vm.extrato);
+  // sem extrato, a janela de trazer o arquivo já abre, como no Visualizar lançamentos (na Contabilização, a tela de puxar)
+  const [janela, setJanela] = useState(() => !vm.extrato && !naContabilizacao);
   useEffect(() => { if (vm.extrato) setJanela(false); }, [vm.extrato]);
   if (!vm.carregado) return null;
   return (
@@ -37,8 +40,8 @@ export function ExtratoParaSci({ min }: { min: VmShadersCi }) {
             ]} />
         )}
         {vm.extrato
-          ? <button type="button" className="btn btn-outline" onClick={escolher} disabled={vm.lendo}><Icone nome="upload" />{vm.lendo ? 'Lendo…' : 'Outro extrato'}</button>
-          : (
+          ? <button type="button" className="btn btn-outline" onClick={naContabilizacao ? vm.limpar : escolher} disabled={vm.lendo}><Icone nome={naContabilizacao ? 'repeat' : 'upload'} />{vm.lendo ? 'Lendo…' : 'Outro extrato'}</button>
+          : naContabilizacao ? null : (
             <BalaoDeGuia lado="direita" texto={<>Suba o extrato do banco em <b>PDF</b> (ou OFX, planilha, foto)</>}>
               <button type="button" className="btn btn-primary sci-btn-pulsa" onClick={escolher} disabled={vm.lendo}><Icone nome="upload" />{vm.lendo ? 'Lendo…' : 'Subir o extrato'}</button>
             </BalaoDeGuia>
@@ -52,6 +55,8 @@ export function ExtratoParaSci({ min }: { min: VmShadersCi }) {
       </AcoesDoTopo>
       <input ref={campo} type="file" accept=".pdf,.ofx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png" hidden onChange={e => { void vm.importar(e.target.files?.[0]); e.target.value = ''; }} />
       {janela && !vm.extrato && <JanelaDoArquivo vm={vm} escolher={escolher} fechar={() => setJanela(false)} />}
+      {naContabilizacao && !vm.extrato && <PuxarOExtrato vm={vm} escolher={escolher} />}
+      <JanelaBuscarNoEmail vm={vm.puxar.email} />
       {vm.paleta && <PaletaAberta vm={vm} />}
       {vm.extrato && <ExtratoAberto vm={vm} />}
     </>
@@ -284,3 +289,58 @@ function Regras({ vm }: { vm: VmExtratoParaSci }) {
     </section>
   );
 }
+
+/**
+ * Puxar o extrato na Contabilização (27/11/2026, o Vitor: "pega aquela logica de integracao de extrato bancario ... do tarefas e coloca
+ * la tbm"), no padrão da tela inicial do minimum: a marca, o título e a barra com o banco e o mês; embaixo, as vias (o Drive, o
+ * e-mail, o computador) e os extratos que o robô já recebeu.
+ */
+function PuxarOExtrato({ vm, escolher }: { vm: VmExtratoParaSci; escolher: () => void }) {
+  const p = vm.puxar;
+  const ocupado = !!p.lendo || vm.lendo;
+  return (
+    <div className="sci-inicio sci-contab-inicio">
+      <span className="sci-inicio-marca">
+        <span className="sci-contab-logo" aria-hidden="true"><LogoSci altura={52} /></span>
+        <h1 className="sci-contab-titulo">Qual extrato vamos fazer?</h1>
+      </span>
+      <div className="sci-inicio-corpo sci-contab-corpo sci-extrato-puxar">
+        <div className="sci-puxar sci-barra">
+          {p.bancos.length > 1 ? (
+            <select className="sci-barra-campo" value={p.banco?.id || ''} onChange={e => p.setBanco(e.target.value)} aria-label="O banco">
+              {p.bancos.map(b => <option key={b.id} value={b.id}>{b.nome}{b.conta ? ' · c/c ' + b.conta : ''}</option>)}
+            </select>
+          ) : <span className="sci-barra-campo sci-barra-texto"><Icone nome="landmark" width={16} height={16} />{p.banco ? p.banco.nome + (p.banco.conta ? ' · c/c ' + p.banco.conta : '') : 'Sem conta no Cadastro'}</span>}
+          <input className="sci-barra-mes" type="month" value={p.mes} onChange={e => e.target.value && p.setMes(e.target.value)} aria-label="O mês do extrato" />
+        </div>
+        <div className="sci-extrato-vias">
+          {p.precisaEntrar ? (
+            <button type="button" className="sci-extrato-via" onClick={p.entrar}><Icone nome="lock" width={18} height={18} /><b>Entrar no Drive</b><span>com o Google do escritório</span></button>
+          ) : (
+            <button type="button" className="sci-extrato-via" onClick={p.buscarNoDrive} disabled={ocupado}><Icone nome="pasta" width={18} height={18} /><b>Buscar no Drive</b><span>EXTRATOS de {rotuloDoMes(p.mes)}</span></button>
+          )}
+          {p.temEmail && <button type="button" className="sci-extrato-via" onClick={p.abrirEmail} disabled={ocupado}><Icone nome="envelope" width={18} height={18} /><b>Buscar no e-mail</b><span>no Gmail do escritório</span></button>}
+          <button type="button" className="sci-extrato-via" onClick={escolher} disabled={ocupado}><Icone nome="upload" width={18} height={18} /><b>Do computador</b><span>PDF, OFX, planilha ou foto</span></button>
+        </div>
+        {(p.lendo || vm.lendo) && <p className="sci-extrato-msg">{p.lendo || 'Lendo o extrato…'}</p>}
+        {p.erro && !p.lendo && <p className="sci-extrato-msg erro">{p.erro}</p>}
+        {p.candidatos.length > 0 && !p.lendo && (
+          <ul className="sci-extrato-lista" aria-label="Arquivos do Drive">
+            {p.candidatos.slice(0, 8).map(a => (
+              <li key={a.id}><button type="button" onClick={() => p.usarDoDrive(a)}><Icone nome="fileText" width={16} height={16} /><span>{a.caminho || a.nome}</span><b>Usar</b></button></li>
+            ))}
+          </ul>
+        )}
+        {p.recebidos.length > 0 && (
+          <ul className="sci-extrato-lista" aria-label="Extratos recebidos">
+            <li className="sci-extrato-lista-titulo">Recebidos pelo robô em {rotuloDoMes(p.mes)}</li>
+            {p.recebidos.map(r => (
+              <li key={r.id}><button type="button" onClick={() => p.usarRecebido(r)} disabled={ocupado}><Icone nome="envelope" width={16} height={16} /><span>{r.nome}</span><b>Usar</b></button></li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
