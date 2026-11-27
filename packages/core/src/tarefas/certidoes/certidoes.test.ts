@@ -78,3 +78,17 @@ describe('a CDT de Minas (27/11/2026; o formato real ainda será conferido)', ()
     expect(certidaoEstadualDoTexto('Login Único da SEF-MG')).toBeNull();
   });
 });
+
+describe('a CNDT do TST (27/11/2026)', () => {
+  it('lê o número, a expedição, a validade e se é negativa', async () => {
+    const { certidaoTrabalhistaDoTexto, nomeDoPdfDaCertidao } = await import('./index');
+    const t = 'PODER JUDICIÁRIO JUSTIÇA DO TRABALHO CERTIDÃO NEGATIVA DE DÉBITOS TRABALHISTAS Nome: PADARIA FICTICIA LTDA (MATRIZ E FILIAIS) '
+      + 'CNPJ: 99.888.777/0001-66 Certidão nº: 12345678/2026 Expedição: 27/11/2026, às 15:00:00 Validade: 26/05/2027 - 180 (cento e oitenta) dias, contados da data de sua expedição.';
+    expect(certidaoTrabalhistaDoTexto(t)).toEqual({ orgao: 'trabalhista', numero: '12345678/2026', cnpj: '99888777000166', nome: 'PADARIA FICTICIA LTDA',
+      emitidaEm: '2026-11-27', validadeDias: null, vence: '2027-05-26', chave: null, negativa: true });
+    expect(certidaoTrabalhistaDoTexto(t.replace('CERTIDÃO NEGATIVA', 'CERTIDÃO POSITIVA'))?.negativa).toBe(false);
+    expect(certidaoTrabalhistaDoTexto(t.replace('CERTIDÃO NEGATIVA', 'CERTIDÃO POSITIVA') + ' POSITIVA COM EFEITO DE NEGATIVA')?.negativa).toBe(true);
+    expect(nomeDoPdfDaCertidao({ orgao: 'trabalhista', vence: '2027-05-26', emitidaEm: '2026-11-27', negativa: true })).toBe('CNDT - TRABALHISTA - Venc. 26.05.2027.pdf');
+    expect(certidaoTrabalhistaDoTexto('Emissão de certidão de débito trabalhista')).toBeNull();
+  });
+});

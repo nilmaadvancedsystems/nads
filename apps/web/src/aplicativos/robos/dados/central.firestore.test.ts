@@ -14,6 +14,7 @@ vi.mock('firebase/firestore', () => {
       falso.gravados.push({ caminho: r.path, dados });
       return { id: 'cmd' + falso.gravados.length };
     },
+    updateDoc: async (r: { path: string }, dados: Record<string, unknown>) => { falso.gravados.push({ caminho: r.path, dados }); },
   };
 });
 vi.mock('../../tarefas/dados/entregas.firestore', () => ({
@@ -50,5 +51,24 @@ describe('os comandos da Central', () => {
     comModoDev(true);
     await criarCentralFirestore().pedir({ robo: 'sieg', acao: 'assistir', porNome: 'Vitor' });
     expect(falso.gravados.map(g => g.dados.acao)).toEqual(['assistir']);
+  });
+});
+
+describe('a resposta do captcha das certidões (27/11/2026)', () => {
+  it('grava só os três campos no próprio pedido', async () => {
+    comModoDev(false);
+    await criarCentralFirestore().responderCaptcha('certidoes', 'abc123', '  xY7k9 ');
+    expect(falso.gravados).toHaveLength(1);
+    expect(falso.gravados[0].caminho).toBe('pedidosCertidao/abc123');
+    expect(Object.keys(falso.gravados[0].dados).sort()).toEqual(['captchaRespondidoEm', 'captchaRespondidoPor', 'captchaResposta']);
+    expect([falso.gravados[0].dados.captchaResposta, falso.gravados[0].dados.captchaRespondidoPor]).toEqual(['xY7k9', 'vitor@exemplo.com']);
+  });
+  it('no modo desenvolvedor não grava; robô ou pedido estranho é recusado', async () => {
+    comModoDev(true);
+    await expect(criarCentralFirestore().responderCaptcha('certidoes', 'abc123', 'x')).rejects.toThrow();
+    comModoDev(false);
+    await expect(criarCentralFirestore().responderCaptcha('nfse', 'abc123', 'x')).rejects.toThrow(/desconhecido/);
+    await expect(criarCentralFirestore().responderCaptcha('certidoes', '../x', 'x')).rejects.toThrow(/desconhecido/);
+    expect(falso.gravados).toHaveLength(0);
   });
 });

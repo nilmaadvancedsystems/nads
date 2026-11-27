@@ -25,6 +25,12 @@ export function useFilaDoRobo(robo: string): FilaDaTela {
   return repo.fila(robo);
 }
 
+/** A resposta do captcha de uma certidão (27/11/2026): o robô espera no próprio pedido. */
+export function useResponderCaptcha(): (robo: string, id: string, resposta: string) => Promise<void> {
+  const repo = repoDaCentral();
+  return (robo, id, resposta) => repo.responderCaptcha(robo, id, resposta);
+}
+
 /** Os clientes ativos, para escolher (lidos do banco na primeira vez que se abre, se `ligado`). */
 export function useClientesDaCentral(ligado: boolean): ClienteDaTela[] {
   const repo = repoDaCentral();

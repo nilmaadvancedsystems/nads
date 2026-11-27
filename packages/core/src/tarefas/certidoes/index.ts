@@ -71,11 +71,11 @@ export function certidaoMunicipalDoTexto(texto: string): CertidaoLida | null {
 /** "CND - MUNICIPAL - Venc. 25.02.2027.pdf" (o padrão das certidões nas pastas; o arquivador lê o órgão e o vencimento) */
 export function nomeDoPdfDaCertidao(c: Pick<CertidaoLida, 'vence' | 'emitidaEm' | 'negativa'> & { orgao?: OrgaoDaCertidao }): string {
   const [a, m, d] = String(c.vence || c.emitidaEm).split('-');
-  const tipo = c.orgao === 'fgts' ? 'CRF - FGTS' : c.orgao === 'estadual' ? 'CND - ESTADUAL' : 'CND - MUNICIPAL';
+  const tipo = c.orgao === 'fgts' ? 'CRF - FGTS' : c.orgao === 'estadual' ? 'CND - ESTADUAL' : c.orgao === 'trabalhista' ? 'CNDT - TRABALHISTA' : 'CND - MUNICIPAL';
   return tipo + ' - Venc. ' + d + '.' + m + '.' + a + (c.negativa ? '' : ' (POSITIVA)') + '.pdf';
 }
 
-export type OrgaoDaCertidao = 'municipal' | 'fgts' | 'estadual';
+export type OrgaoDaCertidao = 'municipal' | 'fgts' | 'estadual' | 'trabalhista';
 
 /**
  * O Certificado de Regularidade do FGTS (CRF) pelo texto da página de impressão da Caixa (consulta-crf.caixa.gov.br,
@@ -134,8 +134,36 @@ export function certidaoEstadualDoTexto(texto: string): (Omit<CertidaoLida, 'org
   };
 }
 
+/**
+ * A Certidão Negativa de Débitos Trabalhistas (CNDT, cndt-certidao.tst.jus.br; 27/11/2026, semiautomática: alguém da equipe
+ * digita o captcha no nads). O texto de costume: "CERTIDÃO NEGATIVA DE DÉBITOS TRABALHISTAS Nome: <NOME> (MATRIZ E FILIAIS)
+ * CNPJ: 99.888.777/0001-66 Certidão nº: 12345678/2026 Expedição: 27/11/2026, às 15:00:00 Validade: 26/05/2027 - 180 (cento
+ * e oitenta) dias". A positiva com efeito de negativa conta como negativa. null = não é a CNDT (sem a validade).
+ */
+export function certidaoTrabalhistaDoTexto(texto: string): (Omit<CertidaoLida, 'orgao'> & { orgao: 'trabalhista' }) | null {
+  const u = normal(texto);
+  if (!/DEBITOS TRABALHISTAS/.test(u)) return null;
+  const data = (re: RegExp) => { const m = re.exec(u); return m ? iso(Number(m[1]), Number(m[2]), Number(m[3])) : null; };
+  const vence = data(/VALIDADE:?\s*(\d{2})\/(\d{2})\/(20\d{2})/);
+  if (!vence) return null;
+  const doc = /CNPJ:?\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})/.exec(u);
+  const numero = /CERTID.O N.?\s*:?\s*(\d+\/20\d{2})/.exec(u);
+  const nome = /NOME:?\s*(.+?)\s+(?:\(MATRIZ|CNPJ)/.exec(u);
+  return {
+    orgao: 'trabalhista',
+    numero: numero ? numero[1] : null,
+    cnpj: doc ? doc[1].replace(/\D/g, '') : null,
+    nome: nome ? nome[1].slice(0, 200) : null,
+    emitidaEm: data(/EXPEDI..O:?\s*(\d{2})\/(\d{2})\/(20\d{2})/) || vence,
+    validadeDias: null,
+    vence,
+    chave: null,
+    negativa: /CERTID.O NEGATIVA DE DEBITOS TRABALHISTAS/.test(u) || /POSITIVA COM EFEITO(S)? DE NEGATIVA/.test(u),
+  };
+}
+
 /** quantos dias antes de vencer o robô pede a nova, por órgão (o CRF novo só sai quando o anterior vence) */
-export const ANTECEDENCIA_POR_ORGAO: Record<OrgaoDaCertidao, number> = { municipal: 10, fgts: 1, estadual: 10 };
+export const ANTECEDENCIA_POR_ORGAO: Record<OrgaoDaCertidao, number> = { municipal: 10, fgts: 1, estadual: 10, trabalhista: 10 };
 
 /** o que o robô guarda por empresa: certidoes/{código} { municipal: { … } } */
 export interface CertidaoDaEmpresa {
@@ -159,6 +187,9 @@ export interface CertidoesDaEmpresa {
   /** a CDT de Minas (27/11/2026) */
   estadual?: CertidaoDaEmpresa;
   estadualSemCadastro?: string;
+  /** a CNDT do TST (27/11/2026) */
+  trabalhista?: CertidaoDaEmpresa;
+  trabalhistaSemCadastro?: string;
 }
 
 /** quantos dias antes de vencer o robô tira a nova */
@@ -181,7 +212,7 @@ export function certidoesParaPedir(p: {
   const orgao: OrgaoDaCertidao = p.orgao || 'municipal';
   const limiar = somarDias(p.hoje, orgao === 'municipal' ? ANTECEDENCIA_DIAS : ANTECEDENCIA_POR_ORGAO[orgao]);
   const atual = (r: CertidoesDaEmpresa | undefined) => r?.[orgao];
-  const semCadastro = (r: CertidoesDaEmpresa | undefined) => (orgao === 'fgts' ? r?.fgtsSemCadastro : orgao === 'estadual' ? r?.estadualSemCadastro : r?.municipalSemCadastro);
+  const semCadastro = (r: CertidoesDaEmpresa | undefined) => (orgao === 'fgts' ? r?.fgtsSemCadastro : orgao === 'estadual' ? r?.estadualSemCadastro : orgao === 'trabalhista' ? r?.trabalhistaSemCadastro : r?.municipalSemCadastro);
   return p.empresas
     .filter(e => /^\d{14}$/.test(String(e.cnpj)) && e.codigo > 0 && !p.naFila.has(e.codigo))
     .map(e => ({ e, r: p.resumos.get(e.codigo) }))

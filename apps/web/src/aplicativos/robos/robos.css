@@ -397,3 +397,8 @@
 .cr-whats-respostas > li { display: grid; gap: 4px; padding: var(--e3); border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
 .cr-whats-respostas > li.cr-whats-escritorio { border-color: var(--warn); }
 .cr-whats-respostas ol { margin: 0; padding-left: 1.2em; }
+
+/* o captcha das certidões na fila (27/11/2026): a imagem, o campo e o botão numa linha */
+.cr-captcha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.cr-captcha img{height:48px;border-radius:6px;border:1px solid var(--line,#d0d7de);background:#fff;}
+.cr-captcha input{width:160px;padding:6px 8px;border:1px solid var(--line,#d0d7de);border-radius:6px;font:inherit;letter-spacing:.08em;}

@@ -333,6 +333,8 @@ export interface ItemDaFila {
   /** quando foi passado na frente ('' = nunca) */
   naFrenteEm: string;
   podeCancelar: boolean; podePassarNaFrente: boolean;
+  /** 27/11/2026 (as certidões com captcha): a imagem do captcha esperando alguém digitar (data URL); só no status 'captcha' */
+  captcha?: string;
 }
 
 /** "10/2026" a partir de "2026-10" (ou o que veio). */
@@ -340,7 +342,8 @@ export function mesEAno(competencia: string): string {
   return /^\d{4}-\d{2}$/.test(competencia) ? competencia.slice(5) + '/' + competencia.slice(0, 4) : competencia;
 }
 
-const ROTULO_DO_ITEM: Record<string, string> = { pendente: 'Na fila', aguardando: 'Aguardando', processando: 'Fazendo', trabalhando: 'Fazendo', verificacao: 'Na verificação do gov.br', login: 'Entrando no portal' };
+const ROTULO_DO_ITEM: Record<string, string> = { captcha: 'Esperando o captcha', pendente: 'Na fila', aguardando: 'Aguardando', processando: 'Fazendo', trabalhando: 'Fazendo', verificacao: 'Na verificação do gov.br', login: 'Entrando no portal' };
+const ORGAOS_DAS_CERTIDOES: Record<string, string> = { municipal: 'Certidão municipal', fgts: 'CRF do FGTS', estadual: 'Certidão estadual (MG)', trabalhista: 'Certidão trabalhista' };
 const TIPOS_DO_SIEG: Record<string, string> = { xmls: 'Baixar os XMLs', contagem: 'Contar as notas', zipFaltam: 'O .zip das notas que faltam', xmlsCliente: 'XMLs que o cliente mandou' };
 const TIPOS_DO_ALTERDATA: Record<string, string> = { mensal: 'Balancete e razão', balancete: 'Balancete da Conferência', importar: 'Importar lançamentos' };
 const TIPOS_DO_GMAIL: Record<string, string> = { verificar: 'Ler o Gmail', um: 'Cobrança', lote: 'Cobrança em lote', salvar: 'Salvar no Drive', disparo: 'Disparo', responder: 'Responder e-mail', desligar: 'Tirar e-mail do cliente errado', envioDp: 'Documentos do DP' };
@@ -358,6 +361,7 @@ export function lerItemDaFila(r: RoboDaCentral, id: string, d: Obj): ItemDaFila 
   else if (r.id === 'sieg') detalhe = TIPOS_DO_SIEG[txt(d.tipo)] || 'Baixar as saídas';
   else if (r.id === 'alterdata') detalhe = TIPOS_DO_ALTERDATA[txt(d.tipo) || 'balancete'] || txt(d.tipo);
   else if (r.id === 'sefaz') detalhe = 'Situação das notas';
+  else if (r.id === 'certidoes') detalhe = ORGAOS_DAS_CERTIDOES[txt(d.orgao)] || txt(d.orgao);
   else if (r.id === 'arquivador') { titulo = 'Arquivar agora'; detalhe = d.modo === 'SIMULACAO' ? 'Simulação' : 'Para valer'; }
   else if (r.id === 'vigia') { titulo = txt(d.clienteNome) || txt(d.para) || txt(d.assunto) || TIPOS_DO_GMAIL[txt(d.tipo)] || 'Pedido'; detalhe = TIPOS_DO_GMAIL[txt(d.tipo)] || txt(d.tipo); }
   const espera = !!itens && !emAndamento;
@@ -365,6 +369,7 @@ export function lerItemDaFila(r: RoboDaCentral, id: string, d: Obj): ItemDaFila 
     id, titulo: titulo || 'Pedido ' + id.slice(0, 6), detalhe, status, rotulo: ROTULO_DO_ITEM[status] || status, emAndamento,
     criadoEm: txt(d.criadoEm) || txt(d.em), criadoPor: txt(d.criadoPor), naFrenteEm: txt(d.naFrenteEm),
     podeCancelar: espera && !!itens?.cancelar, podePassarNaFrente: espera && !!itens?.naFrente,
+    ...(status === 'captcha' && /^data:image\/(png|jpe?g|gif);base64,[A-Za-z0-9+/=]+$/.test(txt(d.captchaImagem)) ? { captcha: txt(d.captchaImagem) } : {}),
   };
 }
 

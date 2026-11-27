@@ -39,7 +39,7 @@ const codigo = [
   // o faturamento fiel do Simples pela Receita (25/11/2026, robo/ecac-pgdas.js): o extrato do PGDAS-D, o resumo por empresa
   // e a janela do e-CAC (23h às 8h)
   // as certidões pelo robô (27/11/2026, robo/certidoes.js): a municipal de Taiobeiras
-  'export { certidaoMunicipalDoTexto, certidaoFgtsDoTexto, certidaoEstadualDoTexto, nomeDoPdfDaCertidao, certidoesParaPedir } from ' + caminho('packages/core/src/tarefas/certidoes/index.ts') + ';',
+  'export { certidaoMunicipalDoTexto, certidaoFgtsDoTexto, certidaoEstadualDoTexto, certidaoTrabalhistaDoTexto, nomeDoPdfDaCertidao, certidoesParaPedir } from ' + caminho('packages/core/src/tarefas/certidoes/index.ts') + ';',
   'export { extratoDoPgdas, juntarExtrato, lerPgdasDaEmpresa, dentroDaJanelaDoEcac, esperaAteAJanela, ESPERA_ENTRE_PERFIS_MS } from ' + caminho('packages/core/src/tarefas/pgdas/index.ts') + ';',
   'export { erroDaLogo } from ' + caminho('packages/core/src/areaCliente/logo.ts') + ';',
   'export { chaveDoPedidoDeDanfe, idDaDanfe, partesDaChave } from ' + caminho('packages/core/src/areaCliente/pedidoDeDanfe.ts') + ';',
