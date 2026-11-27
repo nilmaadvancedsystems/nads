@@ -1,7 +1,7 @@
 // O balancete calculado pelo nads (27/11/2026: "vire um segundo sistema contabil ... que fique exatamente como o balancete da empresa").
 // Dados fictícios.
 import { describe, expect, it } from 'vitest';
-import { balanceteCalculado, type BalanceteSci, type ContaDoBalanceteSci, type LancamentoDaConsulta } from './index';
+import { balanceteCalculado, balanceteMesAMes, type BalanceteSci, type ContaDoBalanceteSci, type LancamentoDaConsulta } from './index';
 
 const conta = (classificacao: string, codigo: string, nome: string, v: Partial<ContaDoBalanceteSci> = {}): ContaDoBalanceteSci =>
   ({ classificacao, codigo, nome, analitica: true, anterior: 0, debito: 0, credito: 0, atual: 0, ...v });
@@ -44,5 +44,24 @@ describe('o balancete calculado pelo nads', () => {
     const caixa = r.contas.find(x => x.codigo === '5')!;
     expect(caixa).toMatchObject({ debito: 50000, credito: 0, atual: 150000, confere: false, doSci: { atual: 120000 } });
     expect(r.divergentes).toBeGreaterThan(0);
+  });
+
+  // 27/11/2026: "o que esta em aberto e os saldos, mes a mes de cada conta do balancete"
+  it('mês a mês: o saldo no fim de cada mês, o movimento e o em aberto das provisões; a sintética soma', () => {
+    const bm: BalanceteSci = {
+      empresa: '', cnpj: '', inicio: '2026-01-01', fim: '2026-03-31', contas: [
+        conta('02', '50', 'PASSIVO', { analitica: false }),
+        conta('02.1.1.03.001', '200', 'Simples', { anterior: -10000 }),
+      ],
+    };
+    const r = balanceteMesAMes(bm, [
+      l('2026-01-31', '284', '200', 30000),
+      l('2026-02-20', '200', '5', 30000),
+      l('2026-02-28', '284', '200', 40000),
+    ]);
+    expect(r.meses).toEqual(['2026-01', '2026-02', '2026-03']);
+    const s200 = r.linhas.find(x => x.codigo === '200')!;
+    expect(s200.meses.map(m => [m.debito, m.credito, m.saldo, m.aberto])).toEqual([[0, 30000, -40000, 0], [30000, 40000, -50000, 40000], [0, 0, -50000, 0]]);
+    expect(r.linhas.find(x => x.codigo === '50')!.meses.map(m => [m.saldo, m.aberto])).toEqual([[-40000, 0], [-50000, 40000], [-50000, 0]]);
   });
 });
