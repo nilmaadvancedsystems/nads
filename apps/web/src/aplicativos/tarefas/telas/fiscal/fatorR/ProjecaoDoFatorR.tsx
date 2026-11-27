@@ -112,7 +112,9 @@ function Grafico({ vm }: { vm: VmProjecaoDoFatorR }) {
             <b>PA {vm.mesAno(b.competencia)}</b>
             <span className="frp-dica-fator">{pct(b.fator)}{b.anexo && <Selo anexo={b.anexo} curto />}</span>
             <span>RBT12 <b className="num">{num(b.rbt12)}</b></span>
+            <small>receita de {vm.mesAno(b.de)} a {vm.mesAno(b.ate)}</small>
             <span>FS12 <b className="num">{num(b.fs12)}</b></span>
+            <small>folha de {vm.mesAno(b.folhaDe)} a {vm.mesAno(b.folhaAte)} ({b.defasagem} {b.defasagem === 1 ? 'mês' : 'meses'} depois)</small>
             {!!b.folhaQueFalta && <span>Falta de folha <b className="num">{num(b.folhaQueFalta)}</b></span>}
             {b.incompleto && <small>janela sem os 12 meses</small>}
           </div>
@@ -153,7 +155,7 @@ function Projecao({ vm }: { vm: VmProjecaoDoFatorR }) {
             </div>
             <dl className="frp-hoje-numeros">
               <div><dt>RBT12</dt><dd className="num">{num(h.rbt12)}</dd><small>receita de {vm.mesAno(h.de)} a {vm.mesAno(h.ate)}</small></div>
-              <div><dt>FS12</dt><dd className="num">{num(h.fs12)}</dd><small>folha dos mesmos 12 meses</small></div>
+              <div><dt>FS12</dt><dd className="num">{num(h.fs12)}</dd><small>folha de {vm.mesAno(h.folhaDe)} a {vm.mesAno(h.folhaAte)} ({h.defasagem} {h.defasagem === 1 ? 'mês' : 'meses'} depois do fato gerador)</small></div>
               <div className={h.mesesComReceita < 12 || h.mesesComFolha < 12 ? 'frp-falta-mes' : undefined}>
                 <dt>Meses com número</dt><dd className="num">{h.mesesComReceita} · {h.mesesComFolha}</dd><small>de 12, receita · folha</small>
               </div>
@@ -163,7 +165,7 @@ function Projecao({ vm }: { vm: VmProjecaoDoFatorR }) {
       </section>
       {v && v.fator != null && (
         <Alerta naLinha titulo={'Em ' + vm.mesAno(v.competencia) + ' o Fator R fica em ' + pct(v.fator) + ': Anexo V'}
-          texto={'Faltam ' + vm.brl(v.folhaQueFalta ?? 0) + ' de folha nos 12 meses (' + vm.mesAno(v.de) + ' a ' + vm.mesAno(v.ate) + ') para chegar a ' + minimo + '.'} />
+          texto={'Faltam ' + vm.brl(v.folhaQueFalta ?? 0) + ' de folha nos 12 meses que entram nesse PA (a folha de ' + vm.mesAno(v.folhaDe) + ' a ' + vm.mesAno(v.folhaAte) + ') para chegar a ' + minimo + '.'} />
       )}
       <Grafico vm={vm} />
       <Tabela vm={vm} />
@@ -175,13 +177,13 @@ function Tabela({ vm }: { vm: VmProjecaoDoFatorR }) {
   return (
     <section className="card fc-cartao">
       <header className="fc-cartao-topo">
-        <h3 className="fc-cartao-titulo">Mês a mês<Dica texto="Cada linha é um PA: a receita e a folha do mês, e o Fator R dos 12 meses antes dele. O número do PGDAS-D do robô não se digita; os outros, sim (grava ao sair do campo; apagar tira)." /></h3>
+        <h3 className="fc-cartao-titulo">Mês a mês<Dica texto="Cada linha é um mês: a receita e a folha pela competência (o fato gerador) e o Fator R do PA. A RBT12 é a receita dos 12 meses antes do PA; o FS12, a folha de 12 meses com a defasagem (no PA de 2026, a folha entra 2 meses depois do fato gerador; de 2027 em diante, 3), e embaixo dele vão os meses da folha somada. O número do PGDAS-D do robô não se digita; os outros, sim (grava ao sair do campo; apagar tira)." /></h3>
         {vm.gravando && <span className="fc-acoes fc-sub">Gravando…</span>}
       </header>
       <div className="table-wrap fc-tabela">
         <table className="table-compact frp-tabela">
           <thead><tr>
-            <th>PA</th><th className="num">Receita do mês</th><th className="num">Folha do mês</th><th className="num">Fator do mês</th>
+            <th>PA</th><th className="num">Receita do mês</th><th className="num">Folha do mês<small className="frp-th-sub">competência</small></th><th className="num">Fator do mês</th>
             <th className="num">RBT12</th><th className="num">FS12</th><th className="num">Fator R</th><th>Anexo</th><th className="num">Folha que falta</th>
           </tr></thead>
           <tbody>
@@ -197,7 +199,7 @@ function Tabela({ vm }: { vm: VmProjecaoDoFatorR }) {
                     <td className="num"><Valor vm={vm} competencia={l.competencia} campo="folha" valor={l.folha} /></td>
                     <td className={'num' + (l.fatorDoMes == null ? ' frp-fraco' : '')}>{pct(l.fatorDoMes)}</td>
                     <td className="num">{num(l.rbt12)}</td>
-                    <td className="num">{num(l.fs12)}</td>
+                    <td className="num frp-fs12">{num(l.fs12)}<small>folha {vm.mesAno(l.folhaDe)} a {vm.mesAno(l.folhaAte)}</small></td>
                     <td className={'num frp-fator' + (incompleto ? ' frp-incompleto' : '')}
                       title={incompleto ? 'Só ' + l.mesesComReceita + ' de 12 meses com receita e ' + l.mesesComFolha + ' com folha' : undefined}>{pct(l.fator)}</td>
                     <td>{l.anexo && <Selo anexo={l.anexo} curto />}</td>
@@ -209,7 +211,7 @@ function Tabela({ vm }: { vm: VmProjecaoDoFatorR }) {
           </tbody>
         </table>
       </div>
-      <p className="fc-pe">A folha do Fator R: salários, pró-labore, FGTS e CPP. O Fator R é truncado em duas casas (27,99% fica no Anexo V).</p>
+      <p className="fc-pe">A folha do Fator R: salários, pró-labore, FGTS e CPP, pela competência. No FS12 ela entra com defasagem: no PA de 2026, 2 meses depois do fato gerador; de 2027 em diante, 3 (a folha de 10/2026 é a mais nova no PA de 01/2027). O Fator R é truncado em duas casas (27,99% fica no Anexo V).</p>
     </section>
   );
 }

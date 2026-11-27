@@ -3,9 +3,11 @@
 //   - aba PROJEÇÃO: o Fator R de hoje (FS12 ÷ RBT12 dos 12 meses fechados) e 12 projeções, cada uma com a receita e a folha
 //     do mês digitadas, a RBT12 e a FS12 da janela de 12 meses, o "Fator R" do mês (folha ÷ receita do mês) e o "Fator R
 //     (RBT12 X FS12)" em destaque.
-// No nads cada mês tem a sua linha e o Fator R do PA é o dos 12 meses antes dele (LC 123, art. 18, § 24): as somas são as
-// da planilha. A "Projeção 1 (jan/27)" dela soma de 12/2025 a 11/2026, que aqui é o PA de 12/2026 (os títulos da planilha
-// estavam um mês na frente da janela, e o que se digitava nela caía no mês seguinte da aba FOLHA).
+// No nads cada mês tem a sua linha (a receita e a folha pelo mês do fato gerador). A receita do Fator R é a dos 12 meses
+// antes do PA (RBT12). A folha entra com defasagem (o dono, 27/11/2026: "folha 2027 cai 3 meses depois do fato gerador,
+// 2026 2 meses"): no PA de 2027 em diante, a folha de um mês conta 3 meses depois dele; no PA de 2026, 2 meses; antes, 1
+// (os 12 meses antes do PA). É o "Ref. 10 / Pag. 11" da "Projeção 1 (jan/27)" da planilha: no PA de 01/2027, a folha mais
+// nova é a de 10/2026. Na virada de 2026 para 2027 a janela da folha fica parada um mês (12/2026 e 01/2027 usam a mesma).
 // Acrescentados a pedido do dono (26/11/2026): o Anexo de cada PA (III a partir de 28%, senão V) e a folha que falta nos
 // 12 meses para chegar a 28%.
 import { FATOR_R_MINIMO } from '../sieg/calculadora';
@@ -20,9 +22,14 @@ export type MesesDoFatorR = Readonly<Record<string, MesDoFatorR>>;
 export interface FatorRDoPa {
   /** o período de apuração, 'aaaa-mm' */
   pa: string;
-  /** a janela: os 12 meses antes do PA */
+  /** a janela da receita: os 12 meses antes do PA */
   de: string;
   ate: string;
+  /** a janela da folha: 12 meses, o último "defasagem" meses antes do PA */
+  folhaDe: string;
+  folhaAte: string;
+  /** quantos meses depois do fato gerador a folha entra (1, 2 ou 3) */
+  defasagem: number;
   rbt12: number;
   fs12: number;
   /** quantos dos 12 meses têm o número (menos de 12 = a conta está incompleta) */
@@ -66,17 +73,27 @@ export function competenciasEntre(de: string, ate: string): string[] {
   return out;
 }
 
-/** O Fator R de um PA: a folha e a receita dos 12 meses antes dele. */
+/**
+ * Quantos meses depois do fato gerador a folha entra no Fator R, pelo ano do PA (o dono, 27/11/2026): de 2027 em diante, 3;
+ * em 2026, 2; antes, 1 (a folha dos 12 meses antes do PA).
+ */
+export function defasagemDaFolha(pa: string): number {
+  const ano = Number(String(pa).slice(0, 4));
+  return ano >= 2027 ? 3 : ano === 2026 ? 2 : 1;
+}
+
+/** O Fator R de um PA: a receita dos 12 meses antes dele e a folha dos 12 meses que terminam "defasagem" meses antes. */
 export function fatorRDoPa(meses: MesesDoFatorR, pa: string): FatorRDoPa {
   const de = somarMeses(pa, -12), ate = somarMeses(pa, -1);
-  const janela = competenciasEntre(de, ate).map(c => meses[c]);
-  const receitas = janela.map(m => m?.receita?.valor).filter((v): v is number => typeof v === 'number');
-  const folhas = janela.map(m => m?.folha?.valor).filter((v): v is number => typeof v === 'number');
+  const defasagem = defasagemDaFolha(pa);
+  const folhaDe = somarMeses(pa, -11 - defasagem), folhaAte = somarMeses(pa, -defasagem);
+  const receitas = competenciasEntre(de, ate).map(c => meses[c]?.receita?.valor).filter((v): v is number => typeof v === 'number');
+  const folhas = competenciasEntre(folhaDe, folhaAte).map(c => meses[c]?.folha?.valor).filter((v): v is number => typeof v === 'number');
   const rbt12 = centavos(receitas.reduce((s, v) => s + v, 0));
   const fs12 = centavos(folhas.reduce((s, v) => s + v, 0));
   const fator = rbt12 > 0 ? truncar((fs12 / rbt12) * 100, 2) : null;
   return {
-    pa, de, ate, rbt12, fs12, mesesComReceita: receitas.length, mesesComFolha: folhas.length,
+    pa, de, ate, folhaDe, folhaAte, defasagem, rbt12, fs12, mesesComReceita: receitas.length, mesesComFolha: folhas.length,
     fator, anexo: fator == null ? null : fator >= FATOR_R_EM_PCT ? 'III' : 'V',
     folhaQueFalta: rbt12 > 0 ? Math.max(0, centavos(paraCima(FATOR_R_MINIMO * rbt12) - fs12)) : null,
   };
