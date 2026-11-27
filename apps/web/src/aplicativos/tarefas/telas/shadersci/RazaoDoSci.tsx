@@ -298,8 +298,8 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
         // a Contabilização vazia: o botão Vitor no meio, com a competência do SCI
         <div className="sci-contab-vazia">
           <span className="sci-contab-marca" aria-hidden="true"><LogoSci altura={40} /></span>
-          {/* sem a caixa e sem o texto (27/11/2026: "Remove ssa box deixa livre"; "Deixa so a logo do sci e coloca o titulo") */}
-          <h3>Qual empresa vamos fazer?</h3>
+          {/* sem a caixa e sem o texto (27/11/2026: "Remove ssa box deixa livre"; "Deixa so a logo do sci e coloca o titulo"; depois: "Qual periodo vamos fazer?") */}
+          <h3>Qual período vamos fazer?</h3>
           {robo.disponivel ? (
             <PuxarDoSci robo={robo} />
           ) : (
