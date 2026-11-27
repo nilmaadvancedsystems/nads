@@ -9021,20 +9021,8 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .sci-razao-excluir .icon-btn { opacity: .45; }
 .sci-razao-linha:hover .sci-razao-excluir .icon-btn, .sci-razao-excluir .icon-btn:focus-visible { opacity: 1; color: var(--danger); }
 
-/* a Contabilização: as abas Lançamentos | Balancete e o balancete do SCI (27/11/2026) */
+/* a Contabilização: as abas Lançamentos | Balancete | Extratos (27/11/2026) */
 .sci-contab-abas{display:flex;justify-content:center;margin:0 0 14px;}
-.sci-balancete-cabeca{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 12px;}
-.sci-balancete-cabeca h2{margin:0;font-size:var(--fs-18,18px);font-weight:600;color:var(--ink);}
-.sci-balancete-cabeca .hint{margin:4px 0 0;}
-.sci-balancete-alerta{color:var(--danger);font-weight:500;}
-.sci-balancete-filtros{display:flex;align-items:center;gap:14px;}
-.sci-balancete-so{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-13);color:var(--ink-muted);cursor:pointer;white-space:nowrap;}
-.sci-balancete td.num,.sci-balancete th.num{font-variant-numeric:tabular-nums;white-space:nowrap;}
-.sci-balancete-class{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted);}
-.sci-balancete-sintetica td{font-weight:600;color:var(--ink);}
-.sci-balancete-participante td{color:var(--ink-muted);font-size:12px;}
-.sci-balancete-invertido{color:var(--danger) !important;font-weight:600;}
-.sci-balancete-total td{font-weight:600;border-top:1px solid var(--border);color:var(--ink);}
 
 /* a aba Extratos da Contabilização (27/11/2026): o banco e o mês na barra, as vias de puxar e os arquivos achados */
 .sci-extrato-puxar{flex-direction:column;align-items:center;gap:16px;}
@@ -9061,39 +9049,26 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .sci-extrato-lista button b{color:var(--accent);font-weight:600;}
 .sci-extrato-lista button:hover:not(:disabled){border-color:var(--accent-border);background:var(--accent-soft);}
 
+/* o balancete do SCI na interface de sempre do nads (27/11/2026: "precisa ser visual diferente nao"): o card, a tabela compacta,
+   os badges; aqui só o que a tabela de sempre não tem (a conta que abre, o recuo, o saldo invertido) */
+.bal-tabela{max-height:none;}
+.bal-tabela td.num,.bal-tabela th.num,.bal-conta td.num,.bal-conta th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.bal-class{font-variant-numeric:tabular-nums;color:var(--ink-muted);white-space:nowrap;}
+.bal-class svg{vertical-align:-2px;margin-right:4px;}
+.bal-abre{cursor:pointer;}
+.bal-abre:hover td{background:var(--hover-bg);}
+.bal-sintetica td{font-weight:600;}
+.bal-participante td{color:var(--ink-muted);}
+.bal-invertido{color:var(--danger) !important;font-weight:600;}
+.bal-total td{font-weight:600;border-top:1px solid var(--border);}
+.bal-painel > td{background:var(--surface-2);padding:12px 16px 16px !important;}
+.bal-conta h4{margin:4px 0 8px;font-size:var(--fs-13);font-weight:600;}
+.bal-conta h4 .hint{font-weight:400;margin-left:6px;}
+.bal-conta table{margin-bottom:12px;background:var(--surface);border:1px solid var(--border);}
+.bal-campos{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin:8px 0 12px;}
+.bal-campos .btn{margin-top:18px;}
+.bal-campo{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
+.bal-campo input{width:120px;}
+.bal-campo small{font-weight:400;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bal-extrato{flex:1 1 240px;margin:18px 0 0;}
 
-/* o balancete: a conta aberta, com as provisões mês a mês, o gerar pagamentos e os lançamentos (27/11/2026) */
-.sci-balancete-abre{cursor:pointer;}
-.sci-balancete-abre:hover td{background:color-mix(in srgb,var(--accent) 6%,transparent);}
-.sci-balancete-abre .sci-balancete-class svg{vertical-align:-2px;margin-right:4px;color:var(--accent);}
-.sci-balancete-abre.aberta td{background:color-mix(in srgb,var(--accent) 8%,transparent);}
-.sci-balancete-painel-linha > td{padding:0 !important;background:var(--surface-2);}
-.sci-conta{display:flex;flex-direction:column;gap:18px;padding:16px 18px 18px;border-left:2px solid var(--accent);}
-.sci-conta-vazia{margin:0;padding:14px 18px;border-left:2px solid var(--accent);}
-.sci-conta header{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;}
-.sci-conta h3{margin:0;font-size:var(--fs-13);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);}
-.sci-conta-meses{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:8px;}
-.sci-conta-mes{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);}
-.sci-conta-mes b{font-size:var(--fs-13);color:var(--ink);text-transform:capitalize;}
-.sci-conta-mes-valor{font-variant-numeric:tabular-nums;font-size:var(--fs-13);color:var(--ink);}
-.sci-conta-mes-situacao{font-size:11px;font-weight:600;}
-.sci-conta-mes.pago{border-color:color-mix(in srgb,#22c55e 45%,var(--border));}
-.sci-conta-mes.pago .sci-conta-mes-situacao{color:#22c55e;}
-.sci-conta-mes.parcial{border-color:color-mix(in srgb,#f59e0b 55%,var(--border));}
-.sci-conta-mes.parcial .sci-conta-mes-situacao{color:#f59e0b;}
-.sci-conta-mes.aberto{border-color:color-mix(in srgb,var(--danger) 55%,var(--border));background:color-mix(in srgb,var(--danger) 7%,var(--surface));}
-.sci-conta-mes.aberto .sci-conta-mes-situacao{color:var(--danger);}
-.sci-conta-pagar{margin-top:14px;padding:14px;border-radius:12px;border:1px solid var(--accent-border);background:var(--accent-soft);}
-.sci-conta-pagar > p{margin:0 0 12px;font-size:var(--fs-13);color:var(--ink);}
-.sci-conta-campos{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
-.sci-conta-campos label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em;}
-.sci-conta-campos input{width:110px;height:34px;}
-.sci-conta-campos small{font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sci-conta-campos .btn{height:34px;margin-bottom:17px;}
-.sci-conta-previa{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:180px;overflow:auto;font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums;}
-.sci-conta-pelo{display:inline-block;min-width:46px;margin-right:8px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:700;text-align:center;text-transform:uppercase;}
-.sci-conta-pelo.banco{background:color-mix(in srgb,#3b82f6 20%,transparent);color:#60a5fa;}
-.sci-conta-pelo.caixa{background:color-mix(in srgb,#f59e0b 20%,transparent);color:#fbbf24;}
-.sci-conta-lancamentos table{width:100%;}
-.sci-conta-lancamentos td.num,.sci-conta-lancamentos th.num{font-variant-numeric:tabular-nums;white-space:nowrap;}
-.sci-conta-hist{color:var(--ink-muted);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

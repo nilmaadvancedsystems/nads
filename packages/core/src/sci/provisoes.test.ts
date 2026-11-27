@@ -1,6 +1,6 @@
 // As provisões de cada conta, mês a mês, e os pagamentos que faltam (27/11/2026). Dados fictícios.
 import { describe, expect, it } from 'vitest';
-import { ladoDaProvisao, pagamentosDasProvisoes, provisoesDaConta, type LancamentoDaConsulta } from './index';
+import { fechamentoDoPeriodo, ladoDaProvisao, planoComOBalancete, planoDoSci, pagamentosDasProvisoes, provisoesDaConta, type LancamentoDaConsulta } from './index';
 
 const l = (data: string, debito: string, credito: string, valor: number, complemento = '', extra: Partial<LancamentoDaConsulta> = {}): LancamentoDaConsulta => ({
   data, debito, credito, valor, historico: '', complemento, documento: '', tipo: '', participanteD: '', participanteC: '', lancadoEm: '', alteradoEm: '', ...extra,
@@ -68,5 +68,41 @@ describe('as provisões da conta', () => {
     const p = provisoesDaConta([l('2026-10-05', '16', '265', 30000, '101 - CLIENTE', { participanteD: '900' })], '16', '01.1.2.01.001')!;
     const g = pagamentosDasProvisoes(p.meses[0].provisoes, { conta: '16', lado: 'debito', caixa: '5', historico: '477' });
     expect(g[0].lancamento).toMatchObject({ data: '2026-10-30', debito: '5', credito: '16', valor: 30000, participanteC: '900', complemento: 'Recebimento 101 - CLIENTE' });
+  });
+
+  it('o fechamento: todas as contas no período, cada linha do extrato paga uma provisão só, o movimento do banco e do caixa', () => {
+    const ls = [
+      l('2026-09-30', '284', '200', 50000, 'Simples 09/2026'),
+      l('2026-09-30', '300', '210', 50000, 'INSS 09/2026'),
+      l('2026-09-15', '16', '265', 20000, 'Venda'),
+      l('2025-12-31', '284', '200', 77700, 'fora do período'),
+    ];
+    const contas = [
+      { codigo: '200', classificacao: '02.1.1.03.001', nome: 'Simples' },
+      { codigo: '210', classificacao: '02.1.1.04.001', nome: 'INSS' },
+      { codigo: '16', classificacao: '01.1.2.01.001', nome: 'Clientes' },
+      { codigo: '5', classificacao: '01.1.1.01.001', nome: 'Caixa' },
+    ];
+    const f = fechamentoDoPeriodo(ls, contas, {
+      caixa: '5', banco: '12', historicoPagamento: '30', historicoRecebimento: '477', de: '2026-01', ate: '2026-12',
+      extrato: [{ data: '2026-10-20', valor: -50000, historico: 'DAS' }, { data: '2026-10-21', valor: -1234, historico: 'Tarifa' }],
+    });
+    // a saída de 500,00 paga o Simples; o INSS (mesmo valor) já não acha linha e vai pelo caixa
+    expect(f.pagamentos.map(x => [x.conta.codigo, x.pelo, x.lancamento.historico])).toEqual([['200', 'banco', '30'], ['210', 'caixa', '30'], ['16', 'caixa', '477']]);
+    expect(f.porConta.map(c => [c.conta.codigo, c.qtd, c.banco, c.caixa])).toEqual([['200', 1, 50000, 0], ['210', 1, 0, 50000], ['16', 1, 0, 20000]]);
+    expect(f.movimentoNoBanco).toBe(-50000);
+    expect(f.movimentoNoCaixa).toBe(-50000 + 20000);
+    expect(f.extratoSemProvisao.map(e => e.historico)).toEqual(['Tarifa']);
+  });
+
+  it('o plano do nads com as contas do balancete do SCI: a conta nova entra, a do plano fica, o participante não', () => {
+    const plano = planoDoSci('90113');
+    const novo = planoComOBalancete(plano, { empresa: '', cnpj: '', inicio: '', fim: '', contas: [
+      { classificacao: '01.1.1.02.099', codigo: '99999', nome: 'Banco Novo', analitica: true, anterior: 0, debito: 0, credito: 0, atual: 0 },
+      { classificacao: '01.1.2.01.000000101', codigo: '99999', nome: 'CLIENTE', analitica: false, participante: true, anterior: 0, debito: 0, credito: 0, atual: 0 },
+    ] });
+    expect(plano.porCodigo.get('99999')).toBeUndefined();
+    expect(novo.porCodigo.get('99999')).toMatchObject({ nome: 'Banco Novo', analitica: true });
+    expect(novo.contas.length).toBe(plano.contas.length + 1);
   });
 });

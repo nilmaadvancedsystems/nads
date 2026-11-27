@@ -65,10 +65,20 @@ function lerGuardado(codigo: number | null): Guardado {
  * O extrato que a aba Extratos tem da empresa (27/11/2026): as linhas (para o balancete pagar pelo banco o que o extrato mostra) e a
  * conta do banco no SCI digitada lá. null = nenhum extrato.
  */
-export function extratoDaEmpresa(codigo: number | null): { arquivo: string; linhas: { data: string; valor: number; historico: string }[]; contaDoBanco: string } | null {
+export function extratoDaEmpresa(codigo: number | null): {
+  arquivo: string; linhas: { data: string; valor: number; historico: string }[]; contaDoBanco: string;
+  /** o saldo no fim do extrato (o anterior + o movimento); null quando o extrato não traz o saldo anterior */
+  saldoFinal: number | null; ultimaData: string;
+} | null {
   const g = lerGuardado(codigo);
   if (!g.extrato) return null;
-  return { arquivo: g.extrato.arquivo, linhas: g.extrato.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico })), contaDoBanco: g.contasDosBancos[g.extrato.banco] || g.contasDosBancos[''] || '' };
+  const linhas = g.extrato.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico }));
+  const movimento = linhas.reduce((t, l) => t + l.valor, 0);
+  return {
+    arquivo: g.extrato.arquivo, linhas, contaDoBanco: g.contasDosBancos[g.extrato.banco] || g.contasDosBancos[''] || '',
+    saldoFinal: g.extrato.saldoAnterior != null ? g.extrato.saldoAnterior + movimento : null,
+    ultimaData: linhas.reduce((m, l) => (l.data > m ? l.data : m), ''),
+  };
 }
 function gravarGuardado(codigo: number, g: Guardado) {
   try { localStorage.setItem(PREFIXO + codigo, JSON.stringify(g)); } catch { /* sem espaço: fica só na tela */ }

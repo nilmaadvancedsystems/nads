@@ -102,6 +102,8 @@ export interface OpcoesDoPagamento {
   extrato?: readonly LinhaDoExtratoParaPagar[];
   /** o número do histórico padrão do SCI do pagamento */
   historico: string;
+  /** as linhas do extrato já usadas (o fechamento passa a mesma para todas as contas: cada linha paga uma provisão só) */
+  usadas?: Set<number>;
 }
 
 /** O último dia útil do mês (aaaa-mm → aaaa-mm-dd): o SCI não aceita lançamento no fim de semana nem no feriado nacional. */
@@ -127,7 +129,7 @@ export interface PagamentoGerado {
  * dia útil do mês da provisão. O participante e o documento da provisão vão junto (sem documento, o mês da provisão, MMAAAA).
  */
 export function pagamentosDasProvisoes(abertas: readonly ProvisaoAberta[], o: OpcoesDoPagamento): PagamentoGerado[] {
-  const usadas = new Set<number>();
+  const usadas = o.usadas || new Set<number>();
   const extrato = o.banco ? o.extrato || [] : [];
   return abertas.filter(x => x.aberto > 0).map(x => {
     const p = x.lancamento;
@@ -147,3 +149,65 @@ export function pagamentosDasProvisoes(abertas: readonly ProvisaoAberta[], o: Op
     return { lancamento, pelo, provisao: p };
   });
 }
+
+/** Uma conta do balancete para o fechamento: o código reduzido, a classificação e o nome. */
+export interface ContaParaFechar { codigo: string; classificacao: string; nome: string }
+
+export interface OpcoesDoFechamento {
+  caixa: string;
+  banco?: string;
+  extrato?: readonly LinhaDoExtratoParaPagar[];
+  /** o histórico do pagamento (passivo) e o do recebimento (a receber) */
+  historicoPagamento: string;
+  historicoRecebimento: string;
+  /** o período das provisões que entram (aaaa-mm, os dois inclusive) */
+  de: string;
+  ate: string;
+}
+
+export interface PagamentoDoFechamento extends PagamentoGerado { conta: ContaParaFechar }
+
+export interface Fechamento {
+  pagamentos: PagamentoDoFechamento[];
+  /** por conta: quantos, quanto pelo banco e quanto pelo caixa */
+  porConta: { conta: ContaParaFechar; qtd: number; banco: number; caixa: number }[];
+  /** o que os pagamentos mexem no banco e no caixa (centavos; + entra, − sai) */
+  movimentoNoBanco: number;
+  movimentoNoCaixa: number;
+  /** as linhas do extrato do período que não pagaram nenhuma provisão (o que a pessoa resolve na aba Extratos) */
+  extratoSemProvisao: LinhaDoExtratoParaPagar[];
+}
+
+/**
+ * O fechamento do período (27/11/2026, o Vitor: "Exportar uma planilha com tudo pago, conciliacao bancaria com o extrato batendo e o
+ * que nao tem no banco jogar caixa com os pespectivos historicos"): as provisões abertas de todas as contas no período viram os
+ * pagamentos, uma linha do extrato paga uma provisão só (entre todas as contas), e diz o que sobrou do extrato.
+ */
+export function fechamentoDoPeriodo(todos: readonly LancamentoDaConsulta[], contas: readonly ContaParaFechar[], o: OpcoesDoFechamento): Fechamento {
+  const usadas = new Set<number>();
+  const pagamentos: PagamentoDoFechamento[] = [];
+  const porConta: Fechamento['porConta'] = [];
+  const noPeriodo = (data: string) => data.slice(0, 7) >= o.de && data.slice(0, 7) <= o.ate;
+  for (const conta of contas) {
+    const p = provisoesDaConta(todos, conta.codigo, conta.classificacao);
+    if (!p || !p.aberto) continue;
+    const abertas = p.meses.flatMap(m => m.provisoes).filter(x => x.aberto > 0 && noPeriodo(x.lancamento.data));
+    if (!abertas.length) continue;
+    const g = pagamentosDasProvisoes(abertas, {
+      conta: conta.codigo, lado: p.lado, caixa: o.caixa, banco: o.banco, extrato: o.extrato, usadas,
+      historico: p.lado === 'credito' ? o.historicoPagamento : o.historicoRecebimento,
+    });
+    for (const x of g) pagamentos.push({ ...x, conta });
+    porConta.push({
+      conta, qtd: g.length,
+      banco: g.filter(x => x.pelo === 'banco').reduce((t, x) => t + x.lancamento.valor, 0),
+      caixa: g.filter(x => x.pelo === 'caixa').reduce((t, x) => t + x.lancamento.valor, 0),
+    });
+  }
+  // + entra, − sai: o pagamento do passivo sai; o recebimento do a receber entra
+  const movimento = (pelo: 'banco' | 'caixa') => pagamentos.filter(x => x.pelo === pelo)
+    .reduce((t, x) => t + (x.lancamento.credito === (pelo === 'banco' ? o.banco : o.caixa) ? -x.lancamento.valor : x.lancamento.valor), 0);
+  const extratoSemProvisao = (o.banco ? o.extrato || [] : []).filter((e, k) => !usadas.has(k) && noPeriodo(e.data));
+  return { pagamentos, porConta, movimentoNoBanco: movimento('banco'), movimentoNoCaixa: movimento('caixa'), extratoSemProvisao };
+}
+
