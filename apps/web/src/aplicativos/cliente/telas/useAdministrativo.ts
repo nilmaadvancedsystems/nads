@@ -182,7 +182,9 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   const maiorCliente = n?.clientes[0]?.valor ?? 0;
   const maiorCfop = n?.cfops[0]?.valor ?? 0;
   const vendas = n ? n.clientes.reduce((t, c) => t + c.valor, 0) + (n.outrosClientes?.valor ?? 0) : 0;
-  const parteNfe = m?.total ? fracao(m.nfe ?? 0, m.total) : 0;
+  // a NF-e e a NFC-e dividem só as notas de produto (desde 27/11/2026 o total tem também a NFS-e)
+  const produtos = (m?.nfe ?? 0) + (m?.nfce ?? 0);
+  const parteNfe = produtos ? fracao(m?.nfe ?? 0, produtos) : 0;
 
   const painel = !m ? null : {
     titulo: mesPorExtenso(mes), emAndamento: !!d?.emAndamento, tem: m.total != null, temNotas: !!n,
@@ -208,7 +210,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
       diasComVenda: plural(diasComVenda, 'dia com venda', 'dias com venda'),
     },
     composicao: {
-      partes: m.total ? { nfe: parteNfe, nfce: Math.round((100 - parteNfe) * 10) / 10 } : null,
+      partes: produtos ? { nfe: parteNfe, nfce: Math.round((100 - parteNfe) * 10) / 10 } : null,
       nfe: m.nfe == null ? '—' : formatos.reais(m.nfe), nfce: m.nfce == null ? '—' : formatos.reais(m.nfce),
       textoNfe: pctTexto(parteNfe), textoNfce: pctTexto(Math.round((100 - parteNfe) * 10) / 10),
       servicos: n?.servicos ? { valor: formatos.reais(n.servicos.valor), notas: plural(n.servicos.notas, 'nota de serviço', 'notas de serviço') } : null,

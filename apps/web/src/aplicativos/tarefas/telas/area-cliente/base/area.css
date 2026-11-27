@@ -94,3 +94,8 @@ nav.menu.area-menu{padding:0;margin-left:-8px;border-bottom:1px solid var(--bord
 .cli-arquivo-posicao{min-width:56px;font-size:12.5px;color:var(--ink-muted);text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .cli-arquivo-corpo.abrindo{opacity:.55;transition:opacity .15s ease;}
 @media (max-width:640px){.cli-arquivo-fundo{padding:0;}.cli-arquivo-janela{width:100%;height:100%;border-radius:0;border:0;}.cli-arquivo-paginas{padding:8px;gap:8px;}}
+
+/* por empresa (27/11/2026: "quero que acumule por empresa"): a lista de grupos sem o limite de altura do faturamento */
+.fat-grupos.area-grupos{max-height:none;}
+.area-grupos .fat-grupo-linha{grid-template-rows:auto;}
+.area-grupos .fat-grupo-notas{max-height:none;}

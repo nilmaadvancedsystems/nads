@@ -94,6 +94,8 @@ export function useDocumentos({ token, area }: DaCasca) {
     desmarcar: () => setMarcados(new Set()),
     baixarMarcados: () => { void baixarVarios(marcadosNaTela); },
     juntando: zip.juntando,
+    /** no celular, cada arquivo separado (sem .zip) */
+    separados: zip.separados,
     // as setas da janela de visualização
     ...setas,
     limpar: () => { setPasta(''); setMes(''); setBusca(''); },

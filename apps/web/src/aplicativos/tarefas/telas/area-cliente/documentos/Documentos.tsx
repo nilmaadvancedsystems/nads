@@ -4,8 +4,9 @@
 // ("essas telas… ta toda fora dos elementos predefinidos do nads"): as abas sublinhadas, a barra com o Segmentado, o filtro
 // em menu e a busca, a tabela padrão, a janela da empresa do Cadastro e o modal. Só desenha: o estado vem de useDocumentos.ts.
 import { CampoArquivo, Esqueleto, Icone, IconeDeArquivo, Segmentado, Vazio, formatoPeloNome, useCarregando } from '@nads/ui';
+import { useState, type ReactNode } from 'react';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
-import { AvisosDaArea, EmpresaDaLinha, JanelaPequena, Selo } from '../base/Base';
+import { AvisosDaArea, JanelaPequena, Selo } from '../base/Base';
 import { JanelaDoArquivo } from '../../../../cliente/partes/JanelaDoArquivo';
 import { BuscaDeEmpresa } from '../base/BuscaDeEmpresa';
 import { useDocumentos } from './useDocumentos';
@@ -65,25 +66,17 @@ function Recebidos({ vm }: { vm: Vm }) {
         <Vazio icone="caixaEntrada" titulo={vm.total ? 'Nada neste filtro' : 'Nenhum arquivo recebido ainda'}
           texto={vm.total ? 'Troque o filtro ou a busca.' : 'Quando o cliente mandar um extrato, nota ou comprovante pela Área do Cliente, ele aparece aqui.'} />
       ) : (
-        <div className="table-wrap">
-          <table className="table-compact">
-            <thead><tr><th>Empresa</th><th>Arquivo</th><th>Tipo</th><th className="num">Tamanho</th><th>Recebido</th></tr></thead>
-            <tbody>
-              {vm.linhas.map(({ r, recusa, quando, quandoCompleto, tamanho, tipo: t }) => (
-                <tr key={r.id} className="linha-abre" tabIndex={0} onClick={() => vm.abrir(r)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(r); }}>
-                  <td className="wrap"><EmpresaDaLinha codigo={r.codigo} nome={r.empresa} /></td>
-                  <td className="wrap">
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><IconeDeArquivo formato={formatoPeloNome(r.nome)} tamanho={20} />{r.nome}</span>
-                    {r.guia && <div className="hint">{r.guia}</div>}
-                  </td>
-                  <td>{recusa ? <Selo tom="perigo" title={recusa}>Recusado</Selo> : <Selo tom="neutro">{t}</Selo>}</td>
-                  <td className="num">{tamanho}</td>
-                  <td className="fraco" title={quandoCompleto}>{quando}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <GruposPorEmpresa grupos={vm.gruposRecebidos} titulo={['Arquivo', 'Tipo', 'Tamanho', 'Recebido']} linha={({ r, recusa, quando, quandoCompleto, tamanho, tipo: t }) => (
+          <tr key={r.id} className="linha-abre" tabIndex={0} onClick={() => vm.abrir(r)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(r); }}>
+            <td className="wrap">
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><IconeDeArquivo formato={formatoPeloNome(r.nome)} tamanho={20} />{r.nome}</span>
+              {r.guia && <div className="hint">{r.guia}</div>}
+            </td>
+            <td>{recusa ? <Selo tom="perigo" title={recusa}>Recusado</Selo> : <Selo tom="neutro">{t}</Selo>}</td>
+            <td className="num">{tamanho}</td>
+            <td className="fraco" title={quandoCompleto}>{quando}</td>
+          </tr>
+        )} />
       )}
     </>
   );
@@ -97,25 +90,53 @@ function Enviados({ vm }: { vm: Vm }) {
         <Vazio icone="upload" titulo="Você ainda não mandou nada ao cliente por aqui"
           texto="O arquivo vai para a pasta ÁREA DO CLIENTE › DO ESCRITÓRIO da empresa e o cliente vê em Documentos › Do escritório, em até 30 minutos." />
       ) : (
-        <div className="table-wrap">
-          <table className="table-compact">
-            <thead><tr><th>Arquivo</th><th>Empresa</th><th>Área</th><th>Situação</th><th>Quando</th></tr></thead>
-            <tbody>
-              {vm.enviados.map(x => (
-                <tr key={x.id}>
-                  <td className="wrap"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><IconeDeArquivo formato={formatoPeloNome(x.nome)} tamanho={20} />{x.nome}</span></td>
-                  <td className="wrap"><EmpresaDaLinha codigo={x.codigo} nome={x.empresa || '—'} /></td>
-                  <td>{x.comoGuia ? <span className="badge badge-conferido" title="Lida como guia: está em Guias na Área do Cliente">Guia {x.comoGuia}</span> : x.areaRotulo}</td>
-                  <td>{x.situacao === 'pronto' ? <Selo tom="ok" title="Está na pasta; o cliente vê em até 30 minutos">Enviado</Selo>
-                    : x.situacao === 'erro' ? <Selo tom="perigo" title={x.erro}>Não foi</Selo> : <Selo tom="aviso">Na fila do robô</Selo>}</td>
-                  <td className="fraco" title={x.quandoCompleto}>{x.quando}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <GruposPorEmpresa grupos={vm.gruposEnviados} titulo={['Arquivo', 'Área', 'Situação', 'Quando']} linha={x => (
+          <tr key={x.id}>
+            <td className="wrap"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><IconeDeArquivo formato={formatoPeloNome(x.nome)} tamanho={20} />{x.nome}</span></td>
+            <td>{x.comoGuia ? <span className="badge badge-conferido" title="Lida como guia: está em Guias na Área do Cliente">Guia {x.comoGuia}</span> : x.areaRotulo}</td>
+            <td>{x.situacao === 'pronto' ? <Selo tom="ok" title="Está na Área do Cliente">Enviado</Selo>
+              : x.situacao === 'erro' ? <Selo tom="perigo" title={x.erro}>Não foi</Selo> : <Selo tom="aviso">Na fila do robô</Selo>}</td>
+            <td className="fraco" title={x.quandoCompleto}>{x.quando}</td>
+          </tr>
+        )} />
       )}
     </>
+  );
+}
+
+/**
+ * Por empresa (27/11/2026: "quero que acumule por empresa"), com a peça "Grupos que abrem" do nads (a do faturamento): cada
+ * empresa numa linha (o código e o nome, quantos arquivos, quando foi o último); clicar abre a tabela dos arquivos dela.
+ * Com uma empresa só, já vem aberta.
+ */
+function GruposPorEmpresa<T>({ grupos, titulo, linha }: {
+  grupos: readonly { codigo: string; nome: string; itens: T[]; quando: string; resumo: string }[];
+  titulo: readonly string[]; linha: (x: T) => ReactNode;
+}) {
+  const [abertos, setAbertos] = useState<ReadonlySet<string>>(new Set());
+  const aberto = (c: string) => grupos.length === 1 || abertos.has(c);
+  const alternar = (c: string) => setAbertos(a => { const n = new Set(a); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  return (
+    <div className="fat-grupos area-grupos">
+      {grupos.map(g => (
+        <div key={g.codigo || g.nome} className={'fat-grupo' + (aberto(g.codigo || g.nome) ? ' aberto' : '')}>
+          <button type="button" className="fat-grupo-linha" aria-expanded={aberto(g.codigo || g.nome)} onClick={() => alternar(g.codigo || g.nome)}>
+            <Icone nome={aberto(g.codigo || g.nome) ? 'chevronDown' : 'chevronRight'} width={14} height={14} />
+            <span className="fat-grupo-nome">{g.codigo && <b className="num">{g.codigo}</b>}{g.codigo ? ' · ' : ''}{g.nome || '—'}</span>
+            <span className="fraco">{g.resumo}</span>
+            <span className="fraco">{g.quando}</span>
+          </button>
+          {aberto(g.codigo || g.nome) && (
+            <div className="table-wrap fat-grupo-notas">
+              <table className="table-compact">
+                <thead><tr>{titulo.map((t, i) => <th key={t} className={t === 'Tamanho' ? 'num' : undefined} style={i === 0 ? undefined : { width: 1, whiteSpace: 'nowrap' }}>{t}</th>)}</tr></thead>
+                <tbody>{g.itens.map(linha)}</tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

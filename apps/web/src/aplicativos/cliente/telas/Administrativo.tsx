@@ -461,7 +461,7 @@ export function Faturamento(props: DaCasca) {
               {vm.ano.limite.sublimite && (
                 <div className="cli-limite-regua cli-fat-regua"><span className="cli-limite-sub" style={{ left: vm.ano.limite.sublimite.posicao + '%' }}>{vm.ano.limite.sublimite.rotulo}</span></div>
               )}
-              <p className="hint cli-fat-limite-nota">Conta só as notas de produto (NF-e e NFC-e).</p>
+              <p className="hint cli-fat-limite-nota">Conta as notas emitidas (NF-e, NFC-e e NFS-e).</p>
             </section>
           )}
 

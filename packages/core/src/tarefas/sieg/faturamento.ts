@@ -3,9 +3,9 @@
 // variação do último mês contra o anterior, e de onde veio cada número. A fonte, na ordem combinada:
 //   1. o PGDAS-D (a receita bruta declarada à Receita): o extrato que o robô do e-CAC baixa (25/11/2026, tarefas.pgdas;
 //      o dono: o PGDAS-D é o faturamento fiel do Simples); no Presumido e no Real, não há, e vale o SIEG;
-//   2. as notas emitidas no SIEG: siegSaidas/{codigo}_{AAAA-MM}, a soma das NF-e e NFC-e emitidas no mês, sem as
-//      canceladas (o robô grava quando a etapa do Fiscal pede; a NFS-e não entra: ela só existe nos XMLs do mês, que
-//      são pesados para ler de todos os clientes);
+//   2. as notas emitidas no SIEG: siegSaidas/{codigo}_{AAAA-MM}, a soma das NF-e, NFC-e e NFS-e emitidas no mês, sem
+//      as canceladas (o robô grava quando a etapa do Fiscal pede; a NFS-e entrou em 27/11/2026, pelo total que o robô
+//      grava junto: a Zelo, 602, só emite nota de serviço e vinha zerada);
 //   3. o SINTEGRA e o balancete: não ficam no banco por mês (fica de fora).
 // Sem dado, a célula fica vazia: nada é inventado.
 import type { NotasSieg, SaidasSieg } from './index';
@@ -17,7 +17,7 @@ export const PERIODOS_DO_FATURAMENTO: readonly { valor: PeriodoDoFaturamento; ro
 ];
 
 /** de onde veio o número */
-export const FONTE_SIEG = 'SIEG · NF-e/NFC-e emitidas';
+export const FONTE_SIEG = 'SIEG · NF-e/NFC-e/NFS-e emitidas';
 export const FONTE_SIEG_CURTA = 'SIEG';
 
 const doisDigitos = (n: number) => String(n).padStart(2, '0');
@@ -35,7 +35,7 @@ export function competenciasDoPeriodo(periodo: PeriodoDoFaturamento, competencia
 /** o faturamento do mês pelas saídas do SIEG (null = o robô não trouxe o mês) */
 export function faturamentoDasSaidas(s: SaidasSieg | null | undefined): number | null {
   if (!s) return null;
-  return Math.round(s.series.reduce((t, x) => t + (Number(x.valor) || 0), 0) * 100) / 100;
+  return Math.round((s.series.reduce((t, x) => t + (Number(x.valor) || 0), 0) + (Number(s.servicos?.valor) || 0)) * 100) / 100;
 }
 
 export interface ValorDoFaturamento { valor: number; fonte: string }
@@ -89,6 +89,8 @@ export function linhasDoFaturamento(empresas: readonly EmpresaDoFaturamento[], c
 export interface MesDoDetalhe {
   competencia: string;
   nfe: number | null; nfce: number | null;
+  /** as notas de serviço (NFS-e) do mês, quando o robô gravou (27/11/2026) */
+  nfse: number | null;
   notas: number; canceladas: number;
   total: number | null;
   /** contra o mês anterior com dado (em %) */
@@ -102,14 +104,14 @@ export function mesesDoDetalhe(competencias: readonly string[], saidasDoMes: (co
   let anterior: number | null = null;
   return competencias.map(c => {
     const s = saidasDoMes(c);
-    if (!s) { return { competencia: c, nfe: null, nfce: null, notas: 0, canceladas: 0, total: null, variacao: null }; }
+    if (!s) { return { competencia: c, nfe: null, nfce: null, nfse: null, notas: 0, canceladas: 0, total: null, variacao: null }; }
     const soma = (modelo: string) => { const ss = s.series.filter(x => String(x.modelo) === modelo); return ss.length ? doisCentavos(ss.reduce((t, x) => t + (Number(x.valor) || 0), 0)) : null; };
     const canceladas = s.series.reduce((t, x) => t + x.canceladas.length, 0);
-    const notas = s.series.reduce((t, x) => t + x.numeros.length, 0) - canceladas;
+    const notas = s.series.reduce((t, x) => t + x.numeros.length, 0) - canceladas + (Number(s.servicos?.notas) || 0);
     const total = faturamentoDasSaidas(s);
     const variacao = total != null && anterior != null && anterior > 0 ? Math.round(((total - anterior) / anterior) * 1000) / 10 : null;
     if (total != null) anterior = total;
-    return { competencia: c, nfe: soma('55'), nfce: soma('65'), notas, canceladas, total, variacao };
+    return { competencia: c, nfe: soma('55'), nfce: soma('65'), nfse: s.servicos ? doisCentavos(Number(s.servicos.valor) || 0) : null, notas, canceladas, total, variacao };
   });
 }
 

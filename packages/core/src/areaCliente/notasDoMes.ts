@@ -83,7 +83,10 @@ export function notasDoMes(n: NotasSieg | null | undefined): NotasDoMes | null {
   const clientes = new Map<string, ClienteDoMes>();
   const cfops = new Map<string, number>();
   let maior: NotasDoMes['maiorVenda'];
-  for (const x of vendas) {
+  // as notas de serviço também são venda (27/11/2026: a Zelo, 602, só emite NFS-e e o faturamento vinha zerado): entram no dia,
+  // no cliente (o tomador) e na maior venda; só não têm CFOP
+  for (const x of [...vendas, ...servicos]) {
+    const servico = x.tipo === 'NFS-e';
     const valor = Number(x.valor) || 0;
     const dia = diaDaNota(x, n.competencia);
     if (dia) porDia[dia - 1] += valor;
@@ -96,7 +99,8 @@ export function notasDoMes(n: NotasSieg | null | undefined): NotasDoMes | null {
     const c = clientes.get(chave) ?? { nome: rotulo, valor: 0, notas: 0 };
     c.valor += valor; c.notas++;
     clientes.set(chave, c);
-    if (x.itens?.length) for (const i of x.itens) cfops.set(i.cfop || '', (cfops.get(i.cfop || '') ?? 0) + (Number(i.valor) || 0));
+    if (servico) { /* sem CFOP */ }
+    else if (x.itens?.length) for (const i of x.itens) cfops.set(i.cfop || '', (cfops.get(i.cfop || '') ?? 0) + (Number(i.valor) || 0));
     else cfops.set(x.cfop || '', (cfops.get(x.cfop || '') ?? 0) + valor);
     if (dia && (!maior || valor > maior.valor)) maior = { valor: centavos(valor), dia, cliente: rotulo };
   }

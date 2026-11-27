@@ -19,14 +19,14 @@ describe('o faturamento dos clientes (Heverton, 20/10/2026)', () => {
     const doMes = (c: string) => meses.get(c) || new Map();
     const l = linhasDoFaturamento([{ codigo: 10, nome: 'A', regime: 'Simples' }, { codigo: 20, nome: 'B', regime: 'MEI' }, { codigo: 30, nome: 'C', regime: 'Real' }], ['2026-08', '2026-09'], doMes);
     expect(l.map(x => x.codigo)).toEqual([10, 20, 30]);
-    expect(l[0]).toMatchObject({ total: 2500, variacao: 50, fontes: ['SIEG · NF-e/NFC-e emitidas'] });
+    expect(l[0]).toMatchObject({ total: 2500, variacao: 50, fontes: ['SIEG · NF-e/NFC-e/NFS-e emitidas'] });
     expect(l[1]).toMatchObject({ total: 50, variacao: null });
     expect(l[2]).toMatchObject({ total: null, variacao: null, fontes: [] });
     expect(l[2].meses['2026-09']).toBeNull();
     expect(linhasDoFaturamento([{ codigo: 30, nome: 'C', regime: 'Real' }], ['2026-09'], doMes, true)).toEqual([]);
     const p = planilhaDoFaturamento(l.slice(0, 1), ['2026-08', '2026-09']);
     expect(p.cabecalho).toEqual(['Cód.', 'Cliente', 'Regime', 'ago/26', 'set/26', 'Total', 'Variação (%)', 'Fonte']);
-    expect(p.linhas[0]).toEqual([10, 'A', 'Simples', 1000, 1500, 2500, 50, 'SIEG · NF-e/NFC-e emitidas']);
+    expect(p.linhas[0]).toEqual([10, 'A', 'Simples', 1000, 1500, 2500, 50, 'SIEG · NF-e/NFC-e/NFS-e emitidas']);
   });
   it('o PGDAS-D (25/11/2026): no Simples, só ele (o mês sem a declaração fica vazio); nos outros regimes, ele e depois o SIEG; sem PGDAS-D, o SIEG', () => {
     const meses = new Map([['2026-08', new Map([['10', saida('10', '2026-08', 1000)], ['20', saida('20', '2026-08', 400)], ['40', saida('40', '2026-08', 90)]])], ['2026-09', new Map([['10', saida('10', '2026-09', 1500)], ['20', saida('20', '2026-09', 500)]])]]);
@@ -42,11 +42,11 @@ describe('o faturamento dos clientes (Heverton, 20/10/2026)', () => {
     expect(porCodigo(10)).toMatchObject({ total: 1800, fontes: ['Receita (PGDAS-D)'] });
     // fora do Simples: a Receita onde tem, o SIEG no resto
     expect(porCodigo(20).meses).toEqual({ '2026-08': { valor: 400, fonte: 'SIEG' }, '2026-09': { valor: 600, fonte: 'Receita' } });
-    expect(porCodigo(20).fontes).toEqual(['Receita (PGDAS-D)', 'SIEG · NF-e/NFC-e emitidas']);
+    expect(porCodigo(20).fontes).toEqual(['Receita (PGDAS-D)', 'SIEG · NF-e/NFC-e/NFS-e emitidas']);
     // sem nota no SIEG, a empresa aparece pela Receita
     expect(porCodigo(30)).toMatchObject({ total: 700, fontes: ['Receita (PGDAS-D)'] });
     // Simples sem PGDAS-D ainda (antes da primeira consulta do robô): segue pelo SIEG
-    expect(porCodigo(40)).toMatchObject({ total: 90, fontes: ['SIEG · NF-e/NFC-e emitidas'] });
+    expect(porCodigo(40)).toMatchObject({ total: 90, fontes: ['SIEG · NF-e/NFC-e/NFS-e emitidas'] });
   });
   it('o detalhe pela Receita no Simples (25/11/2026): o total é a receita declarada, as notas seguem do SIEG', () => {
     const detalhe = mesesDoDetalhe(['2026-08', '2026-09'], c => saida('10', c, c === '2026-08' ? 1000 : 1500));
@@ -106,3 +106,14 @@ describe('a curva ABC dos compradores', () => {
     expect(curvaAbc([]).maior).toBe(0);
   });
 });
+
+describe('a nota de serviço nas saídas (27/11/2026: a Zelo, 602, só emite NFS-e)', () => {
+  it('a NFS-e entra no faturamento do mês, nas notas e no detalhe', async () => {
+    const { faturamentoDasSaidas, mesesDoDetalhe } = await import('./faturamento');
+    const s = { codigo: '602', competencia: '2026-10', em: '', series: [], servicos: { notas: 2, valor: 27352.39 } };
+    expect(faturamentoDasSaidas(s)).toBe(27352.39);
+    expect(mesesDoDetalhe(['2026-10'], () => s)[0]).toMatchObject({ nfe: null, nfce: null, nfse: 27352.39, notas: 2, total: 27352.39 });
+    expect(faturamentoDasSaidas({ ...s, servicos: undefined })).toBe(0);
+  });
+});
+

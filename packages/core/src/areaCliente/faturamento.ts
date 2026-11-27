@@ -1,6 +1,7 @@
 // O Faturamento na Área do Cliente (12/11/2026: "quero o faturamento do cliente aqui via fiscal"). A mesma fonte da
 // relação de faturamento do Fiscal (tarefas/sieg/faturamento.ts): as notas emitidas no SIEG, siegSaidas/{código}_{AAAA-MM}
-// (a soma das NF-e e NFC-e emitidas no mês, sem as canceladas; a NFS-e não entra). O robô (robo/area-cliente.js) monta o
+// (a soma das NF-e e NFC-e emitidas no mês, sem as canceladas). Desde 27/11/2026 a NFS-e emitida também entra (pelo resumo
+// das notas do mês, siegNotas): a Zelo (602) só emite nota de serviço e o faturamento vinha zerado. O robô (robo/area-cliente.js) monta o
 // resumo dos últimos 12 meses de cada empresa do link e grava em resumo/faturamento; a tela só desenha. Sem dado no mês,
 // a célula fica vazia: nada é inventado. Desde 25/11/2026, o mês com o PGDAS-D que o robô do e-CAC baixou (tarefas.pgdas)
 // tem o total pela receita declarada à Receita (o número fiel do Simples); as notas do mês continuam do SIEG.
@@ -15,6 +16,8 @@ export interface MesDoFaturamento {
   competencia: string;
   nfe: number | null;
   nfce: number | null;
+  /** as notas de serviço (NFS-e) emitidas no mês, sem as canceladas (27/11/2026); sem o campo, o mês não tem */
+  nfse?: number;
   /** quantas notas (sem as canceladas) */
   notas: number;
   /** null = o mês não veio do SIEG nem da Receita; com `receita`, é a receita declarada (25/11/2026) */
@@ -82,10 +85,11 @@ export function faturamentoDoCliente(empresas: readonly { codigo: number; nome: 
   let consultas: string[] = [];
   const comDado = empresas
     .map((e): FaturamentoDaEmpresa => ({ codigo: e.codigo, nome: e.nome, regime: e.regime ?? '', meses: mesesDoDetalhe(competencias, c => saidas(e.codigo, c)).map((m): MesDoFaturamento => ({
-      competencia: m.competencia, nfe: m.nfe, nfce: m.nfce, notas: m.notas, total: m.total, variacao: m.variacao,
+      competencia: m.competencia, nfe: m.nfe, nfce: m.nfce, ...(m.nfse != null ? { nfse: m.nfse } : {}), notas: m.notas, total: m.total, variacao: m.variacao,
       ...(m.total == null ? {} : { canceladas: m.canceladas, series: seriesDoMes(saidas(e.codigo, m.competencia)) }),
       ...(() => { const r = notas?.(e.codigo, m.competencia); return r ? { notasDoMes: r } : {}; })(),
     })) }))
+    .map(e => ({ ...e, meses: comServicos(e.meses) }))
     .map(e => {
       const pg = pgdas?.(e.codigo);
       if (!pg) return e;
@@ -96,10 +100,27 @@ export function faturamentoDoCliente(empresas: readonly { codigo: number; nome: 
   if (!comDado.length) return null;
   const daReceita = comDado.some(e => e.meses.some(m => m.receita));
   const soReceita = daReceita && comDado.every(e => e.meses.every(m => m.total == null || m.receita));
+  const sieg = FONTE_SIEG;
   return {
-    empresas: comDado, fonte: soReceita ? FONTE_RECEITA : daReceita ? FONTE_RECEITA + ' e ' + FONTE_SIEG : FONTE_SIEG, atualizadoEm: agora.toISOString(),
+    empresas: comDado, fonte: soReceita ? FONTE_RECEITA : daReceita ? FONTE_RECEITA + ' e ' + sieg : sieg, atualizadoEm: agora.toISOString(),
     ...(daReceita && consultas.length ? { receitaConsultadaEm: consultas.sort()[consultas.length - 1] } : {}),
   };
+}
+
+/**
+ * O mês com as notas de serviço (NFS-e) somadas ao total e às notas, e a variação refeita (27/11/2026). As saídas do SIEG
+ * já trazem a NFS-e (o campo nfse) quando o robô gravou depois de 27/11/2026; antes disso, vem do resumo das notas do mês.
+ */
+function comServicos(meses: readonly MesDoFaturamento[]): MesDoFaturamento[] {
+  if (!meses.some(m => m.nfse == null && m.notasDoMes?.servicos?.valor)) return [...meses];
+  let anterior: number | null = null;
+  return meses.map(m => {
+    const s = m.nfse == null ? m.notasDoMes?.servicos : undefined;
+    const total = s ? Math.round(((m.total ?? 0) + s.valor) * 100) / 100 : m.total;
+    const variacao = total != null && anterior != null && anterior > 0 ? Math.round(((total - anterior) / anterior) * 1000) / 10 : null;
+    if (total != null) anterior = total;
+    return { ...m, total, variacao, ...(s ? { nfse: s.valor, notas: m.notas + s.notas } : {}) };
+  });
 }
 
 /**
@@ -215,15 +236,15 @@ export function planilhaDoFaturamento(empresa: { nome: string; meses: readonly M
   const meses = [...empresa.meses].sort((a, b) => b.competencia.localeCompare(a.competencia));
   const aoa: (string | number | null)[][] = [
     [empresa.nome], [fonte], [],
-    ['Mês', 'NF-e', 'NFC-e', 'Notas', 'Canceladas', 'Total', 'Variação (%)'],
+    ['Mês', 'NF-e', 'NFC-e', 'NFS-e', 'Notas', 'Canceladas', 'Total', 'Variação (%)'],
     ...meses.map(m => [
-      m.competencia.slice(5, 7) + '/' + m.competencia.slice(0, 4), m.nfe, m.nfce,
+      m.competencia.slice(5, 7) + '/' + m.competencia.slice(0, 4), m.nfe, m.nfce, m.nfse ?? null,
       m.total == null ? null : m.notas, m.total == null ? null : m.canceladas ?? null, m.total, m.variacao,
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   meses.forEach((_, k) => {
-    for (const c of [1, 2, 5]) {
+    for (const c of [1, 2, 3, 6]) {
       const cel = ws[XLSX.utils.encode_cell({ r: 4 + k, c })] as XLSX.CellObject | undefined;
       if (cel) cel.z = FORMATO_REAIS;
     }

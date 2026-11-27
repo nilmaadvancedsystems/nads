@@ -12,7 +12,7 @@ import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useAreaCliente, useDriveDoEntregas, useGmailDoEntregas } from '../../../dados/repo';
 import { useEmpresasDaPessoa } from '../base/useEmpresasDaPessoa';
 import type { RecebidoDoCliente } from '../../../dados/areaCliente';
-import { areaPeloNome, cnpjsDoTexto, empresaDoArquivo, enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro, rotuloDaArea, type FiltroDosRecebidos } from '../../../dados/documentosDaArea';
+import { agruparPorEmpresa, areaPeloNome, ehNovo, cnpjsDoTexto, empresaDoArquivo, enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro, rotuloDaArea, type FiltroDosRecebidos } from '../../../dados/documentosDaArea';
 import { bate, dataEHora, haQuanto, mensagemDoErro } from '../base/comum';
 import { useEnviarAoCliente, type EmpresaParaEnviar } from '../base/useEnviarAoCliente';
 import { usePreviaDoRecebido } from './usePreviaDoRecebido';
@@ -125,6 +125,12 @@ export function useDocumentos() {
   const nomeDaEmpresa = (codigo: string | number) => empresas.find(x => String(x.codigo) === String(codigo))?.nome ?? '';
   const enviados = enviadosAoCliente(drive.meusEnvios().lista).filter(x => bate(busca, x.nome, x.codigo, nomeDaEmpresa(x.codigo)));
 
+  const linhaDoRecebido = (r: RecebidoDoCliente) => ({
+    r, recusa: recusaDe(r), quando: haQuanto(r.recebidoEm, agora), quandoCompleto: dataEHora(r.recebidoEm),
+    tamanho: ac.tamanhoLegivel(r.tamanho), tipo: ac.TIPOS_DE_ENVIO.find(t => t.valor === r.tipo)?.rotulo ?? r.tipo,
+  });
+  const linhaDoEnviado = (x: (typeof enviados)[number]) => ({ ...x, empresa: nomeDaEmpresa(x.codigo), areaRotulo: rotuloDaArea(x.area), quando: haQuanto(x.criadoEm, agora), quandoCompleto: dataEHora(x.criadoEm) });
+
   return {
     exemplos: repo.exemplos,
     carregando: !todos.carregada,
@@ -135,9 +141,11 @@ export function useDocumentos() {
     filtro, setFiltro: setEscolhido,
     filtros: filtrosDosRecebidos(todos.lista, agora, idsRecusados),
     total: todos.lista.length,
-    linhas: linhas.map(r => ({
-      r, recusa: recusaDe(r), quando: haQuanto(r.recebidoEm, agora), quandoCompleto: dataEHora(r.recebidoEm),
-      tamanho: ac.tamanhoLegivel(r.tamanho), tipo: ac.TIPOS_DE_ENVIO.find(t => t.valor === r.tipo)?.rotulo ?? r.tipo,
+    linhas: linhas.map(linhaDoRecebido),
+    // por empresa (27/11/2026: "quero que acumule por empresa"): a empresa com o mais novo primeiro, com as contas da linha
+    gruposRecebidos: agruparPorEmpresa(linhas.map(linhaDoRecebido), x => ({ codigo: x.r.codigo, nome: x.r.empresa, em: x.r.recebidoEm })).map(g => ({
+      ...g, quando: haQuanto(g.ultimo, agora),
+      resumo: [g.itens.length === 1 ? '1 arquivo' : g.itens.length + ' arquivos', ...(g.itens.some(x => ehNovo(x.r, agora)) ? [g.itens.filter(x => ehNovo(x.r, agora)).length + ' novo(s)'] : []), ...(g.itens.some(x => x.recusa) ? [g.itens.filter(x => x.recusa).length + ' recusado(s)'] : [])].join(' · '),
     })),
 
     // o recebido aberto ao lado, com a prévia
@@ -232,6 +240,10 @@ export function useDocumentos() {
     },
 
     // os enviados por mim
-    enviados: enviados.map(x => ({ ...x, empresa: nomeDaEmpresa(x.codigo), areaRotulo: rotuloDaArea(x.area), quando: haQuanto(x.criadoEm, agora), quandoCompleto: dataEHora(x.criadoEm) })),
+    enviados: enviados.map(linhaDoEnviado),
+    gruposEnviados: agruparPorEmpresa(enviados.map(linhaDoEnviado), x => ({ codigo: x.codigo, nome: x.empresa, em: x.criadoEm })).map(g => ({
+      ...g, quando: haQuanto(g.ultimo, agora),
+      resumo: [g.itens.length === 1 ? '1 arquivo' : g.itens.length + ' arquivos', ...(g.itens.some(x => x.comoGuia) ? [g.itens.filter(x => x.comoGuia).length + ' guia(s)'] : []), ...(g.itens.some(x => x.situacao !== 'pronto') ? [g.itens.filter(x => x.situacao !== 'pronto').length + ' pendente(s)'] : [])].join(' · '),
+    })),
   };
 }

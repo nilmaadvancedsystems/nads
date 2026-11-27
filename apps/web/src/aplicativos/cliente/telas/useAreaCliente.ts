@@ -6,6 +6,7 @@
 import { areaCliente as ac } from '@nads/core';
 import { definirLateralOculta, lerLateralOculta, useRetorno, type NomeIcone } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
+import { useCelular } from '../partes/useCelular';
 import { useNavigate, useParams } from 'react-router';
 import { AREA_VAZIA, type ContaDoCliente, type EstadoDaArea } from '../dados/areaCliente';
 import { repoAreaCliente } from '../dados/repo';
@@ -70,8 +71,12 @@ export function useAreaCliente() {
   const [menuAberto, setMenuAberto] = useState(false);
   // no PC a lateral recolhe só para os ícones, como a do app (Vitor, 17/10/2026: "coloca pra esconder a aba lateral assim
   // como no app"): a mesma preferência do nads, guardada no navegador (lerLateralOculta/definirLateralOculta, com try/catch)
-  const [recolhida, setRecolhida] = useState(lerLateralOculta);
-  const alternarLateral = () => { const nova = !recolhida; setRecolhida(nova); definirLateralOculta(nova); };
+  const [recolhidaNoPc, setRecolhida] = useState(lerLateralOculta);
+  const alternarLateral = () => { const nova = !recolhidaNoPc; setRecolhida(nova); definirLateralOculta(nova); };
+  // no celular a gaveta é sempre a inteira (27/11/2026: a lateral recolhida no PC fazia a gaveta do celular abrir só com os
+  // ícones, sem os nomes e com o claro/escuro um embaixo do outro)
+  const celular = useCelular();
+  const recolhida = recolhidaNoPc && !celular;
   // a gaveta fecha com o Esc
   useEffect(() => {
     if (!menuAberto) return;
