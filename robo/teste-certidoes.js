@@ -79,6 +79,22 @@ function contexto(pedidos, emitir) {
     igual('o PDF que não sai, na 3ª: erro', [p2.ref.estado.status, p2.ref.estado.erro], ['erro', 'o PDF da certidão não saiu']);
   }
 
+  {
+    // o CRF do FGTS (27/11/2026): o mesmo atendimento, com o portal da Caixa
+    const crf = 'Certificado de Regularidade do FGTS - CRF Inscrição: 99.888.777/0001-66 Razão social: PADARIA FICTICIA LTDA Endereço: X A Caixa '
+      + 'certifica que, nesta data, a empresa acima identificada encontra-se em situação regular Validade: 09/11/2026 a 08/12/2026 Certificado Número: 2026110900000000000001';
+    const p1 = pedido('a', base({ orgao: 'fgts' }));
+    const { o, resumos, pdfs } = contexto([p1], async () => { throw new Error('não era para usar o portal da prefeitura'); });
+    o.portais = { fgts: { emitir: async () => ({ texto: crf, pdf: PDF }) } };
+    await R.atenderPedidos(o);
+    igual('o CRF: pronto, com o nome do padrão e o resumo no fgts', [p1.ref.estado.status, pdfs[0] && pdfs[0][1], resumos.get(9001).fgts.vence], ['pronto', 'CRF - FGTS - Venc. 08.12.2026.pdf', '2026-12-08']);
+    const p2 = pedido('b', base({ orgao: 'fgts' }));
+    const c2 = contexto([p2], null);
+    c2.o.portais = { fgts: { emitir: async () => ({ erro: 'a Caixa não deu o CRF: A empresa abaixo identificada NÃO está regular', final: true }) } };
+    await R.atenderPedidos(c2.o);
+    igual('a empresa irregular: erro direto, com o texto da Caixa', [p2.ref.estado.status, /NÃO está regular/.test(p2.ref.estado.erro)], ['erro', true]);
+  }
+
   verdade('o lote não começa antes da primeira certidão boa', /nenhuma certidão/.test(R.motivoParaNaoPedir({ algumaPronta: false, ontem: null })));
   igual('o lote começa depois dela', R.motivoParaNaoPedir({ algumaPronta: true, ontem: null }), '');
   verdade('o lote para se ontem só deu erro', /só deu erro/.test(R.motivoParaNaoPedir({ algumaPronta: true, ontem: { total: 15, prontos: 0, erros: 15 } })));
