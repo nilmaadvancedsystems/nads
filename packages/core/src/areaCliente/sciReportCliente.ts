@@ -10,10 +10,18 @@ import {
 
 /** O publicadosId da resposta da publicação manual ({ publicados: [{ publicadosId }] }); 0 se não veio. */
 export function publicadosIdDaResposta(resposta: unknown): number {
-  const lista = resposta && typeof resposta === 'object' ? (resposta as { publicados?: unknown }).publicados : null;
-  const primeiro = Array.isArray(lista) && lista[0] && typeof lista[0] === 'object' ? (lista[0] as { publicadosId?: unknown }).publicadosId : 0;
-  const n = Number(primeiro);
-  return Number.isInteger(n) && n > 0 ? n : 0;
+  // (26/11/2026, o primeiro DAS de teste da 590: publicou, mas a resposta não veio como a documentação diz) procura o
+  // publicadosId em qualquer nível da resposta (publicados[0], dados, retorno…), até 4 de fundo
+  const achar = (x: unknown, fundo: number): number => {
+    if (!x || typeof x !== 'object' || fundo > 4) return 0;
+    if (Array.isArray(x)) { for (const i of x) { const n = achar(i, fundo + 1); if (n) return n; } return 0; }
+    const o = x as Record<string, unknown>;
+    const n = Number(o.publicadosId);
+    if (Number.isInteger(n) && n > 0) return n;
+    for (const v of Object.values(o)) { const m = achar(v, fundo + 1); if (m) return m; }
+    return 0;
+  };
+  return achar(resposta, 0);
 }
 
 export type MetodoDoSci = 'GET' | 'POST' | 'PUT';
@@ -124,8 +132,16 @@ export function criarClienteSciReport(deps: { buscar: BuscarNoSci; segredos: () 
         return f;
       });
       const id = publicadosIdDaResposta(resposta);
-      if (!id) throw new ErroDoSci(0, 'o SCI Report não devolveu o número da publicação');
-      return id;
+      if (id) return id;
+      // sem o número na resposta, procura a publicação que acabou de entrar (a mesma competência, vencimento e valor)
+      const competencia = campos.anoRef + '-' + campos.mesRef;
+      const venc = String(campos.dataVencimento || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1');
+      const valor = Math.round(Number(campos.valor) * 100);
+      const lista = await this.publicacoes(Number(campos.empresaId), competencia, competencia);
+      const achada = lista.filter(p => p.vencimento === venc && Math.round(p.valor * 100) === valor && (!p.relatorioId || p.relatorioId === campos.relatorioId))
+        .sort((x, y) => y.publicadosId - x.publicadosId)[0];
+      if (achada) return achada.publicadosId;
+      throw new ErroDoSci(0, 'o SCI Report não devolveu o número da publicação');
     },
   };
 }

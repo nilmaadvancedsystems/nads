@@ -235,3 +235,13 @@ describe('SCI Report: o atendimento da Área do Cliente', () => {
     expect(pdfs).toEqual(['101']);
   });
 });
+
+describe('SCI Report: o número da publicação manual (26/11/2026)', () => {
+  it('acha o publicadosId em qualquer nível da resposta', async () => {
+    const { publicadosIdDaResposta } = await import('./sciReportCliente');
+    expect(publicadosIdDaResposta({ publicados: [{ publicadosId: 7 }] })).toBe(7);
+    expect(publicadosIdDaResposta({ dados: { publicados: [{ publicadosId: '51643495' }] } })).toBe(51643495);
+    expect(publicadosIdDaResposta({ retorno: { publicadosId: 9 } })).toBe(9);
+    expect(publicadosIdDaResposta({ mensagem: 'ok' })).toBe(0);
+  });
+});

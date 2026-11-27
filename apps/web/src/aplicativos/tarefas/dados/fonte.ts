@@ -52,6 +52,8 @@ import { criarControleTributosMemoria, type RepoControleTributos } from './contr
 import { criarControleTributosFirestore } from './controleTributos.firestore';
 import { criarControleContabilMemoria, type RepoControleContabil } from './controleContabil';
 import { criarControleContabilFirestore } from './controleContabil.firestore';
+import { criarFatorRMemoria, exemploDoFatorR, type RepoFatorR } from './fatorR';
+import { criarFatorRFirestore } from './fatorR.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarConfigSciMemoria, type RepoConfigSci } from './configSci';
 import { criarConfigSciFirestore } from './configSci.firestore';
@@ -747,6 +749,14 @@ export function repoDoControleContabil(): RepoControleContabil {
       tarefas.empresasDaRotina('contabil', repoDaTarefas().listarEmpresas()).map(e => e.codigo).filter((c): c is number => c != null).slice(0, 18),
       tarefas.mesEsperadoContabil(ano, new Date())));
   return controleContabil;
+}
+
+let fatorR: RepoFatorR | null = null;
+
+/** A Projeção do Fator R (26/11/2026): no banco, fatorR/{ano}_{código} e o pgdas/{código}; nos exemplos, números inventados. */
+export function repoDoFatorR(): RepoFatorR {
+  if (!fatorR) fatorR = noBanco ? criarFatorRFirestore(() => quemPede()?.nome || '') : criarFatorRMemoria(codigo => exemploDoFatorR(codigo, new Date()));
+  return fatorR;
 }
 
 let categoriasDp: RepoCategoriasDp | null = null;
