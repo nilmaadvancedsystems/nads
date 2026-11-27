@@ -132,11 +132,18 @@ def escolher_empresa(principal, codigo):
         return
     if not botao:
         raise Parou('não achei o botão da empresa no topo do SCI')
+    # o SCI na frente antes do clique: com outra janela por cima, o clique caía nela (27/11/2026)
+    frente(principal)
     botao.click_input()
     h = esperar_janela('TfrConsultaEmpresaPadrao', 'Escolha da empresa atual')
     grade = [e for e in uia.window(handle=h).descendants() if e.element_info.class_name == 'TDBGrid_Padrao_SCI']
-    if grade:
-        grade[0].click_input()
+    if not grade:
+        raise Parou('não achei a grade das empresas')
+    # clica no título da coluna Código e digita o número: a Pesquisa passa a ser pelo código e só a empresa aparece
+    # (Vitor, 27/11/2026: "clica na coluna codigo e coloca o numero da empresa, que aparece certinho")
+    r = grade[0].rectangle()
+    mouse.click(coords=(r.left + 60, r.top + 8))
+    time.sleep(.5)
     keyboard.send_keys(str(codigo))
     time.sleep(1)
     keyboard.send_keys('{ENTER}')
