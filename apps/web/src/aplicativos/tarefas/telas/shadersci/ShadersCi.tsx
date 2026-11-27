@@ -15,9 +15,10 @@ import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { LogoDoMinimum } from './LogoDoMinimum';
 import { Paleta, type ItemDaPaleta } from './Paleta';
 import { BaixaNoCaixa } from './BaixaNoCaixa';
-import { BalanceteDoSci } from './BalanceteDoSci';
+import { BalanceteDoSci, FechamentoDoPeriodo, balanceteDaEmpresa } from './BalanceteDoSci';
 import { ExtratoParaSci } from './ExtratoParaSci';
-import { RazaoDoSci, temConsultaDoSci } from './RazaoDoSci';
+import { lancamentosDaContabilizacao, RazaoDoSci, temConsultaDoSci } from './RazaoDoSci';
+import { extratoDaEmpresa } from './useExtratoParaSci';
 import { useShadersCi, type ColunaDosLancamentos, type Formulario, type VmShadersCi } from './useShadersCi';
 
 export function ShadersCi() {
@@ -89,22 +90,47 @@ export function ShadersCi() {
 }
 
 // ------------------------------------------------------------------------------------------------- a Contabilização
-type AbaDaContabilizacao = 'lancamentos' | 'balancete' | 'extratos';
-const CHAVE_DA_ABA = 'nads-minimum-contabilizacao-aba';
+type PassoDaContabilizacao = 'lancamentos' | 'balancete' | 'extratos' | 'fechamento';
+const PASSOS: readonly { id: PassoDaContabilizacao; rotulo: string }[] = [
+  { id: 'lancamentos', rotulo: 'Lançamentos' }, { id: 'balancete', rotulo: 'Balancete' }, { id: 'extratos', rotulo: 'Extrato' }, { id: 'fechamento', rotulo: 'Fechamento' },
+];
+const CHAVE_DO_PASSO = 'nads-minimum-contabilizacao-aba';
 /**
- * A Contabilização (27/11/2026): os lançamentos do SCI e, na etapa 2 do Vitor ("robo puxar o balancete no sci para verificar os
- * saldos"), o balancete; as duas pelo robô do PC. A aba fica lembrada neste navegador.
+ * A Contabilização como um fluxo (27/11/2026, o Vitor: "faca isso dentro de um fluxo, nao em menus separados igual ta"; "faz de uma
+ * maneira que e automatizavel depois"): 1 os lançamentos do SCI, 2 o balancete, 3 o extrato, 4 o fechamento (os pagamentos, o banco
+ * conferido e a planilha). Cada passo fica feito pelo que já está guardado (o que o robô também pode trazer sozinho), e o Próximo leva
+ * ao seguinte. O passo aberto fica lembrado neste navegador.
  */
 function Contabilizacao({ vm }: { vm: VmShadersCi }) {
-  const [aba, setAba] = useState<AbaDaContabilizacao>(() => { try { const a = localStorage.getItem(CHAVE_DA_ABA); return a === 'balancete' || a === 'extratos' ? a : 'lancamentos'; } catch { return 'lancamentos'; } });
-  const mudar = (a: AbaDaContabilizacao) => { setAba(a); try { localStorage.setItem(CHAVE_DA_ABA, a); } catch { /* sem armazenamento */ } };
+  const codigo = vm.empresa?.codigo ?? null;
+  const [passo, setPasso] = useState<PassoDaContabilizacao>(() => {
+    try { const a = localStorage.getItem(CHAVE_DO_PASSO); return PASSOS.some(p => p.id === a) ? (a as PassoDaContabilizacao) : 'lancamentos'; } catch { return 'lancamentos'; }
+  });
+  const ir = (a: PassoDaContabilizacao) => { setPasso(a); try { localStorage.setItem(CHAVE_DO_PASSO, a); } catch { /* sem armazenamento */ } window.scrollTo({ top: 0 }); };
+  // feito: o que o passo precisa já está guardado (relido a cada troca de passo)
+  const feito: Record<PassoDaContabilizacao, boolean> = {
+    lancamentos: lancamentosDaContabilizacao(codigo).length > 0,
+    balancete: !!balanceteDaEmpresa(codigo),
+    extratos: !!extratoDaEmpresa(codigo),
+    fechamento: false,
+  };
+  const i = PASSOS.findIndex(p => p.id === passo);
+  const proximo = PASSOS[i + 1];
   return (
     <>
       <div className="sci-contab-abas">
-        <Segmentado<AbaDaContabilizacao> valor={aba} onMudar={mudar} opcoes={[{ valor: 'lancamentos', rotulo: 'Lançamentos' }, { valor: 'balancete', rotulo: 'Balancete' }, { valor: 'extratos', rotulo: 'Extratos' }]} />
+        <Segmentado<PassoDaContabilizacao> valor={passo} onMudar={ir}
+          opcoes={PASSOS.map((p, n) => ({ valor: p.id, rotulo: n + 1 + '. ' + p.rotulo, icone: feito[p.id] ? <Icone nome="checkCircle" width={14} height={14} /> : undefined }))} />
       </div>
-      {/* os extratos (27/11/2026: "pra poder puxar os extratos"): o Extrato → SCI, com o Drive, o e-mail e os recebidos */}
-      {aba === 'balancete' ? <BalanceteDoSci key="balancete" vm={vm} /> : aba === 'extratos' ? <ExtratoParaSci key="extratos" min={vm} naContabilizacao /> : <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" />}
+      {passo === 'balancete' ? <BalanceteDoSci key="balancete" vm={vm} />
+        : passo === 'extratos' ? <ExtratoParaSci key="extratos" min={vm} naContabilizacao />
+          : passo === 'fechamento' ? <FechamentoDoPeriodo key="fechamento" vm={vm} />
+            : <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" />}
+      {proximo && (
+        <div className="sci-contab-proximo">
+          <button type="button" className="btn btn-primary" onClick={() => ir(proximo.id)}>Próximo: {proximo.rotulo}<Icone nome="chevronRight" /></button>
+        </div>
+      )}
     </>
   );
 }

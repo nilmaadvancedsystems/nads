@@ -9,6 +9,7 @@ import { Icone, Vazio, useRetorno } from '@nads/ui';
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { PuxarDoSci, SituacaoDoRobo } from './RazaoDoSci';
+import { Paleta } from './Paleta';
 import { useContaDoBalancete, useFechamentoDoBalancete } from './useContaDoBalancete';
 import { rotuloDaCompetenciaDoSci, useLancamentosDoSciPeloRobo } from './useLancamentosDoSciPeloRobo';
 import type { VmShadersCi } from './useShadersCi';
@@ -19,6 +20,8 @@ function lerGuardado(codigo: number | null): Guardado | null {
   if (codigo == null) return null;
   try { const g = JSON.parse(localStorage.getItem(PREFIXO + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.balancete?.contas) ? g : null; } catch { return null; }
 }
+/** o balancete que a empresa tem neste navegador (o fluxo da Contabilização vê se o passo 2 está feito; o fechamento usa) */
+export const balanceteDaEmpresa = (codigo: number | null): sci.BalanceteSci | null => lerGuardado(codigo)?.balancete || null;
 function gravarGuardado(codigo: number, g: Guardado) {
   try { localStorage.setItem(PREFIXO + codigo, JSON.stringify(g)); } catch { /* sem espaço: fica só na tela */ }
 }
@@ -73,7 +76,6 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
         </section>
       ) : (
         <>
-          <Fechamento vm={vm} b={b} />
           <section className="card">
             <div className="card-head">
               <h3>Balancete de {dataTexto(b.inicio)} a {dataTexto(b.fim)}</h3>
@@ -155,18 +157,34 @@ function Campo({ rotulo, valor, mudar, dica, placeholder, numero }: { rotulo: st
  * que nao tem no banco jogar caixa"): as provisões abertas de todas as contas, pagas numa planilha só, com a conferência do banco e do
  * caixa e o que sobrou do extrato.
  */
+/** O passo 4 do fluxo da Contabilização: o fechamento, com o balancete que o passo 2 trouxe. */
+export function FechamentoDoPeriodo({ vm }: { vm: VmShadersCi }) {
+  const b = balanceteDaEmpresa(vm.empresa?.codigo ?? null);
+  if (!b) return <section className="card"><Vazio icone="scale" titulo="Falta o balancete" texto="Puxe o balancete no passo 2: o fechamento usa o período e as contas dele." /></section>;
+  return <Fechamento vm={vm} b={b} />;
+}
+
 function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
   const f = useFechamentoDoBalancete(vm, b);
   const x = f.fechamento;
+  // a busca no plano (27/11/2026: "em cada um dos lancamentos o usuario vai poder pesquisar no plano de contas"): a contrapartida de um
+  // pagamento ou a conta de uma linha do extrato sem provisão
+  const [busca, setBusca] = useState<{ tipo: 'troca' | 'extrato'; chave: string } | null>(null);
+  const contaNaTabela = (c: string) => (c ? c + (f.nomeDa(c) ? ' · ' + f.nomeDa(c) : '') : '—');
   return (
     <section className="card">
+      {busca && (
+        <Paleta itens={f.itensDoPlano} rotulo="Escolher a conta no plano" placeholder="Buscar a conta pelo código ou pelo nome" unidade={['conta', 'contas']}
+          fechar={() => setBusca(null)} escolher={c => { if (busca.tipo === 'troca') f.trocar(busca.chave, c); else f.lancarLinha(busca.chave, c); setBusca(null); }} />
+      )}
       <div className="card-head">
         <h3>Fechamento de {mesCurto(f.de)} a {mesCurto(f.ate)}</h3>
         {x && (x.pagamentos.length
           ? <span className="badge badge-warn">{x.pagamentos.length === 1 ? '1 provisão sem pagamento' : x.pagamentos.length + ' provisões sem pagamento'}</span>
           : <span className="badge badge-ok">tudo pago</span>)}
+        {x && x.extratoSemProvisao.length > 0 && <span className="badge badge-bad">{x.extratoSemProvisao.length} do extrato sem conta</span>}
         <span style={{ flex: 1 }} />
-        {x && x.pagamentos.length > 0 && (
+        {x && x.lancamentos.length > 0 && (
           <button type="button" className="btn btn-primary" disabled={f.gerando} onClick={f.pagarTudo}><Icone nome="download" />{f.gerando ? 'Gerando…' : 'Pagar tudo e baixar a planilha'}</button>
         )}
       </div>
@@ -213,7 +231,7 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
           {x && (x.pagamentos.length > 0 || x.abertas.length > 0) && (
             <div className="table-wrap" style={{ marginTop: 12 }}>
               <table className="table-compact">
-                <thead><tr><th>Pagar</th><th>Conta</th><th>Pelo</th><th>Data</th><th className="num">Valor</th><th className="num">Multa e juros</th><th>Complemento</th></tr></thead>
+                <thead><tr><th>Pagar</th><th>Conta</th><th>Pelo</th><th>Contrapartida</th><th>Data</th><th className="num">Valor</th><th className="num">Multa e juros</th><th>Complemento</th></tr></thead>
                 <tbody>
                   {[...x.pagamentos, ...x.abertas].sort((a, z) => a.conta.codigo.localeCompare(z.conta.codigo) || a.provisao.data.localeCompare(z.provisao.data)).map(p => {
                     const aberta = x.abertas.includes(p);
@@ -223,6 +241,13 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
                           title={aberta ? 'Fica em aberto: marque para pagar' : 'Desmarque para deixar em aberto'} aria-label="Pagar" /></td>
                         <td>{p.conta.codigo} · {p.conta.nome}</td>
                         <td>{aberta ? <span className="badge badge-neutral">em aberto</span> : pelo(p.pelo)}</td>
+                        <td>
+                          {/* a contrapartida: o banco ou o caixa do sistema, ou a que a pessoa escolheu no plano */}
+                          <button type="button" className="btn btn-ghost btn-sm" disabled={aberta} onClick={() => setBusca({ tipo: 'troca', chave: p.chave })} title="Trocar a conta, buscando no plano">
+                            {contaNaTabela(p.provisao.credito === p.conta.codigo ? p.lancamento.credito : p.lancamento.debito)}<Icone nome="search" width={12} height={12} />
+                          </button>
+                          {f.trocada(p.chave) && <button type="button" className="btn btn-ghost btn-sm" onClick={() => f.trocar(p.chave, '')} title="Voltar à conta do sistema">desfazer</button>}
+                        </td>
                         <td>{dataTexto(p.lancamento.data)}</td>
                         <td className="num">{valorTexto(p.lancamento.valor)}</td>
                         <td className="num">{p.acrescimo ? valorTexto(p.acrescimo.valor) : ''}</td>
@@ -234,14 +259,33 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
               </table>
             </div>
           )}
-          {x && x.extratoSemProvisao.length > 0 && (
+          {x && (x.extratoSemProvisao.length > 0 || x.doExtrato.length > 0) && (
             <>
-              <p className="hint" style={{ margin: '12px 0 6px' }}>{x.extratoSemProvisao.length === 1 ? '1 linha do extrato não pagou nenhuma provisão' : x.extratoSemProvisao.length + ' linhas do extrato não pagaram nenhuma provisão'}: lance na aba <b>Extratos</b>.</p>
+              <p className="hint" style={{ margin: '12px 0 6px' }}>
+                {x.extratoSemProvisao.length ? (x.extratoSemProvisao.length === 1 ? '1 linha do extrato não pagou nenhuma provisão' : x.extratoSemProvisao.length + ' linhas do extrato não pagaram nenhuma provisão') + ': escolha a conta no plano e ela entra na planilha.' : 'As linhas do extrato sem provisão já têm conta.'}
+              </p>
               <div className="table-wrap">
                 <table className="table-compact">
-                  <thead><tr><th>Data</th><th>Histórico do banco</th><th className="num">Valor</th></tr></thead>
+                  <thead><tr><th>Data</th><th>Histórico do banco</th><th className="num">Valor</th><th>Conta</th></tr></thead>
                   <tbody>
-                    {x.extratoSemProvisao.map((e, i) => <tr key={i}><td>{dataTexto(e.data)}</td><td>{e.historico}</td><td className="num">{comSinal(e.valor)}</td></tr>)}
+                    {x.extratoSemProvisao.map(e => (
+                      <tr key={e.chave}>
+                        <td>{dataTexto(e.data)}</td><td>{e.historico}</td><td className="num">{comSinal(e.valor)}</td>
+                        <td><button type="button" className="btn btn-outline btn-sm" onClick={() => setBusca({ tipo: 'extrato', chave: e.chave })}><Icone nome="search" width={12} height={12} />Escolher no plano</button></td>
+                      </tr>
+                    ))}
+                    {x.doExtrato.map(e => {
+                      const conta = e.linha.valor < 0 ? e.lancamento.debito : e.lancamento.credito;
+                      return (
+                        <tr key={e.chave}>
+                          <td>{dataTexto(e.linha.data)}</td><td>{e.linha.historico}</td><td className="num">{comSinal(e.linha.valor)}</td>
+                          <td>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBusca({ tipo: 'extrato', chave: e.chave })} title="Trocar a conta, buscando no plano">{contaNaTabela(conta)}<Icone nome="search" width={12} height={12} /></button>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => f.lancarLinha(e.chave, '')} title="Tirar a conta: a linha não entra na planilha">desfazer</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

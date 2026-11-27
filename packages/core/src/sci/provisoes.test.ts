@@ -1,6 +1,6 @@
 // As provisões de cada conta, mês a mês, e os pagamentos que faltam (27/11/2026). Dados fictícios.
 import { describe, expect, it } from 'vitest';
-import { chaveDaProvisao, fechamentoDoPeriodo, ladoDaProvisao, planoComOBalancete, planoDoSci, pagamentosDasProvisoes, provisoesDaConta, type LancamentoDaConsulta } from './index';
+import { chaveDaProvisao, chavesDoExtrato, fechamentoDoPeriodo, ladoDaProvisao, planoComOBalancete, planoDoSci, pagamentosDasProvisoes, provisoesDaConta, type LancamentoDaConsulta } from './index';
 
 const l = (data: string, debito: string, credito: string, valor: number, complemento = '', extra: Partial<LancamentoDaConsulta> = {}): LancamentoDaConsulta => ({
   data, debito, credito, valor, historico: '', complemento, documento: '', tipo: '', participanteD: '', participanteC: '', lancadoEm: '', alteradoEm: '', ...extra,
@@ -134,5 +134,25 @@ describe('as provisões da conta', () => {
     const s2 = fechamentoDoPeriodo(ls, contas, { ...base, semCaixa: true });
     expect(s2.pagamentos.map(x => x.pelo)).toEqual(['banco']);
     expect(s2.abertas.map(x => x.pelo)).toEqual(['caixa']);
+  });
+
+  // 27/11/2026: "em cada um dos lancamentos o usuario vai poder pesquisar no plano de contas"; "automatizavel depois"
+  it('as decisões como dados: a contrapartida trocada e a linha do extrato lançada entram na planilha e no movimento', () => {
+    const ls = [l('2026-09-30', '284', '200', 50000, 'A'), l('2026-10-31', '284', '200', 70000, 'B')];
+    const contas = [{ codigo: '200', classificacao: '02.1.1', nome: 'Simples' }];
+    const extrato = [{ data: '2026-10-20', valor: -50000, historico: 'DAS' }, { data: '2026-10-21', valor: -1500, historico: 'Tarifa' }];
+    const chaves = chavesDoExtrato(extrato);
+    expect(chavesDoExtrato([...extrato, extrato[1]])[2]).toBe(chaves[1].replace(/1$/, '2'));
+    const f = fechamentoDoPeriodo(ls, contas, {
+      caixa: '5', banco: '12', historicoPagamento: '813', historicoRecebimento: '478', de: '2026-01', ate: '2026-12', extrato,
+      trocas: { [chaveDaProvisao('200', ls[1])]: '30' }, doExtrato: { [chaves[1]]: '420' },
+    });
+    expect(f.pagamentos.map(x => [x.pelo, x.lancamento.credito])).toEqual([['banco', '12'], ['caixa', '30']]);
+    expect(f.doExtrato.map(x => [x.lancamento.debito, x.lancamento.credito, x.lancamento.valor, x.lancamento.historico])).toEqual([['420', '12', 1500, '813']]);
+    expect(f.extratoSemProvisao).toHaveLength(0);
+    expect(f.lancamentos).toHaveLength(3);
+    // o banco: −500,00 (o Simples) −15,00 (a tarifa); o caixa não mexe (a contrapartida trocada para a 30)
+    expect(f.movimentoNoBanco).toBe(-51500);
+    expect(f.movimentoNoCaixa).toBe(0);
   });
 });

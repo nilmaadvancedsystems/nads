@@ -21,6 +21,16 @@ function lerEscolhas(codigo: number | null): Partial<Escolhas> {
   try { return codigo == null ? {} : (JSON.parse(localStorage.getItem(CHAVE + codigo) || '{}') as Partial<Escolhas>); } catch { return {}; }
 }
 
+// as decisões do fechamento (por empresa e período)
+const CHAVE_DAS_DECISOES = 'nads-minimum-fechamento-v1|';
+interface Decisoes { abertas: string[]; trocas: Record<string, string>; doExtrato: Record<string, string> }
+function lerDecisoes(chave: string): Decisoes {
+  try {
+    const d = JSON.parse(localStorage.getItem(chave) || '{}') as Partial<Decisoes>;
+    return { abertas: Array.isArray(d.abertas) ? d.abertas : [], trocas: d.trocas || {}, doExtrato: d.doExtrato || {} };
+  } catch { return { abertas: [], trocas: {}, doExtrato: {} }; }
+}
+
 /** a analítica do disponível (01.1.1) com o nome que bate */
 const doDisponivel = (b: sci.BalanceteSci, nome: RegExp) => b.contas.filter(c => c.analitica && /^0?1\.0?1\.0?1\./.test(c.classificacao) && nome.test(sci.semAcento(c.nome)));
 /** a conta da multa e dos juros pagos pelo balancete: a analítica das despesas (04) com "juros" ou "multa" no nome */
@@ -113,18 +123,34 @@ export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
   // o controle (27/11/2026: "normalmente isso vai ser ajustavel na aplicacao para termos controle"): o caixa ligado ou não, e as
   // provisões que a pessoa deixa em aberto (só nesta tela)
   const [caixaLigado, setCaixaLigado] = useState(guardadas.caixaLigado !== false);
-  const [deixarAbertas, setDeixarAbertas] = useState<ReadonlySet<string>>(() => new Set());
+  // o período: o do balancete, num ano só (o lote vale para a empresa num ano)
+  const ate = (b.fim || '').slice(0, 7);
+  const de = (b.inicio || '').slice(0, 7) < ate.slice(0, 4) + '-01' ? ate.slice(0, 4) + '-01' : (b.inicio || '').slice(0, 7);
+  // as decisões da pessoa, por empresa e período, como dados (27/11/2026: "faz de uma maneira que e automatizavel depois"): o que fica
+  // em aberto, a contrapartida trocada e a conta das linhas do extrato sem provisão. Um robô preenche as mesmas chaves depois.
+  const chaveDasDecisoes = CHAVE_DAS_DECISOES + codigo + '|' + de + '|' + ate;
+  const [decisoes, setDecisoes] = useState<Decisoes>(() => lerDecisoes(chaveDasDecisoes));
+  const mudarDecisoes = (muda: (d: Decisoes) => Decisoes) => setDecisoes(d => {
+    const n = muda(d);
+    try { localStorage.setItem(chaveDasDecisoes, JSON.stringify(n)); } catch { /* sem espaço */ }
+    return n;
+  });
+  const deixarAbertas = useMemo(() => new Set(decisoes.abertas), [decisoes.abertas]);
   const guardar = (e: Partial<Escolhas>) => {
     if (codigo == null) return;
     try { localStorage.setItem(CHAVE + codigo, JSON.stringify({ ...lerEscolhas(codigo), caixa, banco, juros, caixaLigado, historico: historicoPagamento, historicoRecebimento, ...e })); } catch { /* sem espaço */ }
   };
-  // o período: o do balancete, num ano só (o lote vale para a empresa num ano)
-  const ate = (b.fim || '').slice(0, 7);
-  const de = (b.inicio || '').slice(0, 7) < ate.slice(0, 4) + '-01' ? ate.slice(0, 4) + '-01' : (b.inicio || '').slice(0, 7);
   const contas = useMemo(() => b.contas.filter(c => c.analitica && !c.participante && c.codigo).map(c => ({ codigo: c.codigo, classificacao: c.classificacao, nome: c.nome })), [b]);
   const f = useMemo(() => (todos.length && caixa && ate ? sci.fechamentoDoPeriodo(todos, contas, {
     caixa, banco: banco || undefined, extrato: extrato?.linhas, historicoPagamento, historicoRecebimento, de, ate, juros, semCaixa: !caixaLigado, deixarAbertas,
-  }) : null), [todos, contas, caixa, banco, extrato, historicoPagamento, historicoRecebimento, de, ate, juros, caixaLigado, deixarAbertas]);
+    trocas: decisoes.trocas, doExtrato: decisoes.doExtrato,
+  }) : null), [todos, contas, caixa, banco, extrato, historicoPagamento, historicoRecebimento, de, ate, juros, caixaLigado, deixarAbertas, decisoes]);
+  // as analíticas do plano do nads com as do balancete do SCI, para a busca em cada lançamento
+  const itensDoPlano = useMemo(() => {
+    const plano = sci.planoComOBalancete(sci.planoDoSci(sci.planoDaConsulta(todos, vm.plano)), b);
+    return plano.contas.filter(c => c.analitica).sort((x, y) => x.classificacao.localeCompare(y.classificacao, 'pt-BR', { numeric: true }))
+      .map(c => ({ chave: c.codigo, codigo: c.codigo, nome: c.nome, dica: c.classificacao }));
+  }, [todos, vm.plano, b]);
   const saldo = (cod: string) => (cod ? b.contas.find(c => c.codigo === cod && !c.participante)?.atual ?? null : null);
   const nomeDa = (c: string) => (c ? b.contas.find(x => x.codigo === c && !x.participante)?.nome || '' : '');
   const saldoDoBanco = saldo(banco);
@@ -134,20 +160,20 @@ export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
   const [gerando, setGerando] = useState(false);
 
   async function pagarTudo() {
-    if (!f || !f.pagamentos.length || codigo == null) return;
-    const faltaHistorico = f.pagamentos.some(p => !p.lancamento.historico);
+    if (!f || !f.lancamentos.length || codigo == null) return;
+    const faltaHistorico = f.lancamentos.some(l => !l.historico);
     if (faltaHistorico) { aviso({ tom: 'info', titulo: 'Falta o histórico', texto: 'Digite o número do histórico padrão do SCI do pagamento' + (f.pagamentos.some(p => p.provisao.debito === p.conta.codigo) ? ' e do recebimento.' : '.') }); return; }
     setGerando(true);
     try {
       const plano = sci.planoComOBalancete(sci.planoDoSci(sci.planoDaConsulta(todos, vm.plano)), b);
-      const lsci = sci.lancamentosDoShaderParaOSci(lancamentosDos(f.pagamentos), plano, vm.cnpj);
+      const lsci = sci.lancamentosDoShaderParaOSci(f.lancamentos, plano, vm.cnpj);
       const lote = await loteParaAPlanilha({ codigo, empresa: vm.empresa?.nome || '', lancamentos: lsci, origem: 'fechamento ' + de + ' a ' + ate, aviso });
       if (lote == null) return;
       baixarBytes(sci.planilhaDoSci(lsci, lote), sci.nomeDaPlanilhaSci(vm.cnpj, ate, 'fechamento', lote), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
       const pelo = (q: 'banco' | 'caixa') => f.pagamentos.filter(p => p.pelo === q).length;
       if (fora) aviso({ tom: 'info', titulo: 'Planilha do fechamento baixada, com ' + fora + ' para conferir', texto: (lote ? 'Lote ' + lote + '. ' : '') + 'Os que têm problema ficaram na aba Conferir, com o motivo.' });
-      else toast('Fechamento: ' + f.pagamentos.length + ' lançamentos (' + pelo('banco') + ' pelo banco, ' + pelo('caixa') + ' pelo caixa)' + (lote ? ', lote ' + lote : '') + '.');
+      else toast('Fechamento: ' + f.lancamentos.length + ' lançamentos (' + pelo('banco') + ' pagamentos pelo banco, ' + pelo('caixa') + ' pelo caixa, ' + f.doExtrato.length + ' do extrato)' + (lote ? ', lote ' + lote : '') + '.');
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui gerar a planilha', texto: e instanceof Error ? e.message : String(e) });
     } finally { setGerando(false); }
@@ -162,7 +188,15 @@ export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
     juros, setJuros: (v: string) => { setJuros(v); guardar({ juros: v }); }, nomeDosJuros: nomeDa(juros),
     caixaLigado, setCaixaLigado: (v: boolean) => { setCaixaLigado(v); guardar({ caixaLigado: v }); },
     /** deixa a provisão em aberto (ou volta a pagar) */
-    alternar: (chave: string) => setDeixarAbertas(s => { const n = new Set(s); if (n.has(chave)) n.delete(chave); else n.add(chave); return n; }),
+    alternar: (chave: string) => mudarDecisoes(d => ({ ...d, abertas: d.abertas.includes(chave) ? d.abertas.filter(x => x !== chave) : [...d.abertas, chave] })),
+    /** a contrapartida do pagamento trocada pela pessoa ('' = volta à do sistema) */
+    trocar: (chave: string, conta: string) => mudarDecisoes(d => { const t = { ...d.trocas }; if (conta) t[chave] = conta; else delete t[chave]; return { ...d, trocas: t }; }),
+    trocada: (chave: string) => decisoes.trocas[chave] || '',
+    /** a conta da linha do extrato sem provisão ('' = volta a ficar sem conta) */
+    lancarLinha: (chave: string, conta: string) => mudarDecisoes(d => { const t = { ...d.doExtrato }; if (conta) t[chave] = conta; else delete t[chave]; return { ...d, doExtrato: t }; }),
+    /** as contas do plano (o do nads com as do balancete do SCI) para a busca */
+    itensDoPlano,
+    nomeDa,
     deixada: (chave: string) => deixarAbertas.has(chave),
     temRecebimento: !!f && [...f.pagamentos, ...f.abertas].some(p => p.provisao.debito === p.conta.codigo),
     saldoDoBanco, bancoDepois, saldoDoCaixa, caixaDepois,
