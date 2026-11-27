@@ -269,9 +269,15 @@ function criarPortalDoFgts(log) {
         await page.evaluate(() => { const s = document.getElementById('mainForm:tipoEstabelecimento'); if (s && s.value !== '1') { s.value = '1'; s.dispatchEvent(new Event('change', { bubbles: true })); } });
         await page.$eval(campo, e => { e.value = ''; });
         await page.type(campo, cnpj, { delay: 60 });
-        await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {}), page.click('[id="mainForm:btnConsultar"]')]);
+        // 27/11/2026, a terceira volta: a consulta não andava e o robô pegava um link de ajuda que também fala do CRF. Agora espera
+        // a página do resultado ("Situação de Regularidade do Empregador"); se não vier, clica de novo pelo próprio botão.
+        const resultado = () => page.waitForFunction(() => /Situa..o de Regularidade do Empregador/i.test(document.body.innerText || ''), { timeout: 30000, polling: 500 }).then(() => true, () => false);
+        await page.click('[id="mainForm:btnConsultar"]').catch(() => {});
+        let veio = await resultado();
+        if (!veio) { await page.evaluate(() => { const b = document.getElementById('mainForm:btnConsultar'); if (b) b.click(); }).catch(() => {}); veio = await resultado(); }
         const consulta = String(await page.evaluate(() => document.body.innerText || '')).replace(/\s+/g, ' ');
-        const link = await page.evaluate(() => { const a = [...document.querySelectorAll('a')].find(x => /Certificado de Regularidade do FGTS/i.test(x.innerText || '')); if (!a) return false; a.click(); return true; });
+        if (!veio) return { erro: 'a consulta do CRF não trouxe o resultado · tela: ' + consulta.slice(0, 300) };
+        const link = await page.evaluate(() => { const a = [...document.querySelectorAll('a')].find(x => /^\s*Certificado de Regularidade do FGTS\s*-\s*CRF\s*$/i.test(x.innerText || '')); if (!a) return false; a.click(); return true; });
         if (!link) {
           // irregular, sem cadastro ou sem informação suficiente: o texto da Caixa vai para o pedido
           const m = /Situa..o de Regularidade do Empregador\s*(.{0,220})/i.exec(consulta);
@@ -309,6 +315,8 @@ function criarPortalDoFgts(log) {
 // o robô procura o campo do CNPJ e o botão de emitir pelos textos de costume e, se algo não fechar, a tela vai junto do erro
 // no pedido, para acertar o caminho.
 const CDT = 'https://cdt.fazenda.mg.gov.br/';
+// o que aconteceu com a regra do certificado da SEF-MG ao ligar (vai junto do erro do Login Único)
+let regraDoCertificado = 'ainda não conferida';
 const SEFMG_PADRAO = 'https://[*.]fazenda.mg.gov.br';
 
 function criarPortalEstadualMG(log) {
@@ -324,11 +332,15 @@ function criarPortalEstadualMG(log) {
       try {
         await page.goto(CDT, { waitUntil: 'networkidle2', timeout: 90000 }).catch(() => {});
         // o Login Único: "Entrar com Certificado Digital" (o Chrome escolhe o certificado pela regra)
-        if (/acesso\.fazenda\.mg\.gov\.br/.test(page.url())) {
-          await page.evaluate(() => { const b = [...document.querySelectorAll('a, button, [role=button]')].find(x => /Certificado Digital/i.test(x.innerText || '')); if (b) b.click(); }).catch(() => {});
-          await page.waitForFunction(() => /cdt\.fazenda\.mg\.gov\.br/.test(location.href), { timeout: 90000 }).catch(() => {});
+        // 27/11/2026: o endereço do login tem "cdt.fazenda.mg.gov.br" no meio (o redirect_uri); vale o nome do site. O botão é o
+        // link #certificate (a entrada por certificado do Login Único).
+        const noCdt = () => { try { return new URL(page.url()).host === 'cdt.fazenda.mg.gov.br'; } catch (_) { return false; } };
+        if (!noCdt()) {
+          await page.waitForSelector('#certificate', { timeout: 30000 }).catch(() => {});
+          await page.click('#certificate').catch(() => {});
+          await page.waitForFunction(() => location.host === 'cdt.fazenda.mg.gov.br', { timeout: 90000, polling: 1000 }).catch(() => {});
         }
-        if (!/cdt\.fazenda\.mg\.gov\.br/.test(page.url())) return { erro: 'o Login Único da SEF-MG não entrou com o certificado · tela: ' + await tela() };
+        if (!noCdt()) return { erro: 'o Login Único da SEF-MG não entrou com o certificado (o Chrome pode ter pedido para escolher o certificado; regra: ' + regraDoCertificado + ') · tela: ' + await tela() };
         await page.waitForFunction(() => !/^\s*Carregando\s*$/i.test(document.body.innerText || '') && document.querySelectorAll('input').length > 0, { timeout: 60000 }).catch(() => {});
         // o campo do CNPJ: pelo rótulo, pelo nome ou pelo placeholder
         const achou = await page.evaluate(() => {
@@ -384,7 +396,7 @@ function iniciarCertidoes(db, log) {
   const P = core();
   painel.modulo(ROBO, NOME, true);
   // a regra do Chrome que escolhe o certificado sozinho no Login Único da SEF-MG (o dono: "pode fazer", 27/11/2026)
-  try { log('Certidões:', require('./chrome-certificado').garantirRegra(SEFMG_PADRAO, 'fazenda.mg.gov.br')); }
+  try { regraDoCertificado = require('./chrome-certificado').garantirRegra(SEFMG_PADRAO, 'fazenda.mg.gov.br'); log('Certidões:', regraDoCertificado); }
   catch (err) { log('Certidões: a regra do certificado da SEF-MG não saiu -', err.message); }
   let fila = [];
   let trabalhando = false;
