@@ -175,13 +175,30 @@ def abrir_lancamentos(principal, mes, ano):
     return h
 
 
+def filtrada(h):
+    """A consulta mostra a faixa amarela "Os registros apresentados nesta consulta estão filtrados"."""
+    try:
+        return any('filtrad' in (e.element_info.name or '').lower() or 'filtrad' in (win32gui.GetWindowText(e.handle) if e.handle else '').lower()
+                   for e in uia.window(handle=h).descendants())
+    except Exception:
+        return False
+
+
 def exportar(h_lanc, arquivo):
     botao_da_barra(h_lanc, 'tlbCadastro_Padrao_Pai', 4).click_input()   # a lupa
     h = esperar_janela('TfrConsultaLancamento', 'a Consulta lançamentos', segundos=60)
     frente(h)
-    botao_da_barra(h, 'ToolBar1', 12).click_input()   # Retirar filtro (F11): obrigatório
-    time.sleep(2)
-    print('consulta aberta, filtro retirado', flush=True)
+    # Retirar filtro (F11): obrigatório, com duplo clique para garantir (Vitor, 27/11/2026: "clicar duas vezes naquele
+    # filtro vermelho, para garantir que removeu"); se a faixa "…estão filtrados" continuar, tenta de novo
+    print('consulta aberta' + (' (filtrada)' if filtrada(h) else ''), flush=True)
+    for _ in range(3):
+        botao_da_barra(h, 'ToolBar1', 12).double_click_input()
+        time.sleep(2)
+        if not filtrada(h):
+            break
+    else:
+        raise Parou('a consulta continuou filtrada depois de retirar o filtro 3 vezes')
+    print('filtro retirado', flush=True)
     botao_da_barra(h, 'ToolBar1', 14).click_input()   # a impressora
     h = esperar_janela('TfrRelatorio_Consulta_Padrao_SCI', 'a Impressão de campos da consulta')
     botao_da_barra(h, 'tlbRelatorio_Pai', 3).click_input()   # exportar para Excel
