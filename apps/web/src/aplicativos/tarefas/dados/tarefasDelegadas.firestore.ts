@@ -86,6 +86,19 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       mudou();
     } catch { /* sem rede: fica o que o ouvinte trouxer */ }
   }
+  // a aba que volta relê a lista do servidor (27/11/2026: "a tarefa só aparece se recarregar a tela"): com o nads aberto em
+  // mais de uma aba, o cache é dividido entre elas e a aba que ficou para trás podia não receber a tarefa nova até
+  // recarregar. Ao aparecer (ou a rede voltar), no máximo uma vez a cada 3 min: a lista da pessoa, uma leitura por tarefa
+  let ultimaReleitura = 0;
+  if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    const aoVoltar = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - ultimaReleitura < 3 * 60 * 1000) return;
+      ultimaReleitura = Date.now();
+      void reler();
+    };
+    document.addEventListener('visibilitychange', aoVoltar);
+    window.addEventListener('online', aoVoltar);
+  }
   const parte = (id: string, anexoId: string, n: number) => doc(db, COLECAO, id, 'partes', anexoId + '-' + n);
 
   /** sobe os pedaços de cada arquivo e devolve a lista dos anexos (para o documento) */
