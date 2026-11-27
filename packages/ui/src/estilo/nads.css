@@ -8540,11 +8540,11 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-contab-vazia h3{margin:4px 0 0;font-size:var(--fs-18,18px);font-weight:600;color:var(--ink);}
 .sci-contab-vazia > p{margin:0 0 8px;max-width:360px;font-size:var(--fs-13);line-height:1.5;color:var(--ink-muted);}
 .sci-contab-vazia > p b{color:var(--ink);font-weight:600;}
-.sci-contab-marca{display:inline-grid;place-items:center;padding:8px 12px;border-radius:12px;background:#fff;}
+.sci-contab-marca{display:inline-grid;place-items:center;}
 .sci-puxar{display:inline-flex;align-items:center;gap:6px;}
 .sci-puxar .sci-puxar-mes{min-width:120px;justify-content:space-between;}
 .sci-puxar input.sci-puxar-ano{width:64px;height:32px;text-align:center;font-variant-numeric:tabular-nums;}
-.sci-puxar-botao img{border-radius:3px;background:#fff;padding:1px 2px;}
+.sci-puxar-botao img{display:block;}
 .sci-contab-robo{max-width:720px;margin:0 auto 10px;}
 .sci-contab-robo .imp-robo-barra{flex:1 1 200px;}
 /* o "Quero visualizar lançamentos", centrado (25/11/2026): embaixo da tabela, ou no meio da área vazia */
@@ -8976,3 +8976,9 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .troca-convidado-cfg:hover{background:var(--hover-bg);color:var(--ink);}
 .troca-convidado-form{display:flex;flex-direction:column;gap:10px;padding:10px;}
 .troca-convidado-form label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);color:var(--ink-muted);}
+
+/* Contabilização: o Lote e a chave de cada lançamento no SCI, e a lixeira que exclui no SCI (27/11/2026) */
+.sci-razao-lote { font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted); letter-spacing: .02em; }
+.sci-razao-excluir { width: 36px; text-align: center; padding-top: 0; padding-bottom: 0; }
+.sci-razao-excluir .icon-btn { opacity: .45; }
+.sci-razao-linha:hover .sci-razao-excluir .icon-btn, .sci-razao-excluir .icon-btn:focus-visible { opacity: 1; color: var(--danger); }

@@ -93,6 +93,20 @@ export function lerLoteDoMinimum(lote: string): { empresa: number; base: string;
   return { empresa: Number(m[2]), base: m[1], lancamento: m[3] ? Number(m[3]) : null };
 }
 
+/**
+ * O que dá para excluir no SCI a partir do Lote de um lançamento da consulta (27/11/2026, o Vitor: "para excluir lote, voce coloca o
+ * lote apenas, o lancamento vc digita o numero todo da chave"): o lote (a base, que filtra todos os dele) e a chave do lançamento
+ * (null quando o lote não tem chave por linha, como o primeiro formato, M00583BR6W). Só lotes do minimum desta empresa: o SCI filtra
+ * pelo começo do texto, e um lote curto ou de fora pegaria lançamentos que não são dele. null quando não dá.
+ */
+export function exclusaoPeloLote(lote: string, codigoDaEmpresa: number): { lote: string; chave: string | null } | null {
+  const t = lote.trim().toUpperCase();
+  const l = lerLoteDoMinimum(t);
+  if (l) return l.empresa === codigoDaEmpresa ? { lote: l.base, chave: l.lancamento != null ? t : null } : null;
+  const antigo = /^M(\d{5})[A-Z0-9]{4}$/.exec(t);
+  return antigo && Number(antigo[1]) === codigoDaEmpresa ? { lote: t, chave: null } : null;
+}
+
 /** A empresa de um lote do minimum (M583KQT001 ou M583KQT → 583), ou null se não é um lote do minimum. */
 export function empresaDoLote(lote: string): number | null {
   return lerLoteDoMinimum(lote)?.empresa ?? null;

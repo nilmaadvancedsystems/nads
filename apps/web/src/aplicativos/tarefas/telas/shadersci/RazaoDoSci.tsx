@@ -10,6 +10,7 @@ import { AcoesDoTopo } from '../../../../comum/topo';
 import { BalaoDeGuia } from './BalaoDeGuia';
 import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { Paleta, type ItemDaPaleta } from './Paleta';
+import { useExcluirNoSci, type ExcluirNoSci } from './useExcluirNoSci';
 import { rotuloDaCompetenciaDoSci, useLancamentosDoSciPeloRobo, type RoboDoSci } from './useLancamentosDoSciPeloRobo';
 import type { VmShadersCi } from './useShadersCi';
 
@@ -39,7 +40,7 @@ const corDoTipo = (t: string): 'fiscal' | 'folha' | null => (!/on-?line/i.test(t
 
 type LinhaDoRazao = sci.LancamentoDaConsulta & { chave: string; nomeD: string; nomeC: string; nomeH: string; nomePD: string; nomePC: string };
 
-type ColunaDoRazao = 'data' | 'debito' | 'credito' | 'valor' | 'historico' | 'documento' | 'participanteD' | 'participanteC' | 'tipo';
+type ColunaDoRazao = 'data' | 'debito' | 'credito' | 'valor' | 'historico' | 'documento' | 'participanteD' | 'participanteC' | 'tipo' | 'lote';
 /** o que ordena cada coluna: a data, o valor em número, a conta e o participante pelo nome (sem nome, o código) */
 function chaveDoRazao(l: LinhaDoRazao, c: ColunaDoRazao): string | number {
   switch (c) {
@@ -49,6 +50,7 @@ function chaveDoRazao(l: LinhaDoRazao, c: ColunaDoRazao): string | number {
     case 'historico': return [l.nomeH, l.complemento].filter(Boolean).join(' ') || l.historico;
     case 'participanteD': return l.nomePD || l.participanteD;
     case 'participanteC': return l.nomePC || l.participanteC;
+    case 'lote': return l.lote || '';
     default: return l[c];
   }
 }
@@ -65,9 +67,45 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
   const codigo = vm.empresa?.codigo ?? null;
   const contabilizacao = modo === 'contabilizacao';
   const prefixo = contabilizacao ? PREFIXO_DA_CONTABILIZACAO : PREFIXO;
-  const { aviso } = useRetorno();
+  const { aviso, modal } = useRetorno();
   const [guardado, setGuardado] = useState<Guardado | null>(() => lerGuardado(codigo, prefixo));
   const robo = useLancamentosDoSciPeloRobo({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', chegou: (f, c) => importar(f, c) });
+  // excluir no SCI (27/11/2026): quando o robô termina, o que saiu do SCI sai da tela (e do guardado)
+  const exclusao = useExcluirNoSci({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', saiu: p => tirarDaTela(p) });
+  function tirarDaTela({ lote, chave }: { lote: string; chave: string }) {
+    if (codigo == null) return;
+    const g = lerGuardado(codigo, prefixo);
+    const sai = (l: sci.LancamentoDaConsulta) => (chave ? l.lote === chave : !!l.lote && l.lote.startsWith(lote));
+    const n = g ? g.lancamentos.filter(sai).length : 0;
+    if (g && n) {
+      const novo = { ...g, lancamentos: g.lancamentos.filter(l => !sai(l)) };
+      gravarGuardado(codigo, novo, prefixo);
+      setGuardado(novo); setAberto(null);
+    }
+    aviso({ tom: 'ok', titulo: chave ? 'Lançamento excluído do SCI' : 'Lote excluído do SCI', texto: (chave || lote) + (n ? ' · ' + (n === 1 ? '1 lançamento saiu da tela' : n + ' lançamentos saíram da tela') : '') });
+  }
+  /** a lixeira da linha: um lançamento (pela chave) ou o lote inteiro */
+  async function perguntarExclusao(l: LinhaDoRazao) {
+    if (codigo == null) return;
+    const x = sci.exclusaoPeloLote(l.lote || '', codigo);
+    if (!x) return;
+    const doLote = (guardado?.lancamentos || []).filter(o => !!o.lote && o.lote.startsWith(x.lote)).length;
+    const qtd = doLote === 1 ? '1 lançamento' : doLote + ' lançamentos';
+    const qual = sci.dataParaTexto(l.data) + ' · R$ ' + sci.valorParaTexto(l.valor);
+    const r = await modal<'um' | 'lote' | null>({
+      icone: 'alert', titulo: 'Excluir no SCI?',
+      html: (x.chave ? 'Lançamento de <b>' + qual + '</b>, chave <b>' + x.chave + '</b>.' : 'Lançamento de <b>' + qual + '</b>, sem chave própria: só dá para excluir o lote.') +
+        '<br>O lote <b>' + x.lote + '</b> tem ' + qtd + ' nesta tela.<br><br>O robô do PC de ' + exclusao.rotulo + ' exclui no SCI. No lote inteiro, o SCI pede a ' +
+        '<b>senha de segurança</b> no PC: digite lá.',
+      botoes: [
+        ...(x.chave ? [{ rotulo: 'Excluir este lançamento', valor: 'um' as const, variante: 'btn-danger' as const }] : []),
+        { rotulo: 'Excluir o lote inteiro (' + qtd + ')', valor: 'lote' as const, variante: 'btn-danger' as const },
+        { rotulo: 'Cancelar', valor: null, variante: 'btn-outline' as const },
+      ],
+    });
+    if (r === 'um' && x.chave) void exclusao.excluir(x.lote, x.chave);
+    else if (r === 'lote') void exclusao.excluir(x.lote, '');
+  }
   const [busca, setBusca] = useState('');
   const [tipo, setTipo] = useState('');
   const [ordem, setOrdem] = useState<{ coluna: ColunaDoRazao; desc: boolean } | null>(null);
@@ -143,13 +181,16 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
     nomeD: sci.contaDoPlano(plano, l.debito)?.nome || '', nomeC: sci.contaDoPlano(plano, l.credito)?.nome || '', nomeH: sci.historicoDoSci(l.historico)?.nome || '',
     nomePD: participantes.get(l.participanteD) || '', nomePC: participantes.get(l.participanteC) || '',
   })), [guardado, plano, participantes]);
+  // a coluna Lote e a lixeira só na Contabilização, com o que o minimum importou (a chave na coluna Lote do SCI)
+  const comLote = contabilizacao && linhas.some(l => !!l.lote);
+  const podeExcluir = comLote && exclusao.disponivel && codigo != null && linhas.some(l => !!sci.exclusaoPeloLote(l.lote || '', codigo));
   const tipos = useMemo(() => {
     const m = new Map<string, number>();
     for (const l of linhas) m.set(l.tipo, (m.get(l.tipo) || 0) + 1);
     return [...m.entries()].map(([t, n]) => ({ t, n }));
   }, [linhas]);
   const q = sci.semAcento(busca.trim());
-  const filtradas = linhas.filter(l => (!tipo || l.tipo === tipo) && (!conta || l.debito === conta || l.credito === conta) && (!ate || (!!l.data && l.data <= ate)) && (!de || (!!l.data && l.data >= de)) && (!q || [sci.dataParaTexto(l.data), l.debito, l.credito, l.nomeD, l.nomeC, sci.valorParaTexto(l.valor), l.historico, l.nomeH, l.complemento, l.documento, l.participanteD, l.participanteC]
+  const filtradas = linhas.filter(l => (!tipo || l.tipo === tipo) && (!conta || l.debito === conta || l.credito === conta) && (!ate || (!!l.data && l.data <= ate)) && (!de || (!!l.data && l.data >= de)) && (!q || [sci.dataParaTexto(l.data), l.debito, l.credito, l.nomeD, l.nomeC, sci.valorParaTexto(l.valor), l.historico, l.nomeH, l.complemento, l.documento, l.participanteD, l.participanteC, l.lote || '']
     .some(v => sci.semAcento(v).includes(q))));
   // a ordem pelo clique no cabeçalho (25/11/2026: "Ao clicar na coluna do cabecalho ele organiza em ordem crescente ou decrescente"):
   // o primeiro clique, crescente; o segundo, decrescente; o empate fica na ordem do arquivo
@@ -198,6 +239,7 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
     ['Participante a débito', selecionado.participanteD ? (selecionado.nomePD ? selecionado.nomePD + ' (' + selecionado.participanteD + ')' : selecionado.participanteD) : '—'],
     ['Participante a crédito', selecionado.participanteC ? (selecionado.nomePC ? selecionado.nomePC + ' (' + selecionado.participanteC + ')' : selecionado.participanteC) : '—'],
     ['Tipo', selecionado.tipo || '—'],
+    ...(selecionado.lote ? [['Lote', selecionado.lote] as const] : []),
     ['Lançado em', sci.dataParaTexto(selecionado.lancadoEm) || '—'],
     ['Última alteração', sci.dataParaTexto(selecionado.alteradoEm) || 'sem alteração'],
   ] as const) : null;
@@ -226,6 +268,7 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
       </AcoesDoTopo>
       )}
       {contabilizacao && <SituacaoDoRobo robo={robo} />}
+      {contabilizacao && <SituacaoDaExclusao exclusao={exclusao} />}
       <input ref={campo} type="file" accept=".xls,.xlsx,.csv" hidden onChange={e => { void importar(e.target.files?.[0]); e.target.value = ''; }} />
       {janela && createPortal(
         <div className="sci-paleta-fundo" onMouseDown={e => { if (e.target === e.currentTarget) setJanela(false); }}>
@@ -331,6 +374,8 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
                     {cabeca('data', 'Data')}{cabeca('debito', 'Débito')}{cabeca('credito', 'Crédito')}{cabeca('valor', 'Valor', { numero: true })}
                     {cabeca('historico', 'Histórico')}{cabeca('documento', 'Doc.')}
                     {cabeca('participanteD', 'Part. D', { dica: 'O participante a débito (código no SCI)' })}{cabeca('participanteC', 'Part. C', { dica: 'O participante a crédito (código no SCI)' })}
+                    {comLote && cabeca('lote', 'Lote', { dica: 'O lote e a chave do lançamento no SCI (o que o minimum importou)' })}
+                    {podeExcluir && <th aria-label="Excluir no SCI" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -348,9 +393,18 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
                       <td className="ini-delegadas-curta">{l.documento}</td>
                       <td className="ini-delegadas-curta" title={l.nomePD || undefined}>{l.participanteD}</td>
                       <td className="ini-delegadas-curta" title={l.nomePC || undefined}>{l.participanteC}</td>
+                      {comLote && <td className="ini-delegadas-curta sci-razao-lote">{l.lote}</td>}
+                      {podeExcluir && (
+                        <td className="sci-razao-excluir">
+                          {codigo != null && sci.exclusaoPeloLote(l.lote || '', codigo) && (
+                            <button type="button" className="icon-btn" disabled={exclusao.andando} title="Excluir no SCI (este lançamento ou o lote)" aria-label="Excluir no SCI"
+                              onClick={e => { e.stopPropagation(); void perguntarExclusao(l); }}><Icone nome="lixeira" width={16} height={16} /></button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
-                  {!visiveis.length && <tr><td colSpan={8} className="hint sci-razao-nada">Nada com esses filtros.</td></tr>}
+                  {!visiveis.length && <tr><td colSpan={8 + (comLote ? 1 : 0) + (podeExcluir ? 1 : 0)} className="hint sci-razao-nada">Nada com esses filtros.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -438,6 +492,22 @@ function SituacaoDoRobo({ robo }: { robo: RoboDoSci }) {
       {barra && <div className={'imp-robo-barra' + (robo.conectando && !robo.lendo ? ' conectando' : '')}><span style={robo.conectando && !robo.lendo ? undefined : { width: (robo.lendo ? 100 : Math.max(4, robo.pct)) + '%' }} /></div>}
       {texto && <span>{texto}</span>}
       {robo.andando && !robo.conectando && <button type="button" className="btn btn-ghost btn-sm imp-robo-cancelar" onClick={robo.cancelar} title="O robô para e fecha as janelas do SCI">Cancelar</button>}
+    </div>
+  );
+}
+
+/** O andamento da exclusão no SCI: a barra, o passo e o Cancelar; no lote, o lembrete da senha de segurança no PC. */
+function SituacaoDaExclusao({ exclusao }: { exclusao: ExcluirNoSci }) {
+  const senha = exclusao.andando && exclusao.doLote && /senha/i.test(exclusao.etapa);
+  const texto = exclusao.erro || (exclusao.andando ? (exclusao.conectando ? 'Chamando o robô do PC de ' + exclusao.rotulo + '…'
+    : senha ? 'O SCI pediu a senha de segurança: digite no PC de ' + exclusao.rotulo + ' para excluir ' + exclusao.alvo
+      : 'Excluindo ' + exclusao.alvo + ' no SCI' + (exclusao.etapa ? ' · ' + exclusao.etapa : '')) : '');
+  if (!exclusao.andando && !texto) return null;
+  return (
+    <div className={'imp-robo-fiscal sci-contab-robo' + (exclusao.erro ? ' ext-neg' : '')} role="status" aria-label={exclusao.andando ? 'Excluindo no SCI' : undefined}>
+      {exclusao.andando && <div className={'imp-robo-barra' + (exclusao.conectando ? ' conectando' : '')}><span style={exclusao.conectando ? undefined : { width: Math.max(4, exclusao.pct) + '%' }} /></div>}
+      {texto && <span>{texto}</span>}
+      {exclusao.andando && !exclusao.conectando && <button type="button" className="btn btn-ghost btn-sm imp-robo-cancelar" onClick={exclusao.cancelar} title="O robô para (as janelas do SCI ficam como estão)">Cancelar</button>}
     </div>
   );
 }

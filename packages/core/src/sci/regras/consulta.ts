@@ -27,6 +27,11 @@ export interface LancamentoDaConsulta {
   /** aaaa-mm-dd: quando entrou no SCI e a última alteração */
   lancadoEm: string;
   alteradoEm: string;
+  /**
+   * a coluna Lote (27/11/2026): no SCI é a primeira coluna da consulta e sai na planilha SEM título; o que o minimum importou leva
+   * ali o lote e a chave do lançamento (M583EDT001). Ausente nas consultas guardadas antes disso.
+   */
+  lote?: string;
 }
 
 type Campo = keyof LancamentoDaConsulta;
@@ -36,6 +41,7 @@ const TITULOS: Record<Campo, readonly string[]> = {
   documento: ['n doc.', 'n doc', 'no doc.', 'documento'], tipo: ['tipo de lancamento'],
   participanteD: ['participante a debito'], participanteC: ['participante a credito'],
   lancadoEm: ['data lancamento', 'data do lancamento'], alteradoEm: ['data ultima alteracao', 'data da ultima alteracao'],
+  lote: ['lote'],
 };
 const titulo = (v: unknown) => semAcento(String(v ?? '')).replace(/[º°]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -78,6 +84,8 @@ export function lancamentosDaConsulta(aoa: readonly (readonly unknown[])[]): Lan
   if (i < 0) return null;
   const ts = aoa[i].map(titulo);
   const col = Object.fromEntries((Object.keys(TITULOS) as Campo[]).map(c => [c, ts.findIndex(t => TITULOS[c].includes(t))])) as Record<Campo, number>;
+  // o Lote sai sem título, na primeira coluna (a consulta do Vitor, 27/11/2026)
+  if (col.lote < 0 && ts.length && !ts[0]) col.lote = 0;
   const texto = (r: readonly unknown[], c: Campo) => (col[c] < 0 ? '' : String(r[col[c]] ?? '').trim());
   const lidos: LancamentoDaConsulta[] = [];
   for (const r of aoa.slice(i + 1)) {
@@ -89,6 +97,7 @@ export function lancamentosDaConsulta(aoa: readonly (readonly unknown[])[]): Lan
       historico: texto(r, 'historico'), complemento: texto(r, 'complemento'), documento: texto(r, 'documento'), tipo: texto(r, 'tipo'),
       participanteD: texto(r, 'participanteD'), participanteC: texto(r, 'participanteC'),
       lancadoEm: col.lancadoEm < 0 ? '' : dataDaConsulta(r[col.lancadoEm]), alteradoEm: col.alteradoEm < 0 ? '' : dataDaConsulta(r[col.alteradoEm]),
+      lote: texto(r, 'lote').toUpperCase(),
     });
   }
   return lidos;
@@ -159,7 +168,7 @@ export function periodoDaCompetenciaDoSci(c: string): { de: string; ate: string 
 
 /** o que identifica um lançamento da consulta (sem a data da última alteração: o mesmo lançamento, alterado, muda os campos) */
 const chaveDaConsulta = (l: LancamentoDaConsulta) =>
-  [l.data, l.debito, l.credito, l.valor, l.historico, l.complemento, l.documento, l.tipo, l.participanteD, l.participanteC, l.lancadoEm].join('\u0001');
+  [l.data, l.debito, l.credito, l.valor, l.historico, l.complemento, l.documento, l.tipo, l.participanteD, l.participanteC, l.lancadoEm, l.lote || ''].join('\u0001');
 
 export interface ConsultasJuntas {
   lancamentos: LancamentoDaConsulta[];

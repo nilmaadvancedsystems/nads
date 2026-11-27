@@ -6,7 +6,7 @@ import { planilhaDeImportacao } from '../extratudo/creditor/arquivos/gerar';
 import {
   COLUNAS_DO_SCI, centavos, dataIso, documentoComMascara, lancamentosParaOSci, lerDePara, lerPlanilhaDoNads,
   classificacaoNormal, conferirComOBalancete, deParaPeloPlano, lerBalanceteDoSci, naturezaDaConta, saldosInvertidos, valorDoBalancete, juntarDePara, mapaDoDePara, planilhaDoDePara, planoDoSci, resumoDoDePara,
-  chaveDoLancamento, chavesDaPlanilha, empresaDoLote, lerLoteDoMinimum, loteDaOrigem, loteDoMes, loteDoMinimum, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci, TAMANHO_DA_BASE_DO_LOTE, TAMANHO_DO_LOTE,
+  chaveDoLancamento, chavesDaPlanilha, empresaDoLote, exclusaoPeloLote, lerLoteDoMinimum, loteDaOrigem, loteDoMes, loteDoMinimum, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci, TAMANHO_DA_BASE_DO_LOTE, TAMANHO_DO_LOTE,
 } from './index';
 
 const CNPJ = '11222333000181';
@@ -129,6 +129,14 @@ describe('a planilha do SCI', () => {
     expect(empresaDoLote('M7ABCDE001')).toBe(7);
     expect(empresaDoLote('NADS2611')).toBeNull();
     expect(empresaDoLote('M583KQ001')).toBeNull();
+    // o que dá para excluir no SCI: a chave e a base; o primeiro formato só o lote; de outra empresa ou de fora, nada
+    expect(exclusaoPeloLote('m583kqt012', 583)).toEqual({ lote: 'M583KQT', chave: 'M583KQT012' });
+    expect(exclusaoPeloLote('M583KQT', 583)).toEqual({ lote: 'M583KQT', chave: null });
+    expect(exclusaoPeloLote('M00583BR6W', 583)).toEqual({ lote: 'M00583BR6W', chave: null });
+    expect(exclusaoPeloLote('M583KQT012', 584)).toBeNull();
+    expect(exclusaoPeloLote('M00584BR6W', 583)).toBeNull();
+    expect(exclusaoPeloLote('NADS2611', 583)).toBeNull();
+    expect(exclusaoPeloLote('', 583)).toBeNull();
     const s = lancamentosParaOSci(lerPlanilhaDoNads(doNads, 'lancatudo.xls'), { cnpjEmpresa: CNPJ, historicoPadrao: '116' });
     s[1].problemas.push('teste');
     expect(chavesDaPlanilha(s, 'M583KQT')).toEqual(['M583KQT001', '', 'M583KQT002']);
