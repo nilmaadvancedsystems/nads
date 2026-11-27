@@ -36,6 +36,10 @@ try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }
 catch (err) { log('atendente de IA desligado:', err.message); }
 try { require('./suporte-claude').iniciarSuporteClaude({ db, log }); }
 catch (err) { log('suporte desligado:', err.message); }
+// o WhatsApp do robô da nuvem pergunta aqui o que o cliente quis dizer (27/11/2026, whatsapp-claude.js; só com a chave
+// "Entender com o Claude do escritório" ligada a nuvem manda pedidos)
+try { require('./whatsapp-claude').iniciarWhatsappClaude({ db, log }); }
+catch (err) { log('o Claude do WhatsApp não ligou:', err.message); }
 // a Central dos robôs (07/11/2026, central.js): os comandos do site robos-nilma para este PC (lista fechada), o espelho do
 // log e o estado da máquina. O atendente de IA sabe pausar (para de atender; retomar liga de novo).
 try {

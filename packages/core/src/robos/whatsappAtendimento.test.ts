@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -25,7 +25,7 @@ describe('as chaves', () => {
   });
   it('grava só os campos conhecidos e recusa código estranho', () => {
     const g = chavesParaGravar({ ...CHAVES_DESLIGADAS, mandei: true, empresaDeTeste: '77' }, 'Ana', '2026-11-27T15:00:00.000Z');
-    expect(Object.keys(g).sort()).toEqual(['atualizadoEm', 'atualizadoPor', 'autoatendimento', 'boletos', 'empresaDeTeste', 'guias', 'liberado', 'mandei', 'numerosDeTeste', 'respostas']);
+    expect(Object.keys(g).sort()).toEqual(['atualizadoEm', 'atualizadoPor', 'autoatendimento', 'boletos', 'empresaDeTeste', 'guias', 'ia', 'liberado', 'mandei', 'numerosDeTeste', 'respostas']);
     expect(g.mandei).toBe(true);
     expect(() => chavesParaGravar({ ...CHAVES_DESLIGADAS, empresaDeTeste: 'x1' }, 'Ana', '')).toThrow(/código/);
   });
@@ -277,5 +277,40 @@ describe('a espera do autoatendimento e o registro', () => {
     expect(linhaComChaves('Session error:Error: Bad MAC')).toBe(true);
     expect(linhaComChaves('whatsapp: conectado')).toBe(false);
     expect(linhaComChaves({ a: 1 })).toBe(false);
+  });
+});
+
+describe('o Claude do escritório entendendo o cliente', () => {
+  it('só o texto livre vai ao Claude', () => {
+    expect(vaiAoClaude('me manda o DAS de outubro')).toBe(true);
+    expect(vaiAoClaude('2')).toBe(false);
+    expect(vaiAoClaude('menu')).toBe(false);
+    expect(vaiAoClaude('Bom dia')).toBe(false);
+    expect(vaiAoClaude('👍')).toBe(false);
+  });
+  it('a pergunta leva a empresa e o texto, sem números longos', () => {
+    const p = perguntaAoClaude('meu cpf é 12345678901, cadê o boleto?', 'PADARIA BOA LTDA');
+    expect(p).toContain('Empresa: Padaria Boa LTDA');
+    expect(p).toContain('meu cpf é [número], cadê o boleto?');
+    expect(INSTRUCOES_DO_CLAUDE).toContain('2 = Boleto de honorários');
+  });
+  it('a resposta do Claude vira a opção; o resto é null', () => {
+    expect(opcaoDoClaude('{"opcao": 1}')).toBe(1);
+    expect(opcaoDoClaude('Claro! {"opcao":3}')).toBe(3);
+    expect(opcaoDoClaude('{"opcao": 0}')).toBe(0);
+    expect(opcaoDoClaude('{"opcao": null}')).toBeNull();
+    expect(opcaoDoClaude('{"opcao": 9}')).toBeNull();
+    expect(opcaoDoClaude('não sei')).toBeNull();
+  });
+  it('a opção do Claude é atendida como o número digitado', () => {
+    const p = passoComOClaude(null, 1, [PADARIA], AGORA);
+    expect(p?.acao).toEqual({ tipo: 'guias', empresa: PADARIA });
+    expect(passoComOClaude(null, 4, [PADARIA], AGORA)?.responder).toBe(TEXTO_DO_ESCRITORIO);
+    // o "obrigado" (0) com a conversa aberta não responde; sem conversa, abre o menu
+    const aberto = passoDoAtendimento(null, 'oi', [PADARIA], AGORA).conversa;
+    expect(passoComOClaude(aberto, 0, [PADARIA], AGORA + 60000)?.responder).toBe('');
+    expect(passoComOClaude(null, 0, [PADARIA], AGORA)?.responder).toContain('Escolha uma opção');
+    // com mais de uma empresa e nenhuma escolhida, o Claude não decide
+    expect(passoComOClaude(null, 1, [PADARIA, MERCADO], AGORA)).toBeNull();
   });
 });

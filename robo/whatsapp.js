@@ -461,12 +461,43 @@ async function empresasDoNumero(numero, teste) {
   return lista.slice(0, 9);
 }
 
+/**
+ * Pergunta ao Claude do PC do escritório (robo/whatsapp-claude.js, no claude-do-pc.js) qual opção do menu o cliente quis:
+ * deixa a pergunta em whatsappInterpretacoes/{id}, espera até ESPERA_DO_CLAUDE_MS e apaga. null = sem resposta (o PC
+ * desligado, o Claude sem limite, ou não deu para saber). O teste troca por um de mentira.
+ */
+let perguntarAoClaude = async (textoDoCliente, empresa) => {
+  const ref = await st.db.collection('whatsappInterpretacoes').add({ status: 'pendente', pergunta: W.perguntaAoClaude(textoDoCliente, empresa), criadoEm: agoraIso() });
+  try {
+    return await new Promise(ok => {
+      let parar = () => {};
+      const fim = setTimeout(() => { parar(); ok(null); }, W.ESPERA_DO_CLAUDE_MS);
+      parar = ref.onSnapshot(s => {
+        const d = s.data() || {};
+        if (d.status !== 'feito' && d.status !== 'erro') return;
+        clearTimeout(fim); parar();
+        ok(d.status === 'feito' && Number.isInteger(d.opcao) ? d.opcao : null);
+      }, () => { clearTimeout(fim); ok(null); });
+    });
+  } finally {
+    await ref.delete().catch(() => {});
+  }
+};
+
 /** O autoatendimento: a regra (core) diz o que responder e o que buscar; aqui só busca e manda. */
 async function atender(r, agora) {
   const teste = numerosDeTeste().some(t => W.mesmoNumero(t, r.numero));
   if (!chaves.liberado && !teste) return;
   const empresas = await empresasDoNumero(r.numero, teste);
-  const passo = W.passoDoAtendimento(atendimentos[r.numero] || null, r.texto, empresas, agora, ultimoPedidoPara(r.numero));
+  const guardada = atendimentos[r.numero] || null;
+  let passo = null;
+  // o texto livre ("me manda o DAS") vai ao Claude do PC do escritório (chave ia): ele só escolhe a opção do menu
+  if (chaves.ia && W.vaiAoClaude(r.texto) && empresas.length) {
+    const empresa = (guardada && guardada.empresa && empresas.find(e => e.codigo === guardada.empresa.codigo)) || (empresas.length === 1 ? empresas[0] : null);
+    const opcao = empresa ? await perguntarAoClaude(r.texto, empresa.nome).catch(() => null) : null;
+    if (opcao !== null) passo = W.passoComOClaude(guardada, opcao, empresas, agora, ultimoPedidoPara(r.numero));
+  }
+  if (!passo) passo = W.passoDoAtendimento(guardada, r.texto, empresas, agora, ultimoPedidoPara(r.numero));
   atendimentos[r.numero] = Object.assign({}, passo.conversa, { empresas: [] });
   guardarJson(ARQUIVO_DO_ATENDIMENTO, atendimentos, 'o autoatendimento');
   if (passo.responder) await enviar(r.numero, { text: passo.responder }, true);
@@ -584,7 +615,8 @@ async function atenderComando(p) {
  * Só para o teste (robo/teste-whatsapp.js): um banco e um socket de mentira, as chaves do teste, os arquivos numa pasta
  * temporária e sem a espera entre as mensagens. Nunca chamado pelo vigia.
  */
-function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso }) {
+function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso, claudeFalso }) {
+  if (claudeFalso) perguntarAoClaude = claudeFalso;
   st = { db, log: log || (() => {}), roboRef: { set: async () => {} }, painel: null };
   sock = sockFalso;
   estado = { situacao: 'conectado', numero: '553800000000', motivo: '' };

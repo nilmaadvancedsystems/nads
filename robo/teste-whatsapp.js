@@ -93,8 +93,14 @@ const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'nads-whatsapp-'));
 const BOLETO_PDF = Buffer.from('%PDF-boleto');
 
 let esperas = [];
+// o Claude do escritório de mentira: anota as perguntas e responde a opção combinada (null = não entendeu)
+let perguntasAoClaude = [];
+let opcaoDoClaude = null;
+const claudeFalso = async (textoDoCliente, empresa) => { perguntasAoClaude.push([textoDoCliente, empresa]); return opcaoDoClaude; };
 function cenario(chaves) {
   esperas = [];
+  perguntasAoClaude = [];
+  opcaoDoClaude = null;
   const db = bancoFalso({
     'clientes/c1': { ativo: true, codigoOrigem: '123', nome: 'Padaria Boa', telefone: '(38) 99999-1234' },
     'clientes/c2': { ativo: true, codigoOrigem: '456', nome: 'Mercado Bom', telefone: '(38) 3221-0000' },
@@ -107,7 +113,7 @@ function cenario(chaves) {
   });
   const sock = socketFalso();
   for (const f of fs.readdirSync(pasta)) fs.rmSync(path.join(pasta, f));
-  Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta, esperarFalso: async ms => { esperas.push(ms); } });
+  Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta, esperarFalso: async ms => { esperas.push(ms); }, claudeFalso });
   return { db, sock };
 }
 const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith('solicitacoesEmail/') && v.tipo === 'whatsapp');
@@ -242,6 +248,47 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     console.info('whatsapp: conectado');
     console.info = antes;
     igual('a linha com as chaves some; a outra passa', vistos, ['whatsapp: conectado']);
+  }
+
+  // ---------- 6e. o Claude do escritório entendendo o cliente (chave ia) ----------
+  {
+    const { sock } = cenario({ autoatendimento: true, empresaDeTeste: '123' });
+    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda o DAS de outubro'));
+    igual('chave ia desligada: o Claude não é perguntado', perguntasAoClaude.length, 0);
+    verdade('e o cliente recebe o menu', sock.mandadas[0] && sock.mandadas[0].text.includes('Escolha uma opção'));
+  }
+  {
+    const { sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
+    opcaoDoClaude = 1;
+    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda o DAS de outubro'));
+    igual('a pergunta vai com o texto e a empresa', perguntasAoClaude, [['me manda o DAS de outubro', 'Padaria Boa']]);
+    igual('o Claude disse 1: vai a guia, sem passar pelo menu', [sock.mandadas.length, sock.mandadas[0] && sock.mandadas[0].fileName], [1, 'DAS 10-2026.pdf']);
+    await Z.receber(texto(CELULAR_DO_TESTE, '2'));
+    igual('o número digitado não passa pelo Claude', perguntasAoClaude.length, 1);
+    igual('e é atendido (o boleto)', sock.mandadas[1] && sock.mandadas[1].fileName, 'Boleto de honorários - Padaria Boa.pdf');
+  }
+  {
+    const { sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
+    opcaoDoClaude = null;
+    await Z.receber(texto(CELULAR_DO_TESTE, 'blablabla qualquer coisa'));
+    verdade('o Claude não entendeu (ou o PC está desligado): segue o menu de sempre', sock.mandadas[0] && sock.mandadas[0].text.includes('Escolha uma opção'));
+  }
+
+  // ---------- 6f. o lado do PC do escritório (whatsapp-claude.js) ----------
+  {
+    const C = require('./whatsapp-claude');
+    const db = bancoFalso({ 'whatsappInterpretacoes/p1': { status: 'pendente', pergunta: 'Empresa: X\n<<<\nme manda o boleto\n>>>' } });
+    db.runTransaction = async fn => fn({ get: r => r.get(), update: (r, d) => r.update(d) });
+    let recebida = '';
+    const opcao = await C.atender(db, db.doc('whatsappInterpretacoes/p1'), { rodar: async p => { recebida = p; return '{"opcao": 2}'; } });
+    igual('o PC pergunta ao Claude e grava a opção', [opcao, db._docs.get('whatsappInterpretacoes/p1').status, db._docs.get('whatsappInterpretacoes/p1').opcao], [2, 'feito', 2]);
+    verdade('o Claude recebe a pergunta da nuvem', recebida.includes('me manda o boleto'));
+    igual('o mesmo pedido não é atendido duas vezes', await C.atender(db, db.doc('whatsappInterpretacoes/p1'), { rodar: async () => '{"opcao": 1}' }), null);
+    const args = C.argumentos();
+    verdade('o Claude roda sem nenhuma ferramenta e sem guardar sessão', args[args.indexOf('--tools') + 1] === '' && args.includes('--no-session-persistence'));
+    db._docs.set('whatsappInterpretacoes/p2', { status: 'pendente', pergunta: 'x' });
+    await C.atender(db, db.doc('whatsappInterpretacoes/p2'), { rodar: async () => { throw new Error('limite de uso'); } });
+    igual('o Claude falhou: o pedido fica com o erro (a nuvem segue sem ele)', db._docs.get('whatsappInterpretacoes/p2').status, 'erro');
   }
 
   // ---------- 7. o freio ----------
