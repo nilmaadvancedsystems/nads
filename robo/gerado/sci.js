@@ -101,7 +101,9 @@ function lerPublicacaoDoSci(x) {
 		visualizado: sim(p.visualizado),
 		vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
 		pagamentoEm: dataDoSci(p.dataPagamento),
-		valorPago: Number.isFinite(valorPago) ? valorPago : 0
+		valorPago: Number.isFinite(valorPago) ? valorPago : 0,
+		funcionario: texto$1(p.nomeFuncionario),
+		tipoFolha: texto$1(p.tipoFolha)
 	};
 }
 function lerPaginaDePublicados(resposta) {
@@ -125,12 +127,12 @@ function janelaDoSci(hoje, meses = 3) {
 }
 function consultaDePublicados(p) {
 	const q = new URLSearchParams({
-		tipoDocumento: "imposto",
+		tipoDocumento: p.recibos ? "relatorio" : "imposto",
 		status: "todos",
 		empresaId: String(p.empresaId),
 		referenciaInicial: referenciaDoSci(p.de),
 		referenciaFinal: referenciaDoSci(p.ate),
-		individual: "false",
+		individual: p.recibos ? "true" : "false",
 		page: String(p.pagina ?? 1),
 		registrosPorPagina: String(200)
 	});
@@ -244,6 +246,22 @@ function criarClienteSciReport(deps) {
 			const id = empresaDoSciPeloDocumento(lerEmpresasDoSci(await chamar("GET", "/api/v1/empresa/busca/?" + new URLSearchParams({ numeroDocumento: formatado }).toString())), d);
 			empresas.set(d, id);
 			return id;
+		},
+		async individuais(empresaId, de, ate, publicadosId) {
+			const todas = [];
+			for (let pagina = 1; pagina <= MAX_PAGINAS$2; pagina++) {
+				const p = lerPaginaDePublicados(await chamar("GET", "/api/v1/publicados/busca?" + consultaDePublicados({
+					empresaId,
+					de,
+					ate,
+					pagina,
+					publicadosId,
+					recibos: true
+				})));
+				todas.push(...p.itens.filter((x) => x.empresaId === empresaId && x.individual));
+				if (p.paginaAtual >= p.ultimaPagina) break;
+			}
+			return todas;
 		},
 		async publicacoes(empresaId, de, ate, publicadosId) {
 			const todas = [];

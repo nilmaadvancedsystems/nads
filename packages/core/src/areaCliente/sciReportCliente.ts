@@ -4,6 +4,7 @@
 // Os tokens nunca vão para o navegador, para o banco nem para o log: só o JWT de 1 hora fica na memória.
 import {
   acessoDaArea, consultaDePublicados, empresaDoSciPeloDocumento, guiasDoSciReport, janelaDoSci, lerEmpresasDoSci, lerLoginDoSci,
+  recibosDoSciReport, SCI_MESES_DE_RECIBO, type ReciboDoSci,
   lerPaginaDePublicados, sessaoDoSciAindaAceita, sessaoDoSciVale, urlDoPdfDoSci, SCI_AUTH, SCI_RELATORIO,
   type AcessoDaArea, type GuiaDoSciReport, type LinkDaArea, type LoginDaArea, type PublicacaoDoSci, type SessaoDoSci,
 } from './sciReport';
@@ -43,6 +44,8 @@ export interface ClienteSciReport {
   empresaPeloDocumento(documento: string): Promise<number | null>;
   /** os impostos publicados da empresa entre duas competências ('aaaa-mm') */
   publicacoes(empresaId: number, de: string, ate: string, publicadosId?: number): Promise<PublicacaoDoSci[]>;
+  /** (27/11/2026) as publicações individuais (os recibos de cada pessoa) da empresa entre duas competências */
+  individuais(empresaId: number, de: string, ate: string, publicadosId?: number): Promise<PublicacaoDoSci[]>;
   /** a URL temporária do PDF (com o token da contabilidade não marca como visto no SCI) */
   urlDoPdf(publicadosId: number, empresaId: number): Promise<string>;
   /**
@@ -108,6 +111,15 @@ export function criarClienteSciReport(deps: { buscar: BuscarNoSci; segredos: () 
       empresas.set(d, id);
       return id;
     },
+    async individuais(empresaId, de, ate, publicadosId) {
+      const todas: PublicacaoDoSci[] = [];
+      for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
+        const p = lerPaginaDePublicados(await chamar('GET', '/api/v1/publicados/busca?' + consultaDePublicados({ empresaId, de, ate, pagina, publicadosId, recibos: true })));
+        todas.push(...p.itens.filter(x => x.empresaId === empresaId && x.individual));
+        if (p.paginaAtual >= p.ultimaPagina) break;
+      }
+      return todas;
+    },
     async publicacoes(empresaId, de, ate, publicadosId) {
       const todas: PublicacaoDoSci[] = [];
       for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
@@ -166,9 +178,15 @@ export interface DepsDaArea {
 export type RespostaDasGuias = { acesso: 'liberado'; guias: GuiaDoSciReport[]; semEmpresaNoSci: number; desligado?: true } | { acesso: Exclude<AcessoDaArea, 'liberado'> };
 export type RespostaDoPdf = { acesso: 'liberado'; url: string } | { acesso: Exclude<AcessoDaArea, 'liberado'> | 'guia de outra empresa' };
 
+export type RespostaDosRecibos = { acesso: 'liberado'; recibos: ReciboDoSci[] } | { acesso: Exclude<AcessoDaArea, 'liberado'> };
+
 export interface AtendimentoDaArea {
   guias(token: string, idToken: string, hoje: Date): Promise<RespostaDasGuias>;
   pdf(token: string, idToken: string, publicadosId: string, hoje: Date): Promise<RespostaDoPdf>;
+  /** (27/11/2026) os recibos das pessoas das empresas do link (o último ano) */
+  recibos(token: string, idToken: string, hoje: Date): Promise<RespostaDosRecibos>;
+  /** o PDF de um recibo: só se ele é de uma empresa DESTE link */
+  pdfDoRecibo(token: string, idToken: string, publicadosId: string, hoje: Date): Promise<RespostaDoPdf>;
 }
 
 export function criarAtendimentoDaArea(deps: DepsDaArea): AtendimentoDaArea {
@@ -204,6 +222,29 @@ export function criarAtendimentoDaArea(deps: DepsDaArea): AtendimentoDaArea {
       const publicacoes: PublicacaoDoSci[] = [];
       for (const id of ids) publicacoes.push(...await deps.sci.publicacoes(id, de, ate));
       return { acesso, guias: guiasDoSciReport(publicacoes, hoje), semEmpresaNoSci };
+    },
+    async recibos(token, idToken, hoje) {
+      const acesso = await conferir(token, idToken);
+      if (acesso !== 'liberado') return { acesso };
+      const doLink = await empresasDoLink(token);
+      if (!doLink) return { acesso, recibos: [] };
+      const { de, ate } = janelaDoSci(hoje, SCI_MESES_DE_RECIBO);
+      const publicacoes: PublicacaoDoSci[] = [];
+      for (const id of doLink.ids) publicacoes.push(...await deps.sci.individuais(id, de, ate));
+      return { acesso, recibos: recibosDoSciReport(publicacoes) };
+    },
+    async pdfDoRecibo(token, idToken, publicadosId, hoje) {
+      const acesso = await conferir(token, idToken);
+      if (acesso !== 'liberado') return { acesso };
+      const id = Number(publicadosId);
+      if (!Number.isInteger(id) || id <= 0) return { acesso: 'guia de outra empresa' };
+      // como na guia: só abre o recibo de uma empresa DESTE link, dentro do ano que a Área mostra
+      const { de, ate } = janelaDoSci(hoje, SCI_MESES_DE_RECIBO);
+      for (const empresaId of (await empresasDoLink(token))?.ids ?? []) {
+        const achou = recibosDoSciReport(await deps.sci.individuais(empresaId, de, ate, id)).some(r => r.id === String(id));
+        if (achou) return { acesso, url: await deps.sci.urlDoPdf(id, empresaId) };
+      }
+      return { acesso: 'guia de outra empresa' };
     },
     async pdf(token, idToken, publicadosId, hoje) {
       const acesso = await conferir(token, idToken);
