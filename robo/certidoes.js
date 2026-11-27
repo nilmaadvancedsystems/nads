@@ -102,7 +102,7 @@ async function atenderPedidos(o) {
         throw Object.assign(new Error(r.erro), { final: !!r.final });
       }
       const c = org.ler(P)(r.texto);
-      if (!c) throw new Error('a página aberta não é a certidão');
+      if (!c) throw new Error('a página aberta não é a certidão · tela: ' + String(r.texto || '').replace(/\s+/g, ' ').slice(0, 400));
       if (c.cnpj && c.cnpj.slice(0, 8) !== String(p.cnpj).slice(0, 8)) throw Object.assign(new Error('a certidão é de outro CNPJ (' + c.cnpj + ')'), { final: true });
       const bytes = r.pdf;
       if (!bytes || bytes.length < 5 || Buffer.from(bytes.slice(0, 5)).toString('latin1') !== '%PDF-') throw new Error('o PDF da certidão não saiu');
@@ -183,13 +183,21 @@ function criarPortalDeTaiobeiras(log) {
         await dormirPadrao(1500);
         await esperarLivre();
         // o campo do CNPJ: limpar, voltar ao começo e digitar tecla por tecla
+        // 27/11/2026, a terceira volta: o campo aparece depois que a tela se redesenha (ao marcar o modelo e o filtro); o robô
+        // espera o campo com a máscara do CNPJ ("__.___.___/____-__") e escolhe ele, não a busca do alto da página
+        await page.waitForFunction(() => [...document.querySelectorAll('input')].some(e => /_\._|__\./.test(e.placeholder || '') && e.getBoundingClientRect().width > 0), { timeout: 45000, polling: 500 }).catch(() => {});
         const temCampo = await page.evaluate(() => {
-          const c = [...document.querySelectorAll('input[type=text]')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !/pesquis|digite o que/i.test(e.placeholder || ''); }).pop();
+          const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+          const todos = [...document.querySelectorAll('input')].filter(e => vis(e) && !/radio|checkbox|hidden|button|submit/i.test(e.type || ''));
+          const c = todos.find(e => /_\._|__\./.test(e.placeholder || '')) || todos.filter(e => !/pesquis|digite o que/i.test(e.placeholder || '') && !/tt-hint|tt-input/.test(e.className || '')).pop();
           if (!c) return false;
           c.setAttribute('data-nads-cnpj', '1');
           return true;
         }).catch(() => false);
-        if (!temCampo) return { erro: 'não achei o campo do CNPJ' };
+        if (!temCampo) {
+          const naTela = String(await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '')).replace(/\s+/g, ' ').slice(0, 300);
+          return { erro: 'não achei o campo do CNPJ · tela: ' + naTela };
+        }
         const campo = await page.$('[data-nads-cnpj="1"]');
         await campo.click({ clickCount: 3 });
         await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
