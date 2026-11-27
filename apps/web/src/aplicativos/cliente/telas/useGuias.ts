@@ -146,7 +146,7 @@ export function useGuias(props: DaCasca) {
     copiarPix: (c: string) => copiar(c, 'Pix copia e cola'),
     // o mesmo padrão da Central (13/11/2026): as setas da janela andam pelas guias a pagar; todas num .zip
     setas: vista.setas(comPdf.map(g => g.id), id => repoAreaCliente.baixarGuia(token, id)),
-    comPdf: comPdf.length, juntando: zip.juntando,
+    comPdf: comPdf.length, juntando: zip.juntando, separados: zip.separados,
     baixarTodas: () => { void zip.baixarVarios(comPdf.map(g => g.id), id => repoAreaCliente.baixarGuia(token, id), nomeDoZip(area.resumo?.empresas?.[0]?.nome ?? '', mes, 'Guias')); },
   };
 }

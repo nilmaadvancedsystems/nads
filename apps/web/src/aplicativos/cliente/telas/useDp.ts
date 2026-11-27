@@ -242,7 +242,7 @@ export function useDp({ token, area, hoje }: DaCasca) {
     vista, verDoc: (id: string) => vista.ver(id, () => repoAreaCliente.baixarDocumentoDp(token, id)),
     // o mesmo padrão da Central (13/11/2026): as setas andam pelos documentos do mês; a folha do mês num .zip
     setas: vista.setas(docsDoMes.map(d => d.id), id => repoAreaCliente.baixarDocumentoDp(token, id)),
-    docsDoMesN: docsDoMes.length, juntando: zip.juntando,
+    docsDoMesN: docsDoMes.length, juntando: zip.juntando, separados: zip.separados,
     baixarFolha: () => { void zip.baixarVarios(docsDoMes.map(d => d.id), id => repoAreaCliente.baixarDocumentoDp(token, id), nomeDoZip(area.resumo?.empresas?.[0]?.nome ?? '', mes, 'Folha')); },
     busca, mudarBusca: setBusca,
     // os documentos do mês, por categoria

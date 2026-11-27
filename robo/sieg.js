@@ -545,6 +545,21 @@ function seriesDasNotas(notas) {
 }
 
 /** As saídas (NF-e e NFC-e emitidas) do resumo das notas dos XMLs, no formato do seriesDasNotas. */
+/**
+ * As notas de serviço (NFS-e) emitidas no mês, sem as canceladas: quantas e o valor (27/11/2026: a Zelo, 602, só emite
+ * NFS-e e o faturamento vinha zerado). Vão junto das séries em siegSaidas; a relação de faturamento do Fiscal e a Área do
+ * Cliente somam. null = o mês não tem nota de serviço.
+ */
+function servicosDoResumo(emitidas) {
+  const validas = (emitidas || []).filter(n => n && n.tipo === 'NFS-e' && !n.cancelada);
+  if (!validas.length) return null;
+  return { notas: validas.length, valor: Math.round(validas.reduce((t, n) => t + (Number(n.valor) || 0), 0) * 100) / 100 };
+}
+/** As saídas do mês para siegSaidas: as séries de NF-e/NFC-e e as notas de serviço (sem elas, o campo fica de fora). */
+function saidasParaGravar(base, emitidas) {
+  const servicos = servicosDoResumo(emitidas);
+  return Object.assign({}, base, { series: seriesDasNotas(saidasDoResumo(emitidas)) }, servicos ? { servicos } : {});
+}
 const saidasDoResumo = emitidas => emitidas.filter(n => n.tipo === 'NF-e' || n.tipo === 'NFC-e')
   .map(n => ({ chave: n.chave, modelo: n.tipo === 'NFC-e' ? '65' : '55', serie: String(n.serie || ''), numero: Number(n.numero) || 0, valor: Number(n.valor) || 0, cancelada: !!n.cancelada }));
 
@@ -783,6 +798,55 @@ async function procurarCancelamentos({ itens, memoria, lerResumo, baixar, pedir,
     if (log) log('SIEG: cancelamentos de', it.codigo, it.comp, '-', novas.length, 'novo(s) desde o último download: o mês vai ser baixado de novo');
   }
   return r;
+}
+
+// o arquivo que diz que o preenchimento das notas de serviço já rodou neste PC (a versão muda = roda de novo)
+const SERVICOS_PREENCHIDOS = path.join(require('./pastas-locais').ROBO, 'sieg-servicos-preenchidos.json');
+const VERSAO_DOS_SERVICOS = 1;
+
+/**
+ * As notas de serviço (NFS-e) dos meses já baixados (27/11/2026: "resolve todas as empresas que possam vir a ter esse
+ * problema"). Até hoje a saída do mês (siegSaidas) só tinha NF-e e NFC-e; o resumo do mês (siegNotas) tem as NFS-e.
+ * Lê, uma vez, os resumos de janeiro do ano passado em diante (os meses que o faturamento mostra) e acrescenta o total
+ * das notas de serviço na saída de cada mês que tem alguma. Não mexe nas séries.
+ */
+async function preencherServicosDosMesesBaixados(db, log) {
+  try {
+    const feito = JSON.parse(fs.readFileSync(SERVICOS_PREENCHIDOS, 'utf8'));
+    if (feito && feito.versao >= VERSAO_DOS_SERVICOS) return;
+  } catch { /* ainda não rodou neste PC */ }
+  const desde = (new Date().getFullYear() - 1) + '-01';
+  let lidos = 0, gravados = 0;
+  try {
+    // de 50 em 50 (o resumo de um mês pode ter perto de 1 MB): não segura tudo na memória
+    let depois = null;
+    for (;;) {
+    let q = db.collection('siegNotas').where('competencia', '>=', desde).orderBy('competencia').limit(50);
+    if (depois) q = q.startAfter(depois);
+    const snap = await q.get();
+    if (snap.empty) break;
+    depois = snap.docs[snap.docs.length - 1];
+    for (const d of snap.docs) {
+      const x = d.data();
+      if (!Array.isArray(x.emitidas) || !x.codigo) continue;
+      lidos++;
+      const servicos = servicosDoResumo(x.emitidas);
+      if (!servicos) continue;
+      // a saída do mês existe quando o mês foi baixado; sem ela, cria só com as notas de serviço (sem séries de venda)
+      const ref = db.collection('siegSaidas').doc(d.id);
+      const atual = await ref.get();
+      if (atual.exists && atual.data().servicos && atual.data().servicos.valor === servicos.valor && atual.data().servicos.notas === servicos.notas) continue;
+      await ref.set(atual.exists ? { servicos } : { codigo: String(x.codigo), competencia: x.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(x.emitidas)), servicos }, { merge: true });
+      gravados++;
+    }
+    if (snap.size < 50) break;
+    }
+    fs.writeFileSync(SERVICOS_PREENCHIDOS, JSON.stringify({ versao: VERSAO_DOS_SERVICOS, em: new Date().toISOString(), lidos, gravados }));
+    log('SIEG: notas de serviço dos meses já baixados -', gravados, 'meses atualizados de', lidos, 'resumos');
+    painel.atividade('sieg', 'Somou as notas de serviço (NFS-e) dos meses já baixados', gravados + ' meses de ' + lidos + ' resumos');
+  } catch (err) {
+    log('SIEG: não consegui somar as notas de serviço dos meses já baixados (tenta de novo quando o robô reiniciar) -', motivo(err));
+  }
 }
 
 function iniciarSieg({ db, log }) {
@@ -1170,7 +1234,7 @@ function iniciarSieg({ db, log }) {
           emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
         }));
         // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
-        await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });
+        await db.collection('siegSaidas').doc(id).set(saidasParaGravar({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString() }, resumo.emitidas));
         // 3) a pasta do cliente no Drive: só os XMLs que ainda não estão lá (08/10/2026: "se já foi salvo uma vez, só
         // sobreponha os a mais e não salve no drive o que já foi salvo"). O nome do arquivo é a chave da nota: o mesmo
         // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
@@ -1212,7 +1276,7 @@ function iniciarSieg({ db, log }) {
                 codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: nomeDoZip, arquivos: arquivos.length, novos: arquivos.length,
                 emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
               })).catch(err => log('SIEG: não consegui juntar ao resumo de', p.codigo, 'o que só o Drive tinha -', motivo(err)));
-              await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) }).catch(err => log('SIEG: não consegui gravar as saídas de', p.codigo, '(' + motivo(err) + ')'));
+              await db.collection('siegSaidas').doc(id).set(saidasParaGravar({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString() }, resumo.emitidas)).catch(err => log('SIEG: não consegui gravar as saídas de', p.codigo, '(' + motivo(err) + ')'));
             }
             faltam = await faltamNoDrive(arquivos);
             numeros.jaSalvos = arquivos.length - faltam.length;
@@ -1340,7 +1404,8 @@ function iniciarSieg({ db, log }) {
         log('SIEG: portal não deu (' + motivo(err) + '), saídas de', p.codigo, 'pela API');
         series = await saidasDoMes(c, cnpj, p.competencia, andarSaidas);
       }
-      await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series });
+      // merge: as notas de serviço (servicos) que o download do mês gravou continuam (este pedido só traz NF-e e NFC-e)
+      await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series }, { merge: true });
       await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
       log('SIEG: saídas de', p.codigo, p.competencia, '-', series.reduce((s, x) => s + x.numeros.length, 0), 'notas');
       painel.atividade('sieg', 'Baixou as saídas de ' + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', series.reduce((s, x) => s + x.numeros.length, 0) + ' notas');
@@ -1355,6 +1420,8 @@ function iniciarSieg({ db, log }) {
   // of retries allowed") e ninguém religou; até o robô reiniciar, às 13:05, os pedidos só eram vistos no relógio de 10 em
   // 10 minutos (o 309 do Gustavo, às 10:36, esperou 7 min 32 s para começar). Agora ele volta (ouvinte.js) e, de reserva,
   // a fila é olhada a cada 2 minutos.
+  // uma vez por PC: as notas de serviço dos meses que já foram baixados antes de 27/11/2026 (o resumo do mês tem; a saída não)
+  setTimeout(() => { void preencherServicosDosMesesBaixados(db, log); }, 3 * 60 * 1000);
   const pararPedidos = ouvir('SIEG: pedidos', () => { filaViva = null; return db.collection('pedidosSieg').where('status', '==', 'pendente'); }, s => { filaViva = s.docs; filaVivaEm = Date.now(); if (!s.empty) atenderPedidos(); }, log);
   const relogioDaFila = setInterval(() => { if (!trabalhadores.ativos() && !contando) atenderPedidos(); }, 2 * 60 * 1000);
   pausaLocal.quandoRetomar('sieg', () => { void atenderPedidos(); });
@@ -1514,4 +1581,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); clearInterval(relogioDaFila); pararPedidos(); };
 }
 
-module.exports = { procurarCancelamentos, tiposComNotas, cancelamentosDe, canceladasDoResumo, eventoDeAntes, ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
+module.exports = { procurarCancelamentos, tiposComNotas, cancelamentosDe, canceladasDoResumo, eventoDeAntes, ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, servicosDoResumo, saidasParaGravar, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };

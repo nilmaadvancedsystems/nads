@@ -53,9 +53,10 @@ describe('o resumo das notas do mês', () => {
     ]);
   });
 
-  it('o serviço (NFS-e) à parte; sem venda nem serviço, null', () => {
+  it('o serviço (NFS-e) também é venda (no dia e no cliente, sem CFOP); sem venda nem serviço, null', () => {
     const r = notasDoMes(mes([nota({ tipo: 'NFS-e', valor: 1500 }), nota({ tipo: 'NFS-e', valor: 500, cancelada: true })]));
-    expect([r?.servicos, r?.clientes, r?.porDia.every(v => v === 0)]).toEqual([{ notas: 1, valor: 1500 }, [], true]);
+    expect(r?.servicos).toEqual({ notas: 1, valor: 1500 });
+    expect([r?.clientes.length, r?.clientes[0].valor, r?.cfops, r?.porDia.reduce((t, v) => t + v, 0)]).toEqual([1, 1500, [], 1500]);
     expect(notasDoMes(mes([nota({ valor: 10, cancelada: true })]))).toBeNull();
     expect(notasDoMes(null)).toBeNull();
   });

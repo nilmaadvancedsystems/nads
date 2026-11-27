@@ -36,7 +36,7 @@ export function Documentos(props: DaCasca) {
       {/* as pastas em cartões */}
       <nav className="cli-pastas-cartoes" aria-label="Pastas">
         {vm.pastas.map(p => (
-          <button key={p.id || 'tudo'} type="button" className={'cli-pasta-cartao t-' + p.tom + (p.ativa ? ' ativa' : '')} aria-current={p.ativa ? 'true' : undefined} onClick={() => vm.escolherPasta(p.id)}>
+          <button key={p.id || 'tudo'} type="button" className={'cli-pasta-cartao t-' + p.tom + (p.ativa ? ' ativa' : '') + (!p.n && !p.ativa && p.id ? ' vazia' : '')} aria-current={p.ativa ? 'true' : undefined} onClick={() => vm.escolherPasta(p.id)}>
             <span className="cli-pasta-cartao-ico" aria-hidden="true"><Icone nome={p.icone} width={17} height={17} /></span>
             <span className="cli-pasta-cartao-txt"><b>{p.n}</b><span>{p.rotulo}</span></span>
           </button>
@@ -61,7 +61,7 @@ export function Documentos(props: DaCasca) {
           <div key={g.mes} className="cli-biblioteca-mes">
             <div className="cli-biblioteca-mes-topo">
               <p className="cli-biblioteca-mes-titulo">{g.titulo}</p>
-              {g.abrem > 1 && <button type="button" className="cli-baixar-tudo" disabled={!!vm.juntando} onClick={g.baixarMes} title="Baixar os documentos do mês num .zip"><Icone nome="download" width={15} height={15} />Baixar o mês<span className="cli-baixar-n">{g.abrem}</span></button>}
+              {g.abrem > 1 && <button type="button" className="cli-baixar-tudo" disabled={!!vm.juntando} onClick={g.baixarMes} title={vm.separados ? 'Baixar os documentos do mês, um por um' : 'Baixar os documentos do mês num .zip'}><Icone nome="download" width={15} height={15} />Baixar o mês<span className="cli-baixar-n">{g.abrem}</span></button>}
             </div>
             <ul>
               {g.itens.map(i => (
@@ -108,7 +108,7 @@ export function Documentos(props: DaCasca) {
         <div className="cli-barra-marcados" role="region" aria-label="Documentos marcados">
           <b>{vm.juntando || (vm.marcadosN === 1 ? '1 marcado' : vm.marcadosN + ' marcados')}</b>
           {!vm.juntando && <button type="button" className="btn btn-ghost btn-sm" onClick={vm.desmarcar}>Desmarcar</button>}
-          <button type="button" className="btn btn-primary btn-sm" disabled={!!vm.juntando} onClick={vm.baixarMarcados}><Icone nome="download" width={16} height={16} />Baixar .zip</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!!vm.juntando} onClick={vm.baixarMarcados}><Icone nome="download" width={16} height={16} />{vm.separados ? 'Baixar' : 'Baixar .zip'}</button>
         </div>
       )}
 

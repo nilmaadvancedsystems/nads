@@ -24,7 +24,7 @@ describe('o faturamento do cliente', () => {
     const r = faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }, { codigo: 58, nome: 'SEM NOTA' }], ['2026-09', '2026-10', '2026-11'],
       (c, m) => base.get(c + '_' + m), new Date(2026, 10, 12, 10));
     expect(r?.empresas.map(e => [e.codigo, e.regime])).toEqual([[292, 'Simples']]);
-    expect(r?.fonte).toBe('SIEG · NF-e/NFC-e emitidas');
+    expect(r?.fonte).toBe('SIEG · NF-e/NFC-e/NFS-e emitidas');
     expect(r?.empresas[0].meses[1].series).toEqual([
       { modelo: '55', serie: '1', primeira: 1, ultima: 3, notas: 2, canceladas: 1, valor: 800 },
       { modelo: '65', serie: '1', primeira: 10, ultima: 11, notas: 2, canceladas: 0, valor: 400 },
@@ -36,6 +36,17 @@ describe('o faturamento do cliente', () => {
       ['2026-11', null, null, 0, null, null],
     ]);
     expect(faturamentoDoCliente([{ codigo: 58, nome: 'X' }], ['2026-10'], () => null, new Date())).toBeNull();
+  });
+
+  it('a nota de serviço (NFS-e) entra no total e nas notas (27/11/2026: a Zelo só emite NFS-e e vinha zerada)', () => {
+    const base = new Map([['292_2026-09', saida('292', '2026-09', 1000)]]);
+    const servicos = (v: number, n: number) => ({ porDia: [], clientes: [], totalClientes: 0, cfops: [], servicos: { notas: n, valor: v }, em: '' });
+    const notas = new Map([['292_2026-09', servicos(500, 1)], ['602_2026-10', servicos(27352.39, 2)]]);
+    const r = faturamentoDoCliente([{ codigo: 292, nome: 'FITO' }, { codigo: 602, nome: 'ZELO', regime: 'Presumido' }], ['2026-09', '2026-10'],
+      (c, m) => base.get(c + '_' + m), new Date(2026, 10, 27), (c, m) => notas.get(c + '_' + m));
+    expect(r?.fonte).toBe('SIEG · NF-e/NFC-e/NFS-e emitidas');
+    expect(r?.empresas[0].meses.map(m => [m.total, m.nfse ?? null, m.notas])).toEqual([[1500, 500, 3], [null, null, 0]]);
+    expect(r?.empresas[1].meses.map(m => [m.total, m.nfse ?? null, m.notas])).toEqual([[null, null, 0], [27352.39, 27352.39, 2]]);
   });
 
   it('com o PGDAS-D (25/11/2026): no Simples, o total do mês é só a receita declarada (o mês sem ela fica vazio); as notas continuam do SIEG', () => {
@@ -107,11 +118,11 @@ describe('o painel do Faturamento', () => {
     const ws = XLSX.read(bytes, { type: 'array', cellNF: true }).Sheets.Faturamento;
     const linhas = XLSX.utils.sheet_to_json<(string | number | null)[]>(ws, { header: 1, defval: null });
     expect(linhas[0][0]).toBe('FITO LTDA');
-    expect(linhas[3]).toEqual(['Mês', 'NF-e', 'NFC-e', 'Notas', 'Canceladas', 'Total', 'Variação (%)']);
+    expect(linhas[3]).toEqual(['Mês', 'NF-e', 'NFC-e', 'NFS-e', 'Notas', 'Canceladas', 'Total', 'Variação (%)']);
     expect(linhas[4][0]).toBe('10/2026');
     expect(linhas[4].slice(1).every(v => v == null)).toBe(true);
-    expect([linhas[5][0], linhas[5][1], linhas[5][3], linhas[5][5]]).toEqual(['09/2026', 1234.5, 10, 1234.5]);
-    expect((ws.F6 as XLSX.CellObject).z).toBe('"R$" #,##0.00');
+    expect([linhas[5][0], linhas[5][1], linhas[5][4], linhas[5][6]]).toEqual(['09/2026', 1234.5, 10, 1234.5]);
+    expect((ws.G6 as XLSX.CellObject).z).toBe('"R$" #,##0.00');
   });
 });
 

@@ -637,7 +637,7 @@ export function DepartamentoPessoal(props: DaCasca) {
           {(vm.meses.length > 1 || vm.docsDoMesN > 1) && (
             <span className="card-head-ctl cli-reg-folha-ctl">
               {/* a folha do mês inteira num .zip (13/11/2026: o mesmo padrão da Central) */}
-              {vm.docsDoMesN > 1 && <button type="button" className="cli-baixar-tudo" disabled={!!vm.juntando} onClick={vm.baixarFolha} title="Baixar todos os documentos do mês num .zip"><Icone nome="download" width={15} height={15} />{vm.juntando || <>Baixar a folha<span className="cli-baixar-n">{vm.docsDoMesN}</span></>}</button>}
+              {vm.docsDoMesN > 1 && <button type="button" className="cli-baixar-tudo" disabled={!!vm.juntando} onClick={vm.baixarFolha} title={vm.separados ? 'Baixar todos os documentos do mês, um por um' : 'Baixar todos os documentos do mês num .zip'}><Icone nome="download" width={15} height={15} />{vm.juntando || <>Baixar a folha<span className="cli-baixar-n">{vm.docsDoMesN}</span></>}</button>}
               <span className="chip-row" role="radiogroup" aria-label="Mês dos documentos" style={{ margin: 0 }}>
                 {vm.meses.length > 1 && vm.meses.map(m => (
                   <button key={m.valor} type="button" role="radio" aria-checked={vm.mes === m.valor} className={'chip-f' + (vm.mes === m.valor ? ' on' : '')} onClick={() => vm.mudarMes(m.valor)}>{m.rotulo}</button>

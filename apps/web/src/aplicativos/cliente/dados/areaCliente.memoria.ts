@@ -336,7 +336,7 @@ function faturamentoDeExemplo(hoje: Date): ac.ResumoDoFaturamento {
         };
       })();
   });
-  return { empresas: [{ codigo: 9999, nome: 'Personaly Company', regime: 'Simples', meses }], fonte: 'SIEG · NF-e/NFC-e emitidas', atualizadoEm: comHora(hoje, 7, 30) };
+  return { empresas: [{ codigo: 9999, nome: 'Personaly Company', regime: 'Simples', meses }], fonte: 'SIEG · NF-e/NFC-e/NFS-e emitidas', atualizadoEm: comHora(hoje, 7, 30) };
 }
 
 /** Os documentos do DP de exemplo: os três últimos meses, como os da pasta DEPARTAMENTO PESSOAL do Drive. */

@@ -61,7 +61,7 @@ export function Guias(props: DaCasca) {
                 ))}
               </div>
               {!naPagas && vm.comPdf > 1 && (
-                <button type="button" className="cli-gu-todas" disabled={!!vm.juntando} onClick={vm.baixarTodas} title="Baixar as guias do mês num .zip">
+                <button type="button" className="cli-gu-todas" disabled={!!vm.juntando} onClick={vm.baixarTodas} title={vm.separados ? 'Baixar as guias do mês, uma por uma' : 'Baixar as guias do mês num .zip'}>
                   <Icone nome="download" width={15} height={15} />{vm.juntando || 'Baixar todas'}
                 </button>
               )}

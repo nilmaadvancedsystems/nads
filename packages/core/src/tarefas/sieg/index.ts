@@ -72,7 +72,11 @@ export interface NotasSieg {
 }
 
 /** siegSaidas/{codigo}_{AAAA-MM}: as saídas do mês (NF-e e NFC-e), série por série. */
-export interface SaidasSieg { codigo: string; competencia: string; em: string; series: SerieDeSaida[] }
+/**
+ * As saídas do mês (siegSaidas/{codigo}_{AAAA-MM}): as séries de NF-e e NFC-e e, desde 27/11/2026, as notas de serviço
+ * (NFS-e) emitidas, sem as canceladas (a Zelo, 602, só emite NFS-e e o faturamento vinha zerado)
+ */
+export interface SaidasSieg { codigo: string; competencia: string; em: string; series: SerieDeSaida[]; servicos?: { notas: number; valor: number } }
 
 export const totalDe = (r: Record<TipoDeNota, number>): number => TIPOS_DE_NOTA.reduce((s, t) => s + (r[t.id] || 0), 0);
 

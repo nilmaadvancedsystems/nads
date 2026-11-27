@@ -1336,11 +1336,16 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-pasta-cartao .cli-pasta-cartao-ico{background:var(--tom-suave);color:var(--tom);}
 .cli-app .cli-selo-pasta{display:inline-block;max-width:100%;padding:2px 9px;border-radius:999px;background:var(--tom-suave);color:var(--tom);font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
 @media (max-width:640px){
-  .cli-app .cli-pastas-cartoes{display:flex;overflow-x:auto;gap:8px;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none;}
-  .cli-app .cli-pastas-cartoes::-webkit-scrollbar{display:none;}
-  .cli-app .cli-pasta-cartao{flex:none;padding:10px 14px;}
-  .cli-app .cli-pasta-cartao-ico{width:32px;height:32px;}
-  .cli-app .cli-pasta-cartao-txt b{font-size:17px;}
+  /* no celular, os cartões viram chips pequenos que quebram linha (27/11/2026: "essa parte aqui no mobile nao faz sentido":
+     os cartões grandes rolavam de lado e escondiam as pastas); a pasta vazia some */
+  .cli-app .cli-pastas-cartoes{display:flex;flex-wrap:wrap;gap:6px;}
+  .cli-app .cli-pasta-cartao{flex:none;gap:6px;padding:6px 12px;border-radius:999px;box-shadow:none;}
+  .cli-app .cli-pasta-cartao.vazia{display:none;}
+  .cli-app .cli-pasta-cartao-ico{display:none;}
+  .cli-app .cli-pasta-cartao-txt{flex-direction:row-reverse;align-items:baseline;gap:6px;}
+  .cli-app .cli-pasta-cartao-txt b{font-size:13px;color:var(--ink-muted);}
+  .cli-app .cli-pasta-cartao-txt span{font-size:13px;color:var(--ink);}
+  .cli-app .cli-pasta-cartao.ativa .cli-pasta-cartao-txt b{color:var(--accent-ink);}
 }
 /* os filtros com o marcar todos */
 .cli-app .cli-biblioteca-filtros{align-items:center;}
@@ -1714,7 +1719,6 @@ html.cli-tut-aberto::-webkit-scrollbar,html.cli-tut-aberto body::-webkit-scrollb
   .cli-app .cli-titulo .cli-acoes{width:100%;}
   .cli-app .cli-titulo .cli-acoes > *{flex:1 1 0;justify-content:center;}
   /* os cartões das pastas e dos filtros um pouco menores */
-  .cli-app .cli-pasta-cartao{padding:9px 12px;gap:10px;}
   .cli-app .cli-pasta-cartao-txt b{font-size:16px;}
   /* o aviso de exemplo mais discreto */
   .cli-app .cli-exemplo{font-size:12px;padding:6px 12px;}
@@ -2258,8 +2262,9 @@ html.cli-tut-aberto::-webkit-scrollbar,html.cli-tut-aberto body::-webkit-scrollb
 .cli-app .cli-fi-socio-pct{font-size:14px;}
 .cli-app .cli-fi-pe{display:flex;align-items:center;gap:6px;border-top:0;}
 @media (max-width:767px){
-  .cli-app .cli-fi-topo{flex-wrap:wrap;}
-  .cli-app .cli-fi-regime{order:3;margin-left:68px;}
+  /* no celular, a empresa no centro (27/11/2026: "centraliza"): a marca em cima, o nome, o resto e o regime embaixo */
+  .cli-app .cli-fi-topo{flex-direction:column;align-items:center;text-align:center;gap:10px;}
+  .cli-app .cli-fi-regime{order:3;margin-left:0;}
   .cli-app .cli-fi-secao{padding:16px 18px 18px;}
   .cli-app .cli-fi-socios li{grid-template-columns:10px 28px minmax(0,1fr) auto;}
 }
@@ -2481,3 +2486,11 @@ html.cli-tut-aberto::-webkit-scrollbar,html.cli-tut-aberto body::-webkit-scrollb
   .cli-app .cli-impostos-topo .cli-botao-excel{padding:6px 10px;font-size:13px;}
 }
 
+
+/* o WhatsApp do escritório no centro, no celular (27/11/2026: "centraliza isso no celular") */
+@media (max-width:767px){
+  .cli-app .cli-contato-destaque{flex-direction:column;align-items:center;text-align:center;gap:12px;}
+  .cli-app .cli-contato-destaque .cli-contato-txt{flex:none;align-items:center;}
+  .cli-app .cli-contato-destaque .cli-acoes{display:flex;justify-content:center;width:100%;gap:8px;}
+  .cli-app .cli-contato-destaque .cli-acoes > *{flex:1 1 0;justify-content:center;}
+}
