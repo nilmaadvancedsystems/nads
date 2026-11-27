@@ -4,9 +4,10 @@
 // empresa, só neste navegador; puxar de novo troca.
 import { sci } from '@nads/core';
 import { Icone, LogoSci, useRetorno } from '@nads/ui';
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { PuxarDoSci, SituacaoDoRobo } from './RazaoDoSci';
+import { useContaDoBalancete } from './useContaDoBalancete';
 import { rotuloDaCompetenciaDoSci, useLancamentosDoSciPeloRobo } from './useLancamentosDoSciPeloRobo';
 import type { VmShadersCi } from './useShadersCi';
 
@@ -31,6 +32,8 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
   const [guardado, setGuardado] = useState<Guardado | null>(() => lerGuardado(codigo));
   const [busca, setBusca] = useState('');
   const [soAnaliticas, setSoAnaliticas] = useState(false);
+  // a conta aberta (o dropdown com os lançamentos e as provisões; 27/11/2026), pela classificação
+  const [aberta, setAberta] = useState<string | null>(null);
   const campo = useRef<HTMLInputElement>(null);
   async function importar(arquivo: File | undefined, competencia = '') {
     if (!arquivo || codigo == null) return;
@@ -103,9 +106,15 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {contas.map((c, i) => (
-                    <tr key={c.classificacao + '|' + i} className={'ini-tr' + (c.analitica || c.participante ? '' : ' sci-balancete-sintetica') + (c.participante ? ' sci-balancete-participante' : '')}>
-                      <td className="ini-delegadas-curta sci-balancete-class">{c.classificacao}</td>
+                  {contas.map((c, i) => {
+                    const abre = c.analitica && !c.participante;
+                    const estaAberta = abre && aberta === c.classificacao;
+                    return (
+                    <Fragment key={c.classificacao + '|' + i}>
+                    <tr className={'ini-tr' + (c.analitica || c.participante ? '' : ' sci-balancete-sintetica') + (c.participante ? ' sci-balancete-participante' : '') + (abre ? ' sci-balancete-abre' : '') + (estaAberta ? ' aberta' : '')}
+                      onClick={abre ? () => setAberta(a => (a === c.classificacao ? null : c.classificacao)) : undefined} aria-expanded={abre ? estaAberta : undefined}
+                      title={abre ? 'Ver os lançamentos e as provisões da conta' : undefined}>
+                      <td className="ini-delegadas-curta sci-balancete-class">{abre && <Icone nome={estaAberta ? 'chevronDown' : 'chevronRight'} width={14} height={14} />}{c.classificacao}</td>
                       <td className="ini-delegadas-curta">{c.participante ? '' : c.codigo}</td>
                       <td><span style={{ paddingLeft: recuo(c) * 14 }}>{c.nome}</span></td>
                       <td className="num">{saldoTexto(c.anterior)}</td>
@@ -113,7 +122,10 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
                       <td className="num">{valorTexto(c.credito)}</td>
                       <td className={'num' + (invertidos.has(c.classificacao) ? ' sci-balancete-invertido' : '')} title={invertidos.has(c.classificacao) ? 'Saldo ao contrário da natureza da conta' : undefined}>{saldoTexto(c.atual)}</td>
                     </tr>
-                  ))}
+                    {estaAberta && <tr className="sci-balancete-painel-linha"><td colSpan={7}><ContaAberta vm={vm} b={b} conta={c} /></td></tr>}
+                    </Fragment>
+                    );
+                  })}
                   {!contas.length && <tr><td colSpan={7} className="hint sci-razao-nada">Nenhuma conta com essa busca.</td></tr>}
                 </tbody>
                 <tfoot>
@@ -133,3 +145,84 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
     </>
   );
 }
+
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const mesCurto = (m: string) => (/^\d{4}-\d{2}$/.test(m) ? MESES[Number(m.slice(5)) - 1] + '/' + m.slice(0, 4) : m);
+const ROTULO_DA_SITUACAO = { pago: 'Pago', parcial: 'Parcial', aberto: 'Sem pagamento' } as const;
+
+/**
+ * A conta aberta no balancete (27/11/2026, o Vitor: "o relatorio de todos os lancamentos de cada conta em um dropdown ... ver as
+ * provisoes ... quais meses tao com pagamento e quais estao sem ... com um botao ele ja gerar os lancamentos e pagar sem esforco").
+ */
+function ContaAberta({ vm, b, conta }: { vm: VmShadersCi; b: sci.BalanceteSci; conta: sci.ContaDoBalanceteSci }) {
+  const c = useContaDoBalancete(vm, b, conta);
+  if (c.semLancamentos) return <p className="hint sci-conta-vazia">Puxe os lançamentos do SCI na aba <b>Lançamentos</b> (o botão Vitor, "Tudo") para ver aqui os lançamentos e as provisões desta conta.</p>;
+  const p = c.provisoes;
+  const porBanco = c.previa.filter(x => x.pelo === 'banco').length;
+  return (
+    <div className="sci-conta">
+      {p && (
+        <section className="sci-conta-provisoes">
+          <header>
+            <h3>Provisões por mês</h3>
+            <span className="hint">{p.lado === 'credito' ? 'A provisão é o crédito; o pagamento, o débito' : 'A provisão é o débito; o recebimento, o crédito'}</span>
+          </header>
+          {p.meses.length ? (
+            <div className="sci-conta-meses">
+              {p.meses.map(m => (
+                <div key={m.mes} className={'sci-conta-mes ' + m.situacao} title={'Provisionado ' + valorTexto(m.provisionado) + ' · pago ' + valorTexto(m.pago)}>
+                  <b>{mesCurto(m.mes)}</b>
+                  <span className="sci-conta-mes-valor">{valorTexto(m.provisionado)}</span>
+                  <span className="sci-conta-mes-situacao">{ROTULO_DA_SITUACAO[m.situacao]}{m.situacao === 'parcial' ? ': falta ' + valorTexto(m.aberto) : ''}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="hint">Nenhuma provisão nos lançamentos puxados.</p>}
+          {p.aberto > 0 && (
+            <div className="sci-conta-pagar">
+              <p><b>{valorTexto(p.aberto)}</b> sem pagamento em {p.meses.filter(m => m.aberto).length === 1 ? '1 mês' : p.meses.filter(m => m.aberto).length + ' meses'}.
+                {c.extrato ? <> Com o extrato da aba Extratos ({c.extrato.arquivo}), {porBanco === 1 ? '1 sai' : porBanco + ' saem'} pelo banco; o resto, pelo caixa.</> : <> Sem extrato na aba Extratos: tudo pelo caixa.</>}</p>
+              <div className="sci-conta-campos">
+                <label>Caixa<input className="input" value={c.caixa} onChange={e => c.setCaixa(e.target.value.trim())} placeholder="código" /><small>{c.nomeDoCaixa || '—'}</small></label>
+                <label>Banco<input className="input" value={c.banco} onChange={e => c.setBanco(e.target.value.trim())} placeholder="código" /><small>{c.nomeDoBanco || (c.extrato ? '—' : 'sem extrato')}</small></label>
+                <label>Histórico<input className="input" value={c.historico} onChange={e => c.setHistorico(e.target.value.replace(/\D/g, ''))} placeholder="nº no SCI" /><small>do pagamento</small></label>
+                <button type="button" className="btn btn-primary" disabled={c.gerando || !c.previa.length} onClick={c.gerar}>
+                  <Icone nome="download" />{c.gerando ? 'Gerando…' : 'Gerar ' + (c.previa.length === 1 ? '1 pagamento' : c.previa.length + ' pagamentos')}
+                </button>
+              </div>
+              {c.previa.length > 0 && (
+                <ul className="sci-conta-previa">
+                  {c.previa.map((x, i) => (
+                    <li key={i}><span className={'sci-conta-pelo ' + x.pelo}>{x.pelo === 'banco' ? 'Banco' : 'Caixa'}</span>{dataTexto(x.lancamento.data)} · {valorTexto(x.lancamento.valor)} · D {x.lancamento.debito} × C {x.lancamento.credito} · {x.lancamento.complemento}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+      <section className="sci-conta-lancamentos">
+        <header><h3>Lançamentos da conta</h3><span className="hint">{c.lancamentos.length === 1 ? '1 lançamento' : c.lancamentos.length + ' lançamentos'} puxados do SCI</span></header>
+        <table className="table-compact">
+          <thead><tr><th>Data</th><th className="num">Débito</th><th className="num">Crédito</th><th>Contrapartida</th><th>Histórico</th></tr></thead>
+          <tbody>
+            {c.lancamentos.slice(0, 300).map((l, i) => {
+              const debito = l.debito === conta.codigo;
+              const contra = debito ? l.credito : l.debito;
+              return (
+                <tr key={i}>
+                  <td>{dataTexto(l.data)}</td>
+                  <td className="num">{debito ? valorTexto(l.valor) : ''}</td>
+                  <td className="num">{debito ? '' : valorTexto(l.valor)}</td>
+                  <td>{contra ? contra + (c.nomeDa(contra) ? ' · ' + c.nomeDa(contra) : '') : '—'}</td>
+                  <td className="sci-conta-hist">{l.complemento}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+    </div>
+  );
+}
+

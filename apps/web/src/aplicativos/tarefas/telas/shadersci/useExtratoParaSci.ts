@@ -61,6 +61,15 @@ function lerGuardado(codigo: number | null): Guardado {
     };
   } catch { return VAZIO; }
 }
+/**
+ * O extrato que a aba Extratos tem da empresa (27/11/2026): as linhas (para o balancete pagar pelo banco o que o extrato mostra) e a
+ * conta do banco no SCI digitada lá. null = nenhum extrato.
+ */
+export function extratoDaEmpresa(codigo: number | null): { arquivo: string; linhas: { data: string; valor: number; historico: string }[]; contaDoBanco: string } | null {
+  const g = lerGuardado(codigo);
+  if (!g.extrato) return null;
+  return { arquivo: g.extrato.arquivo, linhas: g.extrato.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico })), contaDoBanco: g.contasDosBancos[g.extrato.banco] || g.contasDosBancos[''] || '' };
+}
 function gravarGuardado(codigo: number, g: Guardado) {
   try { localStorage.setItem(PREFIXO + codigo, JSON.stringify(g)); } catch { /* sem espaço: fica só na tela */ }
 }
