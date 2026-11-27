@@ -12,11 +12,10 @@ import {
 
 const dig = (valor: number) => ({ valor, fonte: 'digitado' as const });
 
-// a aba FOLHA de uma empresa fictícia: de 11/2025 a 10/2026 os meses fechados (e a folha de 09 e 10/2025, que entram com a
-// defasagem); depois, a projeção de 2027
+// a aba FOLHA de uma empresa fictícia: de 11/2025 a 10/2026 os meses fechados; depois, a projeção de 2027
 const FECHADOS = competenciasEntre('2025-11', '2026-10');
 function planilhaFicticia(): Record<string, MesDoFatorR> {
-  const meses: Record<string, MesDoFatorR> = { '2025-09': { receita: null, folha: dig(10000) }, '2025-10': { receita: null, folha: dig(10000) } };
+  const meses: Record<string, MesDoFatorR> = {};
   FECHADOS.forEach((c, i) => { meses[c] = { receita: dig(40000 + 1000 * i), folha: dig(11000 + 100 * i) }; });
   // 11/2026 e 12/2026 em branco, como na planilha; a projeção de 2027 com a receita e a folha digitadas
   competenciasEntre('2027-01', '2027-12').forEach((c, i) => { meses[c] = { receita: dig(50000), folha: dig(14000 + 500 * i) }; });
@@ -26,40 +25,41 @@ function planilhaFicticia(): Record<string, MesDoFatorR> {
 const somaDaPlanilha = (meses: Record<string, MesDoFatorR>, de: string, k: 'receita' | 'folha') =>
   competenciasEntre(de, somarMeses(de, 11)).reduce((s, c) => s + (meses[c]?.[k]?.valor ?? 0), 0);
 
-describe('defasagem da folha (o dono, 27/11/2026: "folha 2027 cai 3 meses depois do fato gerador, 2026 2 meses")', () => {
-  it('pelo ano do PA: 1 até 2025, 2 em 2026, 3 de 2027 em diante', () => {
-    expect(['2025-06', '2026-01', '2026-12', '2027-01', '2030-05'].map(defasagemDaFolha)).toEqual([1, 2, 2, 3, 3]);
+describe('defasagem da folha (o dono, 27/11/2026: "folha 2027 cai 3 meses depois do fato gerador, 2026 2 meses", contando o mês do fato gerador)', () => {
+  it('pelo ano do PA: a folha vai até 1 mês antes do PA até 2026, 2 meses antes de 2027 em diante', () => {
+    expect(['2025-06', '2026-01', '2026-12', '2027-01', '2030-05'].map(defasagemDaFolha)).toEqual([1, 1, 1, 2, 2]);
   });
 
   it('a janela da folha: 12 meses pela competência, o último N meses antes do PA', () => {
     const janela = (pa: string) => { const r = fatorRDoPa({}, pa); return [r.folhaDe, r.folhaAte, r.de, r.ate]; };
     expect(janela('2025-06')).toEqual(['2024-06', '2025-05', '2024-06', '2025-05']);
-    expect(janela('2026-06')).toEqual(['2025-05', '2026-04', '2025-06', '2026-05']);
-    expect(janela('2027-06')).toEqual(['2026-04', '2027-03', '2026-06', '2027-05']);
-    // o "Ref. 10 / Pag. 11" da Projeção 1 (jan/27) da planilha: no PA de 01/2027 a folha mais nova é a de 10/2026
-    expect(janela('2027-01').slice(0, 2)).toEqual(['2025-11', '2026-10']);
+    // a correção do dono: no PA 08/2026, a folha de 08/2025 a 07/2026
+    expect(janela('2026-08')).toEqual(['2025-08', '2026-07', '2025-08', '2026-07']);
+    expect(janela('2027-06')).toEqual(['2026-05', '2027-04', '2026-06', '2027-05']);
+    // a Projeção 1 (jan/27) da planilha soma a folha de 12/2025 a 11/2026
+    expect(janela('2027-01').slice(0, 2)).toEqual(['2025-12', '2026-11']);
     // na virada, a janela da folha fica parada um mês
-    expect(janela('2026-12').slice(0, 2)).toEqual(['2025-11', '2026-10']);
+    expect(janela('2026-12').slice(0, 2)).toEqual(['2025-12', '2026-11']);
   });
 });
 
 describe('fatorRDoPa', () => {
   const meses = planilhaFicticia();
 
-  it('o "banco de dados" da planilha: a receita de 11/2025 a 10/2026 e a folha de 10/2025 a 09/2026, o PA 11/2026', () => {
+  it('o "banco de dados" da planilha: a receita e a folha de 11/2025 a 10/2026, o PA 11/2026', () => {
     const r = fatorRDoPa(meses, '2026-11');
-    expect([r.de, r.ate, r.folhaDe, r.folhaAte, r.defasagem]).toEqual(['2025-11', '2026-10', '2025-10', '2026-09', 2]);
+    expect([r.de, r.ate, r.folhaDe, r.folhaAte, r.defasagem]).toEqual(['2025-11', '2026-10', '2025-11', '2026-10', 1]);
     // 12 × 40.000 + 1.000 × (0 + … + 11)
     expect(r.rbt12).toBe(546000);
-    // 10.000 (10/2025) + 11 × 11.000 + 100 × (0 + … + 10)
-    expect(r.fs12).toBe(136500);
+    // 12 × 11.000 + 100 × (0 + … + 11)
+    expect(r.fs12).toBe(138600);
     expect(r.rbt12).toBe(somaDaPlanilha(meses, '2025-11', 'receita'));
-    expect(r.fs12).toBe(somaDaPlanilha(meses, '2025-10', 'folha'));
-    // 136.500 / 546.000 = 25%
-    expect(r.fator).toBe(25);
+    expect(r.fs12).toBe(somaDaPlanilha(meses, '2025-11', 'folha'));
+    // 138.600 / 546.000 = 25,3846…% → 25,38% (o J15 da planilha)
+    expect(r.fator).toBe(25.38);
     expect(r.anexo).toBe('V');
-    // 28% de 546.000 = 152.880; faltam 16.380
-    expect(r.folhaQueFalta).toBe(16380);
+    // 28% de 546.000 = 152.880; faltam 14.280
+    expect(r.folhaQueFalta).toBe(14280);
     expect([r.mesesComReceita, r.mesesComFolha]).toEqual([12, 12]);
   });
 
@@ -100,7 +100,7 @@ describe('linhasDoFatorR', () => {
   it('a linha do mês: a receita, a folha, o fator do mês (folha ÷ receita, a linha "Fator R:" da planilha) e o do PA', () => {
     const ls = linhasDoFatorR(planilhaFicticia(), '2027-01', '2027-12');
     expect(ls).toHaveLength(12);
-    expect(ls[0]).toMatchObject({ competencia: '2027-01', receita: dig(50000), folha: dig(14000), fatorDoMes: 28, pa: '2027-01', de: '2026-01', ate: '2026-12', folhaDe: '2025-11', folhaAte: '2026-10' });
+    expect(ls[0]).toMatchObject({ competencia: '2027-01', receita: dig(50000), folha: dig(14000), fatorDoMes: 28, pa: '2027-01', de: '2026-01', ate: '2026-12', folhaDe: '2025-12', folhaAte: '2026-11' });
     // 11/2026 e 12/2026 em branco: a janela de 01/2027 tem 10 meses com número
     expect(ls[0].mesesComReceita).toBe(10);
     // o mês sem receita não tem fator do mês
@@ -112,8 +112,7 @@ describe('o documento por empresa e ano', () => {
   it('o ano que a tela abre e os anos que ela lê', () => {
     expect(anoPadraoDaProjecao(new Date(2026, 10, 26))).toBe(2027);
     expect(anoPadraoDaProjecao(new Date(2026, 3, 1))).toBe(2026);
-    // a janela da folha do PA de 01/2026 começa em 12/2024
-    expect(anosDaProjecao(2027)).toEqual([2024, 2025, 2026, 2027]);
+    expect(anosDaProjecao(2027)).toEqual([2025, 2026, 2027]);
     expect(anosDaProjecao(2026)).toEqual([2024, 2025, 2026]);
     expect(competenciasDaProjecao(2027)).toHaveLength(24);
     expect(competenciasDaProjecao(2027)[0]).toBe('2026-01');
@@ -191,7 +190,7 @@ describe('Exportar Excel e Imprimir', () => {
 
   it('a tabela: uma linha por mês, com a origem de cada número', () => {
     expect(rel.nome).toBe('Projeção Fator R 2027 9001');
-    expect(rel.cabecalho).toContainEqual(['Fator R do PA 11/2026', '25,00% · Anexo V (receita de 11/2025 a 10/2026; folha de 10/2025 a 09/2026)']);
+    expect(rel.cabecalho).toContainEqual(['Fator R do PA 11/2026', '25,38% · Anexo V (receita de 11/2025 a 10/2026; folha de 11/2025 a 10/2026)']);
     expect(rel.linhas[0].slice(0, 3)).toEqual(['11/2026', '', '']);
     expect(rel.linhas[2].slice(0, 6)).toEqual(['01/2027', 50000, 'Digitado', 14000, 'Digitado', 28]);
   });
@@ -202,10 +201,10 @@ describe('Exportar Excel e Imprimir', () => {
     expect(aoa[0]).toEqual(['Projeção do Fator R 2027']);
     const jan = aoa.find(l => l[0] === '01/2027') as unknown[];
     expect(jan[1]).toBe(50000);
-    // a folha somada no FS12 de 01/2027 (com a defasagem de 3 meses) e o Anexo
-    expect(jan[8]).toBe('11/2025 a 10/2026');
-    // 138.600 (11/2025 a 10/2026) ÷ 465.000 (2026) = 29,8%
-    expect(jan[10]).toBe('III');
+    // a folha somada no FS12 de 01/2027 (até 2 meses antes do PA) e o Anexo
+    expect(jan[8]).toBe('12/2025 a 11/2026');
+    // 127.600 (12/2025 a 10/2026; 11/2026 em branco) ÷ 465.000 (2026) = 27,44%
+    expect(jan[10]).toBe('V');
   });
 
   it('a folha A4 colore o Anexo e escapa o texto', () => {

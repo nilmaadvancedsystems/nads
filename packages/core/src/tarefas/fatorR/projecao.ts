@@ -5,9 +5,10 @@
 //     (RBT12 X FS12)" em destaque.
 // No nads cada mês tem a sua linha (a receita e a folha pelo mês do fato gerador). A receita do Fator R é a dos 12 meses
 // antes do PA (RBT12). A folha entra com defasagem (o dono, 27/11/2026: "folha 2027 cai 3 meses depois do fato gerador,
-// 2026 2 meses"): no PA de 2027 em diante, a folha de um mês conta 3 meses depois dele; no PA de 2026, 2 meses; antes, 1
-// (os 12 meses antes do PA). É o "Ref. 10 / Pag. 11" da "Projeção 1 (jan/27)" da planilha: no PA de 01/2027, a folha mais
-// nova é a de 10/2026. Na virada de 2026 para 2027 a janela da folha fica parada um mês (12/2026 e 01/2027 usam a mesma).
+// 2026 2 meses", contando o mês do fato gerador; corrigido no mesmo dia: "a folha cadastrada tá um mês atrás do que
+// deveria"): no PA de 2026 (e antes) o FS12 vai até o mês antes do PA; de 2027 em diante, até 2 meses antes. É a planilha:
+// o "banco de dados" (PA 11/2026) soma a folha de 11/2025 a 10/2026, e a "Projeção 1 (jan/27)", de 12/2025 a 11/2026.
+// Na virada de 2026 para 2027 a janela da folha fica parada um mês (12/2026 e 01/2027 usam a mesma).
 // Acrescentados a pedido do dono (26/11/2026): o Anexo de cada PA (III a partir de 28%, senão V) e a folha que falta nos
 // 12 meses para chegar a 28%.
 import { FATOR_R_MINIMO } from '../sieg/calculadora';
@@ -28,7 +29,7 @@ export interface FatorRDoPa {
   /** a janela da folha: 12 meses, o último "defasagem" meses antes do PA */
   folhaDe: string;
   folhaAte: string;
-  /** quantos meses depois do fato gerador a folha entra (1, 2 ou 3) */
+  /** quantos meses antes do PA termina a janela da folha (1 até 2026, 2 de 2027 em diante) */
   defasagem: number;
   rbt12: number;
   fs12: number;
@@ -74,12 +75,11 @@ export function competenciasEntre(de: string, ate: string): string[] {
 }
 
 /**
- * Quantos meses depois do fato gerador a folha entra no Fator R, pelo ano do PA (o dono, 27/11/2026): de 2027 em diante, 3;
- * em 2026, 2; antes, 1 (a folha dos 12 meses antes do PA).
+ * Quantos meses antes do PA termina a janela da folha, pelo ano do PA (o dono, 27/11/2026): de 2027 em diante, 2 (a folha
+ * "cai 3 meses depois do fato gerador"); em 2026 e antes, 1 ("cai 2 meses depois": a folha dos 12 meses antes do PA).
  */
 export function defasagemDaFolha(pa: string): number {
-  const ano = Number(String(pa).slice(0, 4));
-  return ano >= 2027 ? 3 : ano === 2026 ? 2 : 1;
+  return Number(String(pa).slice(0, 4)) >= 2027 ? 2 : 1;
 }
 
 /** O Fator R de um PA: a receita dos 12 meses antes dele e a folha dos 12 meses que terminam "defasagem" meses antes. */
