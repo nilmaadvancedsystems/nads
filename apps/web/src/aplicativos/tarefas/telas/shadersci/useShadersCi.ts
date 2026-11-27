@@ -691,7 +691,9 @@ export function useShadersCi() {
       const mes = sci.mesPrincipal(guardado.lancamentos);
       // um lote próprio por planilha, com a empresa no código (27/11/2026: "vamos usar esse controle de lotes")
       const lote = entrada.empresa.codigo != null ? sci.loteDoMinimum(entrada.empresa.codigo) : '';
-      baixarBytes(sci.planilhaDoSci(lsci, lote), sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum', lote), sci.TIPO_XLSX_SCI);
+      let bytes: Uint8Array;
+      try { bytes = sci.planilhaDoSci(lsci, lote); } catch (e) { aviso({ tom: 'info', titulo: 'Planilha grande demais para um lote', texto: e instanceof Error ? e.message : String(e) }); return; }
+      baixarBytes(bytes, sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum', lote), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
       if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: (lote ? 'Lote ' + lote + '. ' : '') + 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
       else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento' : ' lançamentos') + (lote ? ', lote ' + lote + '.' : '.'));

@@ -6,7 +6,7 @@ import { planilhaDeImportacao } from '../extratudo/creditor/arquivos/gerar';
 import {
   COLUNAS_DO_SCI, centavos, dataIso, documentoComMascara, lancamentosParaOSci, lerDePara, lerPlanilhaDoNads,
   classificacaoNormal, conferirComOBalancete, deParaPeloPlano, lerBalanceteDoSci, naturezaDaConta, saldosInvertidos, valorDoBalancete, juntarDePara, mapaDoDePara, planilhaDoDePara, planoDoSci, resumoDoDePara,
-  empresaDoLote, loteDaOrigem, loteDoMes, loteDoMinimum, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci, TAMANHO_DO_LOTE,
+  chaveDoLancamento, chavesDaPlanilha, empresaDoLote, lerLoteDoMinimum, loteDaOrigem, loteDoMes, loteDoMinimum, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci, TAMANHO_DA_BASE_DO_LOTE, TAMANHO_DO_LOTE,
 } from './index';
 
 const CNPJ = '11222333000181';
@@ -113,24 +113,32 @@ describe('a planilha do SCI', () => {
 
   // 27/11/2026: "ao exportar os arquivos, voce vai colocar na coluna lote, um codigo propio … que dentre desses numeros tenha o
   // codigo da empresa"; "vai ser um lote por planilha"
-  it('o lote do minimum: M + a empresa em 5 algarismos + o controle, 10 no máximo, em todas as linhas da planilha', () => {
-    let vez = 0;
-    const sorteios = ['AAAA', '2222', 'BR6W'];
-    expect(loteDoMinimum(583, () => sorteios[vez++])).toBe('M00583BR6W');
-    const lote = loteDoMinimum(583);
-    expect(lote).toMatch(/^M00583[A-HJ-NP-Z2-9]{4}$/);
-    expect(lote).toMatch(/\d.*[A-Z]|[A-Z].*\d/);
-    expect(lote).toHaveLength(TAMANHO_DO_LOTE);
-    expect(loteDoMinimum(7)).toMatch(/^M00007[A-Z0-9]{4}$/);
-    expect(empresaDoLote('M00583BR6W')).toBe(583);
-    expect(empresaDoLote('m00007k7q2')).toBe(7);
+  // 27/11/2026: cada linha leva [lote]001, [lote]002… ("Buscar só o lote filtra todos os lançamentos do lote; o código inteiro
+  // filtra um"); "a codificacao faz como quiser, nao tem problema, vc sabendo identificar depois"
+  it('o lote do minimum: a base de 7 (M + a empresa + letras) e a chave de 3 algarismos em cada lançamento', () => {
+    expect(loteDoMinimum(583, () => 'KQT')).toBe('M583KQT');
+    expect(loteDoMinimum(7, () => 'ABCDE')).toBe('M7ABCDE');
+    expect(loteDoMinimum(12345, () => 'Q')).toBe('M12345Q');
+    const base = loteDoMinimum(583);
+    expect(base).toMatch(/^M583[A-HJ-NP-Z]{3}$/);
+    expect(base).toHaveLength(TAMANHO_DA_BASE_DO_LOTE);
+    expect(chaveDoLancamento('M583KQT', 1)).toBe('M583KQT001');
+    expect(chaveDoLancamento('M583KQT', 999)).toHaveLength(TAMANHO_DO_LOTE);
+    expect(lerLoteDoMinimum('m583kqt012')).toEqual({ empresa: 583, base: 'M583KQT', lancamento: 12 });
+    expect(lerLoteDoMinimum('M583KQT')).toEqual({ empresa: 583, base: 'M583KQT', lancamento: null });
+    expect(empresaDoLote('M7ABCDE001')).toBe(7);
     expect(empresaDoLote('NADS2611')).toBeNull();
+    expect(empresaDoLote('M583KQ001')).toBeNull();
     const s = lancamentosParaOSci(lerPlanilhaDoNads(doNads, 'lancatudo.xls'), { cnpjEmpresa: CNPJ, historicoPadrao: '116' });
-    s[2].problemas.push('teste');
-    const a = abas(planilhaDoSci(s, 'M00583BR6W'));
-    expect(a.Importar.slice(1).map(r => r[7])).toEqual(['M00583BR6W', 'M00583BR6W']);
-    expect(a.Conferir[1][7]).toBe('M00583BR6W');
-    expect(nomeDaPlanilhaSci(CNPJ, '2026-11', 'minimum', 'M00583BR6W')).toBe('sci_11222333000181_2026-11_minimum_M00583BR6W.xlsx');
+    s[1].problemas.push('teste');
+    expect(chavesDaPlanilha(s, 'M583KQT')).toEqual(['M583KQT001', '', 'M583KQT002']);
+    const a = abas(planilhaDoSci(s, 'M583KQT'));
+    expect(a.Importar.slice(1).map(r => r[7])).toEqual(['M583KQT001', 'M583KQT002']);
+    expect(a.Conferir[1][7]).toBe('M583KQT');
+    expect(nomeDaPlanilhaSci(CNPJ, '2026-11', 'minimum', 'M583KQT')).toBe('sci_11222333000181_2026-11_minimum_M583KQT.xlsx');
+    // mais de 999 prontos não cabe na chave
+    const muitos = Array.from({ length: 1000 }, () => s[0]);
+    expect(() => planilhaDoSci(muitos, 'M583KQT')).toThrow(/vai até 999/);
   });
 
   it('sem problema não tem a aba Conferir', () => {

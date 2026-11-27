@@ -47,33 +47,65 @@ export function documentoComMascara(doc: string): string {
 }
 
 // o controle do lote: o que não confunde na tela nem no papel (sem 0/O, 1/I)
-const CONTROLE_DO_LOTE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-function sortearControle(n: number): string {
+const LETRAS_DO_LOTE = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+function sortearLetras(n: number): string {
   const b = new Uint8Array(n);
   globalThis.crypto.getRandomValues(b);
-  return Array.from(b, x => CONTROLE_DO_LOTE[x % CONTROLE_DO_LOTE.length]).join('');
+  return Array.from(b, x => LETRAS_DO_LOTE[x % LETRAS_DO_LOTE.length]).join('');
 }
+
+/** A base do lote do minimum tem 7 caracteres; os 3 do fim (001, 002…) são a chave de cada lançamento: 7 + 3 = os 10 do SCI. */
+export const TAMANHO_DA_BASE_DO_LOTE = 7;
+/** a chave de cada lançamento: 3 algarismos, então até 999 lançamentos por planilha */
+export const MAX_LANCAMENTOS_POR_LOTE = 999;
 
 /**
  * O lote do minimum (27/11/2026, Vitor: "ao exportar os arquivos, voce vai colocar na coluna lote, um codigo propio, feitos em
- * letras maiusculas, e numeros, que dentre desses numeros tenha o codigo da empresa"; "vai ser um lote por planilha"): M + a empresa
- * com 5 algarismos + o controle sorteado (letras e números) até os 10 do SCI. M00583BR6W = minimum, empresa 583. Cada planilha, um
- * novo. sortear: só o teste troca.
+ * letras maiusculas, e numeros, que dentre desses numeros tenha o codigo da empresa"; "vai ser um lote por planilha"; depois:
+ * cada linha leva [lote]001, [lote]002…, para excluir no SCI o lote todo ou um lançamento só; "a codificacao faz como quiser").
+ * A base: M + o código da empresa (sem zeros na frente) + letras sorteadas até 7 (M583KQT). Na planilha, cada lançamento leva a
+ * base + 001, 002… (M583KQT001). As letras separam a empresa da chave. Cada planilha, uma base nova. sortear: só o teste troca.
  */
-export function loteDoMinimum(codigoDaEmpresa: number, sortear: (n: number) => string = sortearControle): string {
-  // o código da empresa no SCI tem 5 algarismos (00583)
-  const empresa = String(Math.max(0, Math.trunc(codigoDaEmpresa) || 0)).padStart(5, '0').slice(-5);
-  const n = TAMANHO_DO_LOTE - 1 - empresa.length;
-  let controle = '';
-  // com pelo menos uma letra e um número (o código não vira só número nem só letra)
-  for (let i = 0; i < 50 && !(/[A-Z]/.test(controle) && /\d/.test(controle)); i++) controle = sortear(n).toUpperCase().slice(0, n);
-  return 'M' + empresa + controle;
+export function loteDoMinimum(codigoDaEmpresa: number, sortear: (n: number) => string = sortearLetras): string {
+  // o código da empresa no SCI tem até 5 algarismos; com 5, sobra 1 letra
+  const empresa = String(Math.max(0, Math.trunc(codigoDaEmpresa) || 0)).slice(-5);
+  const n = TAMANHO_DA_BASE_DO_LOTE - 1 - empresa.length;
+  const letras = sortear(n).toUpperCase().replace(/[^A-Z]/g, '').padEnd(n, 'X').slice(0, n);
+  return 'M' + empresa + letras;
 }
 
-/** A empresa de um lote do minimum (M00583BR6W → 583), ou null se não é um lote do minimum. */
+/** A chave do lançamento n (1, 2…) no lote: a base + 3 algarismos (M583KQT + 1 → M583KQT001). */
+export function chaveDoLancamento(base: string, n: number): string {
+  return base + String(n).padStart(3, '0');
+}
+
+/** Se o texto é a base de um lote do minimum (7: M + empresa + letras). */
+const ehBaseDoMinimum = (lote: string) => lote.length === TAMANHO_DA_BASE_DO_LOTE && /^M\d{1,5}[A-Z]+$/.test(lote);
+
+/**
+ * O que um lote do minimum diz: a empresa, a base e, se tiver, o número do lançamento (M583KQT001 → 583, M583KQT, 1; M583KQT →
+ * 583, M583KQT, null). null se não é um lote do minimum.
+ */
+export function lerLoteDoMinimum(lote: string): { empresa: number; base: string; lancamento: number | null } | null {
+  const t = lote.trim().toUpperCase();
+  const m = /^(M(\d{1,5})[A-Z]+)(\d{3})?$/.exec(t);
+  if (!m || m[1].length !== TAMANHO_DA_BASE_DO_LOTE) return null;
+  return { empresa: Number(m[2]), base: m[1], lancamento: m[3] ? Number(m[3]) : null };
+}
+
+/** A empresa de um lote do minimum (M583KQT001 ou M583KQT → 583), ou null se não é um lote do minimum. */
 export function empresaDoLote(lote: string): number | null {
-  const m = /^M(\d{5})[A-Z0-9]{4}$/.exec(lote.trim().toUpperCase());
-  return m ? Number(m[1]) : null;
+  return lerLoteDoMinimum(lote)?.empresa ?? null;
+}
+
+/**
+ * A chave de cada lançamento na planilha (na ordem dos lançamentos): os prontos levam a base + 001, 002… na ordem em que vão para
+ * o Importar; os com problema não vão para o SCI e ficam sem chave (''). Lote que não é do minimum: o mesmo em todos.
+ */
+export function chavesDaPlanilha(lancamentos: readonly LancamentoSci[], lote: string): string[] {
+  if (!ehBaseDoMinimum(lote)) return lancamentos.map(() => lote);
+  let n = 0;
+  return lancamentos.map(l => (l.problemas.length ? '' : chaveDoLancamento(lote, ++n)));
 }
 
 /** O lote padrão do nads: NADS + AAMM do mês (NADS2611). */
@@ -212,7 +244,13 @@ function aba(aoa: Celula[][], linhasDeLancamento: number): XLSX.WorkSheet {
 export function planilhaDoSci(lancamentos: readonly LancamentoSci[], lote = ''): Uint8Array {
   const prontos = lancamentos.filter(l => !l.problemas.length);
   const comProblema = lancamentos.filter(l => l.problemas.length);
-  const importar: Celula[][] = [titulos(COLUNAS_DO_SCI), ...prontos.map(l => linhaDaPlanilha(l, lote))];
+  if (ehBaseDoMinimum(lote) && prontos.length > MAX_LANCAMENTOS_POR_LOTE) {
+    throw new Error('A planilha tem ' + prontos.length + ' lançamentos prontos: o lote vai até ' + MAX_LANCAMENTOS_POR_LOTE + ' (a chave de cada um tem 3 algarismos). Divida em mais de uma planilha.');
+  }
+  const chaves = chavesDaPlanilha(lancamentos, lote);
+  const chaveDe = new Map(lancamentos.map((l, i) => [l, chaves[i]]));
+  // o lote do minimum: cada lançamento com a sua chave (a base + 001, 002…); os da aba Conferir, só a base (não vão para o SCI)
+  const importar: Celula[][] = [titulos(COLUNAS_DO_SCI), ...prontos.map(l => linhaDaPlanilha(l, chaveDe.get(l) ?? lote))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, aba(importar, prontos.length), 'Importar');
   if (comProblema.length) {

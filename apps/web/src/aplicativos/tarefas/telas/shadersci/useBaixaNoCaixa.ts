@@ -106,7 +106,9 @@ export function useBaixaNoCaixa(min: VmShadersCi) {
       if (!prontos.length) { aviso({ tom: 'info', titulo: 'Nenhuma baixa pronta', texto: 'Passe o mouse na linha para ver o que falta: o caixa e o histórico precisam estar no plano.' }); return; }
       // um lote próprio por planilha, com a empresa no código (27/11/2026)
       const loteDaPlanilha = codigo != null ? sci.loteDoMinimum(codigo) : '';
-      baixarBytes(sci.planilhaDoSci(lancamentos, loteDaPlanilha), sci.nomeDaPlanilhaSci(min.cnpj, mes, 'baixa no caixa', loteDaPlanilha), sci.TIPO_XLSX_SCI);
+      let bytes: Uint8Array;
+      try { bytes = sci.planilhaDoSci(lancamentos, loteDaPlanilha); } catch (e) { aviso({ tom: 'info', titulo: 'Planilha grande demais para um lote', texto: e instanceof Error ? e.message : String(e) }); return; }
+      baixarBytes(bytes, sci.nomeDaPlanilhaSci(min.cnpj, mes, 'baixa no caixa', loteDaPlanilha), sci.TIPO_XLSX_SCI);
       if (loteDaPlanilha) aviso({ tom: 'ok', titulo: (prontos.length === 1 ? '1 baixa' : prontos.length + ' baixas') + ' na planilha do SCI', texto: 'Lote ' + loteDaPlanilha + '.' });
     },
     carregarExemplo: () => guardar({ arquivo: 'Consulta de exemplo (fictícia).xls', importadoEm: new Date().toISOString(), lancamentos: consultaDeExemplo(), caixa: '', historico: '' }),
