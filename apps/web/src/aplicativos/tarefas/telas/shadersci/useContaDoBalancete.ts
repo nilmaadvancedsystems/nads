@@ -13,13 +13,20 @@ import type { VmShadersCi } from './useShadersCi';
 
 // a conta do caixa e a do banco, o histórico: escolhidos uma vez por empresa, neste navegador
 const CHAVE = 'nads-minimum-pagamentos-v1|';
-interface Escolhas { caixa: string; banco: string; historico: string; /** o histórico do recebimento (clientes) no fechamento */ historicoRecebimento: string }
+interface Escolhas {
+  caixa: string; banco: string; historico: string; /** o histórico do recebimento (clientes) no fechamento */ historicoRecebimento: string;
+  /** a conta da multa e dos juros pagos */ juros: string; /** o que não está no extrato vai para o caixa (padrão: sim) */ caixaLigado: boolean;
+}
 function lerEscolhas(codigo: number | null): Partial<Escolhas> {
   try { return codigo == null ? {} : (JSON.parse(localStorage.getItem(CHAVE + codigo) || '{}') as Partial<Escolhas>); } catch { return {}; }
 }
 
 /** a analítica do disponível (01.1.1) com o nome que bate */
 const doDisponivel = (b: sci.BalanceteSci, nome: RegExp) => b.contas.filter(c => c.analitica && /^0?1\.0?1\.0?1\./.test(c.classificacao) && nome.test(sci.semAcento(c.nome)));
+/** a conta da multa e dos juros pagos pelo balancete: a analítica das despesas (04) com "juros" ou "multa" no nome */
+const contaDeJuros = (b: sci.BalanceteSci) => b.contas.find(c => c.analitica && !c.participante && /^0?4\./.test(c.classificacao) && /juros|multa/.test(sci.semAcento(c.nome)))?.codigo || '';
+/** os lançamentos de cada pagamento: o da provisão e, com multa e juros, o do acréscimo */
+const lancamentosDos = (ps: readonly sci.PagamentoGerado[]) => ps.flatMap(p => (p.acrescimo ? [p.lancamento, p.acrescimo] : [p.lancamento]));
 
 export function useContaDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci, conta: sci.ContaDoBalanceteSci) {
   const codigo = vm.empresa?.codigo ?? null;
@@ -34,17 +41,19 @@ export function useContaDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci, conta:
   const bancosDoBalancete = doDisponivel(b, /^(?!caixa)/);
   const [caixa, setCaixa] = useState(guardadas.caixa || caixaDoBalancete);
   const [banco, setBanco] = useState(guardadas.banco || extrato?.contaDoBanco || (bancosDoBalancete.length === 1 ? bancosDoBalancete[0].codigo : ''));
-  const [historico, setHistorico] = useState(guardadas.historico || '');
+  const lado = sci.ladoDaProvisao(conta.classificacao);
+  const [historico, setHistorico] = useState(lado === 'debito' ? guardadas.historicoRecebimento || sci.HISTORICO_DO_RECEBIMENTO : guardadas.historico || sci.HISTORICO_DO_PAGAMENTO);
+  const [juros, setJuros] = useState(guardadas.juros || contaDeJuros(b));
   const guardar = (e: Partial<Escolhas>) => {
     if (codigo == null) return;
-    try { localStorage.setItem(CHAVE + codigo, JSON.stringify({ caixa, banco, historico, ...e })); } catch { /* sem espaço */ }
+    try { localStorage.setItem(CHAVE + codigo, JSON.stringify({ ...lerEscolhas(codigo), caixa, banco, juros, ...(lado === 'debito' ? { historicoRecebimento: historico } : { historico }), ...e })); } catch { /* sem espaço */ }
   };
   const nomeDa = (c: string) => (c ? b.contas.find(x => x.codigo === c && !x.participante)?.nome || '' : '');
 
   const abertas = useMemo(() => provisoes?.meses.flatMap(m => m.provisoes.filter(x => x.aberto > 0)) || [], [provisoes]);
   const previa = useMemo(() => (provisoes && caixa ? sci.pagamentosDasProvisoes(abertas, {
-    conta: conta.codigo, lado: provisoes.lado, caixa, banco: banco || undefined, extrato: extrato?.linhas, historico,
-  }) : []), [provisoes, abertas, conta, caixa, banco, extrato, historico]);
+    conta: conta.codigo, lado: provisoes.lado, caixa, banco: banco || undefined, extrato: extrato?.linhas, historico, juros,
+  }) : []), [provisoes, abertas, conta, caixa, banco, extrato, historico, juros]);
   const [gerando, setGerando] = useState(false);
 
   async function gerar() {
@@ -54,7 +63,7 @@ export function useContaDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci, conta:
     setGerando(true);
     try {
       const plano = sci.planoComOBalancete(sci.planoDoSci(sci.planoDaConsulta(todos, vm.plano)), b);
-      const lsci = sci.lancamentosDoShaderParaOSci(previa.map(p => p.lancamento), plano, vm.cnpj);
+      const lsci = sci.lancamentosDoShaderParaOSci(lancamentosDos(previa), plano, vm.cnpj);
       const lote = await loteParaAPlanilha({ codigo, empresa: vm.empresa?.nome || '', lancamentos: lsci, origem: 'pagamentos da conta ' + conta.codigo, aviso });
       if (lote == null) return;
       const bytes = sci.planilhaDoSci(lsci, lote);
@@ -73,7 +82,8 @@ export function useContaDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci, conta:
     lancamentos, provisoes,
     caixa, setCaixa: (v: string) => { setCaixa(v); guardar({ caixa: v }); }, nomeDoCaixa: nomeDa(caixa),
     banco, setBanco: (v: string) => { setBanco(v); guardar({ banco: v }); }, nomeDoBanco: nomeDa(banco),
-    historico, setHistorico: (v: string) => { setHistorico(v); guardar({ historico: v }); },
+    historico, setHistorico: (v: string) => { setHistorico(v); guardar(lado === 'debito' ? { historicoRecebimento: v } : { historico: v }); },
+    juros, setJuros: (v: string) => { setJuros(v); guardar({ juros: v }); }, nomeDosJuros: nomeDa(juros),
     extrato, previa, gerando, gerar: () => { void gerar(); },
     /** o nome da contrapartida (pelo balancete) */
     nomeDa,
@@ -97,19 +107,24 @@ export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
   const bancosDoBalancete = doDisponivel(b, /^(?!caixa)/);
   const [caixa, setCaixa] = useState(guardadas.caixa || doDisponivel(b, /^caixa/)[0]?.codigo || '');
   const [banco, setBanco] = useState(guardadas.banco || extrato?.contaDoBanco || (bancosDoBalancete.length === 1 ? bancosDoBalancete[0].codigo : ''));
-  const [historicoPagamento, setHistoricoPagamento] = useState(guardadas.historico || '');
-  const [historicoRecebimento, setHistoricoRecebimento] = useState(guardadas.historicoRecebimento || '');
+  const [historicoPagamento, setHistoricoPagamento] = useState(guardadas.historico || sci.HISTORICO_DO_PAGAMENTO);
+  const [historicoRecebimento, setHistoricoRecebimento] = useState(guardadas.historicoRecebimento || sci.HISTORICO_DO_RECEBIMENTO);
+  const [juros, setJuros] = useState(guardadas.juros || contaDeJuros(b));
+  // o controle (27/11/2026: "normalmente isso vai ser ajustavel na aplicacao para termos controle"): o caixa ligado ou não, e as
+  // provisões que a pessoa deixa em aberto (só nesta tela)
+  const [caixaLigado, setCaixaLigado] = useState(guardadas.caixaLigado !== false);
+  const [deixarAbertas, setDeixarAbertas] = useState<ReadonlySet<string>>(() => new Set());
   const guardar = (e: Partial<Escolhas>) => {
     if (codigo == null) return;
-    try { localStorage.setItem(CHAVE + codigo, JSON.stringify({ caixa, banco, historico: historicoPagamento, historicoRecebimento, ...e })); } catch { /* sem espaço */ }
+    try { localStorage.setItem(CHAVE + codigo, JSON.stringify({ ...lerEscolhas(codigo), caixa, banco, juros, caixaLigado, historico: historicoPagamento, historicoRecebimento, ...e })); } catch { /* sem espaço */ }
   };
   // o período: o do balancete, num ano só (o lote vale para a empresa num ano)
   const ate = (b.fim || '').slice(0, 7);
   const de = (b.inicio || '').slice(0, 7) < ate.slice(0, 4) + '-01' ? ate.slice(0, 4) + '-01' : (b.inicio || '').slice(0, 7);
   const contas = useMemo(() => b.contas.filter(c => c.analitica && !c.participante && c.codigo).map(c => ({ codigo: c.codigo, classificacao: c.classificacao, nome: c.nome })), [b]);
   const f = useMemo(() => (todos.length && caixa && ate ? sci.fechamentoDoPeriodo(todos, contas, {
-    caixa, banco: banco || undefined, extrato: extrato?.linhas, historicoPagamento, historicoRecebimento, de, ate,
-  }) : null), [todos, contas, caixa, banco, extrato, historicoPagamento, historicoRecebimento, de, ate]);
+    caixa, banco: banco || undefined, extrato: extrato?.linhas, historicoPagamento, historicoRecebimento, de, ate, juros, semCaixa: !caixaLigado, deixarAbertas,
+  }) : null), [todos, contas, caixa, banco, extrato, historicoPagamento, historicoRecebimento, de, ate, juros, caixaLigado, deixarAbertas]);
   const saldo = (cod: string) => (cod ? b.contas.find(c => c.codigo === cod && !c.participante)?.atual ?? null : null);
   const nomeDa = (c: string) => (c ? b.contas.find(x => x.codigo === c && !x.participante)?.nome || '' : '');
   const saldoDoBanco = saldo(banco);
@@ -125,7 +140,7 @@ export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
     setGerando(true);
     try {
       const plano = sci.planoComOBalancete(sci.planoDoSci(sci.planoDaConsulta(todos, vm.plano)), b);
-      const lsci = sci.lancamentosDoShaderParaOSci(f.pagamentos.map(p => p.lancamento), plano, vm.cnpj);
+      const lsci = sci.lancamentosDoShaderParaOSci(lancamentosDos(f.pagamentos), plano, vm.cnpj);
       const lote = await loteParaAPlanilha({ codigo, empresa: vm.empresa?.nome || '', lancamentos: lsci, origem: 'fechamento ' + de + ' a ' + ate, aviso });
       if (lote == null) return;
       baixarBytes(sci.planilhaDoSci(lsci, lote), sci.nomeDaPlanilhaSci(vm.cnpj, ate, 'fechamento', lote), sci.TIPO_XLSX_SCI);
@@ -144,7 +159,12 @@ export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
     banco, setBanco: (v: string) => { setBanco(v); guardar({ banco: v }); }, nomeDoBanco: nomeDa(banco),
     historicoPagamento, setHistoricoPagamento: (v: string) => { setHistoricoPagamento(v); guardar({ historico: v }); },
     historicoRecebimento, setHistoricoRecebimento: (v: string) => { setHistoricoRecebimento(v); guardar({ historicoRecebimento: v }); },
-    temRecebimento: !!f?.pagamentos.some(p => p.provisao.debito === p.conta.codigo),
+    juros, setJuros: (v: string) => { setJuros(v); guardar({ juros: v }); }, nomeDosJuros: nomeDa(juros),
+    caixaLigado, setCaixaLigado: (v: boolean) => { setCaixaLigado(v); guardar({ caixaLigado: v }); },
+    /** deixa a provisão em aberto (ou volta a pagar) */
+    alternar: (chave: string) => setDeixarAbertas(s => { const n = new Set(s); if (n.has(chave)) n.delete(chave); else n.add(chave); return n; }),
+    deixada: (chave: string) => deixarAbertas.has(chave),
+    temRecebimento: !!f && [...f.pagamentos, ...f.abertas].some(p => p.provisao.debito === p.conta.codigo),
     saldoDoBanco, bancoDepois, saldoDoCaixa, caixaDepois,
     /** a diferença entre o banco depois dos pagamentos e o saldo final do extrato (null = não dá para conferir) */
     diferencaNoBanco: bancoDepois != null && extrato?.saldoFinal != null ? bancoDepois - extrato.saldoFinal : null,

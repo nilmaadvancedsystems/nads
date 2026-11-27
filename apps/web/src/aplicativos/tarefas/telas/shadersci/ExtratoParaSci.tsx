@@ -3,7 +3,7 @@
 // se o extrato fecha com o saldo do banco; embaixo, a grade (o débito e o crédito de cada linha, a contrapartida trocada na própria
 // linha, a regra criada a partir dela) e a planilha do gerador do SCI. No jeito do Razão do SCI. Só desenha: tudo vem do ViewModel.
 import { sci } from '@nads/core';
-import { Icone, LogoExcel, LogoSci, MenuSuspenso } from '@nads/ui';
+import { Icone, LogoExcel, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AcoesDoTopo } from '../../../../comum/topo';
@@ -11,7 +11,6 @@ import { BalaoDeGuia } from './BalaoDeGuia';
 import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { JanelaBuscarNoEmail } from '../../etapas/extrator/telas/tarefa/JanelaBuscarNoEmail';
 import { Paleta } from './Paleta';
-import { rotuloDoMes } from './useBuscaDoExtrato';
 import { useExtratoParaSci, type FiltroDoExtratoSci, type VmExtratoParaSci } from './useExtratoParaSci';
 import type { VmShadersCi } from './useShadersCi';
 
@@ -299,48 +298,41 @@ function PuxarOExtrato({ vm, escolher }: { vm: VmExtratoParaSci; escolher: () =>
   const p = vm.puxar;
   const ocupado = !!p.lendo || vm.lendo;
   return (
-    <div className="sci-inicio sci-contab-inicio">
-      <span className="sci-inicio-marca">
-        <span className="sci-contab-logo" aria-hidden="true"><LogoSci altura={52} /></span>
-        <h1 className="sci-contab-titulo">Qual extrato vamos fazer?</h1>
-      </span>
-      <div className="sci-inicio-corpo sci-contab-corpo sci-extrato-puxar">
-        <div className="sci-puxar sci-barra">
-          {p.bancos.length > 1 ? (
-            <select className="sci-barra-campo" value={p.banco?.id || ''} onChange={e => p.setBanco(e.target.value)} aria-label="O banco">
-              {p.bancos.map(b => <option key={b.id} value={b.id}>{b.nome}{b.conta ? ' · c/c ' + b.conta : ''}</option>)}
-            </select>
-          ) : <span className="sci-barra-campo sci-barra-texto"><Icone nome="landmark" width={16} height={16} />{p.banco ? p.banco.nome + (p.banco.conta ? ' · c/c ' + p.banco.conta : '') : 'Sem conta no Cadastro'}</span>}
-          <input className="sci-barra-mes" type="month" value={p.mes} onChange={e => e.target.value && p.setMes(e.target.value)} aria-label="O mês do extrato" />
-        </div>
-        <div className="sci-extrato-vias">
-          {p.precisaEntrar ? (
-            <button type="button" className="sci-extrato-via" onClick={p.entrar}><Icone nome="lock" width={18} height={18} /><b>Entrar no Drive</b><span>com o Google do escritório</span></button>
-          ) : (
-            <button type="button" className="sci-extrato-via" onClick={p.buscarNoDrive} disabled={ocupado}><Icone nome="pasta" width={18} height={18} /><b>Buscar no Drive</b><span>EXTRATOS de {rotuloDoMes(p.mes)}</span></button>
-          )}
-          {p.temEmail && <button type="button" className="sci-extrato-via" onClick={p.abrirEmail} disabled={ocupado}><Icone nome="envelope" width={18} height={18} /><b>Buscar no e-mail</b><span>no Gmail do escritório</span></button>}
-          <button type="button" className="sci-extrato-via" onClick={escolher} disabled={ocupado}><Icone nome="upload" width={18} height={18} /><b>Do computador</b><span>PDF, OFX, planilha ou foto</span></button>
-        </div>
-        {(p.lendo || vm.lendo) && <p className="sci-extrato-msg">{p.lendo || 'Lendo o extrato…'}</p>}
-        {p.erro && !p.lendo && <p className="sci-extrato-msg erro">{p.erro}</p>}
-        {p.candidatos.length > 0 && !p.lendo && (
-          <ul className="sci-extrato-lista" aria-label="Arquivos do Drive">
-            {p.candidatos.slice(0, 8).map(a => (
-              <li key={a.id}><button type="button" onClick={() => p.usarDoDrive(a)}><Icone nome="fileText" width={16} height={16} /><span>{a.caminho || a.nome}</span><b>Usar</b></button></li>
-            ))}
-          </ul>
-        )}
-        {p.recebidos.length > 0 && (
-          <ul className="sci-extrato-lista" aria-label="Extratos recebidos">
-            <li className="sci-extrato-lista-titulo">Recebidos pelo robô em {rotuloDoMes(p.mes)}</li>
-            {p.recebidos.map(r => (
-              <li key={r.id}><button type="button" onClick={() => p.usarRecebido(r)} disabled={ocupado}><Icone nome="envelope" width={16} height={16} /><span>{r.nome}</span><b>Usar</b></button></li>
-            ))}
-          </ul>
-        )}
+    <section className="card">
+      <div className="card-head">
+        <h3>Qual extrato vamos fazer?</h3>
+        <span style={{ flex: 1 }} />
+        {p.bancos.length > 1 ? (
+          <select className="input" style={{ width: 'auto' }} value={p.banco?.id || ''} onChange={e => p.setBanco(e.target.value)} aria-label="O banco">
+            {p.bancos.map(b => <option key={b.id} value={b.id}>{b.nome}{b.conta ? ' · c/c ' + b.conta : ''}</option>)}
+          </select>
+        ) : <span className="badge badge-neutral">{p.banco ? p.banco.nome + (p.banco.conta ? ' · c/c ' + p.banco.conta : '') : 'Sem conta no Cadastro'}</span>}
+        <SeletorMes valor={p.mes} onMudar={m => p.setMes(m)} rotulo="O mês do extrato" />
       </div>
-    </div>
+      <div className="sci-extrato-acoes">
+        {p.precisaEntrar
+          ? <button type="button" className="btn btn-outline" onClick={p.entrar}><Icone nome="lock" />Entrar no Drive</button>
+          : <button type="button" className="btn btn-outline" onClick={p.buscarNoDrive} disabled={ocupado}><Icone nome="pasta" />Buscar no Drive</button>}
+        {p.temEmail && <button type="button" className="btn btn-outline" onClick={p.abrirEmail} disabled={ocupado}><Icone nome="envelope" />Buscar no e-mail</button>}
+        <button type="button" className="btn btn-outline" onClick={escolher} disabled={ocupado}><Icone nome="upload" />Do computador</button>
+        {(p.lendo || vm.lendo) && <span className="hint">{p.lendo || 'Lendo o extrato…'}</span>}
+      </div>
+      {p.erro && !p.lendo && <p className="hint" style={{ color: 'var(--danger)' }}>{p.erro}</p>}
+      {(p.candidatos.length > 0 && !p.lendo) || p.recebidos.length > 0 ? (
+        <div className="table-wrap" style={{ marginTop: 12 }}>
+          <table className="table-compact">
+            <thead><tr><th>De onde</th><th>Arquivo</th><th /></tr></thead>
+            <tbody>
+              {!p.lendo && p.candidatos.slice(0, 8).map(a => (
+                <tr key={'d' + a.id}><td>Drive</td><td>{a.caminho || a.nome}</td><td style={{ textAlign: 'right' }}><button type="button" className="btn btn-outline btn-sm" onClick={() => p.usarDoDrive(a)}>Usar</button></td></tr>
+              ))}
+              {p.recebidos.map(r => (
+                <tr key={'r' + r.id}><td>Recebido pelo robô</td><td>{r.nome}</td><td style={{ textAlign: 'right' }}><button type="button" className="btn btn-outline btn-sm" onClick={() => p.usarRecebido(r)} disabled={ocupado}>Usar</button></td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </section>
   );
 }
-
