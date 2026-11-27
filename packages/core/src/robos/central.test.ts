@@ -238,10 +238,10 @@ describe('os controles', () => {
     expect(codigoDoCampo('486 VS MEDICINA')).toBe('486');
     expect(codigoDoCampo('VS 486')).toBe('');
   });
-  it('as filas do catálogo: os quatro robôs que mexem (com o PGDAS-D, 25/11/2026) têm os pedidos para cliente', () => {
-    expect(ROBOS.filter(r => r.itens?.refazer).map(r => r.id).sort()).toEqual(['alterdata', 'fgts', 'pgdas', 'sieg']);
-    expect(ROBOS.filter(r => r.pedidos?.length).map(r => r.id).sort()).toEqual(['alterdata', 'fgts', 'pgdas', 'sieg']);
-    expect(ROBOS.filter(r => r.pausavel).map(r => r.id).sort()).toEqual(['alterdata', 'fgts', 'ia', 'pgdas', 'sieg']);
+  it('as filas do catálogo: os robôs que mexem (com o PGDAS-D, 25/11/2026, e as certidões, 27/11/2026) têm os pedidos para cliente', () => {
+    expect(ROBOS.filter(r => r.itens?.refazer).map(r => r.id).sort()).toEqual(['alterdata', 'certidoes', 'fgts', 'pgdas', 'sieg']);
+    expect(ROBOS.filter(r => r.pedidos?.length).map(r => r.id).sort()).toEqual(['alterdata', 'certidoes', 'fgts', 'pgdas', 'sieg']);
+    expect(ROBOS.filter(r => r.pausavel).map(r => r.id).sort()).toEqual(['alterdata', 'certidoes', 'fgts', 'ia', 'pgdas', 'sieg']);
   });
 });
 
