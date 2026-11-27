@@ -510,6 +510,16 @@ function mudancasDasChaves(antes, depois) {
 	if (antes.empresaDeTeste.trim() !== depois.empresaDeTeste.trim()) lista.push("Empresa de teste: " + (antes.empresaDeTeste.trim() || "nenhuma") + " → " + (depois.empresaDeTeste.trim() || "nenhuma"));
 	return lista;
 }
+const RESPOSTA_MIN_MS = 3e3;
+const RESPOSTA_MAX_MS = 8e3;
+function esperaParaResponder(ultimo, agora, sorteio) {
+	const intervalo = RESPOSTA_MIN_MS + Math.round(5e3 * Math.min(1, Math.max(0, sorteio)));
+	return Math.max(0, (ultimo || 0) + intervalo - agora);
+}
+function linhaComChaves(primeiro) {
+	if (typeof primeiro !== "string") return false;
+	return /^(Closing session|Opening session|Removing old closed session|Session already closed|Migrating session to|Session error:|V1 session storage migration error)/.test(primeiro);
+}
 
 //#endregion
 exports.CHAVES_DESLIGADAS = CHAVES_DESLIGADAS;
@@ -523,15 +533,19 @@ exports.MENU_DE_NOVO_MS = MENU_DE_NOVO_MS;
 exports.MENU_VALE_MS = MENU_VALE_MS;
 exports.NUMERO_DO_ESCRITORIO = NUMERO_DO_ESCRITORIO;
 exports.RESPONDENDO_MS = RESPONDENDO_MS;
+exports.RESPOSTA_MAX_MS = RESPOSTA_MAX_MS;
+exports.RESPOSTA_MIN_MS = RESPOSTA_MIN_MS;
 exports.RESPOSTA_VALE_MS = RESPOSTA_VALE_MS;
 exports.TEXTO_DO_ESCRITORIO = TEXTO_DO_ESCRITORIO;
 exports.TEXTO_FORA_DO_CADASTRO = TEXTO_FORA_DO_CADASTRO;
 exports.chavesParaGravar = chavesParaGravar;
 exports.desdeDasRespostas = desdeDasRespostas;
 exports.envioMaisRecente = envioMaisRecente;
+exports.esperaParaResponder = esperaParaResponder;
 exports.lerChaves = lerChaves;
 exports.lerMensagemRecebida = lerMensagemRecebida;
 exports.lerRespostaRecebida = lerRespostaRecebida;
+exports.linhaComChaves = linhaComChaves;
 exports.mensagemDasGuias = mensagemDasGuias;
 exports.mensagemDoBoleto = mensagemDoBoleto;
 exports.mensagemDoMandei = mensagemDoMandei;

@@ -485,3 +485,28 @@ export function mudancasDasChaves(antes: ChavesDoWhatsapp, depois: ChavesDoWhats
   if (antes.empresaDeTeste.trim() !== depois.empresaDeTeste.trim()) lista.push('Empresa de teste: ' + (antes.empresaDeTeste.trim() || 'nenhuma') + ' → ' + (depois.empresaDeTeste.trim() || 'nenhuma'));
   return lista;
 }
+
+// ---------- a espera do autoatendimento e o registro do robô (27/11/2026) ----------
+
+/**
+ * A espera antes de responder a quem escreveu (o dono, 27/11/2026: "ta demorando muito para responder"): de 3 a 8 s. Os
+ * envios que partem do escritório (guias, boletos, Mandei, Pedir extratos) seguem com 20 a 60 s (robo/whatsapp-regras.js);
+ * o limite por hora e por dia vale para todos.
+ */
+export const RESPOSTA_MIN_MS = 3000;
+export const RESPOSTA_MAX_MS = 8000;
+
+/** Quanto esperar (ms) antes de responder no autoatendimento, desde o último envio; `sorteio` de 0 a 1. */
+export function esperaParaResponder(ultimo: number, agora: number, sorteio: number): number {
+  const intervalo = RESPOSTA_MIN_MS + Math.round((RESPOSTA_MAX_MS - RESPOSTA_MIN_MS) * Math.min(1, Math.max(0, sorteio)));
+  return Math.max(0, (ultimo || 0) + intervalo - agora);
+}
+
+/**
+ * As linhas que a biblioteca de criptografia do WhatsApp (libsignal, dentro da Baileys) escreve no console com as chaves da
+ * conversa ("Closing session: SessionEntry {...}"): não podem ir para o registro da máquina. true = engolir a linha.
+ */
+export function linhaComChaves(primeiro: unknown): boolean {
+  if (typeof primeiro !== 'string') return false;
+  return /^(Closing session|Opening session|Removing old closed session|Session already closed|Migrating session to|Session error:|V1 session storage migration error)/.test(primeiro);
+}

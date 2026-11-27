@@ -92,7 +92,9 @@ const CLIENTE_FONE = '5538999991234';
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'nads-whatsapp-'));
 const BOLETO_PDF = Buffer.from('%PDF-boleto');
 
+let esperas = [];
 function cenario(chaves) {
+  esperas = [];
   const db = bancoFalso({
     'clientes/c1': { ativo: true, codigoOrigem: '123', nome: 'Padaria Boa', telefone: '(38) 99999-1234' },
     'clientes/c2': { ativo: true, codigoOrigem: '456', nome: 'Mercado Bom', telefone: '(38) 3221-0000' },
@@ -105,7 +107,7 @@ function cenario(chaves) {
   });
   const sock = socketFalso();
   for (const f of fs.readdirSync(pasta)) fs.rmSync(path.join(pasta, f));
-  Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta });
+  Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta, esperarFalso: async ms => { esperas.push(ms); } });
   return { db, sock };
 }
 const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith('solicitacoesEmail/') && v.tipo === 'whatsapp');
@@ -189,6 +191,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     igual('4: responde com o WhatsApp do escritório', sock.mandadas[7].text, W.TEXTO_DO_ESCRITORIO);
     const recebida = [...db._docs.values()].find(d => d.tipo === 'whatsapp-recebida');
     igual('4: o pedido para falar com o escritório fica registrado', recebida && [recebida.status, recebida.codigo, recebida.pedeEscritorio], ['recebida', '123', true]);
+    verdade('o autoatendimento responde em até 8 s (não 20 a 60)', esperas.length > 0 && esperas.every(ms => ms <= W.RESPOSTA_MAX_MS));
     await Z.receber(texto(CELULAR_DO_TESTE, 'valeu'));
     igual('texto solto logo depois: não repete o menu', sock.mandadas.length, 8);
     await Z.receber(chega(CELULAR_DO_TESTE, { imageMessage: { caption: 'foto' } }));
@@ -218,6 +221,27 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     const [caminho, p] = pendentes(db)[0];
     await Z.atenderPedido(p, db.doc(caminho), null);
     igual('e o robô deixa sair', sock.mandadas[1].para, GERENTE);
+  }
+
+  // ---------- 6c. o envio do escritório segue com 20 a 60 s ----------
+  {
+    const { db } = cenario({});
+    const p = { tipo: 'whatsapp', para: ESCRITORIO, texto: 'oi' };
+    await Z.atenderPedido(p, db.doc('solicitacoesEmail/a'), null);
+    await Z.atenderPedido(p, db.doc('solicitacoesEmail/b'), null);
+    verdade('o segundo pedido da fila espera pelo menos 19 s', esperas.length === 1 && esperas[0] >= 19000);
+  }
+
+  // ---------- 6d. o console sem as chaves da criptografia ----------
+  {
+    const vistos = [];
+    const antes = console.info;
+    console.info = (...a) => vistos.push(a[0]);
+    Z.filtrarConsole();
+    console.info('Closing session:', { rootKey: Buffer.from('segredo') });
+    console.info('whatsapp: conectado');
+    console.info = antes;
+    igual('a linha com as chaves some; a outra passa', vistos, ['whatsapp: conectado']);
   }
 
   // ---------- 7. o freio ----------

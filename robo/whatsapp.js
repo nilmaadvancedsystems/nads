@@ -273,9 +273,25 @@ function falhou(err) {
   gravarEstado({ situacao: 'desconectado', motivo: 'não conectou: ' + err.message });
 }
 
+/**
+ * A libsignal (a criptografia dentro da Baileys) escreve no console as chaves da conversa ("Closing session: SessionEntry
+ * {...}"), e o console do robô vai para o registro da máquina. 27/11/2026: essas linhas são engolidas (a regra é do core,
+ * linhaComChaves); o resto passa igual. Uma vez só.
+ */
+let consoleFiltrado = false;
+function filtrarConsole() {
+  if (consoleFiltrado) return;
+  consoleFiltrado = true;
+  for (const nivel of ['log', 'info', 'warn', 'error', 'debug']) {
+    const original = console[nivel].bind(console);
+    console[nivel] = (...args) => { if (!W.linhaComChaves(args[0])) original(...args); };
+  }
+}
+
 /** Liga junto com o vigia (só na nuvem). Com sessão no disco, reconecta; sem, espera o QR ser pedido. */
 function iniciarWhatsapp({ db, log, roboRef, painel }) {
   st = { db, log, roboRef, painel };
+  filtrarConsole();
   lerEnvios();
   lerRastreio();
   conversas = conversasQueContam(lerJson(ARQUIVO_DAS_CONVERSAS), Date.now());
@@ -304,13 +320,14 @@ function naoLigado() {
 
 /**
  * Manda uma mensagem (texto ou arquivo) para o número, com o freio do dia, o intervalo sorteado e a procura do número com e
- * sem o 9. Quem chama já está em emOrdem. Devolve o id da mensagem.
+ * sem o 9. Quem chama já está em emOrdem. Devolve o id da mensagem. `responder`: é a resposta do autoatendimento a quem
+ * acabou de escrever (27/11/2026): espera de 3 a 8 s, não de 20 a 60.
  */
-async function enviar(numero, conteudo) {
+async function enviar(numero, conteudo, responder) {
   if (estado.situacao !== 'conectado' || !sock) throw new Error('o WhatsApp do robô não está conectado (' + (estado.motivo || estado.situacao) + ')');
   const freio = R.motivoDoFreio(enviados, Date.now());
   if (freio) throw new Error(freio);
-  const espera = R.esperaAntesDeMandar(ultimoEnvio, Date.now(), Math.random());
+  const espera = (responder ? W.esperaParaResponder : R.esperaAntesDeMandar)(ultimoEnvio, Date.now(), Math.random());
   if (espera) await esperar(espera);
   if (!sock || estado.situacao !== 'conectado') throw new Error('o WhatsApp desconectou antes de mandar');
   let achado = null;
@@ -452,7 +469,7 @@ async function atender(r, agora) {
   const passo = W.passoDoAtendimento(atendimentos[r.numero] || null, r.texto, empresas, agora, ultimoPedidoPara(r.numero));
   atendimentos[r.numero] = Object.assign({}, passo.conversa, { empresas: [] });
   guardarJson(ARQUIVO_DO_ATENDIMENTO, atendimentos, 'o autoatendimento');
-  if (passo.responder) await enviar(r.numero, { text: passo.responder });
+  if (passo.responder) await enviar(r.numero, { text: passo.responder }, true);
   if (passo.acao) await fazer(passo.acao, r);
 }
 
@@ -516,16 +533,16 @@ async function fazer(acao, r) {
   }
   const achado = await documentosDe(acao.tipo, e).catch(err => { st.log('whatsapp: não achei os documentos (' + acao.tipo + ') de', e.codigo, '-', err.message); return null; });
   const legenda = W.textoDosDocumentos(acao.tipo, e, achado && achado.registro);
-  if (!achado) { await enviar(r.numero, { text: legenda }); return; }
+  if (!achado) { await enviar(r.numero, { text: legenda }, true); return; }
   let mandou = 0;
   for (const a of achado.registro.arquivos) {
     let arq;
     try { arq = await achado.baixar(a); } catch (err) { st.log('whatsapp: não baixei', a.nome || a.id, '-', err.message); continue; }
     if (!arq || !arq.buffer || !arq.buffer.length || arq.buffer.length > MAX_ARQUIVO_BYTES) continue;
-    await enviar(r.numero, { document: arq.buffer, mimetype: arq.mime, fileName: (a.nome || arq.nome).slice(0, 120), ...(mandou ? {} : { caption: legenda }) });
+    await enviar(r.numero, { document: arq.buffer, mimetype: arq.mime, fileName: (a.nome || arq.nome).slice(0, 120), ...(mandou ? {} : { caption: legenda }) }, true);
     mandou++;
   }
-  if (!mandou) await enviar(r.numero, { text: 'Não conseguimos pegar os arquivos agora. Fale com o escritório pelo WhatsApp ' + W.numeroFormatado(W.NUMERO_DO_ESCRITORIO) + '.' });
+  if (!mandou) await enviar(r.numero, { text: 'Não conseguimos pegar os arquivos agora. Fale com o escritório pelo WhatsApp ' + W.numeroFormatado(W.NUMERO_DO_ESCRITORIO) + '.' }, true);
   st.log('whatsapp: autoatendimento mandou', mandou, 'arquivo(s) (' + acao.tipo + ') para', e.nome);
 }
 
@@ -567,7 +584,7 @@ async function atenderComando(p) {
  * Só para o teste (robo/teste-whatsapp.js): um banco e um socket de mentira, as chaves do teste, os arquivos numa pasta
  * temporária e sem a espera entre as mensagens. Nunca chamado pelo vigia.
  */
-function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log }) {
+function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso }) {
   st = { db, log: log || (() => {}), roboRef: { set: async () => {} }, painel: null };
   sock = sockFalso;
   estado = { situacao: 'conectado', numero: '553800000000', motivo: '' };
@@ -577,8 +594,8 @@ function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, l
   ARQUIVO_DAS_CONVERSAS = path.join(pasta, 'whatsapp-conversas.json');
   ARQUIVO_DO_ATENDIMENTO = path.join(pasta, 'whatsapp-atendimento.json');
   enviados = []; ultimoEnvio = 0; rastreio = {}; conversas = {}; atendimentos = {};
-  esperar = async () => {};
+  esperar = esperarFalso || (async () => {});
   if (driveFalso) drive = () => driveFalso;
 }
 
-module.exports = { prepararParaOTeste, iniciarWhatsapp, pararWhatsapp, atenderPedido, atenderComando, pedirPeloWhatsapp, chavesDoWhatsapp, receber };
+module.exports = { prepararParaOTeste, filtrarConsole, iniciarWhatsapp, pararWhatsapp, atenderPedido, atenderComando, pedirPeloWhatsapp, chavesDoWhatsapp, receber };

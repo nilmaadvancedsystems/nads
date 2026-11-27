@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
-  desdeDasRespostas, lerRespostaRecebida, mudancasDasChaves, respostasDoPedido,
+  desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
   CONVERSA_NOVA, MENU_DE_NOVO_MS, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
@@ -219,5 +219,21 @@ describe('os números de teste a mais (no banco, não no código)', () => {
   });
   it('aparece na confirmação', () => {
     expect(mudancasDasChaves(CHAVES_DESLIGADAS, { ...CHAVES_DESLIGADAS, numerosDeTeste: ['5538988887777'] })).toEqual(['Números de teste a mais: nenhum → (38) 98888-7777']);
+  });
+});
+
+describe('a espera do autoatendimento e o registro', () => {
+  it('responde a quem escreveu em 3 a 8 segundos', () => {
+    expect(esperaParaResponder(0, AGORA, 0.5)).toBe(0);
+    expect(esperaParaResponder(AGORA, AGORA, 0)).toBe(3000);
+    expect(esperaParaResponder(AGORA, AGORA, 1)).toBe(8000);
+    expect(esperaParaResponder(AGORA - 60000, AGORA, 1)).toBe(0);
+  });
+  it('engole só as linhas com as chaves da criptografia', () => {
+    expect(linhaComChaves('Closing session:')).toBe(true);
+    expect(linhaComChaves('Opening session:')).toBe(true);
+    expect(linhaComChaves('Session error:Error: Bad MAC')).toBe(true);
+    expect(linhaComChaves('whatsapp: conectado')).toBe(false);
+    expect(linhaComChaves({ a: 1 })).toBe(false);
   });
 });
