@@ -216,6 +216,7 @@ export function JanelaHistoricoDePedidos({ p }: { p: P }) {
                       return <span className={'badge ' + (s ? COR[s] : 'badge-neutral')} title={p.historico.situacoes[r.whatsapp.solicitacao]?.erro}>{s ? STATUS[s] : '…'}</span>;
                     })() : <span className="badge badge-neutral">Aberto no WhatsApp</span>}
                     {r.whatsapp.solicitacao && p.historico.entrega(r.whatsapp.solicitacao) && <span className="hint">{p.historico.entrega(r.whatsapp.solicitacao)}</span>}
+                    {r.whatsapp.solicitacao && p.historico.resposta(r.whatsapp.solicitacao) && <span className="hint">Respondeu: {p.historico.resposta(r.whatsapp.solicitacao)}</span>}
                   </span>
                 )}
                 {r.prazo && <span className="hint">Prazo: até {r.prazo}</span>}

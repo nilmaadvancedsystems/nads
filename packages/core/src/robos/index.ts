@@ -3,3 +3,4 @@ export * from './central';
 export * from './ajustes';
 export * from './robosDePc';
 export * from './whatsapp';
+export * from './whatsappAtendimento';

@@ -148,6 +148,17 @@ async function mandarUm(db, ref, deps) {
     const agora = new Date().toISOString();
     await ref.update({ 'envio.status': 'enviado', 'envio.para': para, 'envio.enviadoEm': agora, 'envio.gmailId': String(gmailId || ''), 'envio.assunto': assunto });
     log('boletos: enviado', ref.id, '(' + cliente + ') para', para.join(', '));
+    // pelo WhatsApp também (27/11/2026, a chave boletos de config/whatsapp; desligada, nada): o PDF vai de anexo, para o
+    // telefone do cliente do Entregas do contrato; com a trava fechada, ao escritório como TESTE. Falhar aqui não desfaz o e-mail
+    try {
+      const W = require('./gerado/whatsapp');
+      const w = contrato.clienteId ? await require('./whatsapp').pedirPeloWhatsapp(db, 'boletos', {
+        cliente, clienteId: contrato.clienteId,
+        mensagem: atende => W.mensagemDoBoleto({ cliente, competencia: String(b.competencia || ''), valor: Number(b.valor) || 0, vencimento: String(b.vencimento || '') }, atende),
+        extra: { origem: 'boleto', boleto: ref.id }, criadoPor: b.envio.por || 'robô', criadoPorUid: b.envio.porUid || '',
+      }) : null;
+      if (w) await ref.update({ 'envio.whatsapp': w });
+    } catch (err) { log('boletos: o WhatsApp de', ref.id, 'não foi para a fila:', err.message); }
   } catch (err) {
     const msg = String(err.message || err).slice(0, 300);
     log('boletos:', ref.id, 'não foi:', msg);

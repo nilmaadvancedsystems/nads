@@ -390,3 +390,10 @@
 .cr-whats-qr ol { flex: 1 1 220px; margin: 0; padding-left: 1.2em; color: var(--ink-muted); line-height: 1.6; }
 .cr-whats-texto { width: 100%; min-height: 72px; padding: var(--e2) var(--e3); border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 16px; resize: vertical; }
 .cr-whats-texto:focus { outline: 0; border-color: var(--border-forte); }
+/* as chaves e as respostas do WhatsApp (27/11/2026) */
+.cr-whats-chaves { list-style: none; margin: var(--e3) 0 0; padding: 0; display: grid; gap: var(--e3); }
+.cr-whats-chaves li { display: grid; gap: 2px; }
+.cr-whats-respostas { list-style: none; margin: var(--e3) 0 0; padding: 0; display: grid; gap: var(--e3); }
+.cr-whats-respostas > li { display: grid; gap: 4px; padding: var(--e3); border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+.cr-whats-respostas > li.cr-whats-escritorio { border-color: var(--warn); }
+.cr-whats-respostas ol { margin: 0; padding-left: 1.2em; }

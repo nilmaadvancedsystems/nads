@@ -5,6 +5,8 @@
 // freio: um de cada vez, com intervalo, um limite por hora e por dia, e só para o telefone que está no cadastro do
 // cliente. E a TRAVA (como a do Mandei): enquanto LIBERADO_PARA_CLIENTES for false, só sai para os números de teste
 // (NUMEROS_DE_TESTE). Liberar é mudar a constante, com o ok do escritório, e atualizar o robô.
+// Desde 27/11/2026 a trava é a chave liberado de config/whatsapp (robo/whatsapp.js passa { liberado }); esta constante é só o
+// valor quando nada é passado, e fica false.
 const LIBERADO_PARA_CLIENTES = false;
 /**
  * Para onde a trava deixa sair: o celular que o dono indicou para o teste em 17/11/2026, (38) 9919-7340 (o primeiro é o
@@ -127,10 +129,11 @@ function rastreioQueConta(rastreio, agora) {
 const SITUACOES = ['desligado', 'desconectado', 'aguardando-qr', 'conectando', 'conectado'];
 
 /**
- * O que vai em robo/estado.whatsapp (o nads lê): a situação, o QR enquanto espera, o número conectado e a trava.
+ * O que vai em robo/estado.whatsapp (o nads lê): a situação, o QR enquanto espera, o número conectado e a trava (a chave
+ * liberado de config/whatsapp, 27/11/2026; sem ela, LIBERADO_PARA_CLIENTES).
  * Só os campos desta lista; o resto nem vai ao banco.
  */
-function estadoParaOBanco(e, agora) {
+function estadoParaOBanco(e, agora, { liberado = LIBERADO_PARA_CLIENTES, teste = NUMEROS_DE_TESTE } = {}) {
   const situacao = SITUACOES.includes(e && e.situacao) ? e.situacao : 'desligado';
   return {
     situacao,
@@ -139,8 +142,8 @@ function estadoParaOBanco(e, agora) {
     nome: situacao === 'conectado' ? texto(e.nome).slice(0, 80) : '',
     desde: situacao === 'conectado' ? texto(e.desde) : '',
     motivo: texto(e && e.motivo).slice(0, 300),
-    liberado: LIBERADO_PARA_CLIENTES,
-    teste: NUMEROS_DE_TESTE.slice(),
+    liberado: liberado === true,
+    teste: teste.slice(),
     atualizadoEm: new Date(agora).toISOString(),
   };
 }
@@ -150,38 +153,7 @@ function podeComandar(usuario) {
   return !!usuario && usuario.ativo !== false && Array.isArray(usuario.roles) && usuario.roles.includes('admin');
 }
 
-// ---------- as guias pelo WhatsApp (plano do Acessórias, ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo") ----------
-// No lote do Fiscal com a via "WhatsApp", o robô manda a mensagem (só de ida) com o link da Área do Cliente, onde a guia
-// já está (ficha todas-as-guias); não vai o PDF anexo. Com a trava fechada, a mensagem vai para o WhatsApp do escritório,
-// marcada como TESTE e dizendo para quem iria: dá para conferir o texto sem mandar nada a cliente.
-const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-const NUMERO_DO_ESCRITORIO = '553891383638';
-/** A chave do envio das guias pelo WhatsApp (25/11/2026: "ainda nao ativa isso ta? a area do cliente nao ta em uso ainda"):
- * desligada, o lote não manda nada (nem o teste ao escritório). Ligar é mudar para true, com o OK do dono, e atualizar o robô. */
-const GUIAS_PELO_WHATSAPP_LIGADO = false;
-
-/** O texto da mensagem das guias do mês (competencia 'aaaa-mm'). */
-function mensagemDasGuias({ cliente, competencia, link }) {
-  const c = texto(competencia);
-  const mes = /^\d{4}-\d{2}$/.test(c) ? MESES[Number(c.slice(5)) - 1] + ' de ' + c.slice(0, 4) : 'do mês';
-  return 'Olá, ' + (texto(cliente).trim() || 'cliente') + '! As guias de ' + mes + ' já estão na sua Área do Cliente' + (texto(link) ? ': ' + link : '.') +
-    '\n\nEste número só envia avisos e não lê respostas. Qualquer dúvida, fale com o escritório pelo WhatsApp ' + numeroFormatado(NUMERO_DO_ESCRITORIO) + '.';
-}
-
-/**
- * O pedido de WhatsApp das guias: { para, texto } ou null (sem telefone no cadastro). Trava fechada: para o escritório,
- * com o aviso de teste e o número que receberia.
- */
-function pedidoDasGuias({ telefone, cliente, competencia, link }, { liberado = LIBERADO_PARA_CLIENTES } = {}) {
-  const para = numeroDoWhatsApp(telefone);
-  if (!para) return null;
-  const msg = mensagemDasGuias({ cliente, competencia, link });
-  if (liberado) return { para, texto: msg };
-  return { para: NUMERO_DO_ESCRITORIO, texto: '[TESTE: iria para ' + (texto(cliente).trim() || 'o cliente') + ', ' + numeroFormatado(para) + ']\n\n' + msg };
-}
-
 module.exports = {
-  mensagemDasGuias, pedidoDasGuias, NUMERO_DO_ESCRITORIO, GUIAS_PELO_WHATSAPP_LIGADO,
   LIBERADO_PARA_CLIENTES, NUMEROS_DE_TESTE, LIMITE_POR_HORA, LIMITE_POR_DIA, INTERVALO_MIN_MS, INTERVALO_MAX_MS, MAX_LETRAS, SITUACOES,
   numeroDoWhatsApp, jidDe, variantesDoNumero, motivoDoAnexo, marcasDaEntrega, rastreioQueConta, numeroFormatado, motivoParaNaoMandar, motivoDoFreio, enviosQueContam, esperaAntesDeMandar, estadoParaOBanco, podeComandar,
 };

@@ -51,7 +51,11 @@ export interface AnexoDoEmail {
 
 /** Como está o e-mail na fila do robô do Entregas. */
 /** A situação de um pedido na fila do robô; no WhatsApp (17/11/2026), também quando chegou e quando foi lido (ISO). */
-export interface SituacaoDoEmail { status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string; entregueEm?: string; lidoEm?: string }
+export interface SituacaoDoEmail {
+  status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string; entregueEm?: string; lidoEm?: string;
+  /** a última resposta do cliente pelo WhatsApp (27/11/2026, o robô grava com a chave Registrar respostas) */
+  resposta?: string;
+}
 
 export interface RepoDrive {
   readonly exemplos: boolean;

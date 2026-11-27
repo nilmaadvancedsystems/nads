@@ -457,6 +457,8 @@ export function criarDriveFirestore(): cr.RepoDrive {
           status: (s.status as cr.SituacaoDoEmail['status']) || 'pendente', ...(s.erro ? { erro: String(s.erro) } : {}),
           // o WhatsApp: quando chegou e quando foi lido (o robô marca pelos tiques)
           ...(typeof s.entregueEm === 'string' ? { entregueEm: s.entregueEm } : {}), ...(typeof s.lidoEm === 'string' ? { lidoEm: s.lidoEm } : {}),
+          // e o que o cliente respondeu (27/11/2026)
+          ...(typeof s.ultimaResposta === 'string' && s.ultimaResposta ? { resposta: s.ultimaResposta } : {}),
         };
       }));
       return r;

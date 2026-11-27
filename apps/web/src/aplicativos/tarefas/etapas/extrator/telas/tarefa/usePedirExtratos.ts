@@ -300,6 +300,8 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
       ...historico,
       /** os tiques do WhatsApp mandado pelo robô: "entregue 17/11 14:02 · lido 17/11 14:10" ('' = ainda não chegou) */
       entrega: (id: string) => { const s = historico.situacoes[id]; return s ? robos.textoDaEntrega(s) : ''; },
+      /** o que o cliente respondeu pelo WhatsApp ('' = nada) */
+      resposta: (id: string) => historico.situacoes[id]?.resposta || '',
     },
     abrirHistorico: () => { void abrirHistorico(); },
     fecharHistorico: () => setHistorico(h => ({ ...h, aberto: false })),

@@ -481,23 +481,23 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
       .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
   }
   // a via WhatsApp (ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo"): o robô manda a mensagem com o link da Área
-  // do Cliente (a guia já vai para lá no disparo), só de ida; com a trava fechada, vai ao escritório como TESTE. Sem link ou
-  // sem telefone, fica como antes (a pessoa manda pelo "Abrir no WhatsApp")
-  // desligado até a Área do Cliente entrar em uso (25/11/2026): a chave GUIAS_PELO_WHATSAPP_LIGADO em whatsapp-regras.js
-  if (via === 'zap' && doc && require('./whatsapp-regras').GUIAS_PELO_WHATSAPP_LIGADO) {
+  // do Cliente (a guia já vai para lá no disparo), só de ida. Desde 27/11/2026 liga pela chave guias de config/whatsapp
+  // (robo/whatsapp.js › pedirPeloWhatsapp; desligada, nada vai); com a trava fechada, vai ao escritório como TESTE. Sem link
+  // ou sem telefone, fica como antes (a pessoa manda pelo "Abrir no WhatsApp")
+  const Z = require('./whatsapp');
+  if (via === 'zap' && doc && Z.chavesDoWhatsapp().guias) {
     try {
-      const W = require('./whatsapp-regras');
       const ponteiro = await db.collection('areasClientePorEmpresa').doc(String(codigo)).get();
       const token = ponteiro.exists ? String(ponteiro.get('token') || '') : '';
       const link = /^[0-9a-f]{40}$/.test(token) ? 'https://cliente.nilmacontabilidade.com/cliente/' + token + '/guias' : '';
-      const pedido = link ? W.pedidoDasGuias({ telefone: doc.data().telefone, cliente: nome, competencia, link }) : null;
-      if (pedido) {
-        const w = await db.collection('solicitacoesEmail').add({
-          tipo: 'whatsapp', status: 'pendente', para: pedido.para, texto: pedido.texto, clienteId: doc.id, clienteNome: nome,
-          origem: 'lote-fiscal', lote: ref.id, competencia, criadoEm: agora, criadoPor: lote.disparadoPor || 'robô', criadoPorUid: lote.disparadoPorUid || '',
-        });
-        resultado.whatsapp = { pedido: w.id, para: pedido.para };
-      } else resultado.whatsapp = { semEnvio: link ? 'sem o telefone no cadastro' : 'a empresa não tem a Área do Cliente' };
+      const W = require('./gerado/whatsapp');
+      resultado.whatsapp = link
+        ? (await Z.pedirPeloWhatsapp(db, 'guias', {
+          telefone: doc.data().telefone || '', cliente: nome, clienteId: doc.id,
+          mensagem: atende => W.mensagemDasGuias({ cliente: nome, competencia, link }, atende),
+          extra: { origem: 'lote-fiscal', lote: ref.id, competencia }, criadoPor: lote.disparadoPor || 'robô', criadoPorUid: lote.disparadoPorUid || '',
+        })) || { semEnvio: 'a chave das guias pelo WhatsApp está desligada' }
+        : { semEnvio: 'a empresa não tem a Área do Cliente' };
     } catch (err) { resultado.whatsapp = { erro: String(err.message || err).slice(0, 200) }; }
   }
   try {

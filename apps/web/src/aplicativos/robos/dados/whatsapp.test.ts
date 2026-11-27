@@ -15,7 +15,7 @@ const R = roboImportado as {
   motivoParaNaoMandar(p: Solto, cliente: Solto | null, o?: { liberado?: boolean; teste?: string[] }): string;
   motivoDoFreio(enviados: number[], agora: number): string;
   esperaAntesDeMandar(ultimo: number, agora: number, sorteio: number): number;
-  estadoParaOBanco(e: Solto, agora: number): Solto;
+  estadoParaOBanco(e: Solto, agora: number, o?: { liberado?: boolean }): Solto;
   podeComandar(u: Solto | null): boolean;
 };
 
@@ -152,24 +152,15 @@ describe('quem comanda', () => {
   });
 });
 
-// as guias pelo WhatsApp (ficha 49 guias-pelo-whatsapp, 25/11/2026)
-const G = roboImportado as {
-  pedidoDasGuias: (p: { telefone: string; cliente: string; competencia: string; link: string }, o?: { liberado?: boolean }) => { para: string; texto: string } | null;
-  NUMERO_DO_ESCRITORIO: string;
-};
-describe('as guias pelo WhatsApp', () => {
-  const dados = { telefone: '(38) 99999-1234', cliente: 'Padaria Boa', competencia: '2026-10', link: 'https://cliente.nilmacontabilidade.com/cliente/x/guias' };
-  it('com a trava fechada vai ao escritório, marcada como teste e com o link', () => {
-    const p = G.pedidoDasGuias(dados)!;
-    expect(p.para).toBe(G.NUMERO_DO_ESCRITORIO);
-    expect(p.texto).toContain('[TESTE: iria para Padaria Boa, (38) 99999-1234]');
-    expect(p.texto).toContain('As guias de outubro de 2026');
-    expect(p.texto).toContain(dados.link);
+// a trava pela chave (27/11/2026): config/whatsapp › liberado chega ao estado; as guias foram para o core
+// (robos.mensagemDasGuias e robos.pedidoParaCliente, testados em packages/core/src/robos/whatsappAtendimento.test.ts)
+describe('a trava pela chave', () => {
+  it('o estado leva a chave liberado; sem ela, fechada', () => {
+    expect(R.estadoParaOBanco({ situacao: 'conectado' }, AGORA).liberado).toBe(false);
+    expect(R.estadoParaOBanco({ situacao: 'conectado' }, AGORA, { liberado: true }).liberado).toBe(true);
+    expect(robos.lerWhatsappDoRobo(R.estadoParaOBanco({ situacao: 'conectado' }, AGORA, { liberado: true }), new Date(AGORA)).liberado).toBe(true);
   });
-  it('liberada, vai ao telefone do cadastro, sem o aviso de teste; sem telefone, nada', () => {
-    const p = G.pedidoDasGuias(dados, { liberado: true })!;
-    expect(p.para).toBe('5538999991234');
-    expect(p.texto).not.toContain('TESTE');
-    expect(G.pedidoDasGuias({ ...dados, telefone: '' })).toBeNull();
+  it('o escritório do core é um dos números de teste do robô', () => {
+    expect(R.NUMEROS_DE_TESTE).toContain(robos.NUMERO_DO_ESCRITORIO);
   });
 });
