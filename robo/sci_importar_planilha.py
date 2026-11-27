@@ -5,10 +5,15 @@
 #   1. a "Importação de lançamentos via arquivo planilha" (o item 982 do menu, o que o Vitor clicou na gravação)
 #   2. a Empresa: o código digitado no campo (sem a lupa)
 #   3. o Gerador: SEMPRE o 14, o "LAYOUT MINIMUM" (o robô confere o nome; outro gerador, para)
-#   4. o Arquivo: o caminho inteiro digitado no campo (como no Exportar do extrator: colar não vale)
+#   4. o Arquivo: o caminho inteiro escrito no campo
 #   5. o ✔ azul (o primeiro botão da barra)
-#   6. o que o SCI responder: o aviso só com OK é lido e fechado; a pergunta (Sim/Não) para o robô e fica na tela, para a pessoa
-#      responder (ainda não foi ensinado o que responder)
+#   6. "Deseja realizar o processo?" → Sim (o Vitor, no teste de 27/11/2026: "clica em sim")
+#   7. a "Consulta importação dos lançamentos" abre ATRÁS do "Aguarde" (que fica em 100%): trazer para a frente e clicar no
+#      Importar dados (F12), o 8º botão da barra a partir do binóculo
+#   8. "Deseja comparar lançamentos a importar com lançamentos já lançados?" → Sim
+#   9. o aviso só com OK (o resumo "Registros importados: …") é lido e fechado; as Inconsistências e qualquer outra pergunta
+#      param o robô e ficam na tela, para a pessoa ver
+# A planilha: a coluna I (CNPJ da filial) vazia, nem cabeçalho; preenchida, o SCI diz "Arquivo não corresponde ao leiaute esperado".
 # As datas, o Plano de troca e as caixas de marcar ficam como o SCI abre.
 #
 # Uso:  python sci_importar_planilha.py <empresa> "<arquivo .xlsx>"
@@ -31,6 +36,11 @@ GERADOR = '14'
 NOME_DO_GERADOR = 'LAYOUT MINIMUM'
 MENU_DA_IMPORTACAO = 982   # o item do menu que o Vitor clicou (o id do Windows do item)
 IMPORTACAO = 'TfrImportacaoLancamentoViaPlanilha'
+CONSULTA = 'TfrConsultaImportacaoLancCCTxtHuge'   # a "Consulta importação dos lançamentos": a prévia, antes de gravar
+BOTAO_IMPORTAR_DADOS = 7   # na barra da Consulta, o 8º botão a partir do binóculo: Importar dados (F12)
+# as perguntas que o Vitor mandou responder Sim (27/11/2026): "Deseja realizar o processo?" e
+# "Deseja comparar lançamentos a importar com lançamentos já lançados?"
+PERGUNTAS_DO_SIM = ('REALIZAR O PROCESSO', 'COMPARAR LANÇAMENTOS')
 # as janelas desta rotina, para começar e terminar limpo (as consultas da lupa e a própria importação)
 JANELAS_DA_ROTINA = ('TfrConsultaEmpresas', 'TfrConsultaGeradorIntegracaoLancContabeisPlan', IMPORTACAO)
 # onde ficam os campos na janela da Importação (o centro, em relação ao canto da janela; a tela do Vitor em 27/11/2026)
@@ -82,11 +92,16 @@ def valor(e):
             return ''
 
 
-def digitar(e, texto, depois='{TAB}'):
-    e.set_focus()
+def digitar(h, e, texto, depois='{TAB}'):
+    # o texto vai direto no campo (WM_SETTEXT) e só o Tab é tecla: nos campos de código a 1ª tecla abre a pesquisa do SCI, que
+    # engole o resto do número, e o Ctrl+A escapa para o SCI e abre o Razão e livro caixa (testes de 27/11/2026)
+    win32gui.SendMessage(e.handle, win32con.WM_SETTEXT, 0, texto)
     time.sleep(.3)
-    keyboard.send_keys('^a{BACKSPACE}')
-    keyboard.send_keys(re.sub(r'([(){}+^%~\[\]])', r'{\1}', texto) + depois, with_spaces=True)
+    if depois:
+        frente(h)
+        e.set_focus()
+        time.sleep(.3)
+        keyboard.send_keys(depois)
     time.sleep(1)
 
 
@@ -125,10 +140,11 @@ def janelas_do_sci(pid, fora):
     return achadas
 
 
-def acompanhar(principal, h_imp, segundos=180):
-    """Depois do ✔: lê cada janela nova do SCI. Só OK: lê, fecha e segue. Outra pergunta: para e deixa na tela."""
+def acompanhar(principal, h_imp, vistas, segundos=180):
+    """Depois do ✔: lê cada janela nova do SCI. Só OK: lê, fecha e segue. Outra pergunta: para e deixa na tela.
+    vistas = as janelas de antes do clique (a Confirmação abre durante o clique, antes de começar a olhar)."""
     pid = win32process.GetWindowThreadProcessId(principal)[1]
-    vistas = set(janelas_do_sci(pid, set()))
+    vistas = set(vistas)
     fim = time.time() + segundos
     avisos = []
     ultimo = time.time()
@@ -144,6 +160,26 @@ def acompanhar(principal, h_imp, segundos=180):
         for h in novas:
             vistas.add(h)
             titulo = win32gui.GetWindowText(h)
+            if win32gui.GetClassName(h) == 'TfrStatusProcessoForm':   # "Aguarde, processando..." (só o Cancelar): espera
+                continue
+            if win32gui.GetClassName(h) == CONSULTA:
+                # abre atrás do "Aguarde" (que fica em 100%) e não vem sozinha: trazer para a frente (o Vitor, 27/11/2026)
+                frente(h)
+                print('a "' + titulo + '" veio para a frente', flush=True)
+                time.sleep(1)
+                barra = [t for t in uia.window(handle=h).descendants(control_type='ToolBar') if t.element_info.name == 'tbBarraRazao']
+                if not barra or len(barra[0].children()) <= BOTAO_IMPORTAR_DADOS:
+                    raise Parou('não achei o Importar dados (F12) na Consulta importação dos lançamentos')
+                frente(h)
+                barra[0].children()[BOTAO_IMPORTAR_DADOS].click_input()
+                print('cliquei no Importar dados (F12)', flush=True)
+                continue
+            if win32gui.GetClassName(h).startswith('TfrInconsistencias'):
+                itens = []
+                for li in uia.window(handle=h).descendants(control_type='ListItem'):
+                    partes = [li.element_info.name] + [c.element_info.name for c in li.children()]
+                    itens.append(' '.join(x.strip() for x in partes if x and x.strip()))
+                raise Parou('o SCI listou inconsistências: ' + ('; '.join(i for i in itens if i) or 'veja a janela na tela'))
             textos = textos_da_janela(h)
             botoes = [b for b in uia.window(handle=h).descendants(control_type='Button')]
             nomes = [(b.element_info.name or '').replace('&', '').strip() for b in botoes]
@@ -151,7 +187,12 @@ def acompanhar(principal, h_imp, segundos=180):
             print('o SCI mostrou "' + titulo + '": ' + texto + (' [' + ', '.join(n for n in nomes if n) + ']' if nomes else ''), flush=True)
             so_ok = [b for b, n in zip(botoes, nomes) if n.upper() == 'OK']
             outros = [n for n in nomes if n and n.upper() != 'OK' and n not in ('Fechar', 'Minimizar', 'Maximizar', 'Restaurar')]
-            if so_ok and not outros:
+            sim = [b for b, n in zip(botoes, nomes) if n.upper() == 'SIM']
+            if sim and any(p in (texto + ' ' + titulo).upper() for p in PERGUNTAS_DO_SIM):
+                sim[0].invoke()
+                print('respondi Sim', flush=True)
+                time.sleep(1)
+            elif so_ok and not outros:
                 avisos.append(texto or titulo)
                 so_ok[0].invoke()
                 time.sleep(1)
@@ -180,12 +221,12 @@ def main():
         frente(h)
         print('importação aberta', flush=True)
         e = campo(h, CAMPO_EMPRESA, 'Empresa')
-        digitar(e, codigo)
+        digitar(h, e, codigo)
         if valor(e).lstrip('0') != codigo.lstrip('0'):
             raise Parou('a Empresa ficou "' + valor(e) + '", não a ' + codigo)
         print('empresa: ' + codigo, flush=True)
         g = campo(h, CAMPO_GERADOR, 'Gerador')
-        digitar(g, GERADOR)
+        digitar(h, g, GERADOR)
         if valor(g) != GERADOR:
             raise Parou('o Gerador ficou "' + valor(g) + '", não o ' + GERADOR)
         if not esperar(lambda: any(NOME_DO_GERADOR in t.upper() for t in textos_da_janela(h)), 5):
@@ -194,7 +235,7 @@ def main():
         caminhos = [x for x in uia.window(handle=h).descendants(control_type='Edit') if x.element_info.class_name == 'TEdit_Diretorio_Padrao_SCI']
         if not caminhos:
             raise Parou('não achei o campo Arquivo')
-        digitar(caminhos[0], arquivo, depois='')
+        digitar(h, caminhos[0], arquivo, depois='')
         if valor(caminhos[0]).lower() != arquivo.lower():
             raise Parou('o Arquivo ficou "' + valor(caminhos[0]) + '"')
         print('arquivo: ' + arquivo, flush=True)
@@ -202,11 +243,15 @@ def main():
         ok = mais_perto(h, botoes, BOTAO_OK, 25)
         if not ok:
             raise Parou('não achei o ✔ da Importação')
+        antes = janelas_do_sci(win32process.GetWindowThreadProcessId(principal)[1], set())
         frente(h)
         ok.click_input()
         print('cliquei no ✔', flush=True)
-        avisos = acompanhar(principal, h)
-        print('pronto: ' + ' | '.join(avisos), flush=True)
+        avisos = acompanhar(principal, h, antes)
+        resumo = ' | '.join(' '.join(a.split()) for a in avisos)
+        if 'NENHUM REGISTRO IMPORTADO' in resumo.upper():
+            raise Parou('o SCI não importou nada: ' + resumo)
+        print('pronto: ' + resumo, flush=True)
     except Parou as e:
         print('parei: ' + str(e), flush=True)
         sys.exit(1)
