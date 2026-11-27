@@ -360,6 +360,7 @@ const CONFIG_DO_SCI_DESLIGADA = {
 	rhNet: false,
 	empresas: [],
 	relatorios: {},
+	ocultas: [],
 	atualizadoEm: "",
 	atualizadoPor: ""
 };
@@ -388,6 +389,7 @@ function configDoSci(doc) {
 		rhNet: sim("rhNet"),
 		empresas,
 		relatorios,
+		ocultas: publicacoesDoTexto(Array.isArray(d.ocultas) ? d.ocultas.join(" ") : ""),
 		atualizadoEm: typeof d.atualizadoEm === "string" ? d.atualizadoEm : "",
 		atualizadoPor: typeof d.atualizadoPor === "string" ? d.atualizadoPor : ""
 	};
@@ -407,12 +409,20 @@ function documentoDaConfigDoSci(c, por, agora) {
 		rhNet: limpa.rhNet,
 		empresas: limpa.empresas,
 		relatorios: limpa.relatorios,
+		ocultas: limpa.ocultas,
 		atualizadoEm: agora.toISOString(),
 		atualizadoPor: por
 	};
 }
 function empresasDoTexto(texto) {
 	return [...new Set(String(texto ?? "").split(/[^\d]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+}
+function publicacoesDoTexto(texto) {
+	return [...new Set(String(texto ?? "").split(/[^\d]+/).filter((n) => /^\d{1,12}$/.test(n) && Number(n) > 0))].slice(0, 200);
+}
+function semAsOcultas(guias, ocultas) {
+	const fora = new Set(ocultas);
+	return guias.filter((g) => !fora.has(String(g.id)));
 }
 const empresaNoSci = (c, codigo) => c.empresas.includes(Number(codigo));
 const DAE_PELA_COLUNA = {
@@ -1755,10 +1765,12 @@ exports.nomeNoIntegra = nomeNoIntegra;
 exports.pendenciasDaLiberacao = pendenciasDaLiberacao;
 exports.periodoNoIntegra = periodoNoIntegra;
 exports.podeApagarNoRhNet = podeApagarNoRhNet;
+exports.publicacoesDoTexto = publicacoesDoTexto;
 exports.publicadasDoRegistro = publicadasDoRegistro;
 exports.relatorioDaGuia = relatorioDaGuia;
 exports.resumoDoIntegra = resumoDoIntegra;
 exports.resumoDosCadastros = resumoDosCadastros;
+exports.semAsOcultas = semAsOcultas;
 exports.situacaoDaAdmissaoNaEquipe = situacaoDaAdmissaoNaEquipe;
 exports.situacaoDeVolta = situacaoDeVolta;
 exports.situacaoDoToken = situacaoDoToken;

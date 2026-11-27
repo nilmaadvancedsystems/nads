@@ -45,12 +45,15 @@ export interface ConfigDoSci {
   empresas: number[];
   /** chave da guia → código do relatório no SCI Report (4 posições, maiúsculo) */
   relatorios: Partial<Record<ChaveDaGuiaNoSci, string>>;
+  /** (27/11/2026: "cria a lista para esconder a guia de teste da área") as publicações do SCI Report (publicadosId) que a
+   *  Área do Cliente não mostra (uma guia de teste, uma publicada por engano), já que a API não apaga publicação */
+  ocultas: string[];
   atualizadoEm: string;
   atualizadoPor: string;
 }
 
 export const CONFIG_DO_SCI_DESLIGADA: ConfigDoSci = {
-  areaCliente: false, publicarGuias: false, lerDeVolta: false, enviarXmls: false, conferirXmls: false, rhNet: false, empresas: [], relatorios: {}, atualizadoEm: '', atualizadoPor: '',
+  areaCliente: false, publicarGuias: false, lerDeVolta: false, enviarXmls: false, conferirXmls: false, rhNet: false, empresas: [], relatorios: {}, ocultas: [], atualizadoEm: '', atualizadoPor: '',
 };
 
 const CHAVES = new Set<string>(GUIAS_DO_SCI.map(g => g.chave));
@@ -73,6 +76,7 @@ export function configDoSci(doc: unknown): ConfigDoSci {
   return {
     areaCliente: sim('areaCliente'), publicarGuias: sim('publicarGuias'), lerDeVolta: sim('lerDeVolta') && sim('publicarGuias'),
     enviarXmls: sim('enviarXmls'), conferirXmls: sim('conferirXmls'), rhNet: sim('rhNet'), empresas, relatorios,
+    ocultas: publicacoesDoTexto(Array.isArray(d.ocultas) ? d.ocultas.join(' ') : ''),
     atualizadoEm: typeof d.atualizadoEm === 'string' ? d.atualizadoEm : '', atualizadoPor: typeof d.atualizadoPor === 'string' ? d.atualizadoPor : '',
   };
 }
@@ -82,13 +86,24 @@ export function documentoDaConfigDoSci(c: ConfigDoSci, por: string, agora: Date)
   const limpa = configDoSci({ ...c, atualizadoEm: '', atualizadoPor: '' });
   return {
     areaCliente: limpa.areaCliente, publicarGuias: limpa.publicarGuias, lerDeVolta: limpa.lerDeVolta, enviarXmls: limpa.enviarXmls, conferirXmls: limpa.conferirXmls, rhNet: limpa.rhNet,
-    empresas: limpa.empresas, relatorios: limpa.relatorios, atualizadoEm: agora.toISOString(), atualizadoPor: por,
+    empresas: limpa.empresas, relatorios: limpa.relatorios, ocultas: limpa.ocultas, atualizadoEm: agora.toISOString(), atualizadoPor: por,
   };
 }
 
 /** "583, 602 607" → [583, 602, 607] (a lista de empresas digitada na tela). */
 export function empresasDoTexto(texto: string): number[] {
   return [...new Set(String(texto ?? '').split(/[^\d]+/).map(Number).filter(n => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+}
+
+/** "51643495, 51643496" → ['51643495', '51643496'] (os números das publicações escondidas, digitados na tela). */
+export function publicacoesDoTexto(texto: string): string[] {
+  return [...new Set(String(texto ?? '').split(/[^\d]+/).filter(n => /^\d{1,12}$/.test(n) && Number(n) > 0))].slice(0, 200);
+}
+
+/** As guias do SCI Report sem as escondidas (a Área não mostra nem abre o PDF delas). */
+export function semAsOcultas<G extends { id: string }>(guias: readonly G[], ocultas: readonly string[]): G[] {
+  const fora = new Set(ocultas);
+  return guias.filter(g => !fora.has(String(g.id)));
 }
 
 /** A empresa está com o SCI ligado? */

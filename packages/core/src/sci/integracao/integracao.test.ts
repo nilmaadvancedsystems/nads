@@ -202,3 +202,14 @@ describe('SCI: publicar no SCI Report', () => {
     expect((f.get('arquivo') as File).name).toBe('DAS_out.pdf');
   });
 });
+
+describe('as publicações escondidas da Área (27/11/2026)', () => {
+  it('lê do texto e do documento, e tira da lista de guias', async () => {
+    const { publicacoesDoTexto, semAsOcultas, configDoSci, documentoDaConfigDoSci } = await import('./index');
+    expect(publicacoesDoTexto('51643495, 12;51643495 abc 0')).toEqual(['51643495', '12']);
+    const c = configDoSci({ ocultas: ['51643495', 'x'] });
+    expect(c.ocultas).toEqual(['51643495']);
+    expect(documentoDaConfigDoSci(c, 'G', new Date(0)).ocultas).toEqual(['51643495']);
+    expect(semAsOcultas([{ id: '51643495' }, { id: '7' }], c.ocultas)).toEqual([{ id: '7' }]);
+  });
+});

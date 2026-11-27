@@ -50,6 +50,17 @@ function buscarPdfDaSci(url) {
   return fetch(url, init);
 }
 
+// config/sci (a chave da Área e as empresas ligadas), na memória da instância por 5 minutos: desligar vale em até 5 min
+async function configDaArea() {
+  if (configGuardada && Date.now() - configGuardada.em < CONFIG_MS) return configGuardada.valor;
+  const d = (await db.collection('config').doc('sci').get()).data() || {};
+  const valor = { ligado: d.areaCliente === true, empresas: Array.isArray(d.empresas) ? d.empresas.map(Number).filter(n => n > 0) : [],
+    // (27/11/2026) as publicações escondidas da Área (a guia de teste; a API do SCI não apaga publicação)
+    ocultas: Array.isArray(d.ocultas) ? d.ocultas.map(String).filter(x => /^\d{1,12}$/.test(x)) : [] };
+  configGuardada = { em: Date.now(), valor };
+  return valor;
+}
+
 const resumos = new Map();
 const area = criarAtendimentoDaArea({
   sci,
@@ -68,14 +79,7 @@ const area = criarAtendimentoDaArea({
     resumos.set(token, { em: Date.now(), empresas });
     return empresas;
   },
-  // config/sci (a chave da Área e as empresas ligadas), na memória da instância por 5 minutos: desligar vale em até 5 min
-  async config() {
-    if (configGuardada && Date.now() - configGuardada.em < CONFIG_MS) return configGuardada.valor;
-    const d = (await db.collection('config').doc('sci').get()).data() || {};
-    const valor = { ligado: d.areaCliente === true, empresas: Array.isArray(d.empresas) ? d.empresas.map(Number).filter(n => n > 0) : [] };
-    configGuardada = { em: Date.now(), valor };
-    return valor;
-  },
+  config: configDaArea,
   async lerLogin(idToken) {
     try {
       const c = await getAuth().verifyIdToken(idToken, true);
@@ -101,7 +105,10 @@ export const guiasDoSciReport = onRequest(
     const idToken = String(req.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     try {
       const hoje = hojeEmBrasilia();
+      const ocultas = (await configDaArea()).ocultas;
+      if (guia && ocultas.includes(String(guia))) { res.status(403).json({ acesso: 'guia de outra empresa' }); return; }
       const r = guia ? await area.pdf(token, idToken, guia, hoje) : await area.guias(token, idToken, hoje);
+      if (!guia && Array.isArray(r.guias) && ocultas.length) r.guias = r.guias.filter(g => !ocultas.includes(String(g.id)));
       // (26/11/2026: "tem que parecer que sci report nem existe para o usuario") com formato 'pdf', a função busca o PDF na
       // URL temporária da SCI e devolve os bytes: a guia abre na mesma janela das outras guias da Área
       if (guia && corpo.formato === 'pdf' && r.acesso === 'liberado' && typeof r.url === 'string' && r.url.startsWith('https://')) {
