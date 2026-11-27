@@ -46,13 +46,13 @@ export function relatorioDoFatorR(e: EntradaDoRelatorioDoFatorR): RelatorioDoFat
     cabecalho,
     colunas: [
       { rotulo: 'PA', formato: 'texto' }, { rotulo: 'Receita do mês', formato: 'valor' }, { rotulo: 'Origem', formato: 'texto' },
-      { rotulo: 'Folha do mês (competência)', formato: 'valor' }, { rotulo: 'Origem', formato: 'texto' }, { rotulo: 'Fator do mês', formato: 'pct' },
+      { rotulo: 'Folha que entra no PA', formato: 'valor' }, { rotulo: 'Competência da folha', formato: 'texto' }, { rotulo: 'Fator do mês', formato: 'pct' },
       { rotulo: 'RBT12', formato: 'valor' }, { rotulo: 'FS12', formato: 'valor' }, { rotulo: 'Folha somada no FS12', formato: 'texto' }, { rotulo: 'Fator R', formato: 'pct' },
       { rotulo: 'Anexo', formato: 'texto' }, { rotulo: 'Folha que falta (' + num(FATOR_R_EM_PCT).replace(',00', '') + '%)', formato: 'valor' },
     ],
     linhas: e.linhas.map(l => [
       mesAno(l.competencia), vazio(l.receita?.valor), l.receita ? ROTULO_DA_FONTE[l.receita.fonte] : '',
-      vazio(l.folha?.valor), l.folha ? ROTULO_DA_FONTE[l.folha.fonte] : '', vazio(l.fatorDoMes),
+      vazio(l.folha?.valor), l.folhaCompetencia ? mesAno(l.folhaCompetencia) + (l.folha ? ' (' + ROTULO_DA_FONTE[l.folha.fonte] + ')' : '') : '', vazio(l.fatorDoMes),
       l.rbt12, l.fs12, mesAno(l.folhaDe) + ' a ' + mesAno(l.folhaAte), vazio(l.fator), l.anexo || '', vazio(l.folhaQueFalta),
     ]),
     anexos: e.linhas.map(l => l.anexo),
@@ -129,6 +129,6 @@ ${opcoes.logo ? opcoes.logo.definicao : ''}<div class="topo"><h1>${esc(rel.titul
 <div class="dados">${rel.cabecalho.map(([r, v]) => `<div><span>${esc(r)}</span><b>${esc(v)}</b></div>`).join('')}</div>
 <table><thead><tr>${rel.colunas.map((c, i) => `<th${rel.colunas[i].formato === 'texto' ? ' class="t"' : ''}>${esc(c.rotulo)}</th>`).join('')}</tr></thead>
 <tbody>${rel.linhas.map((l, j) => `<tr>${l.map((v, i) => td(v, i, rel.anexos[j])).join('')}</tr>`).join('\n')}</tbody></table>
-<div class="pe"><span>Fator R = FS12 ÷ RBT12. RBT12: a receita dos 12 meses antes do PA. FS12: a folha de 12 meses, pela competência, com a defasagem (no PA de 2026 a folha entra 2 meses depois do fato gerador; de 2027 em diante, 3). De ${num(FATOR_R_EM_PCT)}% para cima, Anexo III; abaixo, Anexo V.</span>${opcoes.emitidoEm ? `<span>Emitido em ${opcoes.emitidoEm.toLocaleDateString('pt-BR')}</span>` : ''}</div>
+<div class="pe"><span>Fator R = FS12 ÷ RBT12. RBT12: a receita dos 12 meses antes do PA. FS12: a folha de 12 meses, pela competência, com a defasagem (no PA de 2026, até o mês antes do PA; de 2027 em diante, até 2 meses antes). De ${num(FATOR_R_EM_PCT)}% para cima, Anexo III; abaixo, Anexo V.</span>${opcoes.emitidoEm ? `<span>Emitido em ${opcoes.emitidoEm.toLocaleDateString('pt-BR')}</span>` : ''}</div>
 </body></html>`;
 }

@@ -3,7 +3,7 @@
 // campos da consulta" que o SCI exporta (.xls), lida e mostrada na tabela do minimum, com o nome das contas e dos históricos. Só para
 // ver: nada volta para o SCI nem para os Lançamentos. O arquivo fica guardado por empresa, só neste navegador.
 import { sci } from '@nads/core';
-import { BotaoAcao, CampoDataComCalendario, Icone, LogoSci, useRetorno } from '@nads/ui';
+import { BotaoAcao, CampoDataComCalendario, Icone, LogoSci, MenuSuspenso, SeletorMes, Vazio, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AcoesDoTopo } from '../../../../comum/topo';
@@ -22,6 +22,12 @@ function lerGuardado(codigo: number | null, prefixo = PREFIXO): Guardado | null 
   if (codigo == null) return null;
   try { const g = JSON.parse(localStorage.getItem(prefixo + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.lancamentos) ? g : null; } catch { return null; }
 }
+/** a consulta que a Contabilização guarda da empresa (a Importação mostra e troca; 27/11/2026) */
+export interface ConsultaGuardada { arquivo: string; importadoEm: string; lancamentos: sci.LancamentoDaConsulta[] }
+export const consultaDaContabilizacao = (codigo: number | null): ConsultaGuardada | null => lerGuardado(codigo, PREFIXO_DA_CONTABILIZACAO);
+export const gravarConsultaDaContabilizacao = (codigo: number, g: ConsultaGuardada) => gravarGuardado(codigo, g, PREFIXO_DA_CONTABILIZACAO);
+/** os lançamentos do SCI que a Contabilização puxou para a empresa (o balancete abre cada conta com eles; 27/11/2026) */
+export const lancamentosDaContabilizacao = (codigo: number | null): sci.LancamentoDaConsulta[] => lerGuardado(codigo, PREFIXO_DA_CONTABILIZACAO)?.lancamentos || [];
 /** a empresa já tem a consulta do SCI importada neste navegador (os Lançamentos escondem o "Quero visualizar lançamentos") */
 export const temConsultaDoSci = (codigo: number | null) => !!lerGuardado(codigo);
 function gravarGuardado(codigo: number, g: Guardado | null, prefixo = PREFIXO) {
@@ -295,21 +301,13 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
 
       {/* sem consulta importada, nada (25/11/2026: "Remove isso", a caixa de trazer o arquivo): o Importar a consulta fica em cima */}
       {!guardado ? (contabilizacao ? (
-        // a Contabilização vazia no padrão da tela inicial do minimum (27/11/2026: "tenta seguir o padrao da tela inicial do minimum"):
-        // a marca no meio (a logo do SCI e o título), e embaixo a barra larga do "Selecionar empresa", com o período e o botão Vitor
-        <div className="sci-inicio sci-contab-inicio">
-          <span className="sci-inicio-marca">
-            <span className="sci-contab-logo" aria-hidden="true"><LogoSci altura={52} /></span>
-            <h1 className="sci-contab-titulo">Qual período vamos fazer?</h1>
-          </span>
-          <div className="sci-inicio-corpo sci-contab-corpo">
-            {robo.disponivel ? (
-              <PuxarDoSci robo={robo} grande />
-            ) : (
-              <button type="button" className="sci-escolher" onClick={escolher}><Icone nome="upload" /><span className="sci-escolher-rotulo">Importar a consulta do SCI</span></button>
-            )}
-          </div>
-        </div>
+        // a Contabilização vazia na interface de sempre do nads (27/11/2026: "Deixa so a tela inicial do minumum premium, o resto siga o
+        // padrao nads de design"): o card com o vazio, o período e o botão Vitor
+        <section className="card">
+          <Vazio icone="calendar" titulo="Qual período vamos fazer?" texto={robo.disponivel ? 'O robô do PC de ' + robo.rotulo + ' puxa os lançamentos do SCI.' : 'Traga a Impressão de campos da consulta exportada do SCI.'}>
+            {robo.disponivel ? <PuxarDoSci robo={robo} /> : <button type="button" className="btn btn-primary" onClick={escolher}><Icone nome="upload" />Importar a consulta</button>}
+          </Vazio>
+        </section>
       ) : null) : (
         <>
           {/* os filtros, no jeito da Consulta de Movimentos do SCI (25/11/2026: "Nesse layout"; "tirando a organizacao das colunas, mas
@@ -449,72 +447,38 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
 }
 
 // ------------------------------------------------------------------------------------------------- o botão Vitor do SCI
-const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const MESES_LONGOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+type TipoDoPeriodo = 'tudo' | 'ano' | 'mes';
 
 /**
- * A competência do SCI e o botão Vitor (27/11/2026: "cria um botao chamado vitor com o icone da sci, ao inves do alterdata"). O
- * seletor (27/11/2026: "Muda a forma de apresentacao pra algo mais premium"): a pílula com o período e, aberta, o ano com as
- * setas, os 12 meses em grade e os atalhos do ano inteiro (o 00 do SCI) e de tudo (00/0000). O clique no Vitor pede ao robô do PC
- * e a planilha entra na tela quando volta.
+ * A competência do SCI e o botão Vitor (27/11/2026: "cria um botao chamado vitor com o icone da sci, ao inves do alterdata"), com os
+ * componentes de sempre do nads (27/11/2026: "o resto siga o padrao nads de design"): o menu do período (tudo, o ano inteiro, um mês),
+ * o ano ou o seletor de mês, e o botão. semTudo: o balancete é de um período (sem o "Tudo").
  */
-function PuxarDoSci({ robo, temLancamentos = false, grande = false }: { robo: RoboDoSci; temLancamentos?: boolean; /** a barra larga da tela vazia */ grande?: boolean }) {
-  // o que foi pedido por último fica escolhido (27/11/2026: voltava para o "Ano todo" quando a planilha chegava); sem pedido, tudo
-  const [competencia, setCompetencia] = useState(() => (/^\d{2}\/\d{4}$/.test(robo.competencia) ? robo.competencia : '00/0000'));
-  const [aberto, setAberto] = useState(false);
-  const [anoDaGrade, setAnoDaGrade] = useState(() => (competencia.endsWith('/0000') ? new Date().getFullYear() : Number(competencia.slice(3))));
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!aberto) return;
-    const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
-    const esc = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
-    document.addEventListener('mousedown', fora);
-    document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
-  }, [aberto]);
-  const tudo = competencia === '00/0000';
-  const mes = Number(competencia.slice(0, 2));
-  const ano = Number(competencia.slice(3));
-  // com lançamentos na tela, o "tudo" acrescenta só os novos
-  const rotuloDoTudo = temLancamentos ? 'Só os novos' : 'Tudo';
-  const rotulo = tudo ? rotuloDoTudo : mes ? MESES_LONGOS[mes - 1] + ' de ' + ano : ano + ' inteiro';
-  const escolher = (c: string) => { setCompetencia(c); setAberto(false); };
-  const dica = tudo ? (temLancamentos ? 'Puxar do SCI e acrescentar só os lançamentos novos' : 'Puxar todos os lançamentos do SCI')
-    : 'Puxar os lançamentos de ' + rotuloDaCompetenciaDoSci(competencia) + ' do SCI (troca esse período na tela)';
+export function PuxarDoSci({ robo, temLancamentos = false, semTudo = false }: { robo: RoboDoSci; temLancamentos?: boolean; semTudo?: boolean }) {
   const hoje = new Date();
+  const mesPassado = (() => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
+  // o que foi pedido por último fica escolhido (27/11/2026: voltava para o "Ano todo" quando a planilha chegava)
+  const ultimo = /^(\d{2})\/(\d{4})$/.exec(robo.competencia);
+  const [tipo, setTipo] = useState<TipoDoPeriodo>(() => (!ultimo || ultimo[2] === '0000' ? (semTudo ? 'ano' : 'tudo') : ultimo[1] === '00' ? 'ano' : 'mes'));
+  const [ano, setAno] = useState(() => (ultimo && ultimo[2] !== '0000' ? ultimo[2] : String(hoje.getFullYear())));
+  const [mes, setMes] = useState(() => (ultimo && ultimo[1] !== '00' && ultimo[2] !== '0000' ? ultimo[2] + '-' + ultimo[1] : mesPassado));
+  const competencia = tipo === 'tudo' ? '00/0000' : tipo === 'ano' ? '00/' + ano : mes.slice(5, 7) + '/' + mes.slice(0, 4);
+  const valido = tipo !== 'ano' || /^\d{4}$/.test(ano);
+  const rotuloDoTudo = temLancamentos ? 'Só os novos' : 'Tudo';
+  const rotulos: Record<TipoDoPeriodo, string> = { tudo: rotuloDoTudo, ano: 'Ano inteiro', mes: 'Um mês' };
+  const dica = tipo === 'tudo' ? (temLancamentos ? 'Puxar do SCI e acrescentar só os lançamentos novos' : 'Puxar todos os lançamentos do SCI')
+    : 'Puxar ' + (tipo === 'ano' ? ano + ' inteiro' : MESES_LONGOS[Number(mes.slice(5, 7)) - 1] + ' de ' + mes.slice(0, 4)) + ' do SCI';
   return (
-    <span className={'sci-puxar' + (grande ? ' sci-barra' + (aberto ? ' aberta' : '') : '')} ref={ref}>
-      <button type="button" className={'sci-comp' + (aberto ? ' aberto' : '')} onClick={() => setAberto(a => !a)} aria-haspopup="dialog" aria-expanded={aberto} title="O que puxar do SCI">
-        <Icone nome="calendar" width={16} height={16} />
-        <span className="sci-comp-rotulo">{rotulo}</span>
-        <Icone nome="chevronDown" width={14} height={14} />
-      </button>
-      {aberto && (
-        <div className="sci-comp-painel" role="dialog" aria-label="O que puxar do SCI">
-          <div className="sci-comp-ano">
-            <button type="button" className="sci-comp-seta" onClick={() => setAnoDaGrade(a => a - 1)} aria-label="Ano anterior"><Icone nome="chevronLeft" width={16} height={16} /></button>
-            <b>{anoDaGrade}</b>
-            <button type="button" className="sci-comp-seta" onClick={() => setAnoDaGrade(a => a + 1)} disabled={anoDaGrade >= hoje.getFullYear()} aria-label="Próximo ano"><Icone nome="chevronRight" width={16} height={16} /></button>
-          </div>
-          <div className="sci-comp-meses">
-            {MESES_CURTOS.map((m, k) => {
-              const c = String(k + 1).padStart(2, '0') + '/' + anoDaGrade;
-              const futuro = anoDaGrade > hoje.getFullYear() || (anoDaGrade === hoje.getFullYear() && k > hoje.getMonth());
-              return (
-                <button key={m} type="button" className={'sci-comp-mes' + (c === competencia ? ' escolhido' : '') + (anoDaGrade === hoje.getFullYear() && k === hoje.getMonth() ? ' hoje' : '')}
-                  disabled={futuro} onClick={() => escolher(c)} title={MESES_LONGOS[k] + ' de ' + anoDaGrade}>{m}</button>
-              );
-            })}
-          </div>
-          <div className="sci-comp-atalhos">
-            <button type="button" className={'sci-comp-atalho' + (competencia === '00/' + anoDaGrade ? ' escolhido' : '')} onClick={() => escolher('00/' + anoDaGrade)}>{anoDaGrade} inteiro</button>
-            <button type="button" className={'sci-comp-atalho' + (tudo ? ' escolhido' : '')} onClick={() => escolher('00/0000')}>{rotuloDoTudo}</button>
-          </div>
-        </div>
-      )}
-      <BotaoAcao className="btn btn-primary btn-icone-alterdata sci-puxar-botao" carregando={robo.andando} textoCarregando={robo.rotulo}
-        onClick={() => { setAberto(false); void robo.pedir(competencia); }} title={dica + ', pelo robô do PC de ' + robo.rotulo}
-        aria-label={'Puxar os lançamentos do SCI pelo robô de ' + robo.rotulo}>
+    <span className="sci-puxar">
+      <MenuSuspenso rotulo={rotulos[tipo]} className="btn btn-outline" titulo="O que puxar do SCI" largura={180}
+        itens={(semTudo ? ['ano', 'mes'] as const : ['tudo', 'ano', 'mes'] as const).map(t => ({ rotulo: rotulos[t], icone: t === tipo ? 'check' as const : undefined, onClick: () => setTipo(t) }))} />
+      {tipo === 'ano' && <input className="input sci-puxar-ano" aria-label="O ano" inputMode="numeric" maxLength={4} value={ano}
+        onChange={e => setAno(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyDown={e => { if (e.key === 'Enter' && valido) void robo.pedir(competencia); }} />}
+      {tipo === 'mes' && <SeletorMes valor={mes} onMudar={setMes} rotulo="O mês" max={hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0')} />}
+      <BotaoAcao className="btn btn-primary btn-icone-alterdata sci-puxar-botao" carregando={robo.andando} textoCarregando={robo.rotulo} disabled={!valido}
+        onClick={() => { void robo.pedir(competencia); }} title={dica + ', pelo robô do PC de ' + robo.rotulo}
+        aria-label={'Puxar do SCI pelo robô de ' + robo.rotulo}>
         <LogoSci altura={14} />{robo.rotulo}
       </BotaoAcao>
     </span>
@@ -522,7 +486,7 @@ function PuxarDoSci({ robo, temLancamentos = false, grande = false }: { robo: Ro
 }
 
 /** O andamento do robô do SCI: a barra, o passo do roteiro e o Cancelar; o erro, quando não deu. */
-function SituacaoDoRobo({ robo }: { robo: RoboDoSci }) {
+export function SituacaoDoRobo({ robo }: { robo: RoboDoSci }) {
   const barra = robo.andando || robo.lendo;
   const texto = robo.erro || (robo.lendo ? 'A planilha chegou: lendo os lançamentos…'
     : robo.andando ? (robo.conectando ? 'Chamando o robô do PC de ' + robo.rotulo + '…' : 'Puxando ' + rotuloDaCompetenciaDoSci(robo.competencia) + ' do SCI' + (robo.etapa ? ' · ' + robo.etapa : '')) : '');

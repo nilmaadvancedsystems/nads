@@ -7,7 +7,7 @@ const path = require('path');
 const { fork } = require('child_process');
 const painel = require('./painel');
 
-const NOMES = { sieg: 'SIEG', fgts: 'FGTS Digital', alterdata: 'Alterdata', pgdas: 'Simples na Receita (e-CAC)' };
+const NOMES = { sieg: 'SIEG', fgts: 'FGTS Digital', alterdata: 'Alterdata', pgdas: 'Simples na Receita (e-CAC)', certidoes: 'Certidões' };
 const VOLTA_MS = 30 * 1000;
 // a queda logo depois de ligar volta cada vez mais devagar (07/11/2026: cada partida relê a fila e os pedidos presos do
 // banco; um módulo que cai ao ligar religava a cada 30 s para sempre): 30 s, 1, 2, 4, 8 e depois de 10 em 10 min. O que

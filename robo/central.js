@@ -331,6 +331,7 @@ const MESMO_PEDIDO = {
   alterdata: { campo: 'codigo', iguais: ['competencia', 'tipo'] },
   sieg: { campo: 'codigo', iguais: ['competencia', 'tipo'] },
   pgdas: { campo: 'codigo', iguais: ['competencia', 'modo'] },
+  certidoes: { campo: 'codigo', iguais: ['orgao'] },
 };
 
 /** O que devolve o pedido à fila, em cada robô (os mesmos campos que o próprio robô limpa quando devolve um pedido). */
@@ -339,6 +340,7 @@ const CAMPOS_DE_REFAZER = {
   alterdata: em => ({ status: 'pendente', erro: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0, esperas: 0, onde: '', esperandoContabil: '', arquivos: {}, mesmoQue: '', andamento: { pct: 0, etapa: 'pedido de novo', clique: '', em } }),
   sieg: () => ({ status: 'pendente', erro: null, erroEm: null, andamento: '' }),
   pgdas: () => ({ status: 'pendente', erro: '', aviso: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0 }),
+  certidoes: () => ({ status: 'pendente', erro: '', fimEm: '', inicioEm: '', tentativas: 0 }),
 };
 
 /** O erro que não se refaz daqui, com o motivo (a importação no Contábil pode ter lançado metade; os XMLs do cliente já foram apagados). */
@@ -363,6 +365,10 @@ const PEDIDOS_POR_CLIENTE = {
   'alterdata:mensal': { modelo: (cli, c) => ({ status: 'pendente', tipo: 'mensal', codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
   // o extrato do PGDAS-D no e-CAC (25/11/2026, robo/ecac-pgdas.js): o CNPJ é o do perfil de procurador
   'pgdas:extrato': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'extrato', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
+  // a certidão municipal de Taiobeiras (27/11/2026, robo/certidoes.js)
+  'certidoes:municipal': { precisaDocumento: true, modelo: cli => ({ status: 'pendente', orgao: 'municipal', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200) }) },
+  'certidoes:estadual': { precisaDocumento: true, modelo: cli => ({ status: 'pendente', orgao: 'estadual', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200) }) },
+  'certidoes:fgts': { precisaDocumento: true, modelo: cli => ({ status: 'pendente', orgao: 'fgts', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200) }) },
   'pgdas:ensaio': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'ensaio', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
 };
 

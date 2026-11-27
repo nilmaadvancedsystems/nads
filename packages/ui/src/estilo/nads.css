@@ -8535,53 +8535,8 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-upload.arrastando .sci-upload-area{border-color:var(--accent);background:var(--accent-soft);}
 .sci-upload-pe{margin-top:4px !important;font-size:var(--fs-12) !important;}
 /* a Contabilização do minimum (27/11/2026): a tela vazia com o botão Vitor do SCI no meio, a competência e o andamento do robô */
-/* a Contabilização vazia no padrão da tela inicial do minimum (27/11/2026): a marca (a logo do SCI e o título) e a barra larga do
-   "Selecionar empresa", com o período à esquerda e o botão Vitor encaixado à direita */
-.sci-contab-inicio .sci-inicio-marca{display:flex;flex-direction:column;align-items:center;gap:18px;margin-bottom:28px;}
-.sci-contab-logo{display:block;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));}
-.sci-contab-titulo{margin:0;font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.015em;color:var(--ink);}
-.sci-inicio.sci-contab-inicio .sci-contab-corpo{height:auto;align-items:center;}
-.sci-puxar.sci-barra{flex:none;height:58px;width:440px;max-width:100%;min-height:56px;padding:6px 6px 6px 8px;gap:6px;border-radius:14px;border:1px solid var(--border);
-  background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 92%,#fff 8%),var(--surface-2));
-  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(0,0,0,.55);transition:border-color .2s,box-shadow .2s;}
-.sci-puxar.sci-barra:hover,.sci-puxar.sci-barra.aberta{border-color:var(--accent-border);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 14px 36px -12px rgba(0,0,0,.6),0 0 0 4px var(--accent-soft);}
-.sci-puxar.sci-barra .sci-comp{flex:1;height:44px;min-width:0;padding:0 12px;border:0;border-radius:10px;background:transparent;box-shadow:none;font-size:var(--fs-15,15px);}
-.sci-puxar.sci-barra .sci-comp:hover,.sci-puxar.sci-barra .sci-comp.aberto{background:color-mix(in srgb,var(--ink) 5%,transparent);box-shadow:none;}
-.sci-puxar.sci-barra .sci-puxar-botao{height:44px;border-radius:10px;padding:0 18px;flex:none;}
-.sci-puxar.sci-barra .sci-comp-painel{top:calc(100% + 10px);left:50%;transform:translateX(-50%);animation:sci-comp-entra-meio .14s ease-out;}
-@keyframes sci-comp-entra-meio{from{opacity:0;transform:translate(-50%,-4px) scale(.98);}to{opacity:1;transform:translateX(-50%);}}
-/* a competência do SCI (27/11/2026: "Muda a forma de apresentacao pra algo mais premium"): a pílula e o painel de meses */
-.sci-puxar{position:relative;display:inline-flex;align-items:center;gap:8px;}
-.sci-puxar .sci-puxar-botao{height:38px;border-radius:999px;padding:0 18px;}
-.sci-comp{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 14px;min-width:168px;border-radius:999px;cursor:pointer;
-  border:1px solid var(--border);color:var(--ink);font:inherit;font-weight:500;font-size:var(--fs-13,13px);
-  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,#fff 8%),var(--surface));
-  box-shadow:0 1px 0 color-mix(in srgb,#fff 6%,transparent) inset,0 1px 2px rgba(0,0,0,.25);transition:border-color .15s,box-shadow .15s;}
-.sci-comp:hover,.sci-comp.aberto{border-color:var(--accent-border,var(--accent));box-shadow:0 0 0 3px var(--accent-soft),0 1px 2px rgba(0,0,0,.25);}
-.sci-comp > svg:first-child{color:var(--accent);}
-.sci-comp > svg:last-child{margin-left:auto;color:var(--ink-muted);transition:transform .15s;}
-.sci-comp.aberto > svg:last-child{transform:rotate(180deg);}
-.sci-comp-rotulo{white-space:nowrap;font-variant-numeric:tabular-nums;}
-.sci-comp-painel{position:absolute;top:calc(100% + 8px);left:0;z-index:40;width:272px;padding:12px;border-radius:14px;text-align:left;
-  border:1px solid var(--border);background:var(--surface);box-shadow:0 18px 40px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.25);
-  animation:sci-comp-entra .14s ease-out;}
-@keyframes sci-comp-entra{from{opacity:0;transform:translateY(-4px) scale(.98);}to{opacity:1;transform:none;}}
-.sci-comp-ano{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.sci-comp-ano b{font-size:var(--fs-15,15px);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
-.sci-comp-seta{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--ink-muted);cursor:pointer;}
-.sci-comp-seta:hover:not(:disabled){background:var(--accent-soft);color:var(--ink);}
-.sci-comp-seta:disabled{opacity:.3;cursor:default;}
-.sci-comp-meses{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
-.sci-comp-mes{height:34px;border-radius:9px;border:1px solid transparent;background:color-mix(in srgb,var(--ink) 4%,transparent);color:var(--ink);
-  font:inherit;font-size:var(--fs-13,13px);cursor:pointer;transition:background .12s,border-color .12s;}
-.sci-comp-mes:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-border,var(--accent));}
-.sci-comp-mes.hoje{border-color:var(--border);}
-.sci-comp-mes.escolhido{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
-.sci-comp-mes:disabled{opacity:.3;cursor:default;}
-.sci-comp-atalhos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
-.sci-comp-atalho{height:32px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-12,12px);cursor:pointer;}
-.sci-comp-atalho:hover{border-color:var(--accent-border,var(--accent));background:var(--accent-soft);}
-.sci-comp-atalho.escolhido{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600;}
+.sci-puxar{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
+.sci-puxar input.sci-puxar-ano{width:72px;text-align:center;font-variant-numeric:tabular-nums;}
 .sci-puxar-botao img{display:block;}
 .sci-contab-robo{max-width:720px;margin:0 auto 10px;}
 .sci-contab-robo .imp-robo-barra{flex:1 1 200px;}
@@ -9020,3 +8975,57 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .sci-razao-excluir { width: 36px; text-align: center; padding-top: 0; padding-bottom: 0; }
 .sci-razao-excluir .icon-btn { opacity: .45; }
 .sci-razao-linha:hover .sci-razao-excluir .icon-btn, .sci-razao-excluir .icon-btn:focus-visible { opacity: 1; color: var(--danger); }
+
+/* a Contabilização: as abas Lançamentos | Balancete | Extratos (27/11/2026) */
+.sci-contab-abas{display:flex;justify-content:center;margin:0 0 14px;}
+
+/* a aba Extratos da Contabilização (27/11/2026): as vias de puxar, na interface de sempre do nads */
+.sci-extrato-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+/* o balancete do SCI na interface de sempre do nads (27/11/2026: "precisa ser visual diferente nao"): o card, a tabela compacta,
+   os badges; aqui só o que a tabela de sempre não tem (a conta que abre, o recuo, o saldo invertido) */
+.bal-tabela{max-height:none;}
+.bal-tabela td.num,.bal-tabela th.num,.bal-conta td.num,.bal-conta th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.bal-class{font-variant-numeric:tabular-nums;color:var(--ink-muted);white-space:nowrap;}
+.bal-class svg{vertical-align:-2px;margin-right:4px;}
+.bal-abre{cursor:pointer;}
+.bal-abre:hover td{background:var(--hover-bg);}
+.bal-sintetica td{font-weight:600;}
+.bal-participante td{color:var(--ink-muted);}
+.bal-invertido{color:var(--danger) !important;font-weight:600;}
+.bal-total td{font-weight:600;border-top:1px solid var(--border);}
+.bal-painel > td{background:var(--surface-2);padding:12px 16px 16px !important;}
+.bal-conta h4{margin:4px 0 8px;font-size:var(--fs-13);font-weight:600;}
+.bal-conta h4 .hint{font-weight:400;margin-left:6px;}
+.bal-conta table{margin-bottom:12px;background:var(--surface);border:1px solid var(--border);}
+.bal-campos{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin:8px 0 12px;}
+.bal-campos .btn{margin-top:18px;}
+.bal-campo{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
+.bal-campo input{width:120px;}
+.bal-campo small{font-weight:400;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bal-extrato{flex:1 1 240px;margin:18px 0 0;}
+/* o fluxo da Contabilização (27/11/2026): o Próximo no pé de cada passo */
+.sci-contab-proximo{display:flex;justify-content:flex-end;margin:16px 0 8px;}
+/* a Contabilização no desenho da tarefa (27/11/2026: "tudo por menu lateral"): o menu das etapas à esquerda e a etapa à direita */
+.contab-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start;}
+.contab-subnav{min-height:0;padding:4px 12px 4px 0;position:sticky;top:12px;}
+.contab-etapa{min-width:0;}
+.contab-detalhe{padding:0 12px 12px;}
+.contab-detalhe .table-wrap{max-height:420px;}
+.contab-robo{padding:0 12px 10px;}
+.contab-robo .sci-contab-robo{max-width:none;margin:0;}
+@media (max-width:900px){.contab-layout{grid-template-columns:1fr;}.contab-subnav{position:static;border-right:0;border-bottom:1px solid var(--border);padding-bottom:8px;}}
+.contab-etapa .imp-txt{flex:1 1 220px;}
+.contab-etapa .imp-grupos{margin-left:auto;}
+/* o balancete mês a mês (27/11/2026): os meses em colunas; a célula com lançamento abre os do mês */
+.bal-meses{max-height:none;overflow-x:auto;}
+.bal-meses th,.bal-meses td{white-space:nowrap;}
+.bal-meses .bal-nome{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+.bal-mes.vazio{color:var(--ink-faint);}
+.bal-mes.clica{cursor:pointer;}
+.bal-mes.clica:hover{background:var(--hover-bg);}
+.bal-mes.sel{background:var(--hover-bg);box-shadow:inset 0 -2px 0 var(--accent);}
+.bal-mes .bal-d,.bal-mes .bal-c{display:block;font-size:var(--fs-12);line-height:16px;}
+.bal-mes .bal-c{color:var(--ink-muted);}
+.bal-class.bal-abre{cursor:pointer;}
+
