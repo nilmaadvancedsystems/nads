@@ -11,7 +11,7 @@
 //   clientes                       os ativos, uma vez só, para o campo "Pedir para um cliente"
 // A tela nunca escreve nada além do comando (status 'pendente'); quem responde é o robô.
 import { entregas as e, robos as r } from '@nads/core';
-import { addDoc as addDocBruto, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDocs, limit, onSnapshot, orderBy, query, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas, contaDoEntregas } from '../../tarefas/dados/entregas.firestore';
 import type { ClienteDaTela, DocsDaCentral, FilaDaTela, PedidoDaTela, RepoCentral } from './central';
 import { travarPedido } from '../../../comum/disjuntorDeGravacao';
@@ -22,6 +22,9 @@ import { guardarPedido } from '../../../comum/modoDesenvolvedor';
 // pausar, mexer na fila); só o 'assistir', que não muda nada (só liga o espelho do log da aba Registros)
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const addDocSoDeOlhar = travarPedido(addDocBruto) as typeof addDocBruto;
+// a resposta do captcha (27/11/2026): a única escrita da Central fora dos comandos; a regra deixa mudar só os três campos, e
+// só com o pedido esperando o captcha
+const updateDoc = guardarPedido(updateDocBruto) as typeof updateDocBruto;
 
 const QUANTAS_ATIVIDADES = 150;
 const QUANTOS_COMANDOS = 40;
@@ -112,6 +115,16 @@ export function criarCentralFirestore(): RepoCentral {
       return onSnapshot(query(collection(db, rb.itens.colecao), where('status', 'in', [...rb.itens.esperando, ...rb.itens.andamento]), limit(ITENS_NA_FILA)),
         s => avisar({ carregada: true, erro: '', itens: r.ordenarFila(s.docs.map(d => r.lerItemDaFila(rb, d.id, d.data()))) }),
         () => avisar({ carregada: true, itens: [], erro: 'O banco não deixou ler esta fila.' }));
+    },
+    async responderCaptcha(robo, id, resposta) {
+      const rb = r.roboPorId(robo);
+      if (!rb?.itens || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new Error('Pedido desconhecido.');
+      const quem = contaDoEntregas();
+      await updateDoc(doc(db, rb.itens.colecao, id), {
+        captchaResposta: String(resposta).trim().slice(0, 20),
+        captchaRespondidoPor: String((quem && quem.email) || 'equipe').slice(0, 80),
+        captchaRespondidoEm: new Date().toISOString(),
+      });
     },
     clientes() {
       if (!clientes) {

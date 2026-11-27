@@ -37,6 +37,8 @@ export interface RepoCentral {
   clientes(): Promise<ClienteDaTela[]>;
   /** grava o comando (robosComandos) e devolve o id; o robô responde no próprio documento */
   pedir(p: PedidoDaTela): Promise<string>;
+  /** 27/11/2026: a resposta do captcha de uma certidão (o robô espera no próprio pedido, status 'captcha') */
+  responderCaptcha(robo: string, id: string, resposta: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -237,6 +239,7 @@ export function criarCentralMemoria(): RepoCentral {
       return f;
     },
     acompanharFila() { return () => {}; },
+    async responderCaptcha() { /* nos exemplos não há captcha */ },
     clientes: () => Promise.resolve(CLIENTES_DE_EXEMPLO),
     async pedir(p) {
       const d = r.montarComando(p, { uid: 'uid-exemplo', nome: p.porNome || 'Vitor' });

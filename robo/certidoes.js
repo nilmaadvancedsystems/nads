@@ -13,7 +13,7 @@
 // vêm a Área do Cliente e a tarefa de renovar) e guarda o resumo em certidoes/{código}. A empresa que a prefeitura não tem
 // fica marcada (municipalSemCadastro) e não entra mais no lote.
 //
-// O lote do dia: uma vez por dia, depois das 7h, as empresas ativas sem a certidão ou com ela vencendo em até 10 dias (até
+// O lote do dia: uma vez por dia, depois das 8h, as empresas ativas sem a certidão ou com ela vencendo em até 10 dias (até
 // 15 por dia), só depois da primeira certidão que deu certo e não se o lote de ontem só deu erro. config/certidoes:
 // automatico false desliga; porDia muda o tamanho (até 60).
 'use strict';
@@ -48,6 +48,8 @@ const ORGAOS = {
   fgts: { nome: 'CRF do FGTS', ler: P => P.certidaoFgtsDoTexto, chave: 'fgts', semCadastro: 'fgtsSemCadastro', quem: 'a Caixa' },
   // a CDT de Minas (27/11/2026): o Login Único da SEF-MG com o certificado do escritório
   estadual: { nome: 'Certidão estadual (MG)', ler: P => P.certidaoEstadualDoTexto, chave: 'estadual', semCadastro: 'estadualSemCadastro', quem: 'a SEF-MG' },
+  // a CNDT do TST (27/11/2026, semiautomática: alguém da equipe digita o captcha na Central dos robôs)
+  trabalhista: { nome: 'Certidão trabalhista (CNDT)', ler: P => P.certidaoTrabalhistaDoTexto, chave: 'trabalhista', semCadastro: 'trabalhistaSemCadastro', quem: 'o TST' },
 };
 
 /** a prefeitura (ou a Caixa) respondeu que não tem a empresa (não adianta tentar de novo) */
@@ -68,6 +70,35 @@ function motivoParaNaoPedir({ algumaPronta, ontem }) {
 }
 
 const quem = p => String(p.codigo) + ' ' + String(p.empresa || '').slice(0, 40);
+
+/** quanto tempo o robô espera alguém digitar o captcha (27/11/2026) */
+const ESPERA_DO_CAPTCHA_MS = 10 * 60000;
+
+/**
+ * O vaivém do captcha pelo próprio pedido (27/11/2026, a trabalhista): o robô grava a imagem no pedido (status 'captcha'),
+ * a Central dos robôs mostra a imagem e um campo, a pessoa digita (captchaResposta) e o robô continua. Ninguém em 10 min:
+ * devolve '' (o pedido volta para a fila depois). O robô nunca tenta resolver o captcha sozinho.
+ */
+function ajudaDoPedido(it, o, agora, dormir, painel) {
+  return {
+    async pedirCaptcha(imagem) {
+      await it.ref.update({ status: 'captcha', captchaImagem: String(imagem).slice(0, 200000), captchaPedidoEm: new Date(agora()).toISOString(), captchaResposta: '', captchaRespondidoPor: '' });
+      painel.atividade(ROBO, 'Captcha esperando na Central dos robôs: ' + quem(it.dados), 'Certidões › Fila › digite os caracteres da imagem');
+      const ate = agora() + ESPERA_DO_CAPTCHA_MS;
+      while (agora() < ate) {
+        await dormir(3000);
+        const snap = await it.ref.get();
+        const resposta = String((snap && typeof snap.get === 'function' ? snap.get('captchaResposta') : '') || '').trim();
+        if (resposta) {
+          await it.ref.update({ status: 'trabalhando', captchaImagem: '' });
+          return resposta;
+        }
+      }
+      await it.ref.update({ status: 'trabalhando', captchaImagem: '' });
+      return '';
+    },
+  };
+}
 
 /**
  * Atende os pedidos, um por vez, com ESPERA_ENTRE_MS entre um e outro. Tudo de fora vem em `o` (o teste passa versões falsas):
@@ -93,7 +124,7 @@ async function atenderPedidos(o) {
     painel.fazendo(ROBO, org.nome + ' de ' + quem(p));
     try {
       const portal = (o.portais && o.portais[p.orgao]) || o.portal;
-      const r = await portal.emitir(String(p.cnpj));
+      const r = await portal.emitir(String(p.cnpj), ajudaDoPedido(it, o, agora, dormir, painel));
       if (r.erro) {
         if (semCadastroNaPrefeitura(r.erro)) {
           await o.gravarResumo(Number(p.codigo), { codigo: Number(p.codigo), [org.semCadastro]: diaEHora(agora()).dia });
@@ -446,6 +477,41 @@ function criarPortalEstadualMG(log) {
   };
 }
 
+// ---------- a CNDT do TST (27/11/2026): a API da própria página (cndt-certidao.tst.jus.br) ----------
+// A página do TST usa duas chamadas: GET /api/captcha ({ token, imagem em base64 }) e POST /api/certidao ({ cpfCnpj,
+// tokenDesafio, resposta, email }), que devolve o PDF ou { erro }. O robô pega o captcha, manda a imagem para alguém digitar
+// (ajuda.pedirCaptcha) e envia; com a resposta errada, pede outro captcha (até 3 vezes). Sem navegador.
+const TST = 'https://cndt-certidao.tst.jus.br';
+
+function criarPortalTrabalhista(log, buscar = (...a) => fetch(...a)) {
+  return {
+    async emitir(cnpj, ajuda) {
+      if (!ajuda || !ajuda.pedirCaptcha) return { erro: 'a certidão trabalhista precisa de alguém para digitar o captcha' };
+      for (let vez = 0; vez < 3; vez++) {
+        const c = await (await buscar(TST + '/api/captcha')).json();
+        if (!c || !c.imagem || !c.token) return { erro: 'o TST não mandou o captcha' };
+        const resposta = await ajuda.pedirCaptcha('data:image/jpeg;base64,' + c.imagem);
+        if (!resposta) return { erro: 'ninguém digitou o captcha da certidão trabalhista em 10 min (volta para a fila)' };
+        const r = await buscar(TST + '/api/certidao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpfCnpj: cnpj, tokenDesafio: c.token, resposta, email: '' }) });
+        const tipo = (r.headers && r.headers.get && r.headers.get('content-type')) || '';
+        if (r.ok && /pdf/i.test(tipo)) {
+          const pdf = Buffer.from(await r.arrayBuffer());
+          const P = core();
+          let texto = '';
+          try { texto = P.textoDoPdf(await P.itensDoPdf(new Uint8Array(pdf))); } catch (err) { log('Certidões: não li o texto da CNDT -', err.message); }
+          return { texto, pdf };
+        }
+        let erro = '';
+        try { erro = String(((await r.json()) || {}).erro || ''); } catch (_) { erro = 'HTTP ' + r.status; }
+        if (/captcha|caracter|resposta|desafio|imagem/i.test(erro)) { log('Certidões: captcha da CNDT errado (' + erro.slice(0, 80) + '); pedindo outro'); continue; }
+        return { erro: 'o TST respondeu: ' + erro.slice(0, 200), final: /cpf|cnpj|inv.lid/i.test(erro) };
+      }
+      return { erro: 'o captcha da certidão trabalhista deu errado 3 vezes' };
+    },
+    async fechar() { /* sem navegador */ },
+  };
+}
+
 // ---------- o módulo (robo-modulo.js certidoes) ----------
 
 function iniciarCertidoes(db, log) {
@@ -476,7 +542,7 @@ function iniciarCertidoes(db, log) {
   async function proximo() {
     if (trabalhando || !fila.length || pausaLocal.estaPausado(ROBO) || ocupado.parando()) return;
     trabalhando = true;
-    const portais = { municipal: criarPortalDeTaiobeiras(log), fgts: criarPortalDoFgts(log), estadual: criarPortalEstadualMG(log) };
+    const portais = { municipal: criarPortalDeTaiobeiras(log), fgts: criarPortalDoFgts(log), estadual: criarPortalEstadualMG(log), trabalhista: criarPortalTrabalhista(log) };
     try {
       const lote = [...fila].sort((a, b) => (Number(!!b.dados.naFrente) - Number(!!a.dados.naFrente)) || String(a.dados.criadoEm || '').localeCompare(String(b.dados.criadoEm || '')));
       await atenderPedidos({
@@ -497,7 +563,7 @@ function iniciarCertidoes(db, log) {
 
   async function loteDoDia() {
     const { dia, hora } = diaEHora(Date.now());
-    if (hora < 7 || hora >= 20 || loteFeitoEm === dia || pausaLocal.estaPausado(ROBO) || ocupado.parando()) return;
+    if (hora < 8 || hora >= 20 || loteFeitoEm === dia || pausaLocal.estaPausado(ROBO) || ocupado.parando()) return;
     try {
       const cfg = (await db.collection('config').doc('certidoes').get()).data() || {};
       if (cfg.automatico === false) { loteFeitoEm = dia; return; }
@@ -520,7 +586,9 @@ function iniciarCertidoes(db, log) {
         const motivo = motivoParaNaoPedir({ algumaPronta: prontaDo(orgao), ontem });
         if (motivo) { log('Certidões: sem o lote de ' + orgao + ' hoje -', motivo); continue; }
         const naFila = new Set(fila.filter(it => it.dados.orgao === orgao).map(it => Number(it.dados.codigo)));
-        plano.push(...P.certidoesParaPedir({ empresas, resumos, naFila, hoje: dia, limite, orgao }));
+        // a trabalhista precisa de alguém digitando o captcha: no máximo 5 por dia, e só em horário de expediente (8h às 17h)
+        if (orgao === 'trabalhista' && (hora < 8 || hora >= 17)) continue;
+        plano.push(...P.certidoesParaPedir({ empresas, resumos, naFila, hoje: dia, limite: orgao === 'trabalhista' ? Math.min(limite, 5) : limite, orgao }));
       }
       const em = new Date().toISOString();
       for (const p of plano) await db.collection(COLECAO).add(Object.assign(p, { lote: dia, criadoEm: em, criadoPor: 'Robô (lote do dia)', criadoPorUid: 'robo' }));
@@ -541,4 +609,4 @@ function iniciarCertidoes(db, log) {
   log('Certidões: ligado (a municipal de Taiobeiras)');
 }
 
-module.exports = { iniciarCertidoes, atenderPedidos, criarPortalDeTaiobeiras, criarPortalDoFgts, criarPortalEstadualMG, ORGAOS, motivoDoPedidoRuim, motivoParaNaoPedir, semCadastroNaPrefeitura, diaEHora, COLECAO, PORTAL_TAIOBEIRAS, POR_DIA };
+module.exports = { iniciarCertidoes, atenderPedidos, criarPortalDeTaiobeiras, criarPortalDoFgts, criarPortalEstadualMG, criarPortalTrabalhista, ORGAOS, motivoDoPedidoRuim, motivoParaNaoPedir, semCadastroNaPrefeitura, diaEHora, COLECAO, PORTAL_TAIOBEIRAS, POR_DIA };

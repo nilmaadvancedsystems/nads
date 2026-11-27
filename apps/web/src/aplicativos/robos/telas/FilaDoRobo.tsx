@@ -10,13 +10,14 @@ type Acoes = ReturnType<typeof useAcoes>;
 
 export function FilaDoRobo({ central, s, maquina, acoes }: { central: Central; s: r.SituacaoDoRoboNaCentral; maquina: r.SituacaoDaMaquina; acoes: Acoes }) {
   const pedidos = s.robo.pedidos || [];
-  const { fila, clientes } = useFila(s.robo.id, pedidos.length > 0);
+  const { fila, clientes, captcha } = useFila(s.robo.id, pedidos.length > 0);
   const mexe = !!s.robo.itens && (s.robo.itens.cancelar || s.robo.itens.naFrente);
   const podeNaFrente = central.pode('na-frente', s.robo.id);
   const podeCancelar = central.pode('cancelar-item', s.robo.id);
   return (
     <div>
       {acoes.erro && !acoes.pendente && <p className="cr-erro-linha" role="alert" style={{ marginBottom: 16 }}>{acoes.erro}</p>}
+      {captcha.erro && <p className="cr-erro-linha" role="alert" style={{ marginBottom: 16 }}>{captcha.erro}</p>}
       {pedidos.length > 0 && central.pode('pedir-cliente', s.robo.id) && <PedirParaCliente s={s} maquina={maquina} acoes={acoes} pedidos={pedidos} clientes={clientes} agora={central.agora} />}
       <section className="cr-secao">
         <h2>Na fila agora</h2>
@@ -31,6 +32,14 @@ export function FilaDoRobo({ central, s, maquina, acoes }: { central: Central; s
                     <div>
                       <b>{i.titulo}</b>
                       <span>{[i.detalhe, i.criadoPor, r.haQuantoTempo(i.criadoEm, central.agora)].filter(Boolean).join(', ')}</span>
+                      {/* o captcha da certidão (27/11/2026): o robô espera até 10 min alguém digitar os caracteres da imagem */}
+                      {i.captcha && (
+                        <form className="cr-captcha" onSubmit={e => { e.preventDefault(); void captcha.enviar(i.id); }}>
+                          <img src={i.captcha} alt="Os caracteres para digitar" />
+                          <input value={captcha.resposta(i.id)} onChange={e => captcha.digitar(i.id, e.target.value)} placeholder="Digite os caracteres" autoComplete="off" maxLength={20} aria-label={'Captcha de ' + i.titulo} />
+                          <button type="submit" className="cr-botao primario" disabled={!captcha.resposta(i.id).trim() || captcha.enviando === i.id}>{captcha.enviando === i.id ? 'Mandando…' : 'Mandar'}</button>
+                        </form>
+                      )}
                     </div>
                     {(i.podeCancelar && podeCancelar) || (i.podePassarNaFrente && podeNaFrente) ? (
                       <span className="cr-botoes cr-botoes-item">

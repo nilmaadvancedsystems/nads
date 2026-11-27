@@ -59,7 +59,7 @@ const FILAS = {
     { id: 'arquivamento', nome: 'Arquivamento', colecao: 'solicitacoesArquivo', esperando: ['pendente', 'aguardando'], andamento: ['processando'] },
     { id: 'fgts', nome: 'FGTS Digital', colecao: 'pedidosFgts', esperando: ['pendente'], andamento: ['trabalhando', 'verificacao', 'login'] },
     { id: 'pgdas', nome: 'Simples na Receita (e-CAC, 23h às 8h)', colecao: 'pedidosPgdas', esperando: ['pendente'], andamento: ['trabalhando'] },
-    { id: 'certidoes', nome: 'Certidões (a municipal de Taiobeiras)', colecao: 'pedidosCertidao', esperando: ['pendente'], andamento: ['trabalhando'] },
+    { id: 'certidoes', nome: 'Certidões', colecao: 'pedidosCertidao', esperando: ['pendente'], andamento: ['trabalhando', 'captcha'] },
     { id: 'alterdata', nome: 'Alterdata (balancete e razão)', colecao: 'pedidosAlterdata', esperando: ['pendente'], andamento: ['trabalhando'] },
     { id: 'sieg', nome: 'SIEG', colecao: 'pedidosSieg', esperando: ['pendente'], andamento: ['processando'] },
     { id: 'area-chamados', nome: 'Chamados da Área do Cliente', colecao: 'areaClienteChamados', consultar: true },
