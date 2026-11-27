@@ -10,7 +10,7 @@
 import { lerPlanilhaDoPlano } from '../../empresas/cadastro/plano';
 import type { LancamentoSci } from '../tipos';
 import { classificacaoNormal } from './dePara';
-import { semAcento, type PlanoSci } from './plano';
+import { semAcento, type ContaDoPlanoSci, type PlanoSci } from './plano';
 
 export interface ContaDoBalanceteSci {
   classificacao: string;
@@ -18,6 +18,16 @@ export interface ContaDoBalanceteSci {
   nome: string;
   /** sem contas filhas no balancete */
   analitica: boolean;
+  /**
+   * o nível no .xls que o robô exporta (27/11/2026): o nome cai numa coluna de C a I conforme o nível (1 = a do título "NOME DA
+   * CONTA CONTÁBIL"). Ausente no CSV, que traz o nome numa coluna só.
+   */
+  nivel?: number;
+  /**
+   * a linha de um participante (o cliente ou o fornecedor) embaixo da conta-mãe (27/11/2026, o .xls do SCI: repete o código reduzido
+   * da conta-mãe, e a classificação ganha o código do participante, 01.1.2.01.000001577). Não é conta: não soma com a mãe.
+   */
+  participante?: boolean;
   /** centavos; + = devedor, − = credor */
   anterior: number;
   debito: number;
@@ -112,7 +122,16 @@ export function lerBalanceteDoSci(bytes: Uint8Array, nome = 'balancete.csv'): Le
     const anterior = comSinal(valorDoBalancete(pega('anterior'), dcDe(l, col.anterior)), classificacao);
     const atual = comSinal(valorDoBalancete(pega('atual'), dcDe(l, col.atual)), classificacao);
     if ([debito, credito, anterior, atual].some(n => isNaN(n))) continue;
-    contas.push({ classificacao, codigo: String(pega('codigo') ?? '').trim(), nome: String(pega('nome') ?? '').trim(), analitica: true, anterior, debito, credito, atual });
+    // o nome: no .xls do robô (27/11/2026) ele cai numa das colunas entre o título do nome e o saldo anterior, conforme o nível
+    // (as contas de participante, na última); no CSV, na própria coluna do título
+    const fimDoNome = Math.min(...[col.anterior, col.debito].filter((i): i is number => i != null));
+    let nome = String(pega('nome') ?? '').trim();
+    let nivel: number | undefined;
+    if (col.nome != null && fimDoNome - col.nome > 1) {
+      const i = l.findIndex((t, k) => k >= col.nome! && k < fimDoNome && String(t ?? '').trim() !== '');
+      if (i >= 0) { nome = String(l[i]).trim(); nivel = i - col.nome + 1; }
+    }
+    contas.push({ classificacao, codigo: String(pega('codigo') ?? '').trim(), nome, analitica: true, ...(nivel ? { nivel } : {}), anterior, debito, credito, atual });
   }
   if (!contas.length) return { balancete: null, erro: 'Achei os títulos, mas nenhuma conta com valor.' };
   // sintética = tem alguma conta abaixo (o balancete pode pular níveis: todos os prefixos contam)
@@ -122,6 +141,12 @@ export function lerBalanceteDoSci(bytes: Uint8Array, nome = 'balancete.csv'): Le
     for (let n = 1; n < p.length; n++) comFilhas.add(p.slice(0, n).join('.'));
   }
   for (const c of contas) c.analitica = !comFilhas.has(classificacaoNormal(c.classificacao));
+  // o participante repete o código reduzido de uma conta que veio antes: fica marcado e não conta como analítica
+  const codigosVistos = new Set<string>();
+  for (const c of contas) {
+    if (c.codigo && codigosVistos.has(c.codigo)) { c.participante = true; c.analitica = false; }
+    if (c.codigo) codigosVistos.add(c.codigo);
+  }
   return { balancete: { empresa, cnpj, inicio, fim, contas }, erro: null };
 }
 
@@ -196,3 +221,23 @@ export function conferirComOBalancete(lancamentos: readonly LancamentoSci[], b: 
     return { ...base, classificacao: c.classificacao, nome: c.nome, sciDebito: c.debito, sciCredito: c.credito, situacao };
   }).sort((a, b) => a.classificacao.localeCompare(b.classificacao));
 }
+
+/**
+ * O plano do nads com as contas do balancete do SCI (27/11/2026: a cópia do plano no nads é de 23/11 e não tem as contas criadas
+ * depois, como a 12 do Banco do Brasil da 583): o balancete vem do próprio SCI, então a conta que está nele existe lá. As contas do
+ * balancete entram por cima das do plano (o nome e se é analítica valem os do SCI); o participante não é conta e fica de fora.
+ */
+export function planoComOBalancete(plano: PlanoSci, b: BalanceteSci): PlanoSci {
+  const porCodigo = new Map(plano.porCodigo);
+  for (const c of b.contas) {
+    if (c.participante || !c.codigo) continue;
+    const antes = porCodigo.get(c.codigo);
+    porCodigo.set(c.codigo, {
+      ...(antes || { apelido: '', participante: null }),
+      codigo: c.codigo, classificacao: c.classificacao, nome: c.nome || antes?.nome || '', analitica: c.analitica,
+      nivel: antes?.nivel ?? c.classificacao.split('.').length,
+    } as ContaDoPlanoSci);
+  }
+  return { id: plano.id, contas: [...porCodigo.values()], porCodigo };
+}
+

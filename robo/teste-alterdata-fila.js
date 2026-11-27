@@ -246,9 +246,13 @@ function novo(id, tipo, codigo, competencia) {
     sci('s2', 604, '02/2026');
     sci('s3', 590, '2026-02');
     sci('s4', 590, '13/2026');
+    // o balancete do SCI (27/11/2026): o mesmo caminho, o roteiro sciBalancete
+    pedidos.set('s5', { status: 'pendente', tipo: 'sciBalancete', codigo: 583, competencia: '00/2026', criadoEm: new Date().toISOString() }); f6.chegou('s5');
     await espera(5);
     await f6.ocioso();
-    assert.deepStrictEqual(recebidos, ['sciLancamentos 590 00/2026', 'sciLancamentos 604 02/2026']);
+    assert.deepStrictEqual(recebidos, ['sciLancamentos 590 00/2026', 'sciLancamentos 604 02/2026', 'sciBalancete 583 00/2026']);
+    assert.strictEqual(st('s5'), 'pronto');
+    assert.strictEqual(pedidos.get('s5').arquivos.fiscal.nome, 'lancamentos-583-00-2026.xls');
     assert.strictEqual(st('s1'), 'pronto');
     assert.strictEqual(pedidos.get('s1').arquivos.fiscal.nome, 'lancamentos-590-00-2026.xls');
     assert.strictEqual(partes.get('s1').fiscal.toString(), 'consulta 590');

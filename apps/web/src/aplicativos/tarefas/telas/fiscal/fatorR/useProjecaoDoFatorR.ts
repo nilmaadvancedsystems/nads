@@ -61,8 +61,6 @@ export function useProjecaoDoFatorR() {
   const linhas = useMemo(() => f.linhasDoFatorR(meses, (ano - 1) + '-01', ano + '-12'), [meses, ano]);
   const atual = competenciaDe(new Date());
   const hoje = dados?.carregada && competencias.includes(atual) ? f.fatorRDoPa(meses, atual) : null;
-  // o primeiro PA da projeção que fica no Anexo V (para o aviso)
-  const primeiroNoV = linhas.find(l => l.competencia >= ano + '-01' && l.anexo === 'V') || null;
   const comPgdas = !!dados?.pgdas && Object.keys(dados.pgdas.meses).length > 0;
 
   const gravar = async (docs: readonly t.fatorR.FatorRDoAno[], ok?: string) => {
@@ -101,8 +99,6 @@ export function useProjecaoDoFatorR() {
     comPgdas,
     pgdasConsultadoEm: dados?.pgdasConsultadoEm ? t.pgdas.consultadoEmTexto(dados.pgdasConsultadoEm) : '',
     // o Fator R de hoje e a projeção
-    hoje,
-    primeiroNoV,
     minimo: f.FATOR_R_EM_PCT,
     linhas,
     /** o gráfico: uma barra por PA com o Fator R (sem receita na janela, sem barra) e a escala em % (no mínimo 40%) */
@@ -114,11 +110,6 @@ export function useProjecaoDoFatorR() {
       })),
       escala: Math.max(40, Math.ceil((Math.max(0, ...linhas.map(l => l.fator ?? 0)) + 4) / 10) * 10),
     },
-    /** a régua do Fator R de hoje: até onde vai a barra e onde fica a marca dos 28% (0 a 100, em % da largura) */
-    regua: hoje && hoje.fator != null ? (() => {
-      const escala = Math.max(40, Math.ceil((hoje.fator + 4) / 10) * 10);
-      return { preenchido: Math.min(100, (hoje.fator / escala) * 100), marca: (f.FATOR_R_EM_PCT / escala) * 100, escala };
-    })() : null,
     /** o ano da linha: o anterior (o que já passou, em boa parte) ou o da projeção */
     daProjecao: (c: string) => c >= ano + '-01',
     ehMesAtual: (c: string) => c === atual,
