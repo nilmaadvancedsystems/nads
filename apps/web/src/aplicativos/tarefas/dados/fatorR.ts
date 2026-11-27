@@ -23,6 +23,12 @@ export interface RepoFatorR {
   daEmpresa(codigo: number, anos: readonly number[]): EmpresaDoFatorR;
   /** grava os documentos (com quem e quando) e já mostra na tela */
   salvar(docs: readonly t.fatorR.FatorRDoAno[]): Promise<void>;
+  /**
+   * o extrato do PGDAS-D subido aqui também vai para o faturamento (27/11/2026: "quando a pessoa for fazer a planilha de fator
+   * r e subir o extrato do pgdas ja subir la no faturamento"): junta no pgdas/{código}, o mesmo que o robô do e-CAC grava e
+   * que a relação de faturamento do Fiscal e a Área do Cliente leem. true = foi; false = não deu (nos exemplos, sem gravar)
+   */
+  extratoNoFaturamento(empresa: { codigo: number; cnpj: string; nome: string }, extrato: t.pgdas.ExtratoDoPgdas): Promise<boolean>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -73,6 +79,15 @@ export function criarFatorRMemoria(semente: (codigo: number) => { docs: t.fatorR
         vistas.set(k, v);
       }
       return v;
+    },
+    async extratoNoFaturamento(empresa, extrato) {
+      daSemente(empresa.codigo);
+      const novo = t.pgdas.juntarExtrato(null, extrato, empresa, new Date());
+      const antes = pgdas.get(empresa.codigo);
+      pgdas.set(empresa.codigo, { ...novo, meses: { ...(antes?.meses || {}), ...novo.meses }, folhas: { ...(antes?.folhas || {}), ...novo.folhas } } as t.fatorR.PgdasParaOFatorR);
+      vistas.clear();
+      ver++; for (const o of ouvintes) o();
+      return true;
     },
     async salvar(docs) {
       for (const d of docs) guardados.set(f.idDoFatorR(d.ano, d.codigo), { ...d, atualizadoEm: new Date().toISOString(), atualizadoPor: 'exemplo' });
