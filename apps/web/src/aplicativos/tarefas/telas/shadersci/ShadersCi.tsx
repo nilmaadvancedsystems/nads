@@ -15,10 +15,9 @@ import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { LogoDoMinimum } from './LogoDoMinimum';
 import { Paleta, type ItemDaPaleta } from './Paleta';
 import { BaixaNoCaixa } from './BaixaNoCaixa';
-import { BalanceteDoSci, FechamentoDoPeriodo, balanceteDaEmpresa } from './BalanceteDoSci';
+import { ContabilizacaoDoSci } from './ContabilizacaoDoSci';
 import { ExtratoParaSci } from './ExtratoParaSci';
-import { lancamentosDaContabilizacao, RazaoDoSci, temConsultaDoSci } from './RazaoDoSci';
-import { extratoDaEmpresa } from './useExtratoParaSci';
+import { RazaoDoSci, temConsultaDoSci } from './RazaoDoSci';
 import { useShadersCi, type ColunaDosLancamentos, type Formulario, type VmShadersCi } from './useShadersCi';
 
 export function ShadersCi() {
@@ -84,54 +83,8 @@ export function ShadersCi() {
       {/* o Extratudo é o Lançatudo, com a empresa daqui: o mesmo leitor de extrato do fluxo de tarefas do Contábil */}
       {/* o Extrato → SCI (25/11/2026): o PDF do extrato direto na planilha do SCI, só no navegador */}
       {/* a Baixa no caixa (26/11/2026): as vendas da consulta do SCI viram a baixa D Caixa × C Clientes, na planilha do SCI */}
-      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'contabilizacao' ? <Contabilizacao vm={vm} /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'baixa' ? <BaixaNoCaixa min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
+      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'contabilizacao' ? <ContabilizacaoDoSci vm={vm} /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'baixa' ? <BaixaNoCaixa min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
     </section>
-  );
-}
-
-// ------------------------------------------------------------------------------------------------- a Contabilização
-type PassoDaContabilizacao = 'lancamentos' | 'balancete' | 'extratos' | 'fechamento';
-const PASSOS: readonly { id: PassoDaContabilizacao; rotulo: string }[] = [
-  { id: 'lancamentos', rotulo: 'Lançamentos' }, { id: 'balancete', rotulo: 'Balancete' }, { id: 'extratos', rotulo: 'Extrato' }, { id: 'fechamento', rotulo: 'Fechamento' },
-];
-const CHAVE_DO_PASSO = 'nads-minimum-contabilizacao-aba';
-/**
- * A Contabilização como um fluxo (27/11/2026, o Vitor: "faca isso dentro de um fluxo, nao em menus separados igual ta"; "faz de uma
- * maneira que e automatizavel depois"): 1 os lançamentos do SCI, 2 o balancete, 3 o extrato, 4 o fechamento (os pagamentos, o banco
- * conferido e a planilha). Cada passo fica feito pelo que já está guardado (o que o robô também pode trazer sozinho), e o Próximo leva
- * ao seguinte. O passo aberto fica lembrado neste navegador.
- */
-function Contabilizacao({ vm }: { vm: VmShadersCi }) {
-  const codigo = vm.empresa?.codigo ?? null;
-  const [passo, setPasso] = useState<PassoDaContabilizacao>(() => {
-    try { const a = localStorage.getItem(CHAVE_DO_PASSO); return PASSOS.some(p => p.id === a) ? (a as PassoDaContabilizacao) : 'lancamentos'; } catch { return 'lancamentos'; }
-  });
-  const ir = (a: PassoDaContabilizacao) => { setPasso(a); try { localStorage.setItem(CHAVE_DO_PASSO, a); } catch { /* sem armazenamento */ } window.scrollTo({ top: 0 }); };
-  // feito: o que o passo precisa já está guardado (relido a cada troca de passo)
-  const feito: Record<PassoDaContabilizacao, boolean> = {
-    lancamentos: lancamentosDaContabilizacao(codigo).length > 0,
-    balancete: !!balanceteDaEmpresa(codigo),
-    extratos: !!extratoDaEmpresa(codigo),
-    fechamento: false,
-  };
-  const i = PASSOS.findIndex(p => p.id === passo);
-  const proximo = PASSOS[i + 1];
-  return (
-    <>
-      <div className="sci-contab-abas">
-        <Segmentado<PassoDaContabilizacao> valor={passo} onMudar={ir}
-          opcoes={PASSOS.map((p, n) => ({ valor: p.id, rotulo: n + 1 + '. ' + p.rotulo, icone: feito[p.id] ? <Icone nome="checkCircle" width={14} height={14} /> : undefined }))} />
-      </div>
-      {passo === 'balancete' ? <BalanceteDoSci key="balancete" vm={vm} />
-        : passo === 'extratos' ? <ExtratoParaSci key="extratos" min={vm} naContabilizacao />
-          : passo === 'fechamento' ? <FechamentoDoPeriodo key="fechamento" vm={vm} />
-            : <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" />}
-      {proximo && (
-        <div className="sci-contab-proximo">
-          <button type="button" className="btn btn-primary" onClick={() => ir(proximo.id)}>Próximo: {proximo.rotulo}<Icone nome="chevronRight" /></button>
-        </div>
-      )}
-    </>
   );
 }
 

@@ -9006,4 +9006,15 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .bal-extrato{flex:1 1 240px;margin:18px 0 0;}
 /* o fluxo da Contabilização (27/11/2026): o Próximo no pé de cada passo */
 .sci-contab-proximo{display:flex;justify-content:flex-end;margin:16px 0 8px;}
+/* a Contabilização no desenho da tarefa (27/11/2026: "tudo por menu lateral"): o menu das etapas à esquerda e a etapa à direita */
+.contab-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start;}
+.contab-subnav{min-height:0;padding:4px 12px 4px 0;position:sticky;top:12px;}
+.contab-etapa{min-width:0;}
+.contab-detalhe{padding:0 12px 12px;}
+.contab-detalhe .table-wrap{max-height:420px;}
+.contab-robo{padding:0 12px 10px;}
+.contab-robo .sci-contab-robo{max-width:none;margin:0;}
+@media (max-width:900px){.contab-layout{grid-template-columns:1fr;}.contab-subnav{position:static;border-right:0;border-bottom:1px solid var(--border);padding-bottom:8px;}}
+.contab-etapa .imp-txt{flex:1 1 220px;}
+.contab-etapa .imp-grupos{margin-left:auto;}
 
