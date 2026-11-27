@@ -343,7 +343,12 @@ async function enviar(numero, conteudo, responder) {
     if (a && a.exists) { achado = a; break; }
   }
   if (!achado) throw new Error(R.numeroFormatado(numero) + ' não tem WhatsApp');
-  const msg = await sock.sendMessage(achado.jid, conteudo);
+  // toda mensagem com o nome "NADS (Autoatendimento Nilma Contabilidade)" na frente (27/11/2026): o texto e a legenda do
+  // primeiro arquivo; o arquivo sozinho (sem legenda) vai como está
+  const comNome = Object.assign({}, conteudo);
+  if (typeof comNome.text === 'string') comNome.text = W.comCabecalho(comNome.text);
+  if (typeof comNome.caption === 'string' && comNome.caption.trim()) comNome.caption = W.comCabecalho(comNome.caption);
+  const msg = await sock.sendMessage(achado.jid, comNome);
   guardarEnvio(Date.now());
   return (msg && msg.key && msg.key.id) || '';
 }
@@ -593,7 +598,8 @@ async function mandarArquivos(numero, arquivos, baixar, legenda) {
     let arq;
     try { arq = await baixar(a); } catch (err) { st.log('whatsapp: não baixei', a.nome || a.id, '-', err.message); continue; }
     if (!arq || !arq.buffer || !arq.buffer.length || arq.buffer.length > MAX_ARQUIVO_BYTES) continue;
-    await enviar(numero, { document: arq.buffer, mimetype: arq.mime, fileName: (a.nome || arq.nome).slice(0, 120), ...(mandou || !legenda ? {} : { caption: legenda }) }, true);
+    // o nome que o cliente entende ("DAS Outubro 2026 - Empresa.pdf"); o do Drive não muda
+    await enviar(numero, { document: arq.buffer, mimetype: arq.mime, fileName: (a.nomeNoWhatsapp || a.nome || arq.nome).slice(0, 150), ...(mandou || !legenda ? {} : { caption: legenda }) }, true);
     mandou++;
   }
   return mandou;
@@ -716,7 +722,7 @@ async function escreverComOClaude(r, empresa, guardada, agora) {
   let mandou = 0;
   for (const d of resp.documentos) {
     const a = achados[d.tipo];
-    if (a) mandou += await mandarArquivos(r.numero, [{ id: d.id, nome: d.nome }], a.baixar, '');
+    if (a) mandou += await mandarArquivos(r.numero, [{ id: d.id, nome: d.nome, nomeNoWhatsapp: W.nomeParaOCliente(d, empresa.nome) }], a.baixar, '');
   }
   if (resp.equipe) await avisarAEquipe(empresa, r, 'o Claude chamou a equipe: ' + r.texto);
   st.log('whatsapp: o Claude respondeu a ' + empresa.nome + ' (' + mandou + ' arquivo(s)' + (resp.equipe ? ', chamou a equipe' : '') + ')');
@@ -810,7 +816,9 @@ async function fazer(acao, r) {
   const registro = achado ? W.envioMaisRecente(achado.registros) : null;
   const legenda = W.textoDosDocumentos(acao.tipo, e, registro);
   if (!registro) { await enviar(r.numero, { text: legenda }, true); return; }
-  const mandou = await mandarArquivos(r.numero, registro.arquivos, achado.baixar, legenda);
+  const tipo = { guias: 'guia', boleto: 'boleto', dp: 'dp' }[acao.tipo];
+  const arquivos = registro.arquivos.map(a => Object.assign({}, a, { nomeNoWhatsapp: W.nomeParaOCliente({ tipo, nome: a.nome, competencia: registro.competencia }, e.nome) }));
+  const mandou = await mandarArquivos(r.numero, arquivos, achado.baixar, legenda);
   if (!mandou) await enviar(r.numero, { text: 'Não conseguimos pegar os arquivos agora. Fale com o escritório pelo WhatsApp ' + W.numeroFormatado(W.NUMERO_DO_ESCRITORIO) + '.' }, true);
   st.log('whatsapp: autoatendimento mandou', mandou, 'arquivo(s) (' + acao.tipo + ') para', e.nome);
 }

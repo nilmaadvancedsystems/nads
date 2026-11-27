@@ -69,12 +69,19 @@ function bancoFalso(inicial) {
 }
 
 // ---------- o socket e o Drive de mentira ----------
+const CABECALHO = '*NADS (Autoatendimento Nilma Contabilidade)*\n\n';
 function socketFalso(semWhatsapp) {
   const mandadas = [];
   return {
     mandadas,
     onWhatsApp: async jid => [{ exists: !(semWhatsapp || []).includes(jid.split('@')[0]), jid }],
-    sendMessage: async (jid, conteudo) => { mandadas.push({ para: jid.split('@')[0], ...conteudo }); return { key: { id: 'MSG' + mandadas.length } }; },
+    // guarda o texto e a legenda sem o nome "NADS (...)" da frente (os testes comparam o conteúdo); semNome anota se ele veio
+    sendMessage: async (jid, conteudo) => {
+      const m = { para: jid.split('@')[0], ...conteudo };
+      for (const k of ['text', 'caption']) if (typeof m[k] === 'string') { m.comNome = m[k].startsWith(CABECALHO); m[k] = m[k].replace(CABECALHO, ''); }
+      mandadas.push(m);
+      return { key: { id: 'MSG' + mandadas.length } };
+    },
   };
 }
 const driveFalso = {
@@ -198,10 +205,10 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     verdade('o celular do teste recebe o menu da empresa de teste', sock.mandadas[0] && sock.mandadas[0].text.includes('atendimento de *Padaria Boa*') && sock.mandadas[0].text.includes('1️⃣ Guias do mês'));
     await Z.receber(texto(CELULAR_DO_TESTE, '1'));
     igual('1: a guia mais recente, do Drive, com a legenda', [sock.mandadas[1].fileName, sock.mandadas[1].document.toString(), sock.mandadas[1].caption],
-      ['DAS 10-2026.pdf', '%PDF-guia-drv1', 'Segue a guia de Padaria Boa (outubro de 2026).\n\n' + W.TEXTO_DE_MAIS_ALGUMA]);
+      ['Guia Outubro 2026 - Padaria Boa.pdf', '%PDF-guia-drv1', 'Segue a guia de Padaria Boa (outubro de 2026).\n\n' + W.TEXTO_DE_MAIS_ALGUMA]);
     await Z.receber(texto(CELULAR_DO_TESTE, 'menu'));
     await Z.receber(texto(CELULAR_DO_TESTE, '2'));
-    igual('2: o boleto já enviado', [sock.mandadas[3].fileName, sock.mandadas[3].document.toString()], ['Boleto de honorários - Padaria Boa.pdf', '%PDF-boleto']);
+    igual('2: o boleto já enviado', [sock.mandadas[3].fileName, sock.mandadas[3].document.toString()], ['Boleto honorários Novembro 2026 - Padaria Boa.pdf', '%PDF-boleto']);
     await Z.receber(texto(CELULAR_DO_TESTE, 'menu'));
     await Z.receber(texto(CELULAR_DO_TESTE, '3'));
     verdade('3: sem documento do DP enviado, avisa', sock.mandadas[5].text.startsWith('Não achamos os documentos do DP de Padaria Boa'));
@@ -226,7 +233,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     await Z.receber(texto('553899991234', 'oi'));   // o mesmo celular, sem o 9 (conta antiga)
     verdade('acha a empresa pelo telefone do cadastro, com ou sem o 9', sock.mandadas[0] && sock.mandadas[0].text.includes('atendimento de *Padaria Boa*'));
     await Z.receber(chega('', { conversation: 'oi' }, { remoteJid: '99887766@lid', remoteJidAlt: '5511911112222@s.whatsapp.net' }));
-    igual('número fora do cadastro (contato novo em LID): o aviso', sock.mandadas[1] && sock.mandadas[1].text, W.TEXTO_FORA_DO_CADASTRO);
+    igual('número fora do cadastro (contato novo em LID): o aviso', sock.mandadas[1] && (CABECALHO + sock.mandadas[1].text), W.TEXTO_FORA_DO_CADASTRO);
     await Z.receber(texto('5511911112222', 'oi de novo'));
     igual('o aviso só uma vez por dia', sock.mandadas.length, 2);
   }
@@ -290,10 +297,10 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     // o leitor de mentira devolve o tamanho do PDF de mentira ('%PDF-guia-drvNov' = 16 bytes) como valor
     verdade('a guia vai com o valor e o vencimento lidos no PDF', pergunta.includes('11-2026.pdf | valor R$16,00 | vence 20/12/2026'));
     igual('o texto do Claude e só o arquivo da lista', [sock.mandadas[0] && sock.mandadas[0].text, sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString(), sock.mandadas.length],
-      ['Segue o DAS de novembro!', '11-2026.pdf', '%PDF-guia-drvNov', 2]);
+      ['Segue o DAS de novembro!', 'DAS Novembro 2026 - Padaria Boa.pdf', '%PDF-guia-drvNov', 2]);
     await Z.receber(texto(CELULAR_DO_TESTE, '2'));
     igual('o número digitado não passa pelo Claude (a conversa ficou no menu)', perguntasAoClaude.length, 1);
-    igual('e é atendido (o boleto)', sock.mandadas[2] && sock.mandadas[2].fileName, 'Boleto de honorários - Padaria Boa.pdf');
+    igual('e é atendido (o boleto)', sock.mandadas[2] && sock.mandadas[2].fileName, 'Boleto honorários Novembro 2026 - Padaria Boa.pdf');
     // na próxima, o Claude recebe a conversa até aqui
     saidaDoClaude = () => '{"resposta": "A equipe vai verificar, tá?", "documentos": [], "equipe": true}';
     await Z.receber(texto(CELULAR_DO_TESTE, 'o valor do DAS está errado'));
@@ -315,7 +322,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     db._docs.set('dpEnviosFora/' + nov, { clientes: { '123': { arquivos: ['fgts1'] } } });
     await Z.receber(texto(CELULAR_DO_TESTE, 'menu'));
     await Z.receber(texto(CELULAR_DO_TESTE, '3'));
-    igual('3: o DP da pasta, sem o que o DP tirou do envio', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas.length], ['HOLERITE.pdf', 2]);
+    igual('3: o DP da pasta, sem o que o DP tirou do envio', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas.length], ['HOLERITE - Novembro 2026 - Padaria Boa.pdf', 2]);
   }
 
   // ---------- 6f. o lado do PC do escritório (whatsapp-claude.js) ----------
@@ -359,7 +366,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     const pergunta = perguntasAoClaude[0] || '';
     verdade('a pergunta leva as informações: certidão, o que falta e os honorários com a 2ª via',
       pergunta.includes('Certidão FGTS: negativa (sem pendência), válida até 10/12/2099') && pergunta.includes('ainda não mandou: Extrato Bancário; Aplicação') && pergunta.includes('2ª via: https://efi/2via'));
-    igual('o Claude escolheu a certidão: vai o PDF da Área do Cliente', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString()], ['Certidão FGTS.pdf', '%PDF-certidao']);
+    igual('o Claude escolheu a certidão: vai o PDF da Área do Cliente', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString()], ['Certidão FGTS - Padaria Boa.pdf', '%PDF-certidao']);
   }
 
   // ---------- 6g. os arquivos que o cliente manda (chave arquivos) ----------
@@ -371,6 +378,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
       ['pendente', 'Extrato Sicoob 10-2026.pdf', '123', 'Padaria Boa', 'whatsapp', 1]);
     igual('com as partes do arquivo', envio && String(db._docs.get(envio[0] + '/partes/0').dados), '%PDF-do-cliente-ARQ1');
     verdade('o cliente recebe a confirmação', sock.mandadas[0] && sock.mandadas[0].text.startsWith('Recebemos o arquivo *Extrato Sicoob 10-2026.pdf*'));
+    verdade('toda mensagem com texto começa com o nome NADS (Autoatendimento Nilma Contabilidade)', sock.mandadas.every(m => (m.text === undefined && !m.caption) || m.comNome));
     await Z.receber(chega(CELULAR_DO_TESTE, { imageMessage: { caption: 'nota' } }, { id: 'ARQ2' }));
     igual('a 2ª em seguida não recebe outra confirmação', sock.mandadas.length, 1);
     await Z.receber(chega(CLIENTE_FONE, { documentMessage: { fileName: 'x.pdf', mimetype: 'application/pdf' } }, { id: 'ARQ3' }));

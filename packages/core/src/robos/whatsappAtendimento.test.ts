@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, comCabecalho, nomeParaOCliente, vencimentoDoNome, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -187,7 +187,7 @@ describe('o autoatendimento', () => {
 
 describe('o jeito do menu', () => {
   it('o nome, a saudação pela hora de Brasília e o nome da empresa sem tudo em maiúsculas', () => {
-    expect(NOME_DO_ATENDIMENTO).toBe('Autoatendimento Nilma Contabilidade');
+    expect(NOME_DO_ATENDIMENTO).toBe('NADS (Autoatendimento Nilma Contabilidade)');
     expect(saudacaoDoAtendimento(Date.parse('2026-11-27T11:00:00.000Z'))).toBe('Bom dia');     // 8h
     expect(saudacaoDoAtendimento(Date.parse('2026-11-27T18:00:00.000Z'))).toBe('Boa tarde');   // 15h
     expect(saudacaoDoAtendimento(Date.parse('2026-11-27T23:30:00.000Z'))).toBe('Boa noite');   // 20h30
@@ -196,7 +196,7 @@ describe('o jeito do menu', () => {
   });
   it('o menu: título em negrito, opções com emoji, o 0 e o lembrete do menu', () => {
     const m = passoDoAtendimento(null, 'oi', [PADARIA], Date.parse('2026-11-27T13:00:00.000Z')).responder;
-    expect(m.startsWith('*Autoatendimento Nilma Contabilidade*\n\nBom dia! Você está no atendimento de *Padaria Boa*.')).toBe(true);
+    expect(m.startsWith('*NADS (Autoatendimento Nilma Contabilidade)*\n\nBom dia! Você está no atendimento de *Padaria Boa*.')).toBe(true);
     expect(m).toContain('4️⃣ Falar com a equipe do escritório\n0️⃣ Encerrar');
     expect(m).toContain('digite *menu*');
   });
@@ -463,5 +463,23 @@ describe('os avisos que o robô manda sozinho', () => {
     expect(conversouHaPouco(HOJE - 10 * 864e5, HOJE)).toBe(true);
     expect(conversouHaPouco(HOJE - 90 * 864e5, HOJE)).toBe(false);
     expect(conversouHaPouco(undefined, HOJE)).toBe(false);
+  });
+});
+
+describe('o nome em toda mensagem e o nome dos arquivos', () => {
+  it('NADS (Autoatendimento Nilma Contabilidade) na frente, uma vez só; o TESTE da trava antes', () => {
+    expect(comCabecalho('Olá!')).toBe('*NADS (Autoatendimento Nilma Contabilidade)*\n\nOlá!');
+    expect(comCabecalho(comCabecalho('Olá!'))).toBe(comCabecalho('Olá!'));
+    expect(comCabecalho('[TESTE: iria para X, (38) 9999-0000]\n\nOlá!')).toBe('[TESTE: iria para X, (38) 9999-0000]\n\n*NADS (Autoatendimento Nilma Contabilidade)*\n\nOlá!');
+    expect(comCabecalho('  ')).toBe('');
+  });
+  it('o arquivo vai com um nome que o cliente entende', () => {
+    expect(nomeParaOCliente({ tipo: 'guia', nome: '10-2026.pdf', competencia: '2026-10' }, 'DORNAS HAVANA LTDA - ME')).toBe('DAS Outubro 2026 - Dornas Havana LTDA - ME.pdf');
+    expect(nomeParaOCliente({ tipo: 'guia', nome: '10-2026 - DAE ICMS - VALOR R$344,12 - VENCIMENTO 21-12-2026.pdf', competencia: '2026-10' }, 'DORNAS HAVANA LTDA - ME'))
+      .toBe('DAE ICMS Outubro 2026 - venc 21-12-2026 - Dornas Havana LTDA - ME.pdf');
+    expect(nomeParaOCliente({ tipo: 'guia', nome: '10-2026 - DARF INSS - VALOR R$2062,17.pdf', competencia: '2026-10', vencimento: '19-11-2026' }, 'X LTDA')).toBe('DARF INSS Outubro 2026 - venc 19-11-2026 - X LTDA.pdf');
+    expect(nomeParaOCliente({ tipo: 'boleto', nome: 'b.pdf', competencia: '2026-11' }, 'X')).toBe('Boleto honorários Novembro 2026 - X.pdf');
+    expect(nomeParaOCliente({ tipo: 'dp', nome: 'HOLERITE MARIA.pdf', competencia: '2026-10' }, 'X')).toBe('HOLERITE MARIA - Outubro 2026 - X.pdf');
+    expect(vencimentoDoNome('10-2026 - DAE ICMS - VALOR R$2,55 - VENCIMENTO 02-12-2026.pdf')).toBe('02-12-2026');
   });
 });
