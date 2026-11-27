@@ -8535,15 +8535,44 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-upload.arrastando .sci-upload-area{border-color:var(--accent);background:var(--accent-soft);}
 .sci-upload-pe{margin-top:4px !important;font-size:var(--fs-12) !important;}
 /* a Contabilização do minimum (27/11/2026): a tela vazia com o botão Vitor do SCI no meio, a competência e o andamento do robô */
-.sci-contab-vazia{display:flex;flex-direction:column;align-items:center;gap:10px;width:460px;max-width:100%;margin:8vh auto 0;padding:28px;border-radius:16px;
-  border:1px solid var(--border);background:var(--surface);text-align:center;}
-.sci-contab-vazia h3{margin:4px 0 0;font-size:var(--fs-18,18px);font-weight:600;color:var(--ink);}
+/* livre, sem a caixa (27/11/2026: "Remove ssa box deixa livre"): a logo do SCI, o título e o botão */
+.sci-contab-vazia{display:flex;flex-direction:column;align-items:center;gap:14px;width:460px;max-width:100%;margin:12vh auto 0;text-align:center;}
+.sci-contab-vazia h3{margin:0 0 6px;font-size:var(--fs-22,22px);font-weight:600;color:var(--ink);}
 .sci-contab-vazia > p{margin:0 0 8px;max-width:360px;font-size:var(--fs-13);line-height:1.5;color:var(--ink-muted);}
 .sci-contab-vazia > p b{color:var(--ink);font-weight:600;}
 .sci-contab-marca{display:inline-grid;place-items:center;}
-.sci-puxar{display:inline-flex;align-items:center;gap:6px;}
-.sci-puxar .sci-puxar-mes{min-width:120px;justify-content:space-between;}
-.sci-puxar input.sci-puxar-ano{width:64px;height:32px;text-align:center;font-variant-numeric:tabular-nums;}
+/* a competência do SCI (27/11/2026: "Muda a forma de apresentacao pra algo mais premium"): a pílula e o painel de meses */
+.sci-puxar{position:relative;display:inline-flex;align-items:center;gap:8px;}
+.sci-puxar .sci-puxar-botao{height:38px;border-radius:999px;padding:0 18px;}
+.sci-comp{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 14px;min-width:168px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--border);color:var(--ink);font:inherit;font-weight:500;font-size:var(--fs-13,13px);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,#fff 8%),var(--surface));
+  box-shadow:0 1px 0 color-mix(in srgb,#fff 6%,transparent) inset,0 1px 2px rgba(0,0,0,.25);transition:border-color .15s,box-shadow .15s;}
+.sci-comp:hover,.sci-comp.aberto{border-color:var(--accent-border,var(--accent));box-shadow:0 0 0 3px var(--accent-soft),0 1px 2px rgba(0,0,0,.25);}
+.sci-comp > svg:first-child{color:var(--accent);}
+.sci-comp > svg:last-child{margin-left:auto;color:var(--ink-muted);transition:transform .15s;}
+.sci-comp.aberto > svg:last-child{transform:rotate(180deg);}
+.sci-comp-rotulo{white-space:nowrap;font-variant-numeric:tabular-nums;}
+.sci-comp-painel{position:absolute;top:calc(100% + 8px);left:0;z-index:40;width:272px;padding:12px;border-radius:14px;text-align:left;
+  border:1px solid var(--border);background:var(--surface);box-shadow:0 18px 40px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.25);
+  animation:sci-comp-entra .14s ease-out;}
+@keyframes sci-comp-entra{from{opacity:0;transform:translateY(-4px) scale(.98);}to{opacity:1;transform:none;}}
+.sci-comp-ano{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sci-comp-ano b{font-size:var(--fs-15,15px);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.sci-comp-seta{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--ink-muted);cursor:pointer;}
+.sci-comp-seta:hover:not(:disabled){background:var(--accent-soft);color:var(--ink);}
+.sci-comp-seta:disabled{opacity:.3;cursor:default;}
+.sci-comp-meses{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.sci-comp-mes{height:34px;border-radius:9px;border:1px solid transparent;background:color-mix(in srgb,var(--ink) 4%,transparent);color:var(--ink);
+  font:inherit;font-size:var(--fs-13,13px);cursor:pointer;transition:background .12s,border-color .12s;}
+.sci-comp-mes:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-border,var(--accent));}
+.sci-comp-mes.hoje{border-color:var(--border);}
+.sci-comp-mes.escolhido{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+.sci-comp-mes:disabled{opacity:.3;cursor:default;}
+.sci-comp-atalhos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.sci-comp-atalho{height:32px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-12,12px);cursor:pointer;}
+.sci-comp-atalho:hover{border-color:var(--accent-border,var(--accent));background:var(--accent-soft);}
+.sci-comp-atalho.escolhido{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600;}
 .sci-puxar-botao img{display:block;}
 .sci-contab-robo{max-width:720px;margin:0 auto 10px;}
 .sci-contab-robo .imp-robo-barra{flex:1 1 200px;}

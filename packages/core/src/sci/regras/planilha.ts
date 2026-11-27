@@ -46,32 +46,34 @@ export function documentoComMascara(doc: string): string {
   return doc.trim();
 }
 
-// o controle do lote: o que não confunde na tela nem no papel (sem 0/O, 1/I)
-const LETRAS_DO_LOTE = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-function sortearLetras(n: number): string {
-  const b = new Uint8Array(n);
-  globalThis.crypto.getRandomValues(b);
-  return Array.from(b, x => LETRAS_DO_LOTE[x % LETRAS_DO_LOTE.length]).join('');
-}
 
 /** A base do lote do minimum tem 7 caracteres; os 3 do fim (001, 002…) são a chave de cada lançamento: 7 + 3 = os 10 do SCI. */
 export const TAMANHO_DA_BASE_DO_LOTE = 7;
 /** a chave de cada lançamento: 3 algarismos, então até 999 lançamentos por planilha */
 export const MAX_LANCAMENTOS_POR_LOTE = 999;
 
+/** o número do lote: 6 algarismos, então até 999.999 lotes por empresa em cada ano */
+export const MAX_LOTES_POR_ANO = 999_999;
+
 /**
- * O lote do minimum (27/11/2026, Vitor: "ao exportar os arquivos, voce vai colocar na coluna lote, um codigo propio, feitos em
- * letras maiusculas, e numeros, que dentre desses numeros tenha o codigo da empresa"; "vai ser um lote por planilha"; depois:
- * cada linha leva [lote]001, [lote]002…, para excluir no SCI o lote todo ou um lançamento só; "a codificacao faz como quiser").
- * A base: M + o código da empresa (sem zeros na frente) + letras sorteadas até 7 (M583KQT). Na planilha, cada lançamento leva a
- * base + 001, 002… (M583KQT001). As letras separam a empresa da chave. Cada planilha, uma base nova. sortear: só o teste troca.
+ * O lote do minimum (27/11/2026, a regra final do Vitor: "Vai ser, empresa, lote, ano os parametros"; "pode ter o mesmo numero de
+ * lote em empresas diferente e em anos diferentes"; "Pode tirar a regra de deixar o codigo da empresa no lote, o nads tendo
+ * controle sobre isso ta tranquilo"): M + o número do lote com 6 algarismos (M000001). O número é a sequência da empresa no ano,
+ * guardada no banco (lotesDoMinimum/{empresa}-{ano}): nunca repete na mesma empresa e no mesmo ano. Na planilha, cada lançamento leva
+ * o lote + 001, 002… (M000001001). Todos com o mesmo tamanho: o SCI filtra pelo começo do texto, e um lote nunca é o começo de outro.
  */
-export function loteDoMinimum(codigoDaEmpresa: number, sortear: (n: number) => string = sortearLetras): string {
-  // o código da empresa no SCI tem até 5 algarismos; com 5, sobra 1 letra
-  const empresa = String(Math.max(0, Math.trunc(codigoDaEmpresa) || 0)).slice(-5);
-  const n = TAMANHO_DA_BASE_DO_LOTE - 1 - empresa.length;
-  const letras = sortear(n).toUpperCase().replace(/[^A-Z]/g, '').padEnd(n, 'X').slice(0, n);
-  return 'M' + empresa + letras;
+export function loteDaSequencia(n: number): string {
+  if (!Number.isInteger(n) || n < 1 || n > MAX_LOTES_POR_ANO) throw new Error('o número do lote vai de 1 a ' + MAX_LOTES_POR_ANO.toLocaleString('pt-BR') + ' (veio ' + n + ')');
+  return 'M' + String(n).padStart(TAMANHO_DA_BASE_DO_LOTE - 1, '0');
+}
+
+/**
+ * O ano da planilha (o lote vale numa empresa num ano): o dos lançamentos prontos (os da aba Importar). anos: todos os que
+ * aparecem; com mais de um, a planilha tem de sair em duas (uma por ano). Sem lançamento pronto com data, o ano de hoje.
+ */
+export function anoDaPlanilha(lancamentos: readonly { data: string; problemas: readonly string[] }[], hoje = new Date()): { ano: number; anos: number[] } {
+  const anos = [...new Set(lancamentos.filter(l => !l.problemas.length && /^\d{4}-/.test(l.data)).map(l => Number(l.data.slice(0, 4))))].sort((a, b) => a - b);
+  return { ano: anos.length === 1 ? anos[0] : anos.length ? anos[anos.length - 1] : hoje.getFullYear(), anos };
 }
 
 /** A chave do lançamento n (1, 2…) no lote: a base + 3 algarismos (M583KQT + 1 → M583KQT001). */
@@ -79,15 +81,17 @@ export function chaveDoLancamento(base: string, n: number): string {
   return base + String(n).padStart(3, '0');
 }
 
-/** Se o texto é a base de um lote do minimum (7: M + empresa + letras). */
-const ehBaseDoMinimum = (lote: string) => lote.length === TAMANHO_DA_BASE_DO_LOTE && /^M\d{1,5}[A-Z]+$/.test(lote);
+/** Se o texto é a base de um lote do minimum: o de agora (M000001) ou o de antes (M583KQT: M + empresa + letras), 7 cada. */
+const ehBaseDoMinimum = (lote: string) => lote.length === TAMANHO_DA_BASE_DO_LOTE && (/^M\d{6}$/.test(lote) || /^M\d{1,5}[A-Z]+$/.test(lote));
 
 /**
- * O que um lote do minimum diz: a empresa, a base e, se tiver, o número do lançamento (M583KQT001 → 583, M583KQT, 1; M583KQT →
- * 583, M583KQT, null). null se não é um lote do minimum.
+ * O que um lote do minimum diz: a base, o número do lançamento (se tiver) e a empresa, que só o formato de antes trazia
+ * (M000001001 → null, M000001, 1; M583KQT001 → 583, M583KQT, 1; M583KQT → 583, M583KQT, null). null se não é um lote do minimum.
  */
-export function lerLoteDoMinimum(lote: string): { empresa: number; base: string; lancamento: number | null } | null {
+export function lerLoteDoMinimum(lote: string): { empresa: number | null; base: string; lancamento: number | null } | null {
   const t = lote.trim().toUpperCase();
+  const seq = /^(M\d{6})(\d{3})?$/.exec(t);
+  if (seq) return { empresa: null, base: seq[1], lancamento: seq[2] ? Number(seq[2]) : null };
   const m = /^(M(\d{1,5})[A-Z]+)(\d{3})?$/.exec(t);
   if (!m || m[1].length !== TAMANHO_DA_BASE_DO_LOTE) return null;
   return { empresa: Number(m[2]), base: m[1], lancamento: m[3] ? Number(m[3]) : null };
@@ -96,18 +100,19 @@ export function lerLoteDoMinimum(lote: string): { empresa: number; base: string;
 /**
  * O que dá para excluir no SCI a partir do Lote de um lançamento da consulta (27/11/2026, o Vitor: "para excluir lote, voce coloca o
  * lote apenas, o lancamento vc digita o numero todo da chave"): o lote (a base, que filtra todos os dele) e a chave do lançamento
- * (null quando o lote não tem chave por linha, como o primeiro formato, M00583BR6W). Só lotes do minimum desta empresa: o SCI filtra
- * pelo começo do texto, e um lote curto ou de fora pegaria lançamentos que não são dele. null quando não dá.
+ * (null quando o lote não tem chave por linha, como o primeiro formato, M00583BR6W). Só lotes do minimum: o SCI filtra pelo começo
+ * do texto, e um lote curto pegaria lançamentos que não são dele. O de agora (M000001) não traz a empresa (a linha já é da consulta
+ * dela, e a exclusão filtra também o ano); os de antes, só da própria empresa. null quando não dá.
  */
 export function exclusaoPeloLote(lote: string, codigoDaEmpresa: number): { lote: string; chave: string | null } | null {
   const t = lote.trim().toUpperCase();
   const l = lerLoteDoMinimum(t);
-  if (l) return l.empresa === codigoDaEmpresa ? { lote: l.base, chave: l.lancamento != null ? t : null } : null;
+  if (l) return l.empresa == null || l.empresa === codigoDaEmpresa ? { lote: l.base, chave: l.lancamento != null ? t : null } : null;
   const antigo = /^M(\d{5})[A-Z0-9]{4}$/.exec(t);
   return antigo && Number(antigo[1]) === codigoDaEmpresa ? { lote: t, chave: null } : null;
 }
 
-/** A empresa de um lote do minimum (M583KQT001 ou M583KQT → 583), ou null se não é um lote do minimum. */
+/** A empresa de um lote do formato de antes (M583KQT001 ou M583KQT → 583); null no de agora (M000001) ou fora do minimum. */
 export function empresaDoLote(lote: string): number | null {
   return lerLoteDoMinimum(lote)?.empresa ?? null;
 }

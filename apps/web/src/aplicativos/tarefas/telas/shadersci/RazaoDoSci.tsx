@@ -3,7 +3,7 @@
 // campos da consulta" que o SCI exporta (.xls), lida e mostrada na tabela do minimum, com o nome das contas e dos históricos. Só para
 // ver: nada volta para o SCI nem para os Lançamentos. O arquivo fica guardado por empresa, só neste navegador.
 import { sci } from '@nads/core';
-import { BotaoAcao, CampoDataComCalendario, Icone, LogoSci, MenuSuspenso, useRetorno } from '@nads/ui';
+import { BotaoAcao, CampoDataComCalendario, Icone, LogoSci, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AcoesDoTopo } from '../../../../comum/topo';
@@ -72,10 +72,12 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
   const robo = useLancamentosDoSciPeloRobo({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', chegou: (f, c) => importar(f, c) });
   // excluir no SCI (27/11/2026): quando o robô termina, o que saiu do SCI sai da tela (e do guardado)
   const exclusao = useExcluirNoSci({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', saiu: p => tirarDaTela(p) });
-  function tirarDaTela({ lote, chave }: { lote: string; chave: string }) {
+  // o lote é da empresa num ano (27/11/2026: "Vai ser, empresa, lote, ano os parametros"): o mesmo número em outro ano é outro lote
+  const doLote = (l: sci.LancamentoDaConsulta, lote: string, ano: string) => !!l.lote && l.lote.startsWith(lote) && (!ano || l.data.startsWith(ano));
+  function tirarDaTela({ lote, chave, ano }: { lote: string; chave: string; ano: string }) {
     if (codigo == null) return;
     const g = lerGuardado(codigo, prefixo);
-    const sai = (l: sci.LancamentoDaConsulta) => (chave ? l.lote === chave : !!l.lote && l.lote.startsWith(lote));
+    const sai = (l: sci.LancamentoDaConsulta) => (chave ? l.lote === chave && (!ano || l.data.startsWith(ano)) : doLote(l, lote, ano));
     const n = g ? g.lancamentos.filter(sai).length : 0;
     if (g && n) {
       const novo = { ...g, lancamentos: g.lancamentos.filter(l => !sai(l)) };
@@ -89,13 +91,14 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
     if (codigo == null) return;
     const x = sci.exclusaoPeloLote(l.lote || '', codigo);
     if (!x) return;
-    const doLote = (guardado?.lancamentos || []).filter(o => !!o.lote && o.lote.startsWith(x.lote)).length;
-    const qtd = doLote === 1 ? '1 lançamento' : doLote + ' lançamentos';
+    const ano = l.data.slice(0, 4);
+    const n = (guardado?.lancamentos || []).filter(o => doLote(o, x.lote, ano)).length;
+    const qtd = n === 1 ? '1 lançamento' : n + ' lançamentos';
     const qual = sci.dataParaTexto(l.data) + ' · R$ ' + sci.valorParaTexto(l.valor);
     const r = await modal<'um' | 'lote' | null>({
       icone: 'alert', titulo: 'Excluir no SCI?',
       html: (x.chave ? 'Lançamento de <b>' + qual + '</b>, chave <b>' + x.chave + '</b>.' : 'Lançamento de <b>' + qual + '</b>, sem chave própria: só dá para excluir o lote.') +
-        '<br>O lote <b>' + x.lote + '</b> tem ' + qtd + ' nesta tela.<br><br>O robô do PC de ' + exclusao.rotulo + ' exclui no SCI. No lote inteiro, o SCI pede a ' +
+        '<br>O lote <b>' + x.lote + '</b>' + (ano ? ' de ' + ano : '') + ' tem ' + qtd + ' nesta tela.<br><br>O robô do PC de ' + exclusao.rotulo + ' exclui no SCI. No lote inteiro, o SCI pede a ' +
         '<b>senha de segurança</b> no PC: digite lá.',
       botoes: [
         ...(x.chave ? [{ rotulo: 'Excluir este lançamento', valor: 'um' as const, variante: 'btn-danger' as const }] : []),
@@ -103,8 +106,8 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
         { rotulo: 'Cancelar', valor: null, variante: 'btn-outline' as const },
       ],
     });
-    if (r === 'um' && x.chave) void exclusao.excluir(x.lote, x.chave);
-    else if (r === 'lote') void exclusao.excluir(x.lote, '');
+    if (r === 'um' && x.chave) void exclusao.excluir(x.lote, x.chave, ano);
+    else if (r === 'lote') void exclusao.excluir(x.lote, '', ano);
   }
   const [busca, setBusca] = useState('');
   const [tipo, setTipo] = useState('');
@@ -294,13 +297,11 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
       {!guardado ? (contabilizacao ? (
         // a Contabilização vazia: o botão Vitor no meio, com a competência do SCI
         <div className="sci-contab-vazia">
-          <span className="sci-contab-marca" aria-hidden="true"><LogoSci altura={28} /></span>
-          <h3>Os lançamentos do SCI</h3>
+          <span className="sci-contab-marca" aria-hidden="true"><LogoSci altura={40} /></span>
+          {/* sem a caixa e sem o texto (27/11/2026: "Remove ssa box deixa livre"; "Deixa so a logo do sci e coloca o titulo") */}
+          <h3>Qual empresa vamos fazer?</h3>
           {robo.disponivel ? (
-            <>
-              <p>Escolha a competência e o robô do PC de {robo.rotulo} puxa a consulta do SCI, com as contrapartidas de todos os lançamentos.</p>
-              <PuxarDoSci robo={robo} />
-            </>
+            <PuxarDoSci robo={robo} />
           ) : (
             <>
               <p>O SCI é puxado pelo robô do PC de quem tem o robô. Daqui, traga a <b>Impressão de campos da consulta</b> exportada do SCI.</p>
@@ -447,33 +448,71 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
 }
 
 // ------------------------------------------------------------------------------------------------- o botão Vitor do SCI
-const MESES_DO_SCI: readonly (readonly [string, string])[] = [['tudo', 'Tudo'], ['00', 'Ano todo'], ['01', 'Janeiro'], ['02', 'Fevereiro'], ['03', 'Março'], ['04', 'Abril'], ['05', 'Maio'],
-  ['06', 'Junho'], ['07', 'Julho'], ['08', 'Agosto'], ['09', 'Setembro'], ['10', 'Outubro'], ['11', 'Novembro'], ['12', 'Dezembro']];
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const MESES_LONGOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 /**
- * A competência do SCI e o botão Vitor (27/11/2026: "cria um botao chamado vitor com o icone da sci, ao inves do alterdata"): o mês
- * (ou o ano todo, o 00 do SCI) e o ano; o clique pede ao robô do PC e a planilha entra na tela quando volta.
+ * A competência do SCI e o botão Vitor (27/11/2026: "cria um botao chamado vitor com o icone da sci, ao inves do alterdata"). O
+ * seletor (27/11/2026: "Muda a forma de apresentacao pra algo mais premium"): a pílula com o período e, aberta, o ano com as
+ * setas, os 12 meses em grade e os atalhos do ano inteiro (o 00 do SCI) e de tudo (00/0000). O clique no Vitor pede ao robô do PC
+ * e a planilha entra na tela quando volta.
  */
 function PuxarDoSci({ robo, temLancamentos = false }: { robo: RoboDoSci; temLancamentos?: boolean }) {
   // o que foi pedido por último fica escolhido (27/11/2026: voltava para o "Ano todo" quando a planilha chegava); sem pedido, tudo
-  const ultimo = /^(\d{2})\/(\d{4})$/.exec(robo.competencia);
-  const [mes, setMes] = useState(() => (!ultimo || ultimo[2] === '0000' ? 'tudo' : ultimo[1]));
-  const [ano, setAno] = useState(() => (ultimo && ultimo[2] !== '0000' ? ultimo[2] : String(new Date().getFullYear())));
-  const tudo = mes === 'tudo';
-  const valido = tudo || /^\d{4}$/.test(ano);
-  const competencia = tudo ? '00/0000' : mes + '/' + ano;
+  const [competencia, setCompetencia] = useState(() => (/^\d{2}\/\d{4}$/.test(robo.competencia) ? robo.competencia : '00/0000'));
+  const [aberto, setAberto] = useState(false);
+  const [anoDaGrade, setAnoDaGrade] = useState(() => (competencia.endsWith('/0000') ? new Date().getFullYear() : Number(competencia.slice(3))));
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
+    const esc = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    document.addEventListener('mousedown', fora);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
+  }, [aberto]);
+  const tudo = competencia === '00/0000';
+  const mes = Number(competencia.slice(0, 2));
+  const ano = Number(competencia.slice(3));
   // com lançamentos na tela, o "tudo" acrescenta só os novos
-  const rotuloDe = (v: string, r: string) => (v === 'tudo' && temLancamentos ? 'Só os novos' : r);
+  const rotuloDoTudo = temLancamentos ? 'Só os novos' : 'Tudo';
+  const rotulo = tudo ? rotuloDoTudo : mes ? MESES_LONGOS[mes - 1] + ' de ' + ano : ano + ' inteiro';
+  const escolher = (c: string) => { setCompetencia(c); setAberto(false); };
   const dica = tudo ? (temLancamentos ? 'Puxar do SCI e acrescentar só os lançamentos novos' : 'Puxar todos os lançamentos do SCI')
     : 'Puxar os lançamentos de ' + rotuloDaCompetenciaDoSci(competencia) + ' do SCI (troca esse período na tela)';
+  const hoje = new Date();
   return (
-    <span className="sci-puxar">
-      <MenuSuspenso rotulo={rotuloDe(mes, MESES_DO_SCI.find(m => m[0] === mes)?.[1] || mes)} className="btn btn-outline sci-puxar-mes" titulo="O que puxar do SCI" largura={180}
-        itens={MESES_DO_SCI.flatMap(([v, r]) => [{ rotulo: rotuloDe(v, r), icone: v === mes ? 'check' as const : undefined, onClick: () => setMes(v) }, ...(v === 'tudo' ? ['separador' as const] : [])])} />
-      {!tudo && <input className="input sci-puxar-ano" aria-label="O ano da competência" inputMode="numeric" maxLength={4} value={ano}
-        onChange={e => setAno(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyDown={e => { if (e.key === 'Enter' && valido) void robo.pedir(competencia); }} />}
-      <BotaoAcao className="btn btn-primary btn-icone-alterdata sci-puxar-botao" carregando={robo.andando} textoCarregando={robo.rotulo} disabled={!valido}
-        onClick={() => { void robo.pedir(competencia); }} title={dica + ', pelo robô do PC de ' + robo.rotulo}
+    <span className="sci-puxar" ref={ref}>
+      <button type="button" className={'sci-comp' + (aberto ? ' aberto' : '')} onClick={() => setAberto(a => !a)} aria-haspopup="dialog" aria-expanded={aberto} title="O que puxar do SCI">
+        <Icone nome="calendar" width={16} height={16} />
+        <span className="sci-comp-rotulo">{rotulo}</span>
+        <Icone nome="chevronDown" width={14} height={14} />
+      </button>
+      {aberto && (
+        <div className="sci-comp-painel" role="dialog" aria-label="O que puxar do SCI">
+          <div className="sci-comp-ano">
+            <button type="button" className="sci-comp-seta" onClick={() => setAnoDaGrade(a => a - 1)} aria-label="Ano anterior"><Icone nome="chevronLeft" width={16} height={16} /></button>
+            <b>{anoDaGrade}</b>
+            <button type="button" className="sci-comp-seta" onClick={() => setAnoDaGrade(a => a + 1)} disabled={anoDaGrade >= hoje.getFullYear()} aria-label="Próximo ano"><Icone nome="chevronRight" width={16} height={16} /></button>
+          </div>
+          <div className="sci-comp-meses">
+            {MESES_CURTOS.map((m, k) => {
+              const c = String(k + 1).padStart(2, '0') + '/' + anoDaGrade;
+              const futuro = anoDaGrade > hoje.getFullYear() || (anoDaGrade === hoje.getFullYear() && k > hoje.getMonth());
+              return (
+                <button key={m} type="button" className={'sci-comp-mes' + (c === competencia ? ' escolhido' : '') + (anoDaGrade === hoje.getFullYear() && k === hoje.getMonth() ? ' hoje' : '')}
+                  disabled={futuro} onClick={() => escolher(c)} title={MESES_LONGOS[k] + ' de ' + anoDaGrade}>{m}</button>
+              );
+            })}
+          </div>
+          <div className="sci-comp-atalhos">
+            <button type="button" className={'sci-comp-atalho' + (competencia === '00/' + anoDaGrade ? ' escolhido' : '')} onClick={() => escolher('00/' + anoDaGrade)}>{anoDaGrade} inteiro</button>
+            <button type="button" className={'sci-comp-atalho' + (tudo ? ' escolhido' : '')} onClick={() => escolher('00/0000')}>{rotuloDoTudo}</button>
+          </div>
+        </div>
+      )}
+      <BotaoAcao className="btn btn-primary btn-icone-alterdata sci-puxar-botao" carregando={robo.andando} textoCarregando={robo.rotulo}
+        onClick={() => { setAberto(false); void robo.pedir(competencia); }} title={dica + ', pelo robô do PC de ' + robo.rotulo}
         aria-label={'Puxar os lançamentos do SCI pelo robô de ' + robo.rotulo}>
         <LogoSci altura={14} />{robo.rotulo}
       </BotaoAcao>

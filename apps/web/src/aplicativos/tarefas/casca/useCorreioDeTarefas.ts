@@ -25,6 +25,18 @@ function guardar(uid: string, ids: string[]) {
 
 const curto = (s: string) => (s.length > 80 ? s.slice(0, 80) + '…' : s);
 
+/**
+ * A notificação do computador (27/11/2026: "não notifica no computador"): a do navegador, com a permissão que o Início já
+ * pede. Sem a permissão (ou o navegador não deixando), fica só o aviso na tela.
+ */
+function notificar(titulo: string, texto: string) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const n = new Notification(titulo, { body: texto, tag: 'nads-tarefa' });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch { /* o navegador não deixou: fica o aviso na tela */ }
+}
+
 export function useCorreioDeTarefas() {
   const repo = useTarefasDelegadas();
   const { aviso } = useRetorno();
@@ -40,8 +52,12 @@ export function useCorreioDeTarefas() {
     if (ja === null) { guardar(uid, recebidas.map(t => t.id)); return; }
     const novas = recebidas.filter(t => !ja.includes(t.id));
     if (!novas.length) return;
-    if (novas.length === 1) aviso({ tom: 'info', icone: 'caixaEntrada', titulo: 'Tarefa nova para você', texto: novas[0].criadaPor.nome + ' delegou: "' + curto(novas[0].titulo) + '"' });
-    else aviso({ tom: 'info', icone: 'caixaEntrada', titulo: novas.length + ' tarefas novas para você', texto: 'De ' + [...new Set(novas.map(t => t.criadaPor.nome))].join(', ') + '. Abra Minhas tarefas, no Início, para ver.' });
+    const titulo = novas.length === 1 ? 'Tarefa nova para você' : novas.length + ' tarefas novas para você';
+    const texto = novas.length === 1
+      ? novas[0].criadaPor.nome + ' delegou: "' + curto(novas[0].titulo) + '"'
+      : 'De ' + [...new Set(novas.map(t => t.criadaPor.nome))].join(', ') + '. Abra Minhas tarefas, no Início, para ver.';
+    aviso({ tom: 'info', icone: 'caixaEntrada', titulo, texto });
+    notificar(titulo, texto);
     guardar(uid, [...ja, ...novas.map(t => t.id)]);
   // os ids das recebidas (e quem está) dizem tudo
   // eslint-disable-next-line react-hooks/exhaustive-deps

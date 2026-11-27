@@ -110,7 +110,7 @@ let registrarDiag = () => {};
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'sciLancamentos' ? [String(a.codigo), a.competenciaSci]
-    : relatorio === 'sciExcluir' ? (a.chave ? [String(a.codigo), '--chave', a.chave] : [String(a.codigo), a.lote])
+    : relatorio === 'sciExcluir' ? [...(a.chave ? [String(a.codigo), '--chave', a.chave] : [String(a.codigo), a.lote]), ...(a.ano ? ['--ano', a.ano] : [])]
     : relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
       : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]

@@ -11,6 +11,7 @@ import { useOperador } from '../../casca/operador';
 import { useDadosDaEmpresaNoEntregas, useTodosOsCadastros } from '../../dados/repo';
 import { useEmpresasDaPessoa } from '../empresas/andamento';
 import { useLancatudo } from '../lancatudo/useLancatudo';
+import { loteParaAPlanilha } from './loteDaPlanilha';
 
 type Lancamento = sci.LancamentoDoShader;
 
@@ -685,19 +686,20 @@ export function useShadersCi() {
     },
     // a planilha do SCI
     podeExportar: resumo.quantos > 0,
-    exportar() {
+    exportar() { void (async () => {
       if (!entrada.empresa) return;
       const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, cnpj);
       const mes = sci.mesPrincipal(guardado.lancamentos);
-      // um lote próprio por planilha, com a empresa no código (27/11/2026: "vamos usar esse controle de lotes")
-      const lote = entrada.empresa.codigo != null ? sci.loteDoMinimum(entrada.empresa.codigo) : '';
+      // o lote da planilha, controlado pelo nads: empresa + lote + ano (27/11/2026)
+      const lote = await loteParaAPlanilha({ codigo: entrada.empresa.codigo, empresa: entrada.empresa.nome, lancamentos: lsci, origem: 'lançamentos', aviso });
+      if (lote == null) return;
       let bytes: Uint8Array;
       try { bytes = sci.planilhaDoSci(lsci, lote); } catch (e) { aviso({ tom: 'info', titulo: 'Planilha grande demais para um lote', texto: e instanceof Error ? e.message : String(e) }); return; }
       baixarBytes(bytes, sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum', lote), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
       if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: (lote ? 'Lote ' + lote + '. ' : '') + 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
       else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento' : ' lançamentos') + (lote ? ', lote ' + lote + '.' : '.'));
-    },
+    })(); },
     /** a tela inicial: as empresas do SCI, por nome, e se a lista já chegou do banco */
     empresasDoSci: entrada.lista,
     carregada,

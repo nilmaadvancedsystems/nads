@@ -59,15 +59,18 @@ const competenciaDoSciValida = c => /^(0\d|1[0-2])\/\d{4}$/.test(String(c || '')
  * para um lançamento só, a chave (M583EDT001). O SCI filtra pelo começo do texto: só lote do minimum e da própria empresa, nunca um
  * texto curto que pegaria o que não é dele. Devolve o erro ('' = pode).
  */
-function exclusaoDoSciInvalida(codigo, lote, chave) {
+function exclusaoDoSciInvalida(codigo, lote, chave, ano = '') {
   const l = String(lote || '');
   const c = String(chave || '');
-  const novo = /^M(\d{1,5})[A-Z]+$/.exec(l);
+  // o de agora (27/11/2026, a regra final: empresa + lote + ano): M + 6 algarismos, sem a empresa dentro
+  const sequencia = /^M\d{6}$/.test(l);
+  const letras = /^M(\d{1,5})[A-Z]+$/.exec(l);
   const antigo = /^M(\d{5})[A-Z0-9]{4}$/.exec(l);
-  const empresa = novo && l.length === 7 ? Number(novo[1]) : antigo ? Number(antigo[1]) : null;
+  const empresa = sequencia ? codigo : letras && l.length === 7 ? Number(letras[1]) : antigo ? Number(antigo[1]) : null;
   if (empresa == null) return 'o lote "' + l + '" não é um lote do minimum';
   if (empresa !== codigo) return 'o lote ' + l + ' é da empresa ' + empresa + ', não da ' + codigo;
-  if (c && !(novo && l.length === 7 && c.length === 10 && c.startsWith(l) && /^\d{3}$/.test(c.slice(7)))) return 'a chave "' + c + '" não é de um lançamento do lote ' + l;
+  if (c && !((sequencia || (letras && l.length === 7)) && c.length === 10 && c.startsWith(l) && /^\d{3}$/.test(c.slice(7)))) return 'a chave "' + c + '" não é de um lançamento do lote ' + l;
+  if (!/^(\d{4})?$/.test(String(ano || ''))) return 'o ano "' + ano + '" não é AAAA';
   return '';
 }
 // as notas do Alterdata Fiscal (16/11/2026): o relatório de cada uma e o nome do arquivo
@@ -631,9 +634,10 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
     const lote = String(p.lote || '');
     const chave = String(p.chave || '');
-    const invalida = exclusaoDoSciInvalida(codigo, lote, chave);
+    const ano = String(p.ano || '');
+    const invalida = exclusaoDoSciInvalida(codigo, lote, chave, ano);
     if (invalida) return erro(invalida);
-    const alvo = chave ? 'o lançamento ' + chave : 'o lote ' + lote;
+    const alvo = (chave ? 'o lançamento ' + chave : 'o lote ' + lote) + (ano ? ' de ' + ano : '');
     const total = PASSOS_DO_ROTEIRO.sciExcluir + 1;
     const passos = [];
     let etapa = 'começando';
@@ -645,8 +649,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     };
     await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
     if (painel) painel.fazendo('alterdata', 'Excluir no SCI ' + codigo + ': ' + alvo);
-    log('SCI: excluir', codigo, chave || lote, id);
-    const r = await comPrazo('sciExcluir', { codigo, lote, chave }, passo, () => {}, id);
+    log('SCI: excluir', codigo, chave || lote, ano || 'todos os anos', id);
+    const r = await comPrazo('sciExcluir', { codigo, lote, chave, ano }, passo, () => {}, id);
     const fimP = await banco.ler(id);
     if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
       await banco.atualizar(id, { andamento: { pct: 0, etapa: 'cancelado', clique: '', em: agora() } }).catch(() => {});

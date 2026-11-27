@@ -256,6 +256,8 @@ export interface PedidoDeExcluirNoSci {
   recebido: boolean;
   lote: string;
   chave: string;
+  /** o ano do lote (AAAA): o robô abre a consulta do SCI só nele ('' = todos, 00/0000) */
+  ano: string;
 }
 
 export function ouvirExclusoesNoSci(codigo: number, chegou: (l: PedidoDeExcluirNoSci[]) => void, falhou: (e: Error) => void): () => void {
@@ -270,20 +272,20 @@ export function ouvirExclusoesNoSci(codigo: number, chegou: (l: PedidoDeExcluirN
         const and = (d.andamento || {}) as Record<string, unknown>;
         return {
           id: x.id, status: texto(d.status), erro: texto(d.erro), pct: Math.max(0, Math.min(100, Number(and.pct) || 0)), etapa: texto(and.etapa),
-          criadoEm: texto(d.criadoEm), recebido: !!d.recebidoEm, lote: texto(d.lote), chave: texto(d.chave),
+          criadoEm: texto(d.criadoEm), recebido: !!d.recebidoEm, lote: texto(d.lote), chave: texto(d.chave), ano: texto(d.ano),
         };
       }).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
   }, falhou);
   return () => { parado = true; parar(); };
 }
 
-export async function pedirExclusaoNoSci(o: { codigo: number; empresa: string; lote: string; chave: string }): Promise<string> {
+export async function pedirExclusaoNoSci(o: { codigo: number; empresa: string; lote: string; chave: string; ano: string }): Promise<string> {
   const u = getAuth(appDoEntregas()).currentUser;
   if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
   if (!roboDePcDoUsuario()) throw new Error('O SCI só é mexido pelo robô do PC de quem tem o robô.');
-  if (!/^M[0-9A-Z]{6,9}$/.test(o.lote) || (o.chave && !/^M\d{1,5}[A-Z]+\d{3}$/.test(o.chave))) throw new Error('Esse lote não é do minimum.');
+  if (!/^M[0-9A-Z]{6,9}$/.test(o.lote) || (o.chave && !/^M[0-9A-Z]{6}\d{3}$/.test(o.chave)) || !/^(\d{4})?$/.test(o.ano)) throw new Error('Esse lote não é do minimum.');
   const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
-    status: 'pendentePc', tipo: 'sciExcluir', codigo: o.codigo, empresa: o.empresa.slice(0, 200), lote: o.lote, chave: o.chave,
+    status: 'pendentePc', tipo: 'sciExcluir', codigo: o.codigo, empresa: o.empresa.slice(0, 200), lote: o.lote, chave: o.chave, ano: o.ano,
     criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
   });
   return r.id;

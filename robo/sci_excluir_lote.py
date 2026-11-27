@@ -17,8 +17,11 @@
 # excluir lote, voce coloca o lote apenas, o lancamento vc digita o numero todo da chave"; "na coluna lote
 # [numerodolote]001 - lancamento 1").
 #
-# Uso:  python sci_excluir_lote.py <empresa> <lote>               ex.: python sci_excluir_lote.py 583 M00583BR6W
-#       python sci_excluir_lote.py <empresa> --chave <chave>      ex.: python sci_excluir_lote.py 583 --chave M583K7Q003
+# O lote é da empresa NUM ANO (27/11/2026, a regra final do Vitor: "Vai ser, empresa, lote, ano os parametros"; o mesmo número
+# pode voltar em outro ano): com --ano, a Referência é 00/AAAA (o ano todo) em vez de 00/0000, e o filtro só vê aquele ano.
+#
+# Uso:  python sci_excluir_lote.py <empresa> <lote> [--ano AAAA]             ex.: python sci_excluir_lote.py 590 M000001 --ano 2026
+#       python sci_excluir_lote.py <empresa> --chave <chave> [--ano AAAA]    ex.: python sci_excluir_lote.py 590 --chave M000001003 --ano 2026
 import os
 import re
 import sys
@@ -80,7 +83,7 @@ def dialogo(pid, vistas):
     return None
 
 
-def abrir_consulta(principal, codigo):
+def abrir_consulta(principal, codigo, ano='0000'):
     frente(principal)
     keyboard.send_keys('^l')
     h = esperar_janela('TfrLancamento', 'Lançamentos contábeis')
@@ -101,13 +104,13 @@ def abrir_consulta(principal, codigo):
     time.sleep(.4)
     keyboard.send_keys('{HOME}+{END}00')
     time.sleep(.5)
-    keyboard.send_keys('{HOME}+{END}0000{ENTER}')
+    keyboard.send_keys('{HOME}+{END}' + ano + '{ENTER}')
     time.sleep(1.5)
     frente(h)
     botao(h, 'tlbCadastro_Padrao_Pai', LUPA).click_input()
     c = esperar_janela('TfrConsultaLancamento', 'Consulta lançamentos da empresa', segundos=60)
     time.sleep(2)
-    print('consulta aberta (00/0000)', flush=True)
+    print('consulta aberta (00/' + ano + ')', flush=True)
     return h, c
 
 
@@ -186,10 +189,17 @@ def voltar_a_tela_inicial(principal, janelas):
 
 def main():
     args = sys.argv[1:]
+    ano = '0000'
+    if len(args) >= 2 and args[-2] == '--ano':
+        ano = args[-1]
+        args = args[:-2]
+        if not re.match(r'^\d{4}$', ano):
+            print('uso: o ano é AAAA (veio ' + ano + ')')
+            sys.exit(2)
     chave = len(args) == 3 and args[1] == '--chave'
     alvo = args[2] if chave else (args[1] if len(args) == 2 else '')
     if not args or not re.match(r'^\d{1,6}$', args[0]) or not re.match(r'^[A-Z0-9]{1,15}$', alvo):
-        print('uso: python sci_excluir_lote.py <empresa> <lote>  |  <empresa> --chave <chave>')
+        print('uso: python sci_excluir_lote.py <empresa> <lote> [--ano AAAA]  |  <empresa> --chave <chave> [--ano AAAA]')
         sys.exit(2)
     codigo = args[0]
     principal = janela('TfrUnico')
@@ -197,10 +207,10 @@ def main():
         print('o SCI (Novo Visual Contábil) não está aberto')
         sys.exit(1)
     try:
-        h, c = abrir_consulta(principal, codigo)
+        h, c = abrir_consulta(principal, codigo, ano)
         filtrar(c, alvo)
         esperar_fim(principal, c, LIXEIRA_VERDE if chave else LIXEIRA)
-        print('pronto: ' + ('lançamento ' if chave else 'lote ') + alvo + ' excluído da empresa ' + codigo, flush=True)
+        print('pronto: ' + ('lançamento ' if chave else 'lote ') + alvo + ('' if ano == '0000' else ' de ' + ano) + ' excluído da empresa ' + codigo, flush=True)
         voltar_a_tela_inicial(principal, [c, h])
     except Parou as e:
         print('parei: ' + str(e), flush=True)
