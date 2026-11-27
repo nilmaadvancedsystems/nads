@@ -508,6 +508,29 @@ async function mandarArquivos(numero, arquivos, baixar, legenda) {
   return mandou;
 }
 
+/** quantas guias o robô lê (valor e vencimento) antes de perguntar ao Claude */
+const MAX_GUIAS_LIDAS = 6;
+/** o que já foi lido, por id do arquivo (a guia não muda): id → { valor, vencimento } */
+const guiasLidas = new Map();
+
+/**
+ * O valor e o vencimento de uma guia, lidos no PDF com o mesmo leitor do lote do Fiscal (o camposDaGuia das regras do
+ * arquivador: DAS, DARF, DAE e DAM). Guardado por id. `baixar` só é chamado se ainda não leu. O teste troca por um de mentira.
+ */
+let lerAGuia = async (id, baixar) => {
+  if (guiasLidas.has(id)) return guiasLidas.get(id);
+  const arq = await baixar();
+  const t = await require('./arquivador-novo').textoDoPdf(arq.buffer);
+  const R2 = require('./arquivador-regras');
+  const u = R2.norm((t.paginas || []).slice(0, 3).join('\n'));
+  const regra = R2.REGRAS_PDF.find(x => ['DAS', 'DARF', 'DAE', 'DAM'].includes(x.tipo) && x.re.test(u));
+  const c = (regra && regra.campos(u)) || {};
+  const lido = { valor: String(c.valor || ''), vencimento: String(c.vencimento || '') };
+  if (guiasLidas.size > 500) guiasLidas.clear();
+  guiasLidas.set(id, lido);
+  return lido;
+};
+
 /**
  * O Claude escreve (chave ia, 27/11/2026: "quero que o claude realmente escreva"): junta os documentos da empresa (o já
  * enviado e a pasta do Drive), manda ao Claude com as últimas falas, confere a resposta (só códigos da lista) e manda o
@@ -521,6 +544,14 @@ async function escreverComOClaude(r, empresa, guardada, agora) {
     if (a) { achados[tipo] = a; grupos.push({ tipo, registros: a.registros }); }
   }
   const documentos = W.documentosParaOClaude(grupos);
+  // o valor e o vencimento de cada guia, lidos no PDF (27/11/2026: "que dia vence"): as mais recentes, ao mesmo tempo
+  if (achados.guia) {
+    const guias = documentos.filter(d => d.tipo === 'guia').slice(0, MAX_GUIAS_LIDAS);
+    await Promise.all(guias.map(async d => {
+      const lido = await lerAGuia(d.id, () => achados.guia.baixar({ id: d.id, nome: d.nome })).catch(() => null);
+      if (lido) Object.assign(d, lido);
+    }));
+  }
   const historico = (guardada && guardada.historico) || [];
   const saida = await perguntarAoClaude(W.conversaParaOClaude({ empresa: empresa.nome, agora, documentos, historico, recebido: r.texto })).catch(() => null);
   const resp = W.respostaDoEscritor(saida, documentos);
@@ -668,8 +699,9 @@ async function atenderComando(p) {
  * Só para o teste (robo/teste-whatsapp.js): um banco e um socket de mentira, as chaves do teste, os arquivos numa pasta
  * temporária e sem a espera entre as mensagens. Nunca chamado pelo vigia.
  */
-function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso, claudeFalso }) {
+function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso, claudeFalso, leitorFalso }) {
   if (claudeFalso) perguntarAoClaude = claudeFalso;
+  if (leitorFalso) lerAGuia = leitorFalso;
   st = { db, log: log || (() => {}), roboRef: { set: async () => {} }, painel: null };
   sock = sockFalso;
   estado = { situacao: 'conectado', numero: '553800000000', motivo: '' };

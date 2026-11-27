@@ -18,8 +18,9 @@ const W = require('./gerado/whatsapp');
 const CLAUDE = process.env.CLAUDE_EXE || path.join(os.homedir(), '.local', 'bin', 'claude.exe');
 const COLECAO = 'whatsappInterpretacoes';
 const MODELO = 'haiku';                 // só classificar: o mais rápido
-// escrever a resposta ao cliente (27/11/2026: "quero que o claude realmente escreva"): o sonnet, que escreve melhor
-const MODELO_QUE_ESCREVE = process.env.WHATSAPP_CLAUDE_MODELO || 'sonnet';
+// escrever a resposta ao cliente (27/11/2026: "quero que o claude realmente escreva"): o haiku (o dono: "joga o agente no haiku"),
+// mais rápido; outro modelo só pela variável WHATSAPP_CLAUDE_MODELO
+const MODELO_QUE_ESCREVE = process.env.WHATSAPP_CLAUDE_MODELO || 'haiku';
 const LIMITE_MS = 20000;                // classificar; o robô da nuvem desiste em ESPERA_DO_CLAUDE_MS
 const LIMITE_PARA_ESCREVER_MS = 35000;
 const PASTA = path.join(os.tmpdir(), 'nilma-whatsapp');

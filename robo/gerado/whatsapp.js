@@ -772,7 +772,8 @@ const INSTRUCOES_DO_ESCRITOR = [
 	"Você só pode mandar documentos da LISTA DE DOCUMENTOS, pelo código (D1, D2...). Escolha exatamente o que o cliente pediu:",
 	"DAS, DAE, DARF, DAM, FGTS, holerite, folha e boleto são coisas diferentes, e o mês tem de ser o pedido (sem mês, o mais recente).",
 	"Se o que ele pediu não está na lista, diga que não encontrou e que a equipe vai verificar (equipe = true).",
-	"Nunca invente valores, datas, prazos, situação de impostos ou qualquer informação que não esteja no nome dos arquivos.",
+	"Valores e vencimentos: use só os que estão na lista (as colunas valor e vence, lidas na própria guia, ou o nome do arquivo).",
+	"Nunca invente valores, datas, prazos, situação de impostos ou qualquer informação que não esteja na lista.",
 	"Não dê orientação contábil, fiscal ou jurídica: para dúvidas, diga que a equipe vai responder (equipe = true).",
 	"Se o cliente pedir para falar com alguém, reclamar ou estiver irritado, diga que a equipe vai responder (equipe = true).",
 	"Se for só cumprimento ou agradecimento, responda com gentileza e ofereça ajuda, sem mandar documento.",
@@ -782,13 +783,13 @@ const INSTRUCOES_DO_ESCRITOR = [
 ].join("\n");
 function conversaParaOClaude(d) {
 	const limpar = (s) => s.replace(/\d{8,}/g, "[número]").slice(0, MAX_LETRAS_DA_FALA);
-	const docs = d.documentos.length ? d.documentos.map((x) => x.codigo + " | " + rotuloDoDocumento(x) + " | " + (mesPorExtenso(x.competencia) || x.competencia) + " | " + x.nome).join("\n") : "(nenhum documento disponível)";
+	const docs = d.documentos.length ? d.documentos.map((x) => x.codigo + " | " + rotuloDoDocumento(x) + " | " + (mesPorExtenso(x.competencia) || x.competencia) + " | " + x.nome + (x.valor ? " | valor " + x.valor : "") + (x.vencimento ? " | vence " + x.vencimento : "")).join("\n") : "(nenhum documento disponível)";
 	const falas = d.historico.slice(-8).map((f) => (f.de === "cliente" ? "Cliente: " : "Atendimento: ") + limpar(f.texto)).join("\n");
 	return [
 		"Empresa: " + nomeDaEmpresa(d.empresa).slice(0, 120),
 		"Agora: " + saudacaoDoAtendimento(d.agora).toLowerCase() + ", " + mesPorExtenso(mesesParaProcurar(d.agora, 1)[0]),
 		"",
-		"LISTA DE DOCUMENTOS (código | tipo | mês | arquivo):",
+		"LISTA DE DOCUMENTOS (código | tipo | mês | arquivo | o valor e o vencimento lidos na guia, quando houver):",
 		docs,
 		"",
 		"CONVERSA ATÉ AGORA:",

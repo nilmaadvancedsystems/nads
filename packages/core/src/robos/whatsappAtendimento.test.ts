@@ -354,6 +354,8 @@ describe('o Claude escrevendo a resposta', () => {
     expect(p).toContain('Cliente: oi\nAtendimento: Olá!');
     expect(p).toContain('quero o das, meu cpf [número]');
     expect(p).not.toContain('das11');
+    const comValor = conversaParaOClaude({ empresa: 'X', agora: AGORA, documentos: [{ ...docs[0], valor: 'R$1.234,56', vencimento: '20/12/2026' }], historico: [], recebido: 'que dia vence' });
+    expect(comValor).toContain('D1 | Guia DAS | novembro de 2026 | 11-2026.pdf | valor R$1.234,56 | vence 20/12/2026');
   });
   it('a resposta: o texto e só os documentos que existem', () => {
     const r = respostaDoEscritor('{"resposta": "Segue o DAS de novembro!", "documentos": ["D1", "D9", "d1"], "equipe": false}', docs);

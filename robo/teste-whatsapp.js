@@ -113,7 +113,8 @@ function cenario(chaves) {
   });
   const sock = socketFalso();
   for (const f of fs.readdirSync(pasta)) fs.rmSync(path.join(pasta, f));
-  Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta, esperarFalso: async ms => { esperas.push(ms); }, claudeFalso });
+  Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta, esperarFalso: async ms => { esperas.push(ms); }, claudeFalso,
+    leitorFalso: async (id, baixar) => { const arq = await baixar(); return { valor: 'R$' + arq.buffer.length + ',00', vencimento: '20/12/2026' }; } });
   return { db, sock };
 }
 const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith('solicitacoesEmail/') && v.tipo === 'whatsapp');
@@ -271,6 +272,8 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     const pergunta = perguntasAoClaude[0] || '';
     verdade('a pergunta leva a empresa, a lista (com a pasta do Drive) e a mensagem', pergunta.includes('Empresa: Padaria Boa') && pergunta.includes('Guia DAS') && pergunta.includes('11-2026.pdf') && pergunta.includes('me manda o DAS de novembro'));
     verdade('o Claude não vê o id do Drive nem o telefone', !pergunta.includes('drvNov') && !pergunta.includes(CELULAR_DO_TESTE));
+    // o leitor de mentira devolve o tamanho do PDF de mentira ('%PDF-guia-drvNov' = 16 bytes) como valor
+    verdade('a guia vai com o valor e o vencimento lidos no PDF', pergunta.includes('11-2026.pdf | valor R$16,00 | vence 20/12/2026'));
     igual('o texto do Claude e só o arquivo da lista', [sock.mandadas[0] && sock.mandadas[0].text, sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString(), sock.mandadas.length],
       ['Segue o DAS de novembro!', '11-2026.pdf', '%PDF-guia-drvNov', 2]);
     await Z.receber(texto(CELULAR_DO_TESTE, '2'));
