@@ -109,7 +109,7 @@ export function useProjecaoDoFatorR() {
     grafico: {
       barras: linhas.map(l => ({
         competencia: l.competencia, mes: MESES_CURTOS[Number(l.competencia.slice(5)) - 1], ano: l.competencia.slice(0, 4),
-        fator: l.fator, anexo: l.anexo, rbt12: l.rbt12, fs12: l.fs12, folhaQueFalta: l.folhaQueFalta,
+        fator: l.fator, anexo: l.anexo, rbt12: l.rbt12, fs12: l.fs12, folhaQueFalta: l.folhaQueFalta, de: l.de, ate: l.ate, folhaDe: l.folhaDe, folhaAte: l.folhaAte, defasagem: l.defasagem,
         incompleto: l.mesesComReceita < 12 || l.mesesComFolha < 12, atual: l.competencia === atual, projecao: l.competencia >= ano + '-01',
       })),
       escala: Math.max(40, Math.ceil((Math.max(0, ...linhas.map(l => l.fator ?? 0)) + 4) / 10) * 10),

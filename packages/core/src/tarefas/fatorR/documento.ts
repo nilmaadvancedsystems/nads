@@ -3,7 +3,7 @@
 // três documentos (o ano, o anterior e o antes dele, para o Fator R dos meses do ano anterior) e o pgdas/{código} da empresa.
 // O que o robô do e-CAC já trouxe (pgdas/{código}) vale mais que o digitado: no Simples o faturamento é o do PGDAS-D.
 import { extratoDaEmpresa, type ExtratoDoPgdas } from '../pgdas/extrato';
-import { competenciasEntre, type FonteDoValor, type MesDoFatorR } from './projecao';
+import { competenciasEntre, defasagemDaFolha, somarMeses, type FonteDoValor, type MesDoFatorR } from './projecao';
 
 /** 'MM' → valor */
 export type ValoresDoAno = Record<string, number>;
@@ -33,8 +33,15 @@ export function anoPadraoDaProjecao(hoje: Date): number {
   return hoje.getMonth() >= 9 ? hoje.getFullYear() + 1 : hoje.getFullYear();
 }
 
-/** os documentos que a tela de um ano lê (o mais velho primeiro) */
-export const anosDaProjecao = (ano: number): number[] => [ano - 2, ano - 1, ano];
+/**
+ * os documentos que a tela de um ano lê (o mais velho primeiro): do começo da janela mais velha (a da folha do PA de janeiro do
+ * ano anterior, com a defasagem; 12/2024 na projeção de 2027) até o ano da projeção
+ */
+export function anosDaProjecao(ano: number): number[] {
+  const pa = (ano - 1) + '-01';
+  const desde = Math.min(ano - 2, Number(somarMeses(pa, -11 - defasagemDaFolha(pa)).slice(0, 4)));
+  return Array.from({ length: ano - desde + 1 }, (_, i) => desde + i);
+}
 
 /** os meses que a tela mostra: o ano anterior inteiro e o ano da projeção */
 export const competenciasDaProjecao = (ano: number): string[] => competenciasEntre((ano - 1) + '-01', ano + '-12');

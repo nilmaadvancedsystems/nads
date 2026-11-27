@@ -95,3 +95,6 @@
   .frp-hoje-numeros > div:last-child{border-bottom:0;}
 }
 .frp-subir-apagado{opacity:.5;pointer-events:none;}
+.frp-tabela td.frp-fs12 small{display:block;font-size:var(--fs-11);color:var(--ink-faint);font-weight:400;}
+.frp-th-sub{display:block;font-size:var(--fs-11);font-weight:400;color:var(--ink-faint);}
+.frp-dica > small{color:var(--ink-faint);margin-top:-2px;}
