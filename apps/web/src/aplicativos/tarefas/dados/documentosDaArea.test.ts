@@ -1,7 +1,7 @@
 import type { entregas as e } from '@nads/core';
 import { describe, expect, it } from 'vitest';
 import type { RecebidoDoCliente } from './areaCliente';
-import { areaPeloNome, cnpjsDoTexto, empresaDoArquivo, enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro } from './documentosDaArea';
+import { agruparPorEmpresa, areaPeloNome, cnpjsDoTexto, empresaDoArquivo, enviadosAoCliente, filtroInicial, filtrosDosRecebidos, recebidosDoFiltro } from './documentosDaArea';
 
 const agora = new Date('2026-11-26T15:00:00Z');
 const rec = (id: string, tipo: RecebidoDoCliente['tipo'], recebidoEm: string, recusa = false): RecebidoDoCliente => ({
@@ -62,5 +62,14 @@ describe('o Enviar ao cliente adivinha a empresa e a área (26/11/2026)', () => 
     expect(empresaDoArquivo(emp, '292 - extrato.pdf', [], docs)?.codigo).toBe(292);
     expect(empresaDoArquivo(emp, 'Balancete TORIBA TECNOLOGIA E GESTAO EMPRESARIAL 2025.pdf', [], docs)?.codigo).toBe(590);
     expect(empresaDoArquivo(emp, 'certidao.pdf', [], docs)).toBeNull();
+  });
+});
+
+describe('por empresa (27/11/2026: "quero que acumule por empresa")', () => {
+  it('a empresa com o mais novo primeiro; dentro, do mais novo ao mais velho', () => {
+    const itens = [{ c: 590, n: 'TORIBA', em: '2026-11-26T10:00' }, { c: 292, n: 'FITO', em: '2026-11-27T09:00' }, { c: 590, n: 'TORIBA', em: '2026-11-27T08:00' }];
+    const g = agruparPorEmpresa(itens, x => ({ codigo: x.c, nome: x.n, em: x.em }));
+    expect(g.map(x => [x.codigo, x.itens.length, x.ultimo])).toEqual([['292', 1, '2026-11-27T09:00'], ['590', 2, '2026-11-27T08:00']]);
+    expect(g[1].itens.map(x => x.em)).toEqual(['2026-11-27T08:00', '2026-11-26T10:00']);
   });
 });

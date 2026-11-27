@@ -119,3 +119,24 @@ export function empresaDoArquivo<T extends { codigo: number; nome: string }>(
   const pelos = empresas.filter(e => { const k = chave(e.nome); return k.length >= 6 && arquivo.includes(' ' + k + ' '); });
   return pelos.length === 1 ? pelos[0] : null;
 }
+
+// ---------- por empresa (27/11/2026: "quero que acumule por empresa") ----------
+
+export interface GrupoDaEmpresa<T> { codigo: string; nome: string; itens: T[]; /** ISO do mais novo */ ultimo: string }
+
+/** Os itens agrupados por empresa: a empresa com o item mais novo primeiro; dentro dela, do mais novo ao mais velho. */
+export function agruparPorEmpresa<T>(itens: readonly T[], de: (x: T) => { codigo: string | number; nome: string; em: string }): GrupoDaEmpresa<T>[] {
+  const grupos = new Map<string, GrupoDaEmpresa<T>>();
+  for (const x of itens) {
+    const d = de(x);
+    const chave = String(d.codigo || d.nome);
+    const g = grupos.get(chave) ?? { codigo: String(d.codigo ?? ''), nome: d.nome, itens: [], ultimo: '' };
+    g.itens.push(x);
+    if (d.em > g.ultimo) g.ultimo = d.em;
+    if (!g.nome && d.nome) g.nome = d.nome;
+    grupos.set(chave, g);
+  }
+  const lista = [...grupos.values()];
+  for (const g of lista) g.itens.sort((a, b) => de(b).em.localeCompare(de(a).em));
+  return lista.sort((a, b) => b.ultimo.localeCompare(a.ultimo));
+}
