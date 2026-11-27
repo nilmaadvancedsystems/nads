@@ -4,7 +4,7 @@
 // "Impressão de campos da consulta". Só para o dono do robô (robosDePc), pela conta.
 import { useEffect, useRef, useState } from 'react';
 import { marcarPedidoFeito, semConectar, useConexaoDoRobo } from '../../dados/useConexaoDoRobo';
-import { cancelarPedidoDoFiscal, ouvirLancamentosDoSci, pedirLancamentosDoSci, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal } from '../../dados/notasDoFiscal.firestore';
+import { cancelarPedidoDoFiscal, ouvirLancamentosDoSci, pedirLancamentosDoSci, planilhaDoFiscal, roboDePcDoUsuario, type PedidoDoFiscal, type TipoDoSci } from '../../dados/notasDoFiscal.firestore';
 
 const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 // os pedidos vistos andando nesta aba: só eles entram sozinhos na tela quando ficam prontos (o de ontem não entra ao abrir)
@@ -14,7 +14,9 @@ const IMPORTADOS = new Set<string>();
 /** "00/2026" → "2026 inteiro"; "02/2026" → "02/2026"; "00/0000" → "tudo" */
 export const rotuloDaCompetenciaDoSci = (c: string) => (c === '00/0000' ? 'tudo' : c.startsWith('00/') ? c.slice(3) + ' inteiro' : c);
 
-export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa: string; chegou: (f: File, competencia: string) => unknown }) {
+/** tipo: os lançamentos (a consulta) ou o balancete do SCI (27/11/2026); o mesmo pedido ao robô do PC */
+export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa: string; chegou: (f: File, competencia: string) => unknown; tipo?: TipoDoSci }) {
+  const tipo = o.tipo || 'sciLancamentos';
   const doPc = roboDePcDoUsuario();
   const disponivel = !!doPc && o.codigo != null;
   const [pedidos, setPedidos] = useState<PedidoDoFiscal[]>([]);
@@ -26,8 +28,8 @@ export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa:
   chegou.current = o.chegou;
   useEffect(() => {
     if (!disponivel || o.codigo == null) return;
-    return ouvirLancamentosDoSci(o.codigo, setPedidos, e => setFalha(e.message));
-  }, [disponivel, o.codigo]);
+    return ouvirLancamentosDoSci(o.codigo, setPedidos, e => setFalha(e.message), tipo);
+  }, [disponivel, o.codigo, tipo]);
   const atual = pedidos.find(p => p.status !== 'cancelado') || null;
   useEffect(() => {
     if (!atual) return;
@@ -57,7 +59,7 @@ export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa:
     pedir: async (competencia: string) => {
       if (!disponivel || o.codigo == null || andando) return;
       setFalha(''); conexao.limpar(); setPedindo(true);
-      try { const id = await pedirLancamentosDoSci({ codigo: o.codigo, empresa: o.empresa, competencia }); VISTOS.add(id); marcarPedidoFeito(id); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); } finally { setPedindo(false); }
+      try { const id = await pedirLancamentosDoSci({ codigo: o.codigo, empresa: o.empresa, competencia, tipo }); VISTOS.add(id); marcarPedidoFeito(id); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); } finally { setPedindo(false); }
     },
   };
 }

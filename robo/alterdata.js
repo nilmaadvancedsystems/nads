@@ -36,6 +36,9 @@ const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), ra
   sciLancamentos: path.join(__dirname, 'sci_extrair_lancamentos.py'),
   // excluir no SCI um lançamento (pela chave) ou o lote inteiro (27/11/2026, a rotina que o Vitor ensinou)
   sciExcluir: path.join(__dirname, 'sci_excluir_lote.py') };
+// os roteiros que podem ainda não existir neste PC (o balancete do SCI, 27/11/2026: a sessão do robô ainda testa o caminho que o
+// Vitor ensinou): sem o arquivo, só aquele pedido dá erro; o módulo do Alterdata liga do mesmo jeito
+const ROTEIROS_OPCIONAIS = { sciBalancete: path.join(__dirname, 'sci_balancete.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a sessão do Windows do robô (19/11/2026, o acesso remoto no meio dos pedidos): a de agora, para explicar um erro
 const ROTEIRO_SESSAO = path.join(__dirname, 'alterdata_sessao.py');
@@ -109,7 +112,9 @@ let registrarDiag = () => {};
 
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
-  const args = relatorio === 'sciLancamentos' ? [String(a.codigo), a.competenciaSci]
+  const roteiro = ROTEIROS[relatorio] || ROTEIROS_OPCIONAIS[relatorio];
+  if (ROTEIROS_OPCIONAIS[relatorio] && !fs.existsSync(roteiro)) return Promise.resolve({ ok: false, erro: 'falta o roteiro ' + path.basename(roteiro) + ' neste PC (o robô ainda não aprendeu esse caminho)' });
+  const args = relatorio === 'sciLancamentos' || relatorio === 'sciBalancete' ? [String(a.codigo), a.competenciaSci]
     : relatorio === 'sciExcluir' ? [...(a.chave ? [String(a.codigo), '--chave', a.chave] : [String(a.codigo), a.lote]), ...(a.ano ? ['--ano', a.ano] : [])]
     : relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
@@ -119,7 +124,7 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     // ALTERDATA_SERVIDOR: no servidor, o roteiro não clica com alguém conectado por acesso remoto (alterdata_sessao.py)
-    const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA, ALTERDATA_SERVIDOR: ONDE === 'servidor' ? '1' : '' } });
+    const filho = spawn(PYTHON, ['-I', roteiro, ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA, ALTERDATA_SERVIDOR: ONDE === 'servidor' ? '1' : '' } });
     let resto = '', erros = '', resultado = null, prazoDoFim = null, terminou = false, sessao = null;
     const diags = [];
     const terminar = () => {
@@ -135,9 +140,9 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
       for (const l of linhas) {
         // o roteiro do SCI escreve em português simples (27/11/2026): cada linha é um passo; "pronto: <arquivo> (n bytes)" é o
         // fim que deu certo, "parei: …" e "o SCI … não está aberto" são o erro
-        if (relatorio === 'sciLancamentos' || relatorio === 'sciExcluir') {
+        if (relatorio === 'sciLancamentos' || relatorio === 'sciBalancete' || relatorio === 'sciExcluir') {
           const t = l.trim();
-          const pronto = relatorio === 'sciExcluir' ? t.match(/^pronto:\s*(.+)$/) : t.match(/^pronto:\s*(.+?)\s*\(\d+ bytes\)$/);
+          const pronto = relatorio === 'sciExcluir' ? t.match(/^pronto:\s*(.+)$/) : t.match(/^pronto:\s*(.+?)(?:\s*\(\d+ bytes\))?$/);
           // a exclusão: "pronto: lote M583EDT excluído da empresa 583" (depois ainda fecha as janelas: o fim é quando o roteiro sai)
           if (pronto && relatorio === 'sciExcluir') { resultado = { ok: true, mensagem: pronto[1] }; void passo(t); }
           else if (/^uso:/.test(t)) resultado = { ok: false, erro: 'o roteiro recusou o pedido: ' + t };
@@ -369,11 +374,11 @@ function iniciarAlterdata(db, log) {
       // o robô de um PC sem dono no robosDePc.json não pega nada (ALTERDATA_SO_DONO, alterdata-no-pc.js)
       if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
       // o SCI (27/11/2026) só existe no PC: o servidor nunca pega
-      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && ((DONOS_DE_PC.has(quem) && ['fiscal', 'importar'].includes(ped.data().tipo)) || (ped.exists && ['sciLancamentos', 'sciExcluir'].includes(ped.data().tipo))))) return null;
+      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && ((DONOS_DE_PC.has(quem) && ['fiscal', 'importar'].includes(ped.data().tipo)) || (ped.exists && ['sciLancamentos', 'sciBalancete', 'sciExcluir'].includes(ped.data().tipo))))) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
       // os lançamentos do SCI não usam o Alterdata: nem o estado do Contábil, nem a espera de assentar (o roteiro vê se o SCI
       // está aberto e diz no erro)
-      const doSci = ped.exists && ['sciLancamentos', 'sciExcluir'].includes(ped.data().tipo);
+      const doSci = ped.exists && ['sciLancamentos', 'sciBalancete', 'sciExcluir'].includes(ped.data().tipo);
       // o razão de uma conta usa o Contábil (o de sempre)
       if (!doSci && (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok')) return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)

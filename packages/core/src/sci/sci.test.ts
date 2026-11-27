@@ -301,4 +301,33 @@ describe('o balancete do SCI de volta (o formato real, com dados fictícios)', (
     expect(lerBalanceteDoSci(win(semCodigos), 'b.csv').erro).toMatch(/Imprimir conta/);
     expect(lerBalanceteDoSci(win('a;b;c\n1;2;3'), 'x.csv').erro).toMatch(/títulos/);
   });
+
+  // o .xls que o robô exporta do SCI (27/11/2026, a sessão do robô: Ctrl+B, Pré-visualização, Exportar para Excel 1991-2003): o
+  // nome cai numa coluna de C a I conforme o nível, os valores em texto pt-BR, e as assinaturas no fim
+  it('lê o balancete .xls do robô, com o nome em colunas diferentes por nível', () => {
+    const linha = (c: Record<number, string>) => Array.from({ length: 16 }, (_, i) => c[i] ?? '');
+    const aoa = [
+      linha({ 0: 'BALANCETE DE 01/01/2026 A 31/12/2026' }),
+      linha({ 0: 'EMPRESA: 583 - EMPORIO FICTICIO LTDA' }),
+      linha({ 0: 'CONTA', 1: 'CLASSIFICAÇÃO', 2: 'NOME DA CONTA CONTÁBIL', 9: 'SALDO ANTERIOR', 11: 'DÉBITO', 14: 'CRÉDITO', 15: 'SALDO ATUAL' }),
+      linha({ 0: '1', 1: '01', 2: 'ATIVO', 9: '1.000,00', 11: '500,00', 14: '200,00', 15: '1.300,00' }),
+      linha({ 0: '5', 1: '01.1.1.01.001', 6: 'Caixa', 9: '1.000,00', 11: '500,00', 14: '200,00', 15: '1.300,00' }),
+      linha({ 0: '16', 1: '01.1.2.01.001', 6: 'Clientes', 9: '50,00', 11: '0,00', 14: '0,00', 15: '(10,00)' }),
+      linha({ 0: '16', 1: '01.1.2.01.000001577', 8: 'CLIENTE FICTICIO', 9: '50,00', 11: '0,00', 14: '0,00', 15: '(10,00)' }),
+      linha({}),
+      linha({ 2: '______________________', 9: '______________________' }),
+      linha({ 2: 'CONTADOR', 9: 'RESPONSÁVEL' }),
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Planilha1');
+    const bytes = new Uint8Array(XLSX.write(wb, { bookType: 'xls', type: 'array' }) as ArrayBuffer);
+    const r = lerBalanceteDoSci(bytes, 'balancete-583-00-2026.xls');
+    expect(r.erro).toBeNull();
+    const b = r.balancete!;
+    expect([b.inicio, b.fim, b.empresa]).toEqual(['2026-01-01', '2026-12-31', 'EMPORIO FICTICIO LTDA']);
+    // o saldo entre parênteses é o invertido: o Ativo credor fica negativo
+    expect(b.contas.map(c => [c.codigo, c.nome, c.nivel, c.atual])).toEqual([['1', 'ATIVO', 1, 130000], ['5', 'Caixa', 5, 130000], ['16', 'Clientes', 5, -1000], ['16', 'CLIENTE FICTICIO', 7, -1000]]);
+    // o participante (repete o reduzido da conta-mãe) não é analítica: não soma em dobro
+    expect(b.contas.map(c => [c.analitica, !!c.participante])).toEqual([[false, false], [true, false], [true, false], [false, true]]);
+  });
 });

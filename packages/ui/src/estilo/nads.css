@@ -9020,3 +9020,19 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .sci-razao-excluir { width: 36px; text-align: center; padding-top: 0; padding-bottom: 0; }
 .sci-razao-excluir .icon-btn { opacity: .45; }
 .sci-razao-linha:hover .sci-razao-excluir .icon-btn, .sci-razao-excluir .icon-btn:focus-visible { opacity: 1; color: var(--danger); }
+
+/* a Contabilização: as abas Lançamentos | Balancete e o balancete do SCI (27/11/2026) */
+.sci-contab-abas{display:flex;justify-content:center;margin:0 0 14px;}
+.sci-balancete-cabeca{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 12px;}
+.sci-balancete-cabeca h2{margin:0;font-size:var(--fs-18,18px);font-weight:600;color:var(--ink);}
+.sci-balancete-cabeca .hint{margin:4px 0 0;}
+.sci-balancete-alerta{color:var(--danger);font-weight:500;}
+.sci-balancete-filtros{display:flex;align-items:center;gap:14px;}
+.sci-balancete-so{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-13);color:var(--ink-muted);cursor:pointer;white-space:nowrap;}
+.sci-balancete td.num,.sci-balancete th.num{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.sci-balancete-class{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted);}
+.sci-balancete-sintetica td{font-weight:600;color:var(--ink);}
+.sci-balancete-participante td{color:var(--ink-muted);font-size:12px;}
+.sci-balancete-invertido{color:var(--danger) !important;font-weight:600;}
+.sci-balancete-total td{font-weight:600;border-top:1px solid var(--border);color:var(--ink);}
+
