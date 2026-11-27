@@ -19,6 +19,8 @@ export const GUIAS_DO_SCI = [
   { chave: 'DARF-COFINS', rotulo: 'DARF da COFINS' },
   { chave: 'DARF-IRPJ', rotulo: 'DARF do IRPJ' },
   { chave: 'DARF-CSLL', rotulo: 'DARF da CSLL' },
+  // (27/11/2026) o DARF da DCTFWeb (INSS e IRRF da folha) vai no modelo da guia unificada da DCTFWeb
+  { chave: 'DARF-DCTFWEB', rotulo: 'DARF da DCTFWeb (INSS/IRRF)' },
   { chave: 'DARF', rotulo: 'DARF (outros)' },
   { chave: 'DAE-ICMS', rotulo: 'DAE do ICMS normal' },
   // (26/11/2026: "Pode separar") o DAE por coluna do Relatório: cada um com o modelo dele no SCI Report
@@ -105,6 +107,7 @@ export function chaveDaGuiaNoSci(tipo: string, tributo: string, coluna = ''): Ch
   if (t === 'DAE' && DAE_PELA_COLUNA[String(coluna ?? '').trim()]) return DAE_PELA_COLUNA[String(coluna).trim()];
   if (t === 'DAS') return 'DAS';
   if (t === 'FGTS') return 'FGTS';
+  if (t === 'DARF' && /^(INSS|IRRF|DCTFWEB)\b/.test(tr.replace(/\s+/g, ''))) return 'DARF-DCTFWEB';
   if (t === 'DARF') return (['PIS', 'COFINS', 'IRPJ', 'CSLL'].includes(tr) ? 'DARF-' + tr : 'DARF') as ChaveDaGuiaNoSci;
   if (t === 'DAE' && tr === 'ICMS') return 'DAE-ICMS';
   if (t === 'DAM' && tr === 'ISS') return 'DAM-ISS';

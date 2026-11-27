@@ -311,6 +311,10 @@ const GUIAS_DO_SCI = [
 		rotulo: "DARF da CSLL"
 	},
 	{
+		chave: "DARF-DCTFWEB",
+		rotulo: "DARF da DCTFWeb (INSS/IRRF)"
+	},
+	{
 		chave: "DARF",
 		rotulo: "DARF (outros)"
 	},
@@ -426,6 +430,7 @@ function chaveDaGuiaNoSci(tipo, tributo, coluna = "") {
 	if (t === "DAE" && DAE_PELA_COLUNA[String(coluna ?? "").trim()]) return DAE_PELA_COLUNA[String(coluna).trim()];
 	if (t === "DAS") return "DAS";
 	if (t === "FGTS") return "FGTS";
+	if (t === "DARF" && /^(INSS|IRRF|DCTFWEB)\b/.test(tr.replace(/\s+/g, ""))) return "DARF-DCTFWEB";
 	if (t === "DARF") return [
 		"PIS",
 		"COFINS",

@@ -40,6 +40,11 @@ describe('SCI: a configuração (config/sci)', () => {
     expect(chaveDaGuiaNoSci('DARF', 'cofins')).toBe('DARF-COFINS');
     expect(chaveDaGuiaNoSci('DAE', 'ICMS')).toBe('DAE-ICMS');
     expect(chaveDaGuiaNoSci('GPS', '')).toBe('OUTRA');
+    // (27/11/2026) o DARF da DCTFWeb: INSS e IRRF
+    expect(chaveDaGuiaNoSci('DARF', 'INSS')).toBe('DARF-DCTFWEB');
+    expect(chaveDaGuiaNoSci('DARF', 'IRRF')).toBe('DARF-DCTFWEB');
+    expect(chaveDaGuiaNoSci('DARF', 'INSS/IRRF')).toBe('DARF-DCTFWEB');
+    expect(relatorioDaGuia(configDoSci({ relatorios: { 'DARF-DCTFWEB': 'DCWG' } }), 'DARF', 'INSS')).toBe('DCWG');
     // (26/11/2026) o DAE pela coluna do Relatório: cada tipo com o modelo dele no SCI Report
     expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms-dif-ativo')).toBe('DAE-DIFAL');
     expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms-dif')).toBe('DAE-DIFAL');
