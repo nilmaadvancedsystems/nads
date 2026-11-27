@@ -129,20 +129,27 @@ def filtrar(c, lote, celula=CELULA_DO_LOTE):
 
 
 def esperar_fim(principal, c, lixeira, segundos=300):
-    """Terminou quando a consulta filtrada fica vazia e o SCI responde."""
+    """Terminou quando a consulta filtrada fica vazia e o SCI responde. lixeira=None: já clicada (retomar)."""
     pid = win32process.GetWindowThreadProcessId(principal)[1]
     vistas = set()
-    win32gui.EnumWindows(lambda x, _: vistas.add(x), None)
-    frente(c)
-    botao(c, 'ToolBar1', lixeira).click_input()
-    print('cliquei na lixeira: esperando a senha de segurança (quem digita é a pessoa, até 5 min)', flush=True)
+    if lixeira is not None:
+        win32gui.EnumWindows(lambda x, _: vistas.add(x), None)
+        frente(c)
+        botao(c, 'ToolBar1', lixeira).click_input()
+        print('cliquei na lixeira: esperando a senha de segurança (quem digita é a pessoa, até 5 min)', flush=True)
     fim = time.time() + segundos
     confirmou = False
+    senhas = set()
     while time.time() < fim:
         time.sleep(1)
         d = dialogo(pid, vistas)
         if d:
             x, titulo, texto, botoes = d
+            if 'SENHA' in titulo.upper():   # a pessoa digita; o robô só espera a janela sumir
+                if x not in senhas:
+                    print('a "' + titulo + '" está na tela: esperando a pessoa digitar', flush=True)
+                    senhas.add(x)
+                continue
             vistas.add(x)
             print('o SCI mostrou "' + titulo + '": ' + texto + ' [' + ', '.join(botoes) + ']', flush=True)
             # a pergunta de excluir: SEMPRE Sim (o Vitor, 27/11/2026); a da lixeira verde vem só com o título "Confirmação!"
