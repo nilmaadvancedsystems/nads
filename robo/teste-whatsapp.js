@@ -33,6 +33,7 @@ function bancoFalso(inicial) {
       id: p.split('/').pop(), path: p,
       get: async () => snapDoc(p),
       set: async (d, o) => { docs.set(p, o && o.merge ? juntar(docs.get(p) || {}, d) : d); },
+      create: async d => { if (docs.has(p)) { const e = new Error('já existe'); e.code = 6; throw e; } docs.set(p, d); },
       update: async d => {
         const atual = Object.assign({}, docs.get(p) || {});
         for (const [k, v] of Object.entries(d)) {
@@ -46,16 +47,21 @@ function bancoFalso(inicial) {
       collection: n => colecao(p + '/' + n),
     };
   }
-  function colecao(c, filtros) {
+  function colecao(c, filtros, ordem, limite) {
     const f = filtros || [];
     return {
       doc: id => refDoc(c + '/' + id),
       add: async d => { const id = 'novo' + (++seq); docs.set(c + '/' + id, d); return refDoc(c + '/' + id); },
-      where: (campo, op, valor) => colecao(c, f.concat([[campo, valor]])),
+      where: (campo, op, valor) => colecao(c, f.concat([[campo, valor]]), ordem, limite),
+      orderBy: (campo, dir) => colecao(c, f, [campo, dir], limite),
+      limit: n => colecao(c, f, ordem, n),
       get: async () => {
-        const lista = [...docs.keys()].filter(k => k.startsWith(c + '/') && !k.slice(c.length + 1).includes('/'))
-          .filter(k => f.every(([campo, valor]) => docs.get(k)[campo] === valor)).sort().map(snapDoc);
-        return { docs: lista, size: lista.length, forEach: fn => lista.forEach(fn) };
+        let chaves = [...docs.keys()].filter(k => k.startsWith(c + '/') && !k.slice(c.length + 1).includes('/'))
+          .filter(k => f.every(([campo, valor]) => docs.get(k)[campo] === valor)).sort();
+        if (ordem) chaves.sort((a, b) => (Number(docs.get(a)[ordem[0]]) - Number(docs.get(b)[ordem[0]])) * (ordem[1] === 'desc' ? -1 : 1));
+        if (limite) chaves = chaves.slice(0, limite);
+        const lista = chaves.map(snapDoc);
+        return { docs: lista, size: lista.length, empty: !lista.length, forEach: fn => lista.forEach(fn) };
       },
     };
   }
@@ -110,10 +116,16 @@ function cenario(chaves) {
     'solicitacoesEmail/f1': { tipo: 'envioFiscal', codigo: '123', status: 'enviado', competencia: '2026-10', enviadoEm: '2026-11-05T12:00:00.000Z', guiasDrive: [{ nome: 'DAS 10-2026.pdf', id: 'drv1' }] },
     'solicitacoesEmail/f0': { tipo: 'envioFiscal', codigo: '123', status: 'enviado', competencia: '2026-09', enviadoEm: '2026-10-05T12:00:00.000Z', guiasDrive: [{ nome: 'DAS 09-2026.pdf', id: 'drv0' }] },
     'tickets/t1': { para: { email: 'a@b.com', whatsapp: '38999991234' }, empresa: { nome: 'Padaria Boa' } },
+    // a equipe e o cadastro do nads (a tarefa vai ao responsável do Contábil; sem ele, ao Diretor)
+    'usuarios/u1': { nome: 'Vitor', departamento: 'contabil', roles: ['contabil'], nivel: 'senior' },
+    'usuarios/u2': { nome: 'Nilma', nivel: 'diretor', roles: ['admin'] },
+    'cadastro/k1': { codigo: 123, responsaveis: { contabil: 'Vitor' } },
+    'nadsTarefasDelegadas/t-antiga': { numero: 41, titulo: 'outra' },
   });
   const sock = socketFalso();
   for (const f of fs.readdirSync(pasta)) fs.rmSync(path.join(pasta, f));
   Z.prepararParaOTeste({ db, sockFalso: sock, driveFalso, chavesDoTeste: chaves, pasta, esperarFalso: async ms => { esperas.push(ms); }, claudeFalso,
+    midiaFalsa: async m => Buffer.from('%PDF-do-cliente-' + (m.key && m.key.id)),
     leitorFalso: async (id, baixar) => { const arq = await baixar(); return { valor: 'R$' + arq.buffer.length + ',00', vencimento: '20/12/2026' }; } });
   return { db, sock };
 }
@@ -198,6 +210,9 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     igual('4: responde com o WhatsApp do escritório', sock.mandadas[7].text, W.TEXTO_DO_ESCRITORIO);
     const recebida = [...db._docs.values()].find(d => d.tipo === 'whatsapp-recebida');
     igual('4: o pedido para falar com o escritório fica registrado', recebida && [recebida.status, recebida.codigo, recebida.pedeEscritorio], ['recebida', '123', true]);
+    const tarefa = db._docs.get('nadsTarefasDelegadas/' + W.idDaTarefaDoWhatsapp('123', Date.now()));
+    igual('4: vira tarefa para o responsável do Contábil, com o próximo número', tarefa && [tarefa.numero, tarefa.responsavel.nome, tarefa.prioridade, tarefa.pessoas.includes('u1')], [42, 'Vitor', 'alta', true]);
+    verdade('4: a tarefa traz as últimas mensagens', !!tarefa && tarefa.descricao.includes('Cliente: menu') && tarefa.descricao.includes('Cliente: 4') && tarefa.titulo === 'WhatsApp: Padaria Boa pediu atendimento');
     verdade('o autoatendimento responde em até 8 s (não 20 a 60)', esperas.length > 0 && esperas.every(ms => ms <= W.RESPOSTA_MAX_MS));
     await Z.receber(texto(CELULAR_DO_TESTE, 'valeu'));
     igual('texto solto logo depois: não repete o menu', sock.mandadas.length, 8);
@@ -324,6 +339,73 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     igual('modo escrever: o PC devolve o texto do Claude para a nuvem conferir', [modoVisto, db._docs.get('whatsappInterpretacoes/p3').status, db._docs.get('whatsappInterpretacoes/p3').saida], ['escrever', 'feito', '{"resposta": "Oi!", "documentos": [], "equipe": false}']);
     const escrever = C.argumentos('escrever');
     verdade('o Claude que escreve também roda sem ferramenta, com as instruções de escrever', escrever[escrever.indexOf('--tools') + 1] === '' && escrever[escrever.indexOf('--system-prompt') + 1] === W.INSTRUCOES_DO_ESCRITOR);
+  }
+
+  // ---------- 6f2. as informações e os documentos novos para o Claude (certidões, pendências, honorários) ----------
+  {
+    const { db, sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
+    const TOKEN = 'a'.repeat(40);
+    db._docs.set('certidoes/123', { fgts: { vence: '2099-12-10', negativa: true } });
+    db._docs.set('areasClientePorEmpresa/123', { token: TOKEN });
+    db._docs.set('areasCliente/' + TOKEN + '/documentos/certF', { tipo: 'certidao', nome: 'Certidão FGTS.pdf', partes: 1, validoAte: '2099-12-10' });
+    db._docs.set('areasCliente/' + TOKEN + '/documentos/certF~0', { base64: Buffer.from('%PDF-certidao').toString('base64'), n: 0 });
+    db._docs.set('financeiroHonorarios/h1', Object.assign({}, db._docs.get('financeiroHonorarios/h1'), { boletosEfi: { '2026-11': { status: 'emitido', valor: 850, vencimento: '2026-12-10', link: 'https://efi/2via' } } }));
+    db._docs.set('documentosMensal/c1_' + W.mesesParaProcurar(Date.now(), 2)[1], { comprovante: true });
+    saidaDoClaude = p => {
+      const linha = p.split('\n').find(l => l.includes('Certidão FGTS.pdf'));
+      return '{"resposta": "Segue a sua certidão do FGTS.", "documentos": ["' + (linha ? linha.split(' | ')[0] : '') + '"], "equipe": false}';
+    };
+    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda a cnd do fgts'));
+    const pergunta = perguntasAoClaude[0] || '';
+    verdade('a pergunta leva as informações: certidão, o que falta e os honorários com a 2ª via',
+      pergunta.includes('Certidão FGTS: negativa (sem pendência), válida até 10/12/2099') && pergunta.includes('ainda não mandou: Extrato Bancário; Aplicação') && pergunta.includes('2ª via: https://efi/2via'));
+    igual('o Claude escolheu a certidão: vai o PDF da Área do Cliente', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString()], ['Certidão FGTS.pdf', '%PDF-certidao']);
+  }
+
+  // ---------- 6g. os arquivos que o cliente manda (chave arquivos) ----------
+  {
+    const { db, sock } = cenario({ autoatendimento: true, arquivos: true, empresaDeTeste: '123' });
+    await Z.receber(chega(CELULAR_DO_TESTE, { documentMessage: { fileName: 'Extrato Sicoob 10-2026.pdf', mimetype: 'application/pdf' } }, { id: 'ARQ1' }));
+    const envio = [...db._docs.entries()].find(([k, v]) => k.startsWith('enviosSecretario/') && !k.includes('/partes/'));
+    igual('o PDF vira um envio para o Drive, como o do formulário', envio && [envio[1].status, envio[1].nome, envio[1].codigo, envio[1].cliente, envio[1].criadoPorUid, envio[1].partes],
+      ['pendente', 'Extrato Sicoob 10-2026.pdf', '123', 'Padaria Boa', 'whatsapp', 1]);
+    igual('com as partes do arquivo', envio && String(db._docs.get(envio[0] + '/partes/0').dados), '%PDF-do-cliente-ARQ1');
+    verdade('o cliente recebe a confirmação', sock.mandadas[0] && sock.mandadas[0].text.startsWith('Recebemos o arquivo *Extrato Sicoob 10-2026.pdf*'));
+    await Z.receber(chega(CELULAR_DO_TESTE, { imageMessage: { caption: 'nota' } }, { id: 'ARQ2' }));
+    igual('a 2ª em seguida não recebe outra confirmação', sock.mandadas.length, 1);
+    await Z.receber(chega(CLIENTE_FONE, { documentMessage: { fileName: 'x.pdf', mimetype: 'application/pdf' } }, { id: 'ARQ3' }));
+    igual('trava fechada: número de cliente que não é de teste não guarda', [...db._docs.keys()].filter(k => k.startsWith('enviosSecretario/') && !k.includes('/partes/')).length, 2);
+  }
+  {
+    // a resposta a um Mandei: o arquivo entra no ticket
+    const { db } = cenario({ mandei: true, arquivos: true, liberado: true });
+    db._docs.set('ticketsLinks/LINK123', { arquivos: [], envio: { codigo: '123', competencia: '2026-11' } });
+    const w = await Z.pedirPeloWhatsapp(db, 'mandei', { telefone: '38999991234', cliente: 'Padaria Boa', extra: { origem: 'mandei', ticket: 't1', link: 'LINK123' }, mensagem: () => 'o link' });
+    const [caminho, p] = pendentes(db)[0];
+    await Z.atenderPedido(p, db.doc(caminho), null);
+    await Z.receber(chega(CLIENTE_FONE, { documentMessage: { fileName: 'balancete.pdf', mimetype: 'application/pdf' } }, { id: 'ARQ4' }));
+    const envio = [...db._docs.entries()].find(([k, v]) => k.startsWith('enviosSecretario/') && !k.includes('/partes/'));
+    igual('o envio é do Mandei, com o ticket', envio && [envio[1].criadoPorUid, envio[1].ticket, envio[1].nome], ['mandei', 'LINK123', 'Mandei (WhatsApp) - balancete.pdf']);
+    igual('e aparece na lista do formulário', (db._docs.get('ticketsLinks/LINK123').arquivos || []).map(a => a.nome), ['balancete.pdf']);
+    verdade('o pedido do Mandei foi mesmo para o cliente', !!w && w.para === CLIENTE_FONE);
+  }
+
+  // ---------- 6h. os avisos do dia (guia vencendo, certificado, boleto vencido) ----------
+  {
+    const { db } = cenario({ autoatendimento: true, avisoGuias: true, avisoCertificado: true, avisoBoleto: true, empresaDeTeste: '123' });
+    // o leitor de mentira dá vencimento 20/12/2026: no dia 18/12, 10h de Brasília, a guia vence depois de amanhã
+    const DIA = Date.parse('2026-12-18T13:00:00Z');
+    db._docs.set('cofre/k1', { codigo: 123, validade: '2027-01-02' });
+    db._docs.set('financeiroHonorarios/h1', Object.assign({}, db._docs.get('financeiroHonorarios/h1'), { boletosEfi: { '2026-11': { status: 'emitido', valor: 850, vencimento: '2026-12-17', link: 'https://efi/2via' } } }));
+    igual('quem nunca falou com o robô não recebe aviso', await Z.rodarAvisos(DIA - 864e5), 0);
+    await Z.receber(texto(CELULAR_DO_TESTE, 'oi'));
+    igual('antes das 9h não roda', await Z.rodarAvisos(Date.parse('2026-12-18T10:00:00Z')), 0);
+    igual('às 10h: a guia, o certificado e o boleto vão para a fila', await Z.rodarAvisos(DIA), 3);
+    const avisos = pendentes(db).map(([, p]) => p).filter(p => /^aviso/.test(p.origem));
+    verdade('cada um com o seu texto, para o número que conversou', avisos.length === 3 && avisos.every(p => p.para === CELULAR_DO_TESTE) &&
+      avisos.some(p => p.texto.includes('vence em 20/12/2026 (depois de amanhã)')) && avisos.some(p => p.texto.includes('(em 15 dias)')) && avisos.some(p => p.texto.includes('2ª via: https://efi/2via')));
+    igual('no mesmo dia não roda de novo', await Z.rodarAvisos(DIA + 3600000), 0);
+    igual('no dia seguinte, o que já foi não vai de novo (a guia agora vence amanhã: não é aviso)', await Z.rodarAvisos(DIA + 864e5), 0);
   }
 
   // ---------- 7. o freio ----------

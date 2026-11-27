@@ -41,6 +41,9 @@ let ARQUIVO_DO_RASTREIO = path.join(__dirname, 'whatsapp-rastreio.json');
 let ARQUIVO_DAS_CONVERSAS = path.join(__dirname, 'whatsapp-conversas.json');
 /** a conversa do autoatendimento: número → ConversaDoAtendimento */
 let ARQUIVO_DO_ATENDIMENTO = path.join(__dirname, 'whatsapp-atendimento.json');
+/** os avisos já mandados (chave → quando) e o último dia em que rodaram */
+let ARQUIVO_DOS_AVISOS = path.join(__dirname, 'whatsapp-avisos.json');
+let relogioDosAvisos = null;
 const MAX_ARQUIVO_BYTES = 10 * 1024 * 1024;
 const MAX_QRS = 5;                      // cada QR vale ~20 s: depois de uns 2 minutos sem ler, desiste
 const RENOVAR_A_CADA_MS = 10 * 60000;   // o "estou vivo" enquanto conectado
@@ -296,6 +299,9 @@ function iniciarWhatsapp({ db, log, roboRef, painel }) {
   lerRastreio();
   conversas = conversasQueContam(lerJson(ARQUIVO_DAS_CONVERSAS), Date.now());
   atendimentos = lerJson(ARQUIVO_DO_ATENDIMENTO);
+  // os avisos do dia (guia vencendo, certificado, boleto vencido): confere de meia em meia hora, roda uma vez depois das 9h
+  clearInterval(relogioDosAvisos);
+  relogioDosAvisos = setInterval(() => { rodarAvisos(Date.now()).catch(err => log('whatsapp: os avisos do dia falharam:', err.message)); }, 30 * 60000);
   // as chaves (27/11/2026): só este documento, escutado (uma leitura por mudança)
   pararChaves = db.collection('config').doc('whatsapp').onSnapshot(s => {
     const antes = JSON.stringify([chaves.liberado, chaves.numerosDeTeste]);
@@ -311,6 +317,7 @@ function iniciarWhatsapp({ db, log, roboRef, painel }) {
 /** Desliga com o vigia, sem desconectar o celular (a sessão fica no disco para a próxima vez). */
 function pararWhatsapp() {
   if (pararChaves) { try { pararChaves(); } catch (e) { /* segue */ } pararChaves = null; }
+  clearInterval(relogioDosAvisos); relogioDosAvisos = null;
   pararSocket();
 }
 
@@ -427,8 +434,61 @@ async function receber(m) {
   const r = W.lerMensagemRecebida(m);
   if (!r) return;
   const agora = Date.now();
+  // quem falou com o robô (os avisos do dia só vão a quem conversou nos últimos 60 dias)
+  atendimentos[r.numero] = Object.assign({}, W.CONVERSA_NOVA, atendimentos[r.numero] || {}, { vistoEm: agora });
   if (chaves.respostas) await guardarResposta(r, agora);
+  if (chaves.arquivos && W.TIPOS_DE_ARQUIVO_RECEBIDO.includes(r.tipo)) await emOrdem(() => guardarArquivo(m, r, agora));
   if (chaves.autoatendimento && r.tipo === 'texto') await emOrdem(() => atender(r, agora));
+}
+
+/** A mídia da mensagem (o PDF, a foto) em bytes, pela Baileys. O teste troca por uma de mentira. */
+let baixarMidia = async m => baileys.downloadMediaMessage(m, 'buffer', {}, { logger: registro(), reuploadRequest: sock.updateMediaMessage });
+
+/**
+ * O arquivo que o cliente mandou vai para o Drive (chave arquivos, 27/11/2026): pelo envio do formulário do Mandei
+ * (enviosSecretario + partes; o robo/envios-do-nads.js grava). Só de número do cadastro (ou de teste, como a empresa de
+ * teste); a resposta a um Mandei (o último pedido a este número) entra no ticket. Uma confirmação a cada 2 minutos.
+ */
+async function guardarArquivo(m, r, agora) {
+  const teste = numerosDeTeste().some(t => W.mesmoNumero(t, r.numero));
+  if (!chaves.liberado && !teste) return;
+  const empresas = await empresasDoNumero(r.numero, teste);
+  const conversa = atendimentos[r.numero] || null;
+  const empresa = (conversa && conversa.empresa && empresas.find(e => e.codigo === conversa.empresa.codigo)) || (empresas.length === 1 ? empresas[0] : null);
+  if (!empresa) {
+    // número fora do cadastro (fica só no celular) ou em mais de uma empresa (a equipe confere: o arquivo não vai para a pasta errada)
+    if (empresas.length > 1) await avisarAEquipe(empresas[0], r, 'mandou um arquivo (' + (r.arquivo || r.tipo) + ') e o número está em mais de uma empresa');
+    return;
+  }
+  const buffer = await baixarMidia(m);
+  const motivo = W.motivoParaNaoGuardar(r.tipo, buffer ? buffer.length : 0);
+  if (motivo) { st.log('whatsapp: arquivo de', empresa.nome, 'não guardado:', motivo); return; }
+  // a resposta a um Mandei: a última mensagem do robô a este número foi o link de um ticket
+  let ticketDoMandei = '';
+  const caminho = W.pedidoRespondido(conversas, r.numero, agora);
+  if (caminho) {
+    const p = (await st.db.doc(caminho).get()).data() || {};
+    if (p.origem === 'mandei' && typeof p.link === 'string' && p.link) ticketDoMandei = p.link;
+  }
+  const nome = W.nomeDoArquivoRecebido(r, r.mime || '', agora);
+  const envio = W.envioDoArquivoRecebido({ empresa, nome, tamanho: buffer.length, agora, ticketDoMandei: ticketDoMandei || undefined });
+  const ref = await st.db.collection('enviosSecretario').add(envio);
+  const pedaco = W.PEDACO_DO_ARQUIVO_RECEBIDO;
+  for (let n = 0; n < envio.partes; n++) await ref.collection('partes').doc(String(n)).set({ dados: buffer.subarray(n * pedaco, (n + 1) * pedaco) });
+  await ref.update({ status: 'pendente' });
+  if (ticketDoMandei) {
+    // na lista do formulário, como o anexo pelo link (sem a pergunta: veio pelo WhatsApp)
+    const link = st.db.collection('ticketsLinks').doc(ticketDoMandei);
+    const atual = (await link.get()).data() || {};
+    const arquivos = (Array.isArray(atual.arquivos) ? atual.arquivos : []).concat([{ id: ref.id, nome: nome.slice(0, 200), tamanho: buffer.length, itemId: '', enviadoEm: new Date(agora).toISOString() }]);
+    await link.update({ arquivos });
+  }
+  const h = W.historicoCom((conversa && conversa.historico) || [], { de: 'cliente', texto: '(mandou o arquivo ' + nome + ')' });
+  const confirmar = !conversa || !conversa.confirmouEm || agora - conversa.confirmouEm > W.CONFIRMACAO_DE_NOVO_MS;
+  atendimentos[r.numero] = Object.assign({}, W.CONVERSA_NOVA, conversa || {}, { empresa, empresas: [], historico: h }, confirmar ? { confirmouEm: agora } : {});
+  guardarJson(ARQUIVO_DO_ATENDIMENTO, atendimentos, 'o autoatendimento');
+  st.log('whatsapp: arquivo de ' + empresa.nome + ' para o Drive' + (ticketDoMandei ? ' (Mandei)' : '') + ': ' + nome);
+  if (confirmar) await enviar(r.numero, { text: W.textoDoArquivoRecebido(nome, !!ticketDoMandei) }, true);
 }
 
 /** A resposta vai para o último pedido mandado a este número (7 dias), até MAX_RESPOSTAS_POR_PEDIDO. */
@@ -493,6 +553,37 @@ async function avisarAEquipe(e, r, oque) {
     criadoEm: agora, criadoPor: 'robô',
   });
   st.log('whatsapp: ' + e.nome + ' pediu para falar com o escritório');
+  await criarTarefaDaEquipe(e, r, oque).catch(err => st.log('whatsapp: não criei a tarefa da equipe de', e.nome, '-', err.message));
+}
+
+/**
+ * A tarefa no Início do responsável do Contábil da empresa (o Cadastro do nads; sem ele, um Diretor), como a do documento
+ * vencendo (papeis-vencendo.js): uma por empresa por dia (o id é fixo e a gravação é create). A regra é do core.
+ */
+async function criarTarefaDaEquipe(e, r, oque) {
+  const db = st.db;
+  const agora = Date.now();
+  const ref = db.collection('nadsTarefasDelegadas').doc(W.idDaTarefaDoWhatsapp(String(e.codigo), agora));
+  if ((await ref.get()).exists) return false;
+  const equipe = (await db.collection('usuarios').get()).docs.map(d => Object.assign({ uid: d.id }, d.data())).filter(u => u.ativo !== false && u.nome);
+  const diretor = equipe.find(u => u.nivel === 'diretor' || u.nivel === 'dono') || null;
+  const codigo = Number(e.codigo);
+  let nomeResp = '';
+  if (Number.isFinite(codigo)) {
+    const cad = await db.collection('cadastro').where('codigo', '==', codigo).limit(1).get().catch(() => null);
+    nomeResp = cad && !cad.empty ? String(((cad.docs[0].data() || {}).responsaveis || {}).contabil || '') : '';
+  }
+  const u = (nomeResp && equipe.find(x => W.chaveDoNome(x.nome) === W.chaveDoNome(nomeResp) && (x.departamento === 'contabil' || (x.roles || []).includes('contabil')))) || diretor;
+  if (!u) { st.log('whatsapp: ninguém para receber a tarefa de', e.nome); return false; }
+  const ultima = await db.collection('nadsTarefasDelegadas').orderBy('numero', 'desc').limit(1).get();
+  const numero = (Number(ultima.empty ? 0 : ultima.docs[0].get('numero')) || 0) + 1;
+  const historico = (atendimentos[r.numero] && atendimentos[r.numero].historico) || [];
+  const t = W.tarefaDoWhatsapp({ empresa: e, motivo: String(oque), historico, numero: r.numero }, { uid: u.uid, nome: String(u.nome) }, { numero, em: new Date(agora).toISOString(), agora });
+  const campos = Object.assign({}, t, { pessoas: W.pessoasDaTarefa(t) });
+  delete campos.id;
+  try { await ref.create(campos); } catch (err) { if (err.code !== 6) throw err; return false; }
+  st.log('whatsapp: tarefa #' + numero + ' para ' + u.nome + ' (' + e.nome + ')');
+  return true;
 }
 
 /** Manda os arquivos (cada um baixado na hora); a legenda vai no primeiro. Devolve quantos foram. */
@@ -532,6 +623,64 @@ let lerAGuia = async (id, baixar) => {
 };
 
 /**
+ * O que mais o Claude pode usar (27/11/2026, itens 4 a 7): as informações (certidões em certidoes/{codigo}, o que falta mandar
+ * do mês anterior pela régua de cobrança, os honorários do Efí) e os documentos: as certidões que a Área do Cliente já tem
+ * (areasCliente/{token}/documentos, em pedaços base64) e as NFS-e autorizadas do escritório (o PDF sai do XML). Cada parte
+ * que falhar fica de fora sem derrubar as outras. Só lê quando o cliente escreve.
+ */
+async function extrasDaEmpresa(e) {
+  const db = st.db;
+  const cod = String(e.codigo);
+  const agora = Date.now();
+  const tenta = async (oque, f) => { try { return await f(); } catch (err) { st.log('whatsapp: não li ' + oque + ' de', cod, '-', err.message); return null; } };
+  const cert = await tenta('as certidões', async () => { const s = await db.collection('certidoes').doc(cod).get(); return s.exists ? s.data() : null; });
+  const pend = await tenta('as pendências', async () => {
+    const cli = e.clienteId ? (await db.collection('clientes').doc(String(e.clienteId)).get()).data() : null;
+    if (!cli) return null;
+    const competencia = W.mesesParaProcurar(agora, 2)[1];
+    const doc = (await db.collection('documentosMensal').doc(e.clienteId + '_' + competencia).get()).data() || null;
+    return { competencia, faltando: require('./regua-cobranca').faltandoDo(cli, doc) };
+  });
+  const honorarios = await tenta('os honorários', async () => {
+    const contratos = await db.collection('financeiroHonorarios').where('codigo', '==', cod).get();
+    const lista = [];
+    for (const c of contratos.docs) for (const [competencia, b] of Object.entries(c.get('boletosEfi') || {})) lista.push(Object.assign({ competencia }, b));
+    return lista;
+  });
+  const informacoes = W.informacoesDaEmpresa({ certidoes: cert, faltando: pend && pend.faltando, competenciaDasPendencias: pend && pend.competencia, honorarios: honorarios || [], agora });
+  const achados = {};
+  const mes = W.mesesParaProcurar(agora, 1)[0];
+  await tenta('as certidões da Área do Cliente', async () => {
+    const ponteiro = await db.collection('areasClientePorEmpresa').doc(cod).get();
+    const token = ponteiro.exists ? String(ponteiro.get('token') || '') : '';
+    if (!/^[0-9a-f]{40}$/.test(token)) return;
+    const col = db.collection('areasCliente').doc(token).collection('documentos');
+    const docs = (await col.where('tipo', '==', 'certidao').get()).docs.filter(d => Number(d.get('partes')) > 0);
+    if (!docs.length) return;
+    const partes = new Map(docs.map(d => [d.id, Number(d.get('partes'))]));
+    achados.certidao = {
+      registros: docs.map(d => ({ competencia: mes, enviadoEm: String(d.get('validoAte') || ''), arquivos: [{ nome: String(d.get('nome') || 'Certidão.pdf'), id: d.id }] })),
+      baixar: async a => {
+        const pedacos = [];
+        for (let n = 0; n < (partes.get(a.id) || 0); n++) pedacos.push(String(((await col.doc(a.id + '~' + n).get()).data() || {}).base64 || ''));
+        return { nome: a.nome, mime: 'application/pdf', buffer: Buffer.from(pedacos.join(''), 'base64') };
+      },
+    };
+  });
+  await tenta('as NFS-e', async () => {
+    const notas = (await db.collection('nfseEmissoes').where('empresaCodigo', '==', Number(cod)).get()).docs
+      .filter(d => d.get('status') === 'autorizada' && d.get('xmlNfse') && !/homolog/i.test(String(d.get('ambiente') || '')));
+    if (!notas.length) return;
+    const xml = new Map(notas.map(d => [d.id, String(d.get('xmlNfse'))]));
+    achados.nfse = {
+      registros: notas.map(d => ({ competencia: String(d.get('autorizadaEm') || '').slice(0, 7), enviadoEm: String(d.get('autorizadaEm') || ''), arquivos: [{ nome: 'NFS-e ' + (d.get('numeroNfse') || d.id) + '.pdf', id: d.id }] })),
+      baixar: async a => ({ nome: a.nome, mime: 'application/pdf', buffer: Buffer.from(await require('./gerado/danfse').pdfDaDanfse(xml.get(a.id))) }),
+    };
+  });
+  return { informacoes, achados };
+}
+
+/**
  * O Claude escreve (chave ia, 27/11/2026: "quero que o claude realmente escreva"): junta os documentos da empresa (o já
  * enviado e a pasta do Drive), manda ao Claude com as últimas falas, confere a resposta (só códigos da lista) e manda o
  * texto e os arquivos. false = o Claude não respondeu direito: quem chamou segue com o menu.
@@ -543,6 +692,9 @@ async function escreverComOClaude(r, empresa, guardada, agora) {
     const a = await registrosDe(acao, empresa).catch(err => { st.log('whatsapp: não li os documentos (' + acao + ') de', empresa.codigo, '-', err.message); return null; });
     if (a) { achados[tipo] = a; grupos.push({ tipo, registros: a.registros }); }
   }
+  // as certidões (da Área do Cliente), as NFS-e do escritório e as informações (certidões, o que falta, honorários)
+  const extras = await extrasDaEmpresa(empresa).catch(err => { st.log('whatsapp: não li as informações de', empresa.codigo, '-', err.message); return null; });
+  if (extras) for (const [tipo, a] of Object.entries(extras.achados)) { achados[tipo] = a; grupos.push({ tipo, registros: a.registros }); }
   const documentos = W.documentosParaOClaude(grupos);
   // o valor e o vencimento de cada guia, lidos no PDF (27/11/2026: "que dia vence"): as mais recentes, ao mesmo tempo
   if (achados.guia) {
@@ -553,7 +705,7 @@ async function escreverComOClaude(r, empresa, guardada, agora) {
     }));
   }
   const historico = (guardada && guardada.historico) || [];
-  const saida = await perguntarAoClaude(W.conversaParaOClaude({ empresa: empresa.nome, agora, documentos, historico, recebido: r.texto })).catch(() => null);
+  const saida = await perguntarAoClaude(W.conversaParaOClaude({ empresa: empresa.nome, agora, documentos, historico, recebido: r.texto, informacoes: extras ? extras.informacoes : [] })).catch(() => null);
   const resp = W.respostaDoEscritor(saida, documentos);
   if (!resp) return false;
   const h = W.historicoCom(W.historicoCom(historico, { de: 'cliente', texto: r.texto }), { de: 'robo', texto: resp.resposta });
@@ -637,9 +789,11 @@ async function registrosDe(tipo, e) {
     const bs = await db.collection('financeiroBoletos').where('contratoId', '==', c.id).get();
     for (const b of bs.docs) {
       const x = b.data();
-      if (!x.envio || x.envio.status !== 'enviado') continue;
+      // o já enviado por e-mail e, desde 27/11/2026 (a 2ª via), o boleto emitido pelo Efí (efi_<chargeId>), mesmo sem o envio
+      const doEfi = b.id.startsWith('efi_') && Number(x.partes) > 0;
+      if ((!x.envio || x.envio.status !== 'enviado') && !doEfi) continue;
       dados.set(b.id, x);
-      registros.push({ competencia: String(x.competencia || ''), enviadoEm: String(x.envio.enviadoEm || ''), arquivos: [{ nome: 'Boleto de honorários - ' + e.nome + '.pdf', id: b.id }] });
+      registros.push({ competencia: String(x.competencia || ''), enviadoEm: String((x.envio && x.envio.enviadoEm) || ''), arquivos: [{ nome: 'Boleto de honorários - ' + e.nome + '.pdf', id: b.id }] });
     }
   }
   return {
@@ -699,7 +853,8 @@ async function atenderComando(p) {
  * Só para o teste (robo/teste-whatsapp.js): um banco e um socket de mentira, as chaves do teste, os arquivos numa pasta
  * temporária e sem a espera entre as mensagens. Nunca chamado pelo vigia.
  */
-function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso, claudeFalso, leitorFalso }) {
+function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso, claudeFalso, leitorFalso, midiaFalsa }) {
+  if (midiaFalsa) baixarMidia = midiaFalsa;
   if (claudeFalso) perguntarAoClaude = claudeFalso;
   if (leitorFalso) lerAGuia = leitorFalso;
   st = { db, log: log || (() => {}), roboRef: { set: async () => {} }, painel: null };
@@ -710,9 +865,72 @@ function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, l
   ARQUIVO_DO_RASTREIO = path.join(pasta, 'whatsapp-rastreio.json');
   ARQUIVO_DAS_CONVERSAS = path.join(pasta, 'whatsapp-conversas.json');
   ARQUIVO_DO_ATENDIMENTO = path.join(pasta, 'whatsapp-atendimento.json');
+  ARQUIVO_DOS_AVISOS = path.join(pasta, 'whatsapp-avisos.json');
   enviados = []; ultimoEnvio = 0; rastreio = {}; conversas = {}; atendimentos = {};
   esperar = esperarFalso || (async () => {});
   if (driveFalso) drive = () => driveFalso;
 }
 
-module.exports = { prepararParaOTeste, filtrarConsole, iniciarWhatsapp, pararWhatsapp, atenderPedido, atenderComando, pedirPeloWhatsapp, chavesDoWhatsapp, receber };
+/**
+ * Os avisos do dia (27/11/2026, itens 8 a 10; cada um com a sua chave): uma vez por dia, depois das 9h de Brasília, para quem
+ * conversou com o robô nos últimos 60 dias: a guia que vence depois de amanhã (lida no PDF), o certificado digital do Cofre
+ * a 15, 5 e 1 dia, e o boleto do Efí vencido e em aberto. Vão pela fila (pedirPeloWhatsapp: a trava e o freio de sempre),
+ * para o número que conversou. A regra é do core (avisosDoDia); o que já foi mandado fica em whatsapp-avisos.json.
+ */
+async function rodarAvisos(agora) {
+  if (!st || !(chaves.avisoGuias || chaves.avisoCertificado || chaves.avisoBoleto)) return 0;
+  const hojeBr = new Date(agora - 3 * 3600000);
+  const hoje = hojeBr.toISOString().slice(0, 10);
+  if (hojeBr.getUTCHours() < W.HORA_DOS_AVISOS) return 0;
+  const reg = lerJson(ARQUIVO_DOS_AVISOS);
+  if (reg.ultimoDia === hoje) return 0;
+  reg.ultimoDia = hoje;
+  reg.mandados = reg.mandados || {};
+  guardarJson(ARQUIVO_DOS_AVISOS, reg, 'os avisos');
+  const jaMandados = new Set(Object.keys(reg.mandados));
+  const db = st.db;
+  let mandou = 0;
+  for (const [numero, conversa] of Object.entries(atendimentos)) {
+    if (!W.conversouHaPouco(conversa && conversa.vistoEm, agora)) continue;
+    const teste = numerosDeTeste().some(t => W.mesmoNumero(t, numero));
+    if (!chaves.liberado && !teste) continue;
+    const empresas = await empresasDoNumero(numero, teste).catch(() => []);
+    const e = (conversa.empresa && empresas.find(x => x.codigo === conversa.empresa.codigo)) || (empresas.length === 1 ? empresas[0] : null);
+    if (!e) continue;
+    const dados = { empresa: e };
+    if (chaves.avisoGuias) {
+      const g = await registrosDe('guias', e).catch(() => null);
+      const registro = g ? W.envioMaisRecente(g.registros) : null;
+      if (registro) {
+        dados.guias = [];
+        for (const a of registro.arquivos.slice(0, 4)) {
+          const lido = await lerAGuia(a.id, () => g.baixar(a)).catch(() => null);
+          dados.guias.push(Object.assign({ nome: a.nome, competencia: registro.competencia }, lido || {}));
+        }
+      }
+    }
+    if (chaves.avisoCertificado && Number.isFinite(Number(e.codigo))) {
+      const c = await db.collection('cofre').where('codigo', '==', Number(e.codigo)).limit(1).get().catch(() => null);
+      if (c && !c.empty) dados.certificado = String(c.docs[0].get('validade') || '');
+    }
+    if (chaves.avisoBoleto) {
+      const contratos = await db.collection('financeiroHonorarios').where('codigo', '==', String(e.codigo)).get().catch(() => null);
+      dados.boletos = [];
+      if (contratos) for (const c of contratos.docs) for (const [competencia, b] of Object.entries(c.get('boletosEfi') || {})) dados.boletos.push(Object.assign({ competencia }, b));
+    }
+    for (const a of W.avisosDoDia([dados], { avisoGuias: chaves.avisoGuias, avisoCertificado: chaves.avisoCertificado, avisoBoleto: chaves.avisoBoleto }, agora, jaMandados)) {
+      const w = await pedirPeloWhatsapp(db, a.tipo, { telefone: numero, cliente: e.nome, clienteId: e.clienteId, mensagem: () => a.texto, extra: { origem: a.tipo } }).catch(err => { st.log('whatsapp: o aviso não foi para a fila:', err.message); return null; });
+      if (!w || !w.pedido) continue;
+      jaMandados.add(a.chave);
+      reg.mandados[a.chave] = new Date(agora).toISOString();
+      mandou++;
+    }
+  }
+  // só os avisos dos últimos 90 dias ficam lembrados
+  for (const [k, em] of Object.entries(reg.mandados)) if (agora - Date.parse(em) > 90 * 864e5) delete reg.mandados[k];
+  guardarJson(ARQUIVO_DOS_AVISOS, reg, 'os avisos');
+  if (mandou) st.log('whatsapp: ' + mandou + ' aviso(s) do dia na fila');
+  return mandou;
+}
+
+module.exports = { prepararParaOTeste, rodarAvisos, filtrarConsole, iniciarWhatsapp, pararWhatsapp, atenderPedido, atenderComando, pedirPeloWhatsapp, chavesDoWhatsapp, receber };

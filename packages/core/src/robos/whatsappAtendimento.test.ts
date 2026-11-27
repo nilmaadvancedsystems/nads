@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -25,7 +25,7 @@ describe('as chaves', () => {
   });
   it('grava só os campos conhecidos e recusa código estranho', () => {
     const g = chavesParaGravar({ ...CHAVES_DESLIGADAS, mandei: true, empresaDeTeste: '77' }, 'Ana', '2026-11-27T15:00:00.000Z');
-    expect(Object.keys(g).sort()).toEqual(['atualizadoEm', 'atualizadoPor', 'autoatendimento', 'boletos', 'empresaDeTeste', 'guias', 'ia', 'liberado', 'mandei', 'numerosDeTeste', 'respostas']);
+    expect(Object.keys(g).sort()).toEqual(['arquivos', 'atualizadoEm', 'atualizadoPor', 'autoatendimento', 'avisoBoleto', 'avisoCertificado', 'avisoGuias', 'boletos', 'empresaDeTeste', 'guias', 'ia', 'liberado', 'mandei', 'numerosDeTeste', 'respostas']);
     expect(g.mandei).toBe(true);
     expect(() => chavesParaGravar({ ...CHAVES_DESLIGADAS, empresaDeTeste: 'x1' }, 'Ana', '')).toThrow(/código/);
   });
@@ -370,5 +370,98 @@ describe('o Claude escrevendo a resposta', () => {
     for (let i = 0; i < 12; i++) h = historicoCom(h, { de: 'cliente', texto: 'f' + i });
     expect(h.length).toBe(MAX_HISTORICO);
     expect(h[0].texto).toBe('f4');
+  });
+});
+
+describe('a tarefa para a equipe', () => {
+  it('uma por empresa por dia, com o motivo e as falas', () => {
+    expect(idDaTarefaDoWhatsapp('590', Date.parse('2026-11-27T23:30:00Z'))).toBe('whatsapp-590-20261127');
+    const t = tarefaDoWhatsapp(
+      { empresa: { codigo: '590', nome: 'TORIBA TECNOLOGIA LTDA', clienteId: 'c' }, motivo: 'o valor do DAS está errado', historico: [{ de: 'cliente', texto: 'oi' }, { de: 'robo', texto: 'Olá!' }], numero: '5538991717962' },
+      { uid: 'u1', nome: 'Vitor' }, { numero: 7, em: '2026-11-27T20:00:00.000Z', agora: Date.parse('2026-11-27T20:00:00Z') },
+    );
+    expect([t.titulo, t.prioridade, t.prazo, t.numero, t.clientes[0].codigo]).toEqual(['WhatsApp: Toriba Tecnologia LTDA pediu atendimento', 'alta', '2026-11-27', 7, 590]);
+    expect(t.descricao).toContain('Motivo: o valor do DAS está errado');
+    expect(t.descricao).toContain('Cliente: oi\nRobô: Olá!');
+  });
+});
+
+describe('os arquivos que o cliente manda', () => {
+  const AGORA2 = Date.parse('2026-11-27T22:30:15Z');
+  it('o nome: o do cliente, limpo; a foto ganha data e hora', () => {
+    expect(nomeDoArquivoRecebido({ tipo: 'pdf', arquivo: 'C:\\pasta/Extrato Sicoob 10-2026.pdf' }, 'application/pdf', AGORA2)).toBe('Extrato Sicoob 10-2026.pdf');
+    expect(nomeDoArquivoRecebido({ tipo: 'documento', arquivo: 'planilha: <nov>' }, 'text/csv', AGORA2)).toBe('planilha nov.csv');
+    expect(nomeDoArquivoRecebido({ tipo: 'imagem', arquivo: '' }, 'image/jpeg', AGORA2)).toBe('Foto WhatsApp 27-11-2026 19-30-15.jpg');
+  });
+  it('o envio como o do formulário do Mandei', () => {
+    const e = envioDoArquivoRecebido({ empresa: PADARIA, nome: 'a.pdf', tamanho: 1500 * 1024, agora: AGORA2 });
+    expect([e.status, e.partes, e.competencia, e.codigo, e.cliente, e.criadoPorUid, e.ticket]).toEqual(['enviando', 3, '2026-11', '123', 'Padaria Boa', 'whatsapp', undefined]);
+    const m = envioDoArquivoRecebido({ empresa: PADARIA, nome: 'a.pdf', tamanho: 10, agora: AGORA2, ticketDoMandei: 'ABC123' });
+    expect([m.criadoPorUid, m.ticket, m.nome]).toEqual(['mandei', 'ABC123', 'Mandei (WhatsApp) - a.pdf']);
+  });
+  it('o que não vai e a confirmação', () => {
+    expect(motivoParaNaoGuardar('audio', 10)).toMatch(/só PDF/);
+    expect(motivoParaNaoGuardar('pdf', 26 * 1024 * 1024)).toMatch(/25 MB/);
+    expect(motivoParaNaoGuardar('imagem', 10)).toBe('');
+    expect(textoDoArquivoRecebido('a.pdf', true)).toContain('entrou no seu pedido');
+  });
+});
+
+describe('as informações da empresa para o Claude', () => {
+  it('certidões, o que falta e os honorários, em linhas curtas', () => {
+    const l = informacoesDaEmpresa({
+      agora: Date.parse('2026-11-27T15:00:00Z'),
+      certidoes: { fgts: { vence: '2026-12-10', negativa: true }, municipal: { vence: '2026-11-01', negativa: true }, trabalhista: { vence: '2027-01-01', negativa: false }, codigo: '123' },
+      faltando: [{ label: 'Extrato Bancário' }, { label: 'Comprovante' }], competenciaDasPendencias: '2026-10',
+      honorarios: [
+        { competencia: '2026-10', status: 'pago', valor: 850, vencimento: '2026-11-10', pagoEm: '2026-11-08' },
+        { competencia: '2026-11', status: 'emitido', valor: 850, vencimento: '2026-12-10', link: 'https://efi/x' },
+      ],
+    });
+    expect(l).toEqual([
+      'Certidão Municipal: negativa (sem pendência), VENCIDA em 01/11/2026',
+      'Certidão FGTS: negativa (sem pendência), válida até 10/12/2026',
+      'Certidão Trabalhista: positiva (com pendência), válida até 01/01/2027',
+      'Documentos de outubro de 2026 que o cliente ainda não mandou: Extrato Bancário; Comprovante',
+      expect.stringMatching(/^Honorários de novembro de 2026 de R\$\s?850,00, vence 10\/12\/2026: em aberto \(2ª via: https:\/\/efi\/x\)$/),
+      expect.stringMatching(/^Honorários de outubro de 2026 de R\$\s?850,00, vence 10\/11\/2026: PAGO em 08\/11\/2026$/),
+    ]);
+    expect(informacoesDaEmpresa({ agora: 0, faltando: [], competenciaDasPendencias: '2026-10' })).toEqual(['Documentos de outubro de 2026: o escritório já recebeu tudo.']);
+  });
+  it('as informações vão na pergunta ao Claude', () => {
+    const p = conversaParaOClaude({ empresa: 'X', agora: AGORA, documentos: [], historico: [], recebido: 'oi', informacoes: ['Certidão FGTS: negativa'] });
+    expect(p).toContain('INFORMAÇÕES DA EMPRESA:\nCertidão FGTS: negativa');
+  });
+});
+
+describe('os avisos que o robô manda sozinho', () => {
+  const HOJE = Date.parse('2026-11-18T13:00:00Z');   // 10h de Brasília, 18/11
+  const todos = { avisoGuias: true, avisoCertificado: true, avisoBoleto: true };
+  const dados = [{
+    empresa: PADARIA,
+    guias: [{ nome: '10-2026.pdf', competencia: '2026-10', valor: 'R$1234,56', vencimento: '20-11-2026' }, { nome: '10-2026 - DAE ICMS - VALOR R$2,55.pdf', competencia: '2026-10', vencimento: '25-11-2026' }],
+    certificado: '2026-12-03',
+    boletos: [{ competencia: '2026-10', status: 'emitido', valor: 850, vencimento: '2026-11-17', link: 'https://efi/x' }, { competencia: '2026-09', status: 'pago', vencimento: '2026-11-17' }],
+  }];
+  it('a guia a 2 dias, o certificado a 15 e o boleto vencido ontem', () => {
+    const a = avisosDoDia(dados, todos, HOJE, new Set());
+    expect(a.map(x => x.tipo)).toEqual(['avisoGuias', 'avisoCertificado', 'avisoBoleto']);
+    expect(a[0].texto).toContain('a guia DAS de outubro de 2026, no valor de R$1234,56, vence em 20/11/2026 (depois de amanhã)');
+    expect(a[1].texto).toContain('vence em 03/12/2026 (em 15 dias)');
+    expect(a[2].texto).toContain('A 2ª via: https://efi/x');
+  });
+  it('só as chaves ligadas, e uma vez só', () => {
+    expect(avisosDoDia(dados, { ...todos, avisoGuias: false, avisoBoleto: false }, HOJE, new Set()).map(x => x.tipo)).toEqual(['avisoCertificado']);
+    const ja = new Set(avisosDoDia(dados, todos, HOJE, new Set()).map(x => x.chave));
+    expect(avisosDoDia(dados, todos, HOJE, ja)).toEqual([]);
+  });
+  it('as datas e quem pode receber', () => {
+    expect(dataIso('20-11-2026')).toBe('2026-11-20');
+    expect(dataIso('20/11/2026')).toBe('2026-11-20');
+    expect(dataIso('2026-11-20')).toBe('2026-11-20');
+    expect(dataIso('x')).toBe('');
+    expect(conversouHaPouco(HOJE - 10 * 864e5, HOJE)).toBe(true);
+    expect(conversouHaPouco(HOJE - 90 * 864e5, HOJE)).toBe(false);
+    expect(conversouHaPouco(undefined, HOJE)).toBe(false);
   });
 });

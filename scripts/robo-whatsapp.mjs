@@ -19,6 +19,9 @@ const caminho = rel => JSON.stringify(path.join(raiz, rel).split(path.sep).join(
 const codigo = [
   'export * from ' + caminho('packages/core/src/robos/whatsappAtendimento.ts') + ';',
   'export { mesmoNumero } from ' + caminho('packages/core/src/robos/whatsapp.ts') + ';',
+  // a tarefa para a equipe (27/11/2026): quem vê a tarefa e o nome para achar o responsável
+  'export { pessoasDaTarefa } from ' + caminho('packages/core/src/tarefas/regras/delegadas.ts') + ';',
+  'export { chaveDoNome } from ' + caminho('packages/core/src/tarefas/regras/insights.ts') + ';',
 ].join('\n');
 
 const AVISO = [
