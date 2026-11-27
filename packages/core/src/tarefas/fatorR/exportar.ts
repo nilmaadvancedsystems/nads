@@ -46,13 +46,13 @@ export function relatorioDoFatorR(e: EntradaDoRelatorioDoFatorR): RelatorioDoFat
     cabecalho,
     colunas: [
       { rotulo: 'PA', formato: 'texto' }, { rotulo: 'Receita do mês', formato: 'valor' }, { rotulo: 'Origem', formato: 'texto' },
-      { rotulo: 'Folha do mês (competência)', formato: 'valor' }, { rotulo: 'Origem', formato: 'texto' }, { rotulo: 'Fator do mês', formato: 'pct' },
+      { rotulo: 'Folha que entra no PA', formato: 'valor' }, { rotulo: 'Competência da folha', formato: 'texto' }, { rotulo: 'Fator do mês', formato: 'pct' },
       { rotulo: 'RBT12', formato: 'valor' }, { rotulo: 'FS12', formato: 'valor' }, { rotulo: 'Folha somada no FS12', formato: 'texto' }, { rotulo: 'Fator R', formato: 'pct' },
       { rotulo: 'Anexo', formato: 'texto' }, { rotulo: 'Folha que falta (' + num(FATOR_R_EM_PCT).replace(',00', '') + '%)', formato: 'valor' },
     ],
     linhas: e.linhas.map(l => [
       mesAno(l.competencia), vazio(l.receita?.valor), l.receita ? ROTULO_DA_FONTE[l.receita.fonte] : '',
-      vazio(l.folha?.valor), l.folha ? ROTULO_DA_FONTE[l.folha.fonte] : '', vazio(l.fatorDoMes),
+      vazio(l.folha?.valor), l.folhaCompetencia ? mesAno(l.folhaCompetencia) + (l.folha ? ' (' + ROTULO_DA_FONTE[l.folha.fonte] + ')' : '') : '', vazio(l.fatorDoMes),
       l.rbt12, l.fs12, mesAno(l.folhaDe) + ' a ' + mesAno(l.folhaAte), vazio(l.fator), l.anexo || '', vazio(l.folhaQueFalta),
     ]),
     anexos: e.linhas.map(l => l.anexo),
