@@ -25,6 +25,17 @@ const brl = (v: number) => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDi
 
 export type CampoDoMes = t.fatorR.CampoDoFatorR;
 
+/** O porquê de o extrato não ter ido para o faturamento, em palavras (o código do banco junto, para quem for consertar). */
+export function motivoDoFaturamento(e: unknown): string {
+  const codigo = String((e as { code?: string })?.code || '');
+  const msg = String((e as Error)?.message || e || '');
+  if (codigo === 'permission-denied' || /insufficient permissions|permission/i.test(msg)) return 'o banco não deixa a equipe gravar no PGDAS-D (falta liberar na regra do banco: pgdas)';
+  if (/modo desenvolvedor/i.test(msg)) return 'modo desenvolvedor ligado, nada foi enviado';
+  if (/outro CNPJ/i.test(msg)) return msg;
+  if (codigo === 'unavailable' || /offline|network/i.test(msg)) return 'sem conexão com o banco agora';
+  return (msg || 'erro sem mensagem') + (codigo ? ' [' + codigo + ']' : '');
+}
+
 export function useProjecaoDoFatorR() {
   const repo = useRepo();
   const fr = useFatorR();
@@ -158,11 +169,13 @@ export function useProjecaoDoFatorR() {
         const r = f.comOExtrato(dados.anos, extrato, { codigo: empresa.codigo as number, cnpj }, anos);
         if ('erro' in r || !extrato) { setErro('erro' in r ? r.erro : 'Este PDF não é um extrato do PGDAS-D.'); return; }
         // o mesmo extrato vai para o faturamento (a relação do Fiscal e a Área do Cliente), como se o robô do e-CAC tivesse baixado
+        // o motivo de verdade quando não vai (27/11/2026: o aviso dizia só "não deu", sem dizer por quê)
+        let porQue = '';
         const noFaturamento = await fr.extratoNoFaturamento({ codigo: empresa.codigo as number, cnpj, nome: empresa.nome }, extrato)
-          .catch(() => false);
+          .catch((e: unknown) => { porQue = motivoDoFaturamento(e); return false; });
         await gravar(r.docs, 'Extrato de ' + f.mesAno(r.pa) + ': ' + r.receitas + (r.receitas === 1 ? ' mês' : ' meses') + ' de receita'
           + (r.folhas ? ' e ' + r.folhas + (r.folhas === 1 ? ' mês' : ' meses') + ' de folha' : ' (sem a folha: o extrato não trouxe o item 2.3)') + '.'
-          + (noFaturamento ? ' Também foi para o faturamento.' : ' Não deu para levar ao faturamento agora.'));
+          + (noFaturamento ? ' Também foi para o faturamento.' : ' Não foi para o faturamento: ' + (porQue || 'motivo desconhecido') + '.'));
       } catch (e) {
         setErro('Não deu para ler o PDF: ' + ((e as Error)?.message || 'arquivo com problema'));
       } finally { setLendoPdf(false); }
