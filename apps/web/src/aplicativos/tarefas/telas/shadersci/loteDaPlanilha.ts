@@ -8,14 +8,16 @@ import { reservarLoteDoMinimum } from '../../dados/lotesDoMinimum.firestore';
 let reservando = false;
 
 /**
- * O lote para a planilha (M000001), ou null quando não dá (o aviso já foi mostrado). Sem a empresa com código, '' (a planilha
- * sai sem lote, como antes do controle).
+ * O lote para a planilha (M000001), ou null quando não dá (o aviso já foi mostrado). Sem a empresa com código ou sem nenhum
+ * lançamento pronto, '' (a planilha sai sem lote).
  */
 export async function loteParaAPlanilha(o: {
   codigo: number | null | undefined; empresa: string; lancamentos: readonly sci.LancamentoSci[]; origem: string; aviso: (a: OpcoesAviso) => void;
 }): Promise<string | null> {
   if (o.codigo == null) return '';
   const prontos = o.lancamentos.filter(l => !l.problemas.length).length;
+  // nenhum pronto: nada vai para o Importar, então nada entra no SCI e o número do lote não é gasto
+  if (!prontos) return '';
   if (prontos > sci.MAX_LANCAMENTOS_POR_LOTE) {
     o.aviso({ tom: 'info', titulo: 'Planilha grande demais para um lote', texto: 'São ' + prontos + ' lançamentos prontos; cabem ' + sci.MAX_LANCAMENTOS_POR_LOTE + ' por planilha. Divida em duas.' });
     return null;
