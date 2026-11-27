@@ -69,10 +69,44 @@ export function certidaoMunicipalDoTexto(texto: string): CertidaoLida | null {
 }
 
 /** "CND - MUNICIPAL - Venc. 25.02.2027.pdf" (o padrão das certidões nas pastas; o arquivador lê o órgão e o vencimento) */
-export function nomeDoPdfDaCertidao(c: Pick<CertidaoLida, 'vence' | 'emitidaEm' | 'negativa'>): string {
+export function nomeDoPdfDaCertidao(c: Pick<CertidaoLida, 'vence' | 'emitidaEm' | 'negativa'> & { orgao?: OrgaoDaCertidao }): string {
   const [a, m, d] = String(c.vence || c.emitidaEm).split('-');
-  return 'CND - MUNICIPAL - Venc. ' + d + '.' + m + '.' + a + (c.negativa ? '' : ' (POSITIVA)') + '.pdf';
+  const tipo = c.orgao === 'fgts' ? 'CRF - FGTS' : 'CND - MUNICIPAL';
+  return tipo + ' - Venc. ' + d + '.' + m + '.' + a + (c.negativa ? '' : ' (POSITIVA)') + '.pdf';
 }
+
+export type OrgaoDaCertidao = 'municipal' | 'fgts';
+
+/**
+ * O Certificado de Regularidade do FGTS (CRF) pelo texto da página de impressão da Caixa (consulta-crf.caixa.gov.br,
+ * conferida em 27/11/2026): "Certificado de Regularidade do FGTS - CRF Inscrição: 03.238.183/0001-76 Razão social: <NOME>
+ * … certifica que, nesta data, a empresa acima identificada encontra-se em situação regular … Validade: 09/11/2026 a
+ * 08/12/2026 Certificado Número: 2026110918270860683753 Informação obtida em 27/11/2026 15:48:55". null = não é o CRF.
+ * O CRF só sai para a empresa regular (negativa = true sempre; a irregular nem chega aqui).
+ */
+export function certidaoFgtsDoTexto(texto: string): (Omit<CertidaoLida, 'orgao'> & { orgao: 'fgts' }) | null {
+  const u = normal(texto);
+  if (!/CERTIFICADO DE REGULARIDADE DO FGTS/.test(u)) return null;
+  const val = /VALIDADE:?\s*(\d{2})\/(\d{2})\/(20\d{2})\s*A\s*(\d{2})\/(\d{2})\/(20\d{2})/.exec(u);
+  if (!val) return null;
+  const doc = /INSCRI..O:?\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11,14})/.exec(u);
+  const nome = /RAZ.O SOCIAL:?\s*(.+?)\s+(?:ENDERE.O|A CAIXA)/.exec(u);
+  const numero = /CERTIFICADO N.MERO:?\s*(\d{10,30})/.exec(u);
+  return {
+    orgao: 'fgts',
+    numero: numero ? numero[1] : null,
+    cnpj: doc ? doc[1].replace(/\D/g, '') : null,
+    nome: nome ? nome[1].slice(0, 200) : null,
+    emitidaEm: iso(Number(val[1]), Number(val[2]), Number(val[3])),
+    validadeDias: null,
+    vence: iso(Number(val[4]), Number(val[5]), Number(val[6])),
+    chave: null,
+    negativa: /SITUA..O REGULAR/.test(u),
+  };
+}
+
+/** quantos dias antes de vencer o robô pede a nova, por órgão (o CRF novo só sai quando o anterior vence) */
+export const ANTECEDENCIA_POR_ORGAO: Record<OrgaoDaCertidao, number> = { municipal: 10, fgts: 1 };
 
 /** o que o robô guarda por empresa: certidoes/{código} { municipal: { … } } */
 export interface CertidaoDaEmpresa {
@@ -89,6 +123,10 @@ export interface CertidoesDaEmpresa {
   municipal?: CertidaoDaEmpresa;
   /** a prefeitura não tem a empresa no cadastro (não tentar de novo até alguém pedir pela Central) */
   municipalSemCadastro?: string;
+  /** o CRF do FGTS (27/11/2026) */
+  fgts?: CertidaoDaEmpresa;
+  /** a Caixa não tem a empresa como empregadora (não tentar de novo até alguém pedir pela Central) */
+  fgtsSemCadastro?: string;
 }
 
 /** quantos dias antes de vencer o robô tira a nova */
@@ -105,13 +143,18 @@ export function certidoesParaPedir(p: {
   naFila: ReadonlySet<number>;
   hoje: string;
   limite: number;
-}): { status: 'pendente'; orgao: 'municipal'; cnpj: string; codigo: number; empresa: string }[] {
-  const limiar = somarDias(p.hoje, ANTECEDENCIA_DIAS);
+  /** o órgão (sem ele, a municipal) */
+  orgao?: OrgaoDaCertidao;
+}): { status: 'pendente'; orgao: OrgaoDaCertidao; cnpj: string; codigo: number; empresa: string }[] {
+  const orgao: OrgaoDaCertidao = p.orgao || 'municipal';
+  const limiar = somarDias(p.hoje, orgao === 'municipal' ? ANTECEDENCIA_DIAS : ANTECEDENCIA_POR_ORGAO[orgao]);
+  const atual = (r: CertidoesDaEmpresa | undefined) => r?.[orgao];
+  const semCadastro = (r: CertidoesDaEmpresa | undefined) => (orgao === 'fgts' ? r?.fgtsSemCadastro : r?.municipalSemCadastro);
   return p.empresas
     .filter(e => /^\d{14}$/.test(String(e.cnpj)) && e.codigo > 0 && !p.naFila.has(e.codigo))
     .map(e => ({ e, r: p.resumos.get(e.codigo) }))
-    .filter(({ r }) => !r?.municipalSemCadastro && (!r?.municipal?.vence || r.municipal.vence <= limiar))
-    .sort((a, b) => String(a.r?.municipal?.vence || '').localeCompare(String(b.r?.municipal?.vence || '')) || a.e.codigo - b.e.codigo)
+    .filter(({ r }) => !semCadastro(r) && (!atual(r)?.vence || String(atual(r)?.vence) <= limiar))
+    .sort((a, b) => String(atual(a.r)?.vence || '').localeCompare(String(atual(b.r)?.vence || '')) || a.e.codigo - b.e.codigo)
     .slice(0, p.limite)
-    .map(({ e }) => ({ status: 'pendente' as const, orgao: 'municipal' as const, cnpj: String(e.cnpj), codigo: e.codigo, empresa: String(e.nome || '').slice(0, 200) }));
+    .map(({ e }) => ({ status: 'pendente' as const, orgao, cnpj: String(e.cnpj), codigo: e.codigo, empresa: String(e.nome || '').slice(0, 200) }));
 }

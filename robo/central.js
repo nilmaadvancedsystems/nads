@@ -367,6 +367,7 @@ const PEDIDOS_POR_CLIENTE = {
   'pgdas:extrato': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'extrato', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
   // a certidão municipal de Taiobeiras (27/11/2026, robo/certidoes.js)
   'certidoes:municipal': { precisaDocumento: true, modelo: cli => ({ status: 'pendente', orgao: 'municipal', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200) }) },
+  'certidoes:fgts': { precisaDocumento: true, modelo: cli => ({ status: 'pendente', orgao: 'fgts', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200) }) },
   'pgdas:ensaio': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'ensaio', cnpj: cli.documento, codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
 };
 

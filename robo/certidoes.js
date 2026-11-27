@@ -35,13 +35,20 @@ const core = () => require('./gerado/danfse');
 
 function motivoDoPedidoRuim(p) {
   if (!p || typeof p !== 'object') return 'pedido vazio';
-  if (p.orgao !== 'municipal') return 'órgão que o robô ainda não emite (' + String(p.orgao) + ')';
+  if (!ORGAOS[p.orgao]) return 'órgão que o robô ainda não emite (' + String(p.orgao) + ')';
   if (!/^\d{14}$/.test(String(p.cnpj || ''))) return 'sem o CNPJ da empresa (14 números)';
   if (!Number.isInteger(Number(p.codigo)) || Number(p.codigo) <= 0) return 'sem o código da empresa';
   return '';
 }
 
-/** a prefeitura respondeu que não tem a empresa (não adianta tentar de novo) */
+/** os órgãos que o robô emite: o nome na tela, a leitura do core e as chaves do resumo (certidoes/{código}) */
+const ORGAOS = {
+  municipal: { nome: 'Certidão municipal', ler: P => P.certidaoMunicipalDoTexto, chave: 'municipal', semCadastro: 'municipalSemCadastro', quem: 'a prefeitura' },
+  // o CRF do FGTS (27/11/2026, o dono: "o do fgts, usa o mesmo estilo do fgts que já puxamos"): o Chrome do robô do FGTS
+  fgts: { nome: 'CRF do FGTS', ler: P => P.certidaoFgtsDoTexto, chave: 'fgts', semCadastro: 'fgtsSemCadastro', quem: 'a Caixa' },
+};
+
+/** a prefeitura (ou a Caixa) respondeu que não tem a empresa (não adianta tentar de novo) */
 const semCadastroNaPrefeitura = msg => /n[aã]o (foi )?(encontrad|cadastrad|localizad)|inexistente|sem cadastro|nenhum (registro|contribuinte)/i.test(String(msg || ''));
 
 /** O dia (aaaa-mm-dd) e a hora em Brasília. */
@@ -80,34 +87,36 @@ async function atenderPedidos(o) {
     primeiro = false;
     const tentativas = (Number(p.tentativas) || 0) + 1;
     await it.ref.update({ status: 'trabalhando', inicioEm: new Date(agora()).toISOString(), tentativas });
-    painel.fazendo(ROBO, 'Certidão municipal de ' + quem(p));
+    const org = ORGAOS[p.orgao];
+    painel.fazendo(ROBO, org.nome + ' de ' + quem(p));
     try {
-      const r = await o.portal.emitir(String(p.cnpj));
+      const portal = (o.portais && o.portais[p.orgao]) || o.portal;
+      const r = await portal.emitir(String(p.cnpj));
       if (r.erro) {
         if (semCadastroNaPrefeitura(r.erro)) {
-          await o.gravarResumo(Number(p.codigo), { codigo: Number(p.codigo), municipalSemCadastro: diaEHora(agora()).dia });
-          throw Object.assign(new Error('a prefeitura não tem a empresa no cadastro: ' + r.erro), { final: true });
+          await o.gravarResumo(Number(p.codigo), { codigo: Number(p.codigo), [org.semCadastro]: diaEHora(agora()).dia });
+          throw Object.assign(new Error(org.quem + ' não tem a empresa no cadastro: ' + r.erro), { final: true });
         }
-        throw new Error(r.erro);
+        throw Object.assign(new Error(r.erro), { final: !!r.final });
       }
-      const c = P.certidaoMunicipalDoTexto(r.texto);
+      const c = org.ler(P)(r.texto);
       if (!c) throw new Error('a página aberta não é a certidão');
       if (c.cnpj && c.cnpj.slice(0, 8) !== String(p.cnpj).slice(0, 8)) throw Object.assign(new Error('a certidão é de outro CNPJ (' + c.cnpj + ')'), { final: true });
       const bytes = r.pdf;
       if (!bytes || bytes.length < 5 || Buffer.from(bytes.slice(0, 5)).toString('latin1') !== '%PDF-') throw new Error('o PDF da certidão não saiu');
       let arquivo = '';
-      try { arquivo = await o.gravarPdf(p, P.nomeDoPdfDaCertidao(c), bytes); }
+      try { arquivo = await o.gravarPdf(p, P.nomeDoPdfDaCertidao(Object.assign({ orgao: p.orgao }, c)), bytes); }
       catch (err) { o.log('Certidões: o PDF de', quem(p), 'não foi para o Drive -', err.message); }
       const resumo = { numero: c.numero, emitidaEm: c.emitidaEm, vence: c.vence, chave: c.chave, negativa: c.negativa, consultadoEm: new Date(agora()).toISOString() };
-      await o.gravarResumo(Number(p.codigo), { codigo: Number(p.codigo), municipal: resumo, municipalSemCadastro: '' });
+      await o.gravarResumo(Number(p.codigo), { codigo: Number(p.codigo), [org.chave]: resumo, [org.semCadastro]: '' });
       await it.ref.update({ status: 'pronto', fimEm: new Date(agora()).toISOString(), erro: '', resultado: Object.assign({ arquivo }, resumo) });
-      painel.atividade(ROBO, 'Certidão municipal de ' + quem(p) + (c.negativa ? '' : ' (POSITIVA)'), 'vence em ' + (c.vence || '?').split('-').reverse().join('/'));
+      painel.atividade(ROBO, org.nome + ' de ' + quem(p) + (c.negativa ? '' : ' (POSITIVA)'), 'vence em ' + (c.vence || '?').split('-').reverse().join('/'));
       feitos++;
     } catch (err) {
       const motivo = String((err && err.message) || err).slice(0, 300);
       const deNovo = !(err && err.final) && tentativas < MAX_TENTATIVAS;
       await it.ref.update({ status: deNovo ? 'pendente' : 'erro', erro: motivo, fimEm: new Date(agora()).toISOString() });
-      painel.erro(ROBO, 'A certidão municipal de ' + quem(p) + (deNovo ? ' fica para a próxima volta' : ' não saiu'), motivo, { pedido: it.ref.id });
+      painel.erro(ROBO, org.nome + ' de ' + quem(p) + (deNovo ? ' fica para a próxima volta' : ' não saiu'), motivo, { pedido: it.ref.id });
       o.log('Certidões:', quem(p), '-', motivo);
     } finally {
       painel.fazendo(ROBO, null);
@@ -213,6 +222,9 @@ function criarPortalDeTaiobeiras(log) {
           }
         }
         if (!url) return { erro: 'o portal não abriu a certidão' };
+        // 27/11/2026, a segunda volta no servidor: a página da certidão chama a impressão sozinha ao abrir, e o PDF dava
+        // "Page is already being printed". A certidão é HTML parado: abre sem os scripts da página.
+        await page.setJavaScriptEnabled(false);
         await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
         const texto = await page.evaluate(() => document.body ? document.body.innerText : '');
         const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', bottom: '8mm', left: '8mm', right: '8mm' } });
@@ -222,6 +234,62 @@ function criarPortalDeTaiobeiras(log) {
       }
     },
     async fechar() { try { if (browser) await browser.close(); } catch (_) { /* já fechado */ } browser = null; },
+  };
+}
+
+// ---------- o CRF do FGTS (27/11/2026): consulta-crf.caixa.gov.br no Chrome do robô do FGTS ----------
+// A Caixa tem um anti-robô (ShieldSquare) que barra navegador sem janela; o Chrome do robô do FGTS (o perfil da
+// nilmacontabilidade, com janela) passa, como passou no teste de 27/11/2026. O caminho: Tipo de Inscrição CNPJ › a inscrição
+// › Consultar › "Certificado de Regularidade do FGTS - CRF" › Visualizar (a página de impressão). O PDF é feito num Chrome sem
+// janela a partir do HTML da página de impressão. Com o desafio do anti-robô na tela, o pedido para (nunca resolve).
+const CRF = 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf';
+
+function criarPortalDoFgts(log) {
+  let browser = null, semJanela = null;
+  return {
+    async emitir(cnpj) {
+      if (!browser) ({ browser } = await require('./fgts-chrome').ligarNoChrome(log));
+      const page = await browser.newPage();
+      try {
+        await page.goto(CRF, { waitUntil: 'networkidle2', timeout: 90000 }).catch(() => {});
+        const desafio = await page.evaluate(() => /shieldsquare|captcha/i.test(document.title || '') || [...document.querySelectorAll('iframe')].some(f => /captcha|perfdrive|shieldsquare/i.test(f.src || ''))).catch(() => false);
+        if (desafio) return { erro: 'a Caixa mostrou a verificação anti-robô; tento de novo depois', final: false };
+        const campo = '[id="mainForm:txtInscricao1"]';
+        if (!(await page.$(campo))) return { erro: 'não achei o campo da inscrição na consulta do CRF' };
+        await page.evaluate(() => { const s = document.getElementById('mainForm:tipoEstabelecimento'); if (s && s.value !== '1') { s.value = '1'; s.dispatchEvent(new Event('change', { bubbles: true })); } });
+        await page.$eval(campo, e => { e.value = ''; });
+        await page.type(campo, cnpj, { delay: 60 });
+        await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {}), page.click('[id="mainForm:btnConsultar"]')]);
+        const consulta = String(await page.evaluate(() => document.body.innerText || '')).replace(/\s+/g, ' ');
+        const link = await page.evaluate(() => { const a = [...document.querySelectorAll('a')].find(x => /Certificado de Regularidade do FGTS/i.test(x.innerText || '')); if (!a) return false; a.click(); return true; });
+        if (!link) {
+          // irregular, sem cadastro ou sem informação suficiente: o texto da Caixa vai para o pedido
+          const m = /Situa..o de Regularidade do Empregador\s*(.{0,220})/i.exec(consulta);
+          return { erro: 'a Caixa não deu o CRF: ' + (m ? m[1] : consulta.slice(0, 220)), final: true };
+        }
+        await page.waitForFunction(() => /Validade:/i.test(document.body.innerText || ''), { timeout: 60000 }).catch(() => {});
+        await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {}), page.evaluate(() => { const b = document.getElementById('mainForm:btnVisualizar'); if (b) b.click(); })]);
+        await page.waitForFunction(() => /Validade:/i.test(document.body.innerText || ''), { timeout: 30000 }).catch(() => {});
+        const texto = await page.evaluate(() => document.body.innerText || '');
+        const html = await page.content();
+        if (!semJanela) semJanela = await require('puppeteer-core').launch({ executablePath: require('./fgts-chrome').CHROME, headless: true, args: ['--lang=pt-BR'] });
+        const p2 = await semJanela.newPage();
+        try {
+          // sem os scripts da página (a impressão automática trava o PDF)
+          await p2.setJavaScriptEnabled(false);
+          await p2.setContent(html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<head>/i, '<head><base href="https://consulta-crf.caixa.gov.br/consultacrf/pages/">'), { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
+          const pdf = await p2.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', bottom: '8mm', left: '8mm', right: '8mm' } });
+          return { texto, pdf: Buffer.from(pdf) };
+        } finally { await p2.close().catch(() => {}); }
+      } finally {
+        await page.close().catch(() => {});
+      }
+    },
+    async fechar() {
+      try { if (browser) browser.disconnect(); } catch (_) { /* já solto: o Chrome do FGTS fica aberto */ }
+      try { if (semJanela) await semJanela.close(); } catch (_) { /* já fechado */ }
+      browser = null; semJanela = null;
+    },
   };
 }
 
@@ -252,11 +320,11 @@ function iniciarCertidoes(db, log) {
   async function proximo() {
     if (trabalhando || !fila.length || pausaLocal.estaPausado(ROBO) || ocupado.parando()) return;
     trabalhando = true;
-    const portal = criarPortalDeTaiobeiras(log);
+    const portais = { municipal: criarPortalDeTaiobeiras(log), fgts: criarPortalDoFgts(log) };
     try {
       const lote = [...fila].sort((a, b) => (Number(!!b.dados.naFrente) - Number(!!a.dados.naFrente)) || String(a.dados.criadoEm || '').localeCompare(String(b.dados.criadoEm || '')));
       await atenderPedidos({
-        pedidos: lote, portal, log, painel,
+        pedidos: lote, portais, log, painel,
         parar: () => pausaLocal.estaPausado(ROBO) || ocupado.parando(),
         gravarResumo: (codigo, parcial) => db.collection('certidoes').doc(String(codigo)).set(parcial, { merge: true }),
         gravarPdf,
@@ -265,7 +333,7 @@ function iniciarCertidoes(db, log) {
       log('Certidões: o lote não abriu -', err.message);
       painel.erro(ROBO, 'O lote das certidões não abriu', err.message);
     } finally {
-      await portal.fechar();
+      for (const pt of Object.values(portais)) await pt.fechar().catch(() => {});
       painel.fazendo(ROBO, null);
       trabalhando = false;
     }
@@ -280,23 +348,28 @@ function iniciarCertidoes(db, log) {
       if (!(await db.collection(COLECAO).where('lote', '==', dia).limit(1).get()).empty) { loteFeitoEm = dia; return; }
       const resumosSnap = await db.collection('certidoes').get();
       const resumos = new Map(resumosSnap.docs.map(d => [Number(d.id), d.data() || {}]));
-      const algumaPronta = [...resumos.values()].some(r => r.municipal && r.municipal.emitidaEm);
+      const prontaDo = orgao => [...resumos.values()].some(r => r[orgao] && r[orgao].emitidaEm);
       const ontemDia = diaEHora(Date.now() - 86400000).dia;
       const ontemSnap = await db.collection(COLECAO).where('lote', '==', ontemDia).get();
       const ontem = ontemSnap.empty ? null : { total: ontemSnap.size, prontos: ontemSnap.docs.filter(d => d.get('status') === 'pronto').length, erros: ontemSnap.docs.filter(d => d.get('status') === 'erro').length };
-      const motivo = motivoParaNaoPedir({ algumaPronta, ontem });
       loteFeitoEm = dia;
-      if (motivo) { log('Certidões: sem lote hoje -', motivo); return; }
       const empresas = (await require('./clientes-cache').clientesAtivos(db)).docs.map(d => {
         const x = d.data() || {};
         return { codigo: Number(String(x.codigo != null && x.codigo !== '' ? x.codigo : x.codigoOrigem || '').replace(/\D/g, '')), nome: String(x.nome || x.razaoSocial || ''), cnpj: String(x.documento || '').replace(/\D/g, '') };
       });
-      const naFila = new Set(fila.map(it => Number(it.dados.codigo)));
-      const plano = P.certidoesParaPedir({ empresas, resumos, naFila, hoje: dia, limite: Number(cfg.porDia) > 0 ? Math.min(60, Number(cfg.porDia)) : POR_DIA });
+      const limite = Number(cfg.porDia) > 0 ? Math.min(60, Number(cfg.porDia)) : POR_DIA;
+      const plano = [];
+      for (const orgao of Object.keys(ORGAOS)) {
+        // cada órgão só entra no lote depois da primeira certidão dele que deu certo
+        const motivo = motivoParaNaoPedir({ algumaPronta: prontaDo(orgao), ontem });
+        if (motivo) { log('Certidões: sem o lote de ' + orgao + ' hoje -', motivo); continue; }
+        const naFila = new Set(fila.filter(it => it.dados.orgao === orgao).map(it => Number(it.dados.codigo)));
+        plano.push(...P.certidoesParaPedir({ empresas, resumos, naFila, hoje: dia, limite, orgao }));
+      }
       const em = new Date().toISOString();
       for (const p of plano) await db.collection(COLECAO).add(Object.assign(p, { lote: dia, criadoEm: em, criadoPor: 'Robô (lote do dia)', criadoPorUid: 'robo' }));
       log('Certidões: lote do dia', dia, '-', plano.length, 'empresa(s)');
-      if (plano.length) painel.atividade(ROBO, 'Lote do dia das certidões municipais: ' + plano.length + ' empresa(s)', '');
+      if (plano.length) painel.atividade(ROBO, 'Lote do dia das certidões: ' + plano.length + ' pedido(s)', '');
     } catch (err) { log('Certidões: o lote do dia não saiu -', err.message); }
   }
 
@@ -312,4 +385,4 @@ function iniciarCertidoes(db, log) {
   log('Certidões: ligado (a municipal de Taiobeiras)');
 }
 
-module.exports = { iniciarCertidoes, atenderPedidos, criarPortalDeTaiobeiras, motivoDoPedidoRuim, motivoParaNaoPedir, semCadastroNaPrefeitura, diaEHora, COLECAO, PORTAL_TAIOBEIRAS, POR_DIA };
+module.exports = { iniciarCertidoes, atenderPedidos, criarPortalDeTaiobeiras, criarPortalDoFgts, ORGAOS, motivoDoPedidoRuim, motivoParaNaoPedir, semCadastroNaPrefeitura, diaEHora, COLECAO, PORTAL_TAIOBEIRAS, POR_DIA };
