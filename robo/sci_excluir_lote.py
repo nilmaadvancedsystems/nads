@@ -12,7 +12,13 @@
 #   8. fecha a Consulta e os Lançamentos, uma janela por vez e com o SCI respondendo; nunca o SCI (o Vitor: "nao feche o
 #      sistema sem permissao")
 #
-# Uso:  python sci_excluir_lote.py <empresa> <lote>      ex.: python sci_excluir_lote.py 583 M00583BR6W
+# Um lançamento só: na coluna Lote cada lançamento leva [lote]001, [lote]002…; o lote sozinho filtra todos, o código
+# inteiro filtra um. Para um, a LIXEIRA VERDE (o 5º ícone, sem senha) no lugar da vermelha (o Vitor, 27/11/2026: "para
+# excluir lote, voce coloca o lote apenas, o lancamento vc digita o numero todo da chave"; "na coluna lote
+# [numerodolote]001 - lancamento 1").
+#
+# Uso:  python sci_excluir_lote.py <empresa> <lote>               ex.: python sci_excluir_lote.py 583 M00583BR6W
+#       python sci_excluir_lote.py <empresa> --chave <chave>      ex.: python sci_excluir_lote.py 583 --chave M583K7Q003
 import os
 import re
 import sys
@@ -28,9 +34,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a p
 from sci_extrair_lancamentos import Parou, esperar, esperar_janela, filtrada, frente, janela, uia  # noqa: E402
 from sci_importar_planilha import responde  # noqa: E402
 
+# as janelas da rotina (as perguntas de excluir da lixeira verde não são #32770: qualquer outra janela nova do SCI conta)
+GRANDES = ('TfrUnico', 'TApplication', 'TfrLancamento', 'TfrConsultaLancamento', 'TfrStatusProcessoForm')
 LUPA = 4             # tlbCadastro_Padrao_Pai dos Lançamentos contábeis
 RETIRAR_FILTRO = 12  # ToolBar1 da Consulta lançamentos
-LIXEIRA = 5          # ToolBar1 da Consulta lançamentos: o 6º ícone
+LIXEIRA = 5          # ToolBar1 da Consulta lançamentos: o 6º ícone, a vermelha (todos os filtrados: o lote)
+LIXEIRA_VERDE = 4    # o 5º ícone, a verde (só o lançamento selecionado; não pede senha)
 CAMPO_EMPRESA = (241, 52)   # o centro, em relação ao canto da janela Lançamentos contábeis (a tela do Vitor em 27/11/2026)
 MES_DA_REFERENCIA = (711, 53)
 CELULA_DO_LOTE = (74, 90)   # a 1ª célula da coluna Lote (a 1ª coluna), em relação ao canto da Consulta, sem filtro
@@ -55,7 +64,7 @@ def dialogo(pid, vistas):
     def ver(x, _):
         if x not in vistas and win32gui.IsWindowVisible(x):
             try:
-                if win32process.GetWindowThreadProcessId(x)[1] == pid and win32gui.GetClassName(x) == '#32770':
+                if win32process.GetWindowThreadProcessId(x)[1] == pid and win32gui.GetClassName(x) not in GRANDES:
                     achadas.append(x)
             except Exception:
                 pass
@@ -102,7 +111,7 @@ def abrir_consulta(principal, codigo):
     return h, c
 
 
-def filtrar_lote(c, lote):
+def filtrar(c, lote, celula=CELULA_DO_LOTE):
     frente(c)
     botao(c, 'ToolBar1', RETIRAR_FILTRO).double_click_input()
     time.sleep(2)
@@ -110,22 +119,22 @@ def filtrar_lote(c, lote):
         raise Parou('a consulta continuou filtrada depois do Retirar filtro')
     # o título da grade não se lê por UIA: a 1ª célula da 1ª coluna (Lote é a 1ª coluna na consulta do Vitor, 27/11/2026)
     frente(c)
-    mouse.click(coords=no_canto(c, CELULA_DO_LOTE))
+    mouse.click(coords=no_canto(c, celula))
     time.sleep(.6)
     keyboard.send_keys(lote)
     time.sleep(2.5)
     if not filtrada(c):
-        raise Parou('a consulta não filtrou pelo lote ' + lote)
-    print('filtrado pelo lote ' + lote, flush=True)
+        raise Parou('a consulta não filtrou por ' + lote)
+    print('filtrado por ' + lote, flush=True)
 
 
-def esperar_fim(principal, c, segundos=300):
+def esperar_fim(principal, c, lixeira, segundos=300):
     """Terminou quando a consulta filtrada fica vazia e o SCI responde."""
     pid = win32process.GetWindowThreadProcessId(principal)[1]
     vistas = set()
     win32gui.EnumWindows(lambda x, _: vistas.add(x), None)
     frente(c)
-    botao(c, 'ToolBar1', LIXEIRA).click_input()
+    botao(c, 'ToolBar1', lixeira).click_input()
     print('cliquei na lixeira: esperando a senha de segurança (quem digita é a pessoa, até 5 min)', flush=True)
     fim = time.time() + segundos
     confirmou = False
@@ -136,7 +145,7 @@ def esperar_fim(principal, c, segundos=300):
             x, titulo, texto, botoes = d
             vistas.add(x)
             print('o SCI mostrou "' + titulo + '": ' + texto + ' [' + ', '.join(botoes) + ']', flush=True)
-            if 'CONFIRMA A EXCLUSÃO' in texto.upper() and 'Sim' in botoes:
+            if 'EXCLU' in (texto + ' ' + titulo).upper() and 'Sim' in botoes:   # a pergunta de excluir: SEMPRE Sim (o Vitor, 27/11/2026)
                 botoes['Sim'].invoke()
                 print('respondi Sim', flush=True)
                 confirmou = True
@@ -167,19 +176,22 @@ def voltar_a_tela_inicial(principal, janelas):
 
 
 def main():
-    if len(sys.argv) < 3 or not re.match(r'^\d{1,6}$', sys.argv[1]) or not re.match(r'^[A-Z0-9]{1,10}$', sys.argv[2]):
-        print('uso: python sci_excluir_lote.py <empresa> <lote>')
+    args = sys.argv[1:]
+    chave = len(args) == 3 and args[1] == '--chave'
+    alvo = args[2] if chave else (args[1] if len(args) == 2 else '')
+    if not args or not re.match(r'^\d{1,6}$', args[0]) or not re.match(r'^[A-Z0-9]{1,15}$', alvo):
+        print('uso: python sci_excluir_lote.py <empresa> <lote>  |  <empresa> --chave <chave>')
         sys.exit(2)
-    codigo, lote = sys.argv[1], sys.argv[2]
+    codigo = args[0]
     principal = janela('TfrUnico')
     if not principal:
         print('o SCI (Novo Visual Contábil) não está aberto')
         sys.exit(1)
     try:
         h, c = abrir_consulta(principal, codigo)
-        filtrar_lote(c, lote)
-        esperar_fim(principal, c)
-        print('pronto: lote ' + lote + ' excluído da empresa ' + codigo, flush=True)
+        filtrar(c, alvo)
+        esperar_fim(principal, c, LIXEIRA_VERDE if chave else LIXEIRA)
+        print('pronto: ' + ('lançamento ' if chave else 'lote ') + alvo + ' excluído da empresa ' + codigo, flush=True)
         voltar_a_tela_inicial(principal, [c, h])
     except Parou as e:
         print('parei: ' + str(e), flush=True)
