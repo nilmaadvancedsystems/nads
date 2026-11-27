@@ -6,7 +6,7 @@ import { planilhaDeImportacao } from '../extratudo/creditor/arquivos/gerar';
 import {
   COLUNAS_DO_SCI, centavos, dataIso, documentoComMascara, lancamentosParaOSci, lerDePara, lerPlanilhaDoNads,
   classificacaoNormal, conferirComOBalancete, deParaPeloPlano, lerBalanceteDoSci, naturezaDaConta, saldosInvertidos, valorDoBalancete, juntarDePara, mapaDoDePara, planilhaDoDePara, planoDoSci, resumoDoDePara,
-  loteDaOrigem, loteDoMes, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci,
+  empresaDoLote, loteDaOrigem, loteDoMes, loteDoMinimum, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci, TAMANHO_DO_LOTE,
 } from './index';
 
 const CNPJ = '11222333000181';
@@ -102,6 +102,28 @@ describe('a planilha do SCI', () => {
     expect(a.Importar.slice(1).map(r => r[7])).toEqual(['', '']);
     expect(a.Conferir[0].slice(11)).toEqual(['Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo']);
     expect(a.Conferir[1][14]).toBe('teste');
+  });
+
+  // 27/11/2026: "ao exportar os arquivos, voce vai colocar na coluna lote, um codigo propio … que dentre desses numeros tenha o
+  // codigo da empresa"; "vai ser um lote por planilha"
+  it('o lote do minimum: M + a empresa em 5 algarismos + o controle, 10 no máximo, em todas as linhas da planilha', () => {
+    let vez = 0;
+    const sorteios = ['AAAA', '2222', 'BR6W'];
+    expect(loteDoMinimum(583, () => sorteios[vez++])).toBe('M00583BR6W');
+    const lote = loteDoMinimum(583);
+    expect(lote).toMatch(/^M00583[A-HJ-NP-Z2-9]{4}$/);
+    expect(lote).toMatch(/\d.*[A-Z]|[A-Z].*\d/);
+    expect(lote).toHaveLength(TAMANHO_DO_LOTE);
+    expect(loteDoMinimum(7)).toMatch(/^M00007[A-Z0-9]{4}$/);
+    expect(empresaDoLote('M00583BR6W')).toBe(583);
+    expect(empresaDoLote('m00007k7q2')).toBe(7);
+    expect(empresaDoLote('NADS2611')).toBeNull();
+    const s = lancamentosParaOSci(lerPlanilhaDoNads(doNads, 'lancatudo.xls'), { cnpjEmpresa: CNPJ, historicoPadrao: '116' });
+    s[2].problemas.push('teste');
+    const a = abas(planilhaDoSci(s, 'M00583BR6W'));
+    expect(a.Importar.slice(1).map(r => r[7])).toEqual(['M00583BR6W', 'M00583BR6W']);
+    expect(a.Conferir[1][7]).toBe('M00583BR6W');
+    expect(nomeDaPlanilhaSci(CNPJ, '2026-11', 'minimum', 'M00583BR6W')).toBe('sci_11222333000181_2026-11_minimum_M00583BR6W.xlsx');
   });
 
   it('sem problema não tem a aba Conferir', () => {

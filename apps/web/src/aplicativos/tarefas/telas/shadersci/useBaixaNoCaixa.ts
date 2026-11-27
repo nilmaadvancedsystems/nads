@@ -105,7 +105,10 @@ export function useBaixaNoCaixa(min: VmShadersCi) {
     baixar: () => {
       if (!min.cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
       if (!prontos.length) { aviso({ tom: 'info', titulo: 'Nenhuma baixa pronta', texto: 'Passe o mouse na linha para ver o que falta: o caixa e o histórico precisam estar no plano.' }); return; }
-      baixarBytes(sci.planilhaDoSci(lancamentos), sci.nomeDaPlanilhaSci(min.cnpj, mes, 'baixa no caixa'), sci.TIPO_XLSX_SCI);
+      // um lote próprio por planilha, com a empresa no código (27/11/2026)
+      const loteDaPlanilha = codigo != null ? sci.loteDoMinimum(codigo) : '';
+      baixarBytes(sci.planilhaDoSci(lancamentos, loteDaPlanilha), sci.nomeDaPlanilhaSci(min.cnpj, mes, 'baixa no caixa', loteDaPlanilha), sci.TIPO_XLSX_SCI);
+      if (loteDaPlanilha) aviso({ tom: 'ok', titulo: (prontos.length === 1 ? '1 baixa' : prontos.length + ' baixas') + ' na planilha do SCI', texto: 'Lote ' + loteDaPlanilha + '.' });
     },
     carregarExemplo: () => guardar({ arquivo: 'Consulta de exemplo (fictícia).xls', importadoEm: new Date().toISOString(), lancamentos: consultaDeExemplo(), caixa: '', historico: '' }),
     limpar: () => guardar(null),

@@ -296,12 +296,14 @@ export function useExtratoParaSci(min: VmShadersCi) {
     // ---- a planilha
     podeBaixar: prontos.length > 0,
     baixar: () => {
-      const bytes = sci.planilhaDoSci(lancamentos);
-      baixarBytes(bytes, sci.nomeDaPlanilhaSci(min.cnpj, mes, 'extrato ' + nomeDoBanco), sci.TIPO_XLSX_SCI);
+      // um lote próprio por planilha, com a empresa no código (27/11/2026: "vamos usar esse controle de lotes")
+      const loteDaPlanilha = empresa?.codigo != null ? sci.loteDoMinimum(empresa.codigo) : '';
+      const bytes = sci.planilhaDoSci(lancamentos, loteDaPlanilha);
+      baixarBytes(bytes, sci.nomeDaPlanilhaSci(min.cnpj, mes, 'extrato ' + nomeDoBanco, loteDaPlanilha), sci.TIPO_XLSX_SCI);
       const fora = lancamentos.length - prontos.length;
       aviso({
         tom: fora ? 'info' : 'ok', titulo: (prontos.length === 1 ? '1 lançamento' : prontos.length + ' lançamentos') + ' na aba Importar',
-        texto: fora ? (fora === 1 ? '1 linha foi' : fora + ' linhas foram') + ' para a aba Conferir, com o motivo: não entram no SCI.' : 'Pronta para importar no SCI.',
+        texto: (loteDaPlanilha ? 'Lote ' + loteDaPlanilha + '. ' : '') + (fora ? (fora === 1 ? '1 linha foi' : fora + ' linhas foram') + ' para a aba Conferir, com o motivo: não entram no SCI.' : 'Pronta para importar no SCI.'),
       });
     },
   };

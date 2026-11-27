@@ -38,6 +38,36 @@ export function documentoComMascara(doc: string): string {
   return doc.trim();
 }
 
+// o controle do lote: o que não confunde na tela nem no papel (sem 0/O, 1/I)
+const CONTROLE_DO_LOTE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function sortearControle(n: number): string {
+  const b = new Uint8Array(n);
+  globalThis.crypto.getRandomValues(b);
+  return Array.from(b, x => CONTROLE_DO_LOTE[x % CONTROLE_DO_LOTE.length]).join('');
+}
+
+/**
+ * O lote do minimum (27/11/2026, Vitor: "ao exportar os arquivos, voce vai colocar na coluna lote, um codigo propio, feitos em
+ * letras maiusculas, e numeros, que dentre desses numeros tenha o codigo da empresa"; "vai ser um lote por planilha"): M + a empresa
+ * com 5 algarismos + o controle sorteado (letras e números) até os 10 do SCI. M00583BR6W = minimum, empresa 583. Cada planilha, um
+ * novo. sortear: só o teste troca.
+ */
+export function loteDoMinimum(codigoDaEmpresa: number, sortear: (n: number) => string = sortearControle): string {
+  // o código da empresa no SCI tem 5 algarismos (00583)
+  const empresa = String(Math.max(0, Math.trunc(codigoDaEmpresa) || 0)).padStart(5, '0').slice(-5);
+  const n = TAMANHO_DO_LOTE - 1 - empresa.length;
+  let controle = '';
+  // com pelo menos uma letra e um número (o código não vira só número nem só letra)
+  for (let i = 0; i < 50 && !(/[A-Z]/.test(controle) && /\d/.test(controle)); i++) controle = sortear(n).toUpperCase().slice(0, n);
+  return 'M' + empresa + controle;
+}
+
+/** A empresa de um lote do minimum (M00583BR6W → 583), ou null se não é um lote do minimum. */
+export function empresaDoLote(lote: string): number | null {
+  const m = /^M(\d{5})[A-Z0-9]{4}$/.exec(lote.trim().toUpperCase());
+  return m ? Number(m[1]) : null;
+}
+
 /** O lote padrão do nads: NADS + AAMM do mês (NADS2611). */
 export function loteDoMes(mes: string): string {
   const m = mes.match(/^(\d{4})-(\d{2})/);
@@ -138,16 +168,19 @@ function serialExcel(iso: string): number | string {
 
 const numeroOuTexto = (s: string): number | string => (/^\d{1,15}$/.test(s) ? Number(s) : s);
 
-function linhaDaPlanilha(l: LancamentoSci): (string | number)[] {
+/**
+ * lote: o da planilha toda (o do minimum, um por planilha; 27/11/2026: "ao exportar os arquivos, voce vai colocar na coluna lote, um
+ * codigo propio"). Sem ele, a coluna Lote vai vazia, como antes (26/11/2026: "os dados da coluna lote, deixa vazia!").
+ */
+function linhaDaPlanilha(l: LancamentoSci, lote = ''): (string | number)[] {
   return [
     serialExcel(l.data), numeroOuTexto(l.debito), numeroOuTexto(l.credito), l.valor / 100, numeroOuTexto(l.historico),
-    // a coluna Lote vai vazia (26/11/2026: "os dados da coluna lote, deixa vazia!")
-    l.complemento, l.documento, '', l.cnpjEmpresa, l.participanteD, l.participanteC,
+    l.complemento, l.documento, lote, l.cnpjEmpresa, l.participanteD, l.participanteC,
   ];
 }
 
 /** A linha da aba Conferir: a do SCI, o nome das contas, a origem e o motivo de não estar pronto. */
-const linhaDaConferencia = (l: LancamentoSci): (string | number)[] => [...linhaDaPlanilha(l), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
+const linhaDaConferencia = (l: LancamentoSci, lote = ''): (string | number)[] => [...linhaDaPlanilha(l, lote), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
 
 function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkSheet {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -168,24 +201,25 @@ function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkS
  * e os lançamentos prontos, sem a linha Total (o gerador lê da linha 2 e descarta 0 no fim). Aba "Conferir" (só se houver): os
  * que têm problema, com o nome das contas, a origem e o motivo depois das colunas do SCI.
  */
-export function planilhaDoSci(lancamentos: readonly LancamentoSci[]): Uint8Array {
+export function planilhaDoSci(lancamentos: readonly LancamentoSci[], lote = ''): Uint8Array {
   const prontos = lancamentos.filter(l => !l.problemas.length);
   const comProblema = lancamentos.filter(l => l.problemas.length);
-  const importar: (string | number)[][] = [[...COLUNAS_DO_SCI], ...prontos.map(linhaDaPlanilha)];
+  const importar: (string | number)[][] = [[...COLUNAS_DO_SCI], ...prontos.map(l => linhaDaPlanilha(l, lote))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, aba(importar, prontos.length), 'Importar');
   if (comProblema.length) {
-    XLSX.utils.book_append_sheet(wb, aba([[...COLUNAS_DA_CONFERENCIA], ...comProblema.map(linhaDaConferencia)], comProblema.length), 'Conferir');
+    XLSX.utils.book_append_sheet(wb, aba([[...COLUNAS_DA_CONFERENCIA], ...comProblema.map(l => linhaDaConferencia(l, lote))], comProblema.length), 'Conferir');
   }
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
 }
 
 export const TIPO_XLSX_SCI = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** sci_<CNPJ só números>_<aaaa-mm>[_<origem>].xlsx */
-export function nomeDaPlanilhaSci(cnpjEmpresa: string, mes: string, origem = ''): string {
+/** sci_<CNPJ só números>_<aaaa-mm>[_<origem>][_<lote>].xlsx (o lote do minimum no nome: o arquivo e o lote no SCI se acham) */
+export function nomeDaPlanilhaSci(cnpjEmpresa: string, mes: string, origem = '', lote = ''): string {
   const o = origem.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return 'sci_' + (so(cnpjEmpresa) || 'empresa') + '_' + (mes || 'sem-mes') + (o ? '_' + o : '') + '.xlsx';
+  const l = lote.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return 'sci_' + (so(cnpjEmpresa) || 'empresa') + '_' + (mes || 'sem-mes') + (o ? '_' + o : '') + (l ? '_' + l : '') + '.xlsx';
 }
 
 /**

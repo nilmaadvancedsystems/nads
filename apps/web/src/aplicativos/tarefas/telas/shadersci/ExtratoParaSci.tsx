@@ -147,7 +147,7 @@ function ExtratoAberto({ vm }: { vm: VmExtratoParaSci }) {
             </span>
           </div>
         ))}
-        {/* sem o Lote: a coluna vai vazia na planilha (26/11/2026: "os dados da coluna lote, deixa vazia!") */}
+        {/* sem o campo do Lote: a planilha leva o lote do minimum, sorteado a cada planilha, com a empresa no código (27/11/2026) */}
         {s && <SaldoDoExtrato s={s} />}
       </div>
       {/* o que falta para baixar: a conta bancária, a conta do banco no SCI, o CNPJ */}

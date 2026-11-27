@@ -690,10 +690,12 @@ export function useShadersCi() {
       if (!cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
       const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, cnpj);
       const mes = sci.mesPrincipal(guardado.lancamentos);
-      baixarBytes(sci.planilhaDoSci(lsci), sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum'), sci.TIPO_XLSX_SCI);
+      // um lote próprio por planilha, com a empresa no código (27/11/2026: "vamos usar esse controle de lotes")
+      const lote = entrada.empresa.codigo != null ? sci.loteDoMinimum(entrada.empresa.codigo) : '';
+      baixarBytes(sci.planilhaDoSci(lsci, lote), sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum', lote), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
-      if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
-      else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento.' : ' lançamentos.'));
+      if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: (lote ? 'Lote ' + lote + '. ' : '') + 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
+      else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento' : ' lançamentos') + (lote ? ', lote ' + lote + '.' : '.'));
     },
     /** a tela inicial: as empresas do SCI, por nome, e se a lista já chegou do banco */
     empresasDoSci: entrada.lista,
