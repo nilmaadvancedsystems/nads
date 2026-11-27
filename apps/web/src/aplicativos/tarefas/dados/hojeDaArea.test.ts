@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChamadoNaEquipe, PessoaComSenha, RecebidoDoCliente } from './areaCliente';
-import { comunicadoNoAr, resumoDoHoje, solicitacoesQueEsperam, ultimosRecebidos } from './hojeDaArea';
+import { comunicadoNoAr, contarFila, filaDaSolicitacao, filaDoHoje, filaPorResponsavel, resumoDoHoje, solicitacoesQueEsperam, ultimosRecebidos } from './hojeDaArea';
 
 const agora = new Date('2026-11-26T15:00:00Z');
 const cham = (id: string, situacao: ChamadoNaEquipe['situacao'], atualizadoEm: string, nota?: number): ChamadoNaEquipe => ({
@@ -36,5 +36,32 @@ describe('o Hoje da Área do Cliente (26/11/2026)', () => {
   });
   it('os últimos recebidos sem os recusados', () => {
     expect(ultimosRecebidos([rec('a', '2026-11-20'), rec('b', '2026-11-25'), rec('c', '2026-11-26', true)]).map(r => r.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('a fila do Hoje (27/11/2026)', () => {
+  const msg = (de: 'cliente' | 'escritorio', em: string) => ({ de, autor: de, texto: '', em });
+  it('quem falou por último decide a fila; concluída sai', () => {
+    expect(filaDaSolicitacao({ situacao: 'aberto', mensagens: [] })).toBe('equipe');
+    expect(filaDaSolicitacao({ situacao: 'em andamento', mensagens: [msg('cliente', 'a'), msg('escritorio', 'b')] })).toBe('cliente');
+    expect(filaDaSolicitacao({ situacao: 'respondido', mensagens: [msg('escritorio', 'a'), msg('cliente', 'b')] })).toBe('equipe');
+    expect(filaDaSolicitacao({ situacao: 'concluido', mensagens: [] })).toBeNull();
+  });
+  it('a espera em dias, o tom, o arquivo sem aprovação para revisar, o mais antigo primeiro e a conta', () => {
+    const a = { ...cham('a', 'aberto', '2026-11-22T15:00:00Z'), tipo: 'ferias' as ChamadoNaEquipe['tipo'] };
+    const b = { ...cham('b', 'em andamento', '2026-11-20T10:00:00Z'), mensagens: [msg('escritorio', '2026-11-25T15:00:00Z')] };
+    const aprovado = { ...rec('ok', '2026-11-25T10:00:00Z'), aprovado: { por: 'p', em: '2026-11-25T11:00:00Z' } };
+    const itens = filaDoHoje({ chamados: [a, b], recebidos: [rec('novo', '2026-11-26T10:00:00Z'), aprovado, rec('velho', '2026-09-01T10:00:00Z')], agora });
+    expect(itens.map(i => [i.id, i.fila, i.dias, i.tom, i.doDp])).toEqual([
+      ['a', 'equipe', 4, 'atrasado', true],
+      ['b', 'cliente', 1, 'ok', false],
+      ['novo', 'revisar', 0, 'ok', false],
+    ]);
+    expect(contarFila(itens)).toEqual({ equipe: 1, cliente: 1, revisar: 1, atrasados: { equipe: 1, cliente: 0, revisar: 0 } });
+    expect(filaPorResponsavel(itens, i => (i.doDp ? 'Savio' : i.id === 'b' ? 'Ana' : ''))).toEqual([
+      { nome: 'Sem responsável', equipe: 0, cliente: 0, revisar: 1, atrasados: 0 },
+      { nome: 'Ana', equipe: 0, cliente: 1, revisar: 0, atrasados: 0 },
+      { nome: 'Savio', equipe: 1, cliente: 0, revisar: 0, atrasados: 1 },
+    ]);
   });
 });

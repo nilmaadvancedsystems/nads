@@ -99,3 +99,39 @@ nav.menu.area-menu{padding:0;margin-left:-8px;border-bottom:1px solid var(--bord
 .fat-grupos.area-grupos{max-height:none;}
 .area-grupos .fat-grupo-linha{grid-template-rows:auto;}
 .area-grupos .fat-grupo-notas{max-height:none;}
+
+/* o Hoje pelos grandes (27/11/2026: o TaxDome, o Karbon e o Intercom): a fila com abas à esquerda e o pendente de cada
+   responsável à direita; cada linha com a espera em verde (em dia), amarelo (atenção) e vermelho (atrasado) */
+.stat.stat-filtro.painel-numero.hoje-ativo{box-shadow:inset 0 0 0 2px var(--tom,var(--accent));}
+.hoje-grade{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:16px;align-items:start;}
+.hoje-grade .card{margin-bottom:0;}
+.hoje-lado{display:flex;flex-direction:column;gap:16px;}
+@media (max-width:1000px){.hoje-grade{grid-template-columns:1fr;}}
+.hoje-fila-topo{gap:8px;flex-wrap:wrap;}
+.hoje-abas{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;}
+.hoje-aba{position:relative;display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:0;background:none;color:var(--ink-muted);font:inherit;font-size:var(--fs-13);font-weight:600;cursor:pointer;white-space:nowrap;}
+.hoje-aba:hover{color:var(--ink);}
+.hoje-aba.ativa{color:var(--ink);}
+.hoje-aba.ativa::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent);}
+.hoje-aba-n{min-width:20px;padding:0 6px;border-radius:999px;background:var(--surface-3);font-size:var(--fs-11);line-height:18px;text-align:center;color:var(--ink-muted);}
+.hoje-aba.ativa .hoje-aba-n{background:var(--accent-soft);color:var(--accent-ink);}
+.hoje-filtro{gap:6px;font-size:var(--fs-12);}
+.hoje-linhas .ent-linha-abre{grid-template-columns:28px minmax(0,1fr) minmax(0,140px) auto;}
+.hoje-linha-txt{overflow:hidden;}
+.hoje-linha-resp{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);text-align:right;}
+.hoje-espera{display:inline-block;min-width:72px;padding:2px 9px;border-radius:999px;font-size:var(--fs-11);font-weight:600;text-align:center;white-space:nowrap;}
+.hoje-espera-ok{background:var(--success-soft);color:var(--success-ink);}
+.hoje-espera-atencao{background:var(--warn-soft);color:var(--warn);}
+.hoje-espera-atrasado{background:var(--danger-soft);color:var(--danger-ink);}
+@media (max-width:640px){.hoje-linhas .ent-linha-abre{grid-template-columns:28px minmax(0,1fr) auto;}.hoje-linha-resp{display:none;}}
+.hoje-resp{width:100%;}
+.hoje-resp tbody tr{cursor:pointer;}
+.hoje-resp tbody tr:hover td{background:var(--hover-bg);}
+.hoje-resp tbody tr.ativa td{background:var(--accent-soft);}
+.hoje-resp th.num,.hoje-resp td.num{text-align:right;width:56px;}
+.hoje-atrasados{display:inline-block;margin-left:6px;min-width:18px;padding:0 5px;border-radius:999px;background:var(--danger-soft);color:var(--danger-ink);font-size:var(--fs-11);font-weight:700;line-height:16px;text-align:center;}
+.hoje-no-ar{padding:6px;}
+.hoje-no-ar-linha{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:8px;background:none;color:var(--ink);font:inherit;font-size:var(--fs-13);cursor:pointer;text-align:left;}
+.hoje-no-ar-linha:hover{background:var(--hover-bg);}
+.hoje-no-ar-linha span{flex:1;color:var(--ink-muted);}
+.hoje-no-ar-linha b{font-variant-numeric:tabular-nums;}

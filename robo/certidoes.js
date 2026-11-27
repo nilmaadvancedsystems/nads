@@ -46,6 +46,8 @@ const ORGAOS = {
   municipal: { nome: 'Certidão municipal', ler: P => P.certidaoMunicipalDoTexto, chave: 'municipal', semCadastro: 'municipalSemCadastro', quem: 'a prefeitura' },
   // o CRF do FGTS (27/11/2026, o dono: "o do fgts, usa o mesmo estilo do fgts que já puxamos"): o Chrome do robô do FGTS
   fgts: { nome: 'CRF do FGTS', ler: P => P.certidaoFgtsDoTexto, chave: 'fgts', semCadastro: 'fgtsSemCadastro', quem: 'a Caixa' },
+  // a CDT de Minas (27/11/2026): o Login Único da SEF-MG com o certificado do escritório
+  estadual: { nome: 'Certidão estadual (MG)', ler: P => P.certidaoEstadualDoTexto, chave: 'estadual', semCadastro: 'estadualSemCadastro', quem: 'a SEF-MG' },
 };
 
 /** a prefeitura (ou a Caixa) respondeu que não tem a empresa (não adianta tentar de novo) */
@@ -100,7 +102,7 @@ async function atenderPedidos(o) {
         throw Object.assign(new Error(r.erro), { final: !!r.final });
       }
       const c = org.ler(P)(r.texto);
-      if (!c) throw new Error('a página aberta não é a certidão');
+      if (!c) throw new Error('a página aberta não é a certidão · tela: ' + String(r.texto || '').replace(/\s+/g, ' ').slice(0, 400));
       if (c.cnpj && c.cnpj.slice(0, 8) !== String(p.cnpj).slice(0, 8)) throw Object.assign(new Error('a certidão é de outro CNPJ (' + c.cnpj + ')'), { final: true });
       const bytes = r.pdf;
       if (!bytes || bytes.length < 5 || Buffer.from(bytes.slice(0, 5)).toString('latin1') !== '%PDF-') throw new Error('o PDF da certidão não saiu');
@@ -181,13 +183,21 @@ function criarPortalDeTaiobeiras(log) {
         await dormirPadrao(1500);
         await esperarLivre();
         // o campo do CNPJ: limpar, voltar ao começo e digitar tecla por tecla
+        // 27/11/2026, a terceira volta: o campo aparece depois que a tela se redesenha (ao marcar o modelo e o filtro); o robô
+        // espera o campo com a máscara do CNPJ ("__.___.___/____-__") e escolhe ele, não a busca do alto da página
+        await page.waitForFunction(() => [...document.querySelectorAll('input')].some(e => /_\._|__\./.test(e.placeholder || '') && e.getBoundingClientRect().width > 0), { timeout: 45000, polling: 500 }).catch(() => {});
         const temCampo = await page.evaluate(() => {
-          const c = [...document.querySelectorAll('input[type=text]')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !/pesquis|digite o que/i.test(e.placeholder || ''); }).pop();
+          const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+          const todos = [...document.querySelectorAll('input')].filter(e => vis(e) && !/radio|checkbox|hidden|button|submit/i.test(e.type || ''));
+          const c = todos.find(e => /_\._|__\./.test(e.placeholder || '')) || todos.filter(e => !/pesquis|digite o que/i.test(e.placeholder || '') && !/tt-hint|tt-input/.test(e.className || '')).pop();
           if (!c) return false;
           c.setAttribute('data-nads-cnpj', '1');
           return true;
         }).catch(() => false);
-        if (!temCampo) return { erro: 'não achei o campo do CNPJ' };
+        if (!temCampo) {
+          const naTela = String(await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '')).replace(/\s+/g, ' ').slice(0, 300);
+          return { erro: 'não achei o campo do CNPJ · tela: ' + naTela };
+        }
         const campo = await page.$('[data-nads-cnpj="1"]');
         await campo.click({ clickCount: 3 });
         await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
@@ -293,6 +303,77 @@ function criarPortalDoFgts(log) {
   };
 }
 
+// ---------- a CDT de Minas (27/11/2026): cdt.fazenda.mg.gov.br pelo Login Único da SEF-MG, com o certificado ----------
+// O Chrome do robô do FGTS, com o certificado e-CNPJ do escritório; a regra que escolhe o certificado sozinho para a SEF-MG
+// o robô acrescenta ao ligar (chrome-certificado.js). O portal por dentro ainda não foi visto (só abre com o certificado):
+// o robô procura o campo do CNPJ e o botão de emitir pelos textos de costume e, se algo não fechar, a tela vai junto do erro
+// no pedido, para acertar o caminho.
+const CDT = 'https://cdt.fazenda.mg.gov.br/';
+const SEFMG_PADRAO = 'https://[*.]fazenda.mg.gov.br';
+
+function criarPortalEstadualMG(log) {
+  let browser = null;
+  return {
+    async emitir(cnpj) {
+      if (!browser) ({ browser } = await require('./fgts-chrome').ligarNoChrome(log));
+      const page = await browser.newPage();
+      const tela = async () => (page.url() + ' · ' + String(await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '')).replace(/\s+/g, ' ')).slice(0, 400);
+      // o PDF da certidão: pela resposta (application/pdf) ou pela janela nova
+      let pdf = null;
+      page.on('response', async r => { try { if (!pdf && /application\/pdf/i.test(r.headers()['content-type'] || '')) pdf = Buffer.from(await r.buffer()); } catch (_) { /* segue */ } });
+      try {
+        await page.goto(CDT, { waitUntil: 'networkidle2', timeout: 90000 }).catch(() => {});
+        // o Login Único: "Entrar com Certificado Digital" (o Chrome escolhe o certificado pela regra)
+        if (/acesso\.fazenda\.mg\.gov\.br/.test(page.url())) {
+          await page.evaluate(() => { const b = [...document.querySelectorAll('a, button, [role=button]')].find(x => /Certificado Digital/i.test(x.innerText || '')); if (b) b.click(); }).catch(() => {});
+          await page.waitForFunction(() => /cdt\.fazenda\.mg\.gov\.br/.test(location.href), { timeout: 90000 }).catch(() => {});
+        }
+        if (!/cdt\.fazenda\.mg\.gov\.br/.test(page.url())) return { erro: 'o Login Único da SEF-MG não entrou com o certificado · tela: ' + await tela() };
+        await page.waitForFunction(() => !/^\s*Carregando\s*$/i.test(document.body.innerText || '') && document.querySelectorAll('input').length > 0, { timeout: 60000 }).catch(() => {});
+        // o campo do CNPJ: pelo rótulo, pelo nome ou pelo placeholder
+        const achou = await page.evaluate(() => {
+          const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+          const campos = [...document.querySelectorAll('input:not([type=hidden]):not([type=radio]):not([type=checkbox])')].filter(vis);
+          const rotulo = e => ((e.labels && e.labels[0] && e.labels[0].innerText) || e.placeholder || e.name || e.id || e.getAttribute('aria-label') || '');
+          const c = campos.find(e => /cnpj|cpf|identifica|inscri|documento/i.test(rotulo(e))) || (campos.length === 1 ? campos[0] : null);
+          if (!c) return false;
+          c.setAttribute('data-nads-cnpj', '1');
+          return true;
+        }).catch(() => false);
+        if (!achou) return { erro: 'não achei o campo do CNPJ na CDT · tela: ' + await tela() };
+        await page.click('[data-nads-cnpj="1"]', { clickCount: 3 }).catch(() => {});
+        await page.keyboard.press('Backspace');
+        await page.keyboard.type(cnpj, { delay: 60 });
+        await page.evaluate(() => { window.__nadsAbriu = []; window.open = u => { window.__nadsAbriu.push(String(u)); return null; }; });
+        const clicou = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('button, input[type=submit], input[type=button], a')].find(x => x.getBoundingClientRect().width > 0 && /emitir|gerar|consultar|pesquisar|solicitar/i.test((x.innerText || x.value || '').trim()));
+          if (!b) return false;
+          b.click();
+          return true;
+        }).catch(() => false);
+        if (!clicou) return { erro: 'não achei o botão de emitir na CDT · tela: ' + await tela() };
+        for (let i = 0; i < 60 && !pdf; i++) {
+          await dormirPadrao(1000);
+          const url = await page.evaluate(() => (window.__nadsAbriu || [])[0] || '').catch(() => '');
+          if (url) { const r = await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => null); if (r && /pdf/i.test(r.headers()['content-type'] || '')) pdf = Buffer.from(await r.buffer()); break; }
+        }
+        // o texto da certidão: do PDF (pelo pdf.js do robô) ou da página
+        let texto = '';
+        if (pdf) { const P = core(); try { texto = P.textoDoPdf(await P.itensDoPdf(new Uint8Array(pdf))); } catch (_) { texto = ''; } }
+        if (!pdf) {
+          texto = await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '');
+          if (!/CERTID/i.test(texto)) return { erro: 'a certidão estadual não veio · tela: ' + await tela() };
+          pdf = Buffer.from(await page.pdf({ format: 'A4', printBackground: true }).catch(() => Buffer.alloc(0)));
+        }
+        return { texto, pdf };
+      } finally {
+        await page.close().catch(() => {});
+      }
+    },
+    async fechar() { try { if (browser) browser.disconnect(); } catch (_) { /* já solto */ } browser = null; },
+  };
+}
+
 // ---------- o módulo (robo-modulo.js certidoes) ----------
 
 function iniciarCertidoes(db, log) {
@@ -302,6 +383,9 @@ function iniciarCertidoes(db, log) {
   const { ouvir } = require('./ouvinte');
   const P = core();
   painel.modulo(ROBO, NOME, true);
+  // a regra do Chrome que escolhe o certificado sozinho no Login Único da SEF-MG (o dono: "pode fazer", 27/11/2026)
+  try { log('Certidões:', require('./chrome-certificado').garantirRegra(SEFMG_PADRAO, 'fazenda.mg.gov.br')); }
+  catch (err) { log('Certidões: a regra do certificado da SEF-MG não saiu -', err.message); }
   let fila = [];
   let trabalhando = false;
   let loteFeitoEm = '';
@@ -320,7 +404,7 @@ function iniciarCertidoes(db, log) {
   async function proximo() {
     if (trabalhando || !fila.length || pausaLocal.estaPausado(ROBO) || ocupado.parando()) return;
     trabalhando = true;
-    const portais = { municipal: criarPortalDeTaiobeiras(log), fgts: criarPortalDoFgts(log) };
+    const portais = { municipal: criarPortalDeTaiobeiras(log), fgts: criarPortalDoFgts(log), estadual: criarPortalEstadualMG(log) };
     try {
       const lote = [...fila].sort((a, b) => (Number(!!b.dados.naFrente) - Number(!!a.dados.naFrente)) || String(a.dados.criadoEm || '').localeCompare(String(b.dados.criadoEm || '')));
       await atenderPedidos({
@@ -385,4 +469,4 @@ function iniciarCertidoes(db, log) {
   log('Certidões: ligado (a municipal de Taiobeiras)');
 }
 
-module.exports = { iniciarCertidoes, atenderPedidos, criarPortalDeTaiobeiras, criarPortalDoFgts, ORGAOS, motivoDoPedidoRuim, motivoParaNaoPedir, semCadastroNaPrefeitura, diaEHora, COLECAO, PORTAL_TAIOBEIRAS, POR_DIA };
+module.exports = { iniciarCertidoes, atenderPedidos, criarPortalDeTaiobeiras, criarPortalDoFgts, criarPortalEstadualMG, ORGAOS, motivoDoPedidoRuim, motivoParaNaoPedir, semCadastroNaPrefeitura, diaEHora, COLECAO, PORTAL_TAIOBEIRAS, POR_DIA };

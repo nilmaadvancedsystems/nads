@@ -71,11 +71,11 @@ export function certidaoMunicipalDoTexto(texto: string): CertidaoLida | null {
 /** "CND - MUNICIPAL - Venc. 25.02.2027.pdf" (o padrão das certidões nas pastas; o arquivador lê o órgão e o vencimento) */
 export function nomeDoPdfDaCertidao(c: Pick<CertidaoLida, 'vence' | 'emitidaEm' | 'negativa'> & { orgao?: OrgaoDaCertidao }): string {
   const [a, m, d] = String(c.vence || c.emitidaEm).split('-');
-  const tipo = c.orgao === 'fgts' ? 'CRF - FGTS' : 'CND - MUNICIPAL';
+  const tipo = c.orgao === 'fgts' ? 'CRF - FGTS' : c.orgao === 'estadual' ? 'CND - ESTADUAL' : 'CND - MUNICIPAL';
   return tipo + ' - Venc. ' + d + '.' + m + '.' + a + (c.negativa ? '' : ' (POSITIVA)') + '.pdf';
 }
 
-export type OrgaoDaCertidao = 'municipal' | 'fgts';
+export type OrgaoDaCertidao = 'municipal' | 'fgts' | 'estadual';
 
 /**
  * O Certificado de Regularidade do FGTS (CRF) pelo texto da página de impressão da Caixa (consulta-crf.caixa.gov.br,
@@ -105,8 +105,37 @@ export function certidaoFgtsDoTexto(texto: string): (Omit<CertidaoLida, 'orgao'>
   };
 }
 
+/**
+ * A Certidão de Débitos Tributários (CDT) de Minas Gerais pelo texto (cdt.fazenda.mg.gov.br, pelo Login Único com o
+ * certificado do escritório; 27/11/2026). O formato ainda não foi visto por dentro (o portal só abre com o certificado):
+ * a leitura procura os rótulos de costume das certidões (a emissão, a validade "válida até" ou "validade", o número e o
+ * CNPJ) e deve ser conferida com a primeira certidão real. null = não é a CDT (sem a validade).
+ */
+export function certidaoEstadualDoTexto(texto: string): (Omit<CertidaoLida, 'orgao'> & { orgao: 'estadual' }) | null {
+  const u = normal(texto);
+  if (!/CERTID.O/.test(u) || !/(MINAS GERAIS|FAZENDA|ESTADO)/.test(u)) return null;
+  const data = (re: RegExp) => { const m = re.exec(u); return m ? iso(Number(m[1]), Number(m[2]), Number(m[3])) : null; };
+  const vence = data(/V.LIDA AT.:?\s*(\d{2})\/(\d{2})\/(20\d{2})/) || data(/VALIDADE:?\s*(?:AT.\s*)?(\d{2})\/(\d{2})\/(20\d{2})/)
+    || data(/VALIDADE:?\s*\d{2}\/\d{2}\/20\d{2}\s*A\s*(\d{2})\/(\d{2})\/(20\d{2})/);
+  if (!vence) return null;
+  const emitidaEm = data(/(?:EMITIDA EM|DATA DE EMISS.O|EMISS.O:?|EXPEDIDA EM)\s*:?\s*(\d{2})\/(\d{2})\/(20\d{2})/) || vence;
+  const doc = /CNPJ(?:\/CPF)?:?\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})/.exec(u);
+  const numero = /(?:N.MERO|CERTID.O N.?)\s*:?\s*([0-9./-]{5,30})/.exec(u);
+  return {
+    orgao: 'estadual',
+    numero: numero ? numero[1] : null,
+    cnpj: doc ? doc[1].replace(/\D/g, '') : null,
+    nome: null,
+    emitidaEm,
+    validadeDias: null,
+    vence,
+    chave: null,
+    negativa: !/POSITIVA/.test(u) || /POSITIVA COM EFEITO(S)? DE NEGATIVA/.test(u),
+  };
+}
+
 /** quantos dias antes de vencer o robô pede a nova, por órgão (o CRF novo só sai quando o anterior vence) */
-export const ANTECEDENCIA_POR_ORGAO: Record<OrgaoDaCertidao, number> = { municipal: 10, fgts: 1 };
+export const ANTECEDENCIA_POR_ORGAO: Record<OrgaoDaCertidao, number> = { municipal: 10, fgts: 1, estadual: 10 };
 
 /** o que o robô guarda por empresa: certidoes/{código} { municipal: { … } } */
 export interface CertidaoDaEmpresa {
@@ -127,6 +156,9 @@ export interface CertidoesDaEmpresa {
   fgts?: CertidaoDaEmpresa;
   /** a Caixa não tem a empresa como empregadora (não tentar de novo até alguém pedir pela Central) */
   fgtsSemCadastro?: string;
+  /** a CDT de Minas (27/11/2026) */
+  estadual?: CertidaoDaEmpresa;
+  estadualSemCadastro?: string;
 }
 
 /** quantos dias antes de vencer o robô tira a nova */
@@ -149,7 +181,7 @@ export function certidoesParaPedir(p: {
   const orgao: OrgaoDaCertidao = p.orgao || 'municipal';
   const limiar = somarDias(p.hoje, orgao === 'municipal' ? ANTECEDENCIA_DIAS : ANTECEDENCIA_POR_ORGAO[orgao]);
   const atual = (r: CertidoesDaEmpresa | undefined) => r?.[orgao];
-  const semCadastro = (r: CertidoesDaEmpresa | undefined) => (orgao === 'fgts' ? r?.fgtsSemCadastro : r?.municipalSemCadastro);
+  const semCadastro = (r: CertidoesDaEmpresa | undefined) => (orgao === 'fgts' ? r?.fgtsSemCadastro : orgao === 'estadual' ? r?.estadualSemCadastro : r?.municipalSemCadastro);
   return p.empresas
     .filter(e => /^\d{14}$/.test(String(e.cnpj)) && e.codigo > 0 && !p.naFila.has(e.codigo))
     .map(e => ({ e, r: p.resumos.get(e.codigo) }))
