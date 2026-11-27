@@ -266,7 +266,7 @@ function novo(id, tipo, codigo, competencia) {
     let limpou = 0;
     const f7 = criarFilaAlterdata({ banco, limiteMs: 5000, pastaDoPedido: id => path.join(BASE, 'sciex', id), limparTela: async () => { limpou++; },
       rodar: async (rel, a7, passo7) => {
-        recebidos.push([rel, a7.codigo, a7.lote, a7.chave].join(' '));
+        recebidos.push([rel, a7.codigo, a7.lote, a7.chave].join(' ') + (a7.ano ? ' ' + a7.ano : ''));
         await passo7('empresa: ' + a7.codigo);
         if (a7.lote === 'M583ZZZ') return { ok: false, erro: 'a consulta não filtrou por M583ZZZ' };
         return { ok: true, mensagem: (a7.chave ? 'lançamento ' + a7.chave : 'lote ' + a7.lote) + ' excluído da empresa ' + a7.codigo };
@@ -280,9 +280,14 @@ function novo(id, tipo, codigo, competencia) {
     ex('x6', 584, 'M583EDT', '');
     ex('x7', 583, 'M583EDT', 'M583ABC001');
     ex('x8', 583, 'M00583BR6W', 'M00583BR6W');
+    // o de agora (empresa + lote + ano): M + 6 algarismos, o ano vai junto; ano fora de AAAA vira erro
+    pedidos.set('x9', { status: 'pendente', tipo: 'sciExcluir', codigo: 590, lote: 'M000001', chave: 'M000001002', ano: '2026', criadoEm: new Date().toISOString() }); f7.chegou('x9');
+    pedidos.set('x10', { status: 'pendente', tipo: 'sciExcluir', codigo: 590, lote: 'M000001', chave: '', ano: '26', criadoEm: new Date().toISOString() }); f7.chegou('x10');
     await espera(5);
     await f7.ocioso();
-    assert.deepStrictEqual(recebidos, ['sciExcluir 583 M583EDT M583EDT002', 'sciExcluir 583 M583EDT ', 'sciExcluir 583 M00583BR6W ', 'sciExcluir 583 M583ZZZ ']);
+    assert.deepStrictEqual(recebidos, ['sciExcluir 583 M583EDT M583EDT002', 'sciExcluir 583 M583EDT ', 'sciExcluir 583 M00583BR6W ', 'sciExcluir 583 M583ZZZ ', 'sciExcluir 590 M000001 M000001002 2026']);
+    assert.strictEqual(st('x9'), 'pronto');
+    assert.match(pedidos.get('x10').erro, /não é AAAA/);
     assert.strictEqual(st('x1'), 'pronto');
     assert.match(pedidos.get('x1').resultado, /lançamento M583EDT002 excluído/);
     assert.strictEqual(st('x2'), 'pronto');

@@ -11,7 +11,7 @@ const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 const VISTOS = new Set<string>();
 const FEITOS = new Set<string>();
 
-export function useExcluirNoSci(o: { codigo: number | null; empresa: string; saiu: (p: { lote: string; chave: string }) => unknown }) {
+export function useExcluirNoSci(o: { codigo: number | null; empresa: string; saiu: (p: { lote: string; chave: string; ano: string }) => unknown }) {
   const doPc = roboDePcDoUsuario();
   const disponivel = !!doPc && o.codigo != null;
   const [pedidos, setPedidos] = useState<PedidoDeExcluirNoSci[]>([]);
@@ -29,7 +29,7 @@ export function useExcluirNoSci(o: { codigo: number | null; empresa: string; sai
     if (ANDANDO.includes(atual.status)) { VISTOS.add(atual.id); return; }
     if (atual.status !== 'pronto' || !VISTOS.has(atual.id) || FEITOS.has(atual.id)) return;
     FEITOS.add(atual.id);
-    saiu.current({ lote: atual.lote, chave: atual.chave });
+    saiu.current({ lote: atual.lote, chave: atual.chave, ano: atual.ano });
   }, [atual]);
   const andando = pedindo || (!!atual && ANDANDO.includes(atual.status));
   const conexao = useConexaoDoRobo(atual, '');
@@ -43,14 +43,15 @@ export function useExcluirNoSci(o: { codigo: number | null; empresa: string; sai
     conectando: pedindo || semConectar(atual),
     erro,
     /** o que está sendo excluído (o do pedido andando ou do último) */
-    alvo: atual ? (atual.chave ? 'o lançamento ' + atual.chave : 'o lote ' + atual.lote) : '',
+    alvo: atual ? (atual.chave ? 'o lançamento ' + atual.chave : 'o lote ' + atual.lote) + (atual.ano ? ' de ' + atual.ano : '') : '',
     /** o lote inteiro: o SCI pede a senha de segurança no PC */
     doLote: !!atual && !atual.chave,
     cancelar: () => { if (atual && ANDANDO.includes(atual.status)) void cancelarPedidoDoFiscal(atual.id).catch((e: unknown) => setFalha(e instanceof Error ? e.message : String(e))); },
-    excluir: async (lote: string, chave: string) => {
+    /** ano: o do lote (empresa + lote + ano); '' = todos os anos */
+    excluir: async (lote: string, chave: string, ano: string) => {
       if (!disponivel || o.codigo == null || andando) return;
       setFalha(''); conexao.limpar(); setPedindo(true);
-      try { const id = await pedirExclusaoNoSci({ codigo: o.codigo, empresa: o.empresa, lote, chave }); VISTOS.add(id); marcarPedidoFeito(id); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); } finally { setPedindo(false); }
+      try { const id = await pedirExclusaoNoSci({ codigo: o.codigo, empresa: o.empresa, lote, chave, ano }); VISTOS.add(id); marcarPedidoFeito(id); } catch (e) { setFalha(e instanceof Error ? e.message : String(e)); } finally { setPedindo(false); }
     },
   };
 }

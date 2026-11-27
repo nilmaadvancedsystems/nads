@@ -72,10 +72,12 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
   const robo = useLancamentosDoSciPeloRobo({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', chegou: (f, c) => importar(f, c) });
   // excluir no SCI (27/11/2026): quando o robô termina, o que saiu do SCI sai da tela (e do guardado)
   const exclusao = useExcluirNoSci({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', saiu: p => tirarDaTela(p) });
-  function tirarDaTela({ lote, chave }: { lote: string; chave: string }) {
+  // o lote é da empresa num ano (27/11/2026: "Vai ser, empresa, lote, ano os parametros"): o mesmo número em outro ano é outro lote
+  const doLote = (l: sci.LancamentoDaConsulta, lote: string, ano: string) => !!l.lote && l.lote.startsWith(lote) && (!ano || l.data.startsWith(ano));
+  function tirarDaTela({ lote, chave, ano }: { lote: string; chave: string; ano: string }) {
     if (codigo == null) return;
     const g = lerGuardado(codigo, prefixo);
-    const sai = (l: sci.LancamentoDaConsulta) => (chave ? l.lote === chave : !!l.lote && l.lote.startsWith(lote));
+    const sai = (l: sci.LancamentoDaConsulta) => (chave ? l.lote === chave && (!ano || l.data.startsWith(ano)) : doLote(l, lote, ano));
     const n = g ? g.lancamentos.filter(sai).length : 0;
     if (g && n) {
       const novo = { ...g, lancamentos: g.lancamentos.filter(l => !sai(l)) };
@@ -89,13 +91,14 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
     if (codigo == null) return;
     const x = sci.exclusaoPeloLote(l.lote || '', codigo);
     if (!x) return;
-    const doLote = (guardado?.lancamentos || []).filter(o => !!o.lote && o.lote.startsWith(x.lote)).length;
-    const qtd = doLote === 1 ? '1 lançamento' : doLote + ' lançamentos';
+    const ano = l.data.slice(0, 4);
+    const n = (guardado?.lancamentos || []).filter(o => doLote(o, x.lote, ano)).length;
+    const qtd = n === 1 ? '1 lançamento' : n + ' lançamentos';
     const qual = sci.dataParaTexto(l.data) + ' · R$ ' + sci.valorParaTexto(l.valor);
     const r = await modal<'um' | 'lote' | null>({
       icone: 'alert', titulo: 'Excluir no SCI?',
       html: (x.chave ? 'Lançamento de <b>' + qual + '</b>, chave <b>' + x.chave + '</b>.' : 'Lançamento de <b>' + qual + '</b>, sem chave própria: só dá para excluir o lote.') +
-        '<br>O lote <b>' + x.lote + '</b> tem ' + qtd + ' nesta tela.<br><br>O robô do PC de ' + exclusao.rotulo + ' exclui no SCI. No lote inteiro, o SCI pede a ' +
+        '<br>O lote <b>' + x.lote + '</b>' + (ano ? ' de ' + ano : '') + ' tem ' + qtd + ' nesta tela.<br><br>O robô do PC de ' + exclusao.rotulo + ' exclui no SCI. No lote inteiro, o SCI pede a ' +
         '<b>senha de segurança</b> no PC: digite lá.',
       botoes: [
         ...(x.chave ? [{ rotulo: 'Excluir este lançamento', valor: 'um' as const, variante: 'btn-danger' as const }] : []),
@@ -103,8 +106,8 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
         { rotulo: 'Cancelar', valor: null, variante: 'btn-outline' as const },
       ],
     });
-    if (r === 'um' && x.chave) void exclusao.excluir(x.lote, x.chave);
-    else if (r === 'lote') void exclusao.excluir(x.lote, '');
+    if (r === 'um' && x.chave) void exclusao.excluir(x.lote, x.chave, ano);
+    else if (r === 'lote') void exclusao.excluir(x.lote, '', ano);
   }
   const [busca, setBusca] = useState('');
   const [tipo, setTipo] = useState('');
