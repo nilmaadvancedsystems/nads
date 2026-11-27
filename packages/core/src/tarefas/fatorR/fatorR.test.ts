@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { extratoDoPgdas } from '../pgdas/extrato';
 import {
-  anoPadraoDaProjecao, anosDaProjecao, defasagemDaFolha, comOExtrato, competenciasDaProjecao, competenciasEntre, comValorDoMes, fatorRDoPa, fatorRVazio,
+  anoPadraoDaProjecao, anosDaProjecao, defasagemDaFolha, folhaQueEntraNoPa, comOExtrato, competenciasDaProjecao, competenciasEntre, comValorDoMes, fatorRDoPa, fatorRVazio,
   htmlDoFatorR, idDoFatorR, lerFatorRDoAno, linhasDoFatorR, mesesDaEmpresa, planilhaDoFatorR, relatorioDoFatorR, somarMeses,
   type FatorRDoAno, type MesDoFatorR,
 } from './index';
@@ -28,6 +28,10 @@ const somaDaPlanilha = (meses: Record<string, MesDoFatorR>, de: string, k: 'rece
 describe('defasagem da folha (o dono, 27/11/2026: "folha 2027 cai 3 meses depois do fato gerador, 2026 2 meses", contando o mês do fato gerador)', () => {
   it('pelo ano do PA: a folha vai até 1 mês antes do PA até 2026, 2 meses antes de 2027 em diante', () => {
     expect(['2025-06', '2026-01', '2026-12', '2027-01', '2030-05'].map(defasagemDaFolha)).toEqual([1, 1, 1, 2, 2]);
+  });
+
+  it('a folha que entra em cada PA: a do mês anterior até 2026, a de 2 meses antes de 2027 em diante; nenhuma no PA 01/2027', () => {
+    expect(['2025-06', '2026-05', '2026-12', '2027-01', '2027-02', '2027-03'].map(folhaQueEntraNoPa)).toEqual(['2025-05', '2026-04', '2026-11', null, '2026-12', '2027-01']);
   });
 
   it('a janela da folha: 12 meses pela competência, o último N meses antes do PA', () => {
@@ -100,11 +104,17 @@ describe('linhasDoFatorR', () => {
   it('a linha do mês: a receita, a folha, o fator do mês (folha ÷ receita, a linha "Fator R:" da planilha) e o do PA', () => {
     const ls = linhasDoFatorR(planilhaFicticia(), '2027-01', '2027-12');
     expect(ls).toHaveLength(12);
-    expect(ls[0]).toMatchObject({ competencia: '2027-01', receita: dig(50000), folha: dig(14000), fatorDoMes: 28, pa: '2027-01', de: '2026-01', ate: '2026-12', folhaDe: '2025-12', folhaAte: '2026-11' });
+    // a folha na linha do PA em que ela entra (o dono, 27/11/2026: "um mês para baixo em 2026 e 2 em 2027"): o PA 01/2027 não
+    // ganha folha nova; o 02/2027 ganha a de 12/2026 (em branco); o 03/2027, a de 01/2027
+    expect(ls[0]).toMatchObject({ competencia: '2027-01', receita: dig(50000), folha: null, folhaCompetencia: null, fatorDoMes: null, pa: '2027-01', de: '2026-01', ate: '2026-12', folhaDe: '2025-12', folhaAte: '2026-11' });
+    expect(ls[1]).toMatchObject({ folha: null, folhaCompetencia: '2026-12' });
+    expect(ls[2]).toMatchObject({ folha: dig(14000), folhaCompetencia: '2027-01', fatorDoMes: 28 });
+    // em 2026, a do mês anterior: no PA 11/2026, a folha de 10/2026 (12.100)
+    expect(linhasDoFatorR(planilhaFicticia(), '2026-11', '2026-11')[0]).toMatchObject({ folha: dig(12100), folhaCompetencia: '2026-10' });
     // 11/2026 e 12/2026 em branco: a janela de 01/2027 tem 10 meses com número
     expect(ls[0].mesesComReceita).toBe(10);
     // o mês sem receita não tem fator do mês
-    expect(linhasDoFatorR(planilhaFicticia(), '2026-11', '2026-11')[0].fatorDoMes).toBeNull();
+    expect(linhasDoFatorR(planilhaFicticia(), '2026-12', '2026-12')[0].fatorDoMes).toBeNull();
   });
 });
 
@@ -192,7 +202,10 @@ describe('Exportar Excel e Imprimir', () => {
     expect(rel.nome).toBe('Projeção Fator R 2027 9001');
     expect(rel.cabecalho).toContainEqual(['Fator R do PA 11/2026', '25,38% · Anexo V (receita de 11/2025 a 10/2026; folha de 11/2025 a 10/2026)']);
     expect(rel.linhas[0].slice(0, 3)).toEqual(['11/2026', '', '']);
-    expect(rel.linhas[2].slice(0, 6)).toEqual(['01/2027', 50000, 'Digitado', 14000, 'Digitado', 28]);
+    // o PA 01/2027 não ganha folha nova
+    expect(rel.linhas[2].slice(0, 6)).toEqual(['01/2027', 50000, 'Digitado', '', '', '']);
+    // o PA 11/2026 ganha a folha de 10/2026
+    expect(rel.linhas[0].slice(3, 5)).toEqual([12100, '10/2026 (Digitado)']);
   });
 
   it('a planilha abre com os números como número', () => {

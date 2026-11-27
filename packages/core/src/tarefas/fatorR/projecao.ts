@@ -46,8 +46,14 @@ export interface FatorRDoPa {
 export interface LinhaDoFatorR extends FatorRDoPa {
   competencia: string;
   receita: ValorDoMes | null;
+  /**
+   * a folha que entra neste PA (27/11/2026, o dono: "a folha deveria estar um mês para baixo em 2026 e 2 em 2027"): a da
+   * competência folhaCompetencia, 1 mês antes do PA em 2026 e 2 meses antes de 2027 em diante; null quando não tem número
+   */
   folha: ValorDoMes | null;
-  /** a linha "Fator R:" da planilha: a folha do mês ÷ a receita do mês, em % (truncado em 2 casas) */
+  /** a competência da folha da linha; null na virada (o PA 01/2027 não ganha folha nova: a de 11/2026 entrou em 12/2026) */
+  folhaCompetencia: string | null;
+  /** a linha "Fator R:" da planilha: a folha da linha ÷ a receita do mês, em % (truncado em 2 casas) */
   fatorDoMes: number | null;
 }
 
@@ -99,13 +105,24 @@ export function fatorRDoPa(meses: MesesDoFatorR, pa: string): FatorRDoPa {
   };
 }
 
-/** As linhas da projeção, de 'de' até 'ate': o mês (receita, folha e o fator do mês) e o Fator R do PA. */
+/**
+ * A competência da folha que entra pela primeira vez no FS12 deste PA: a do mês antes do PA em 2026 (e antes), a de 2 meses
+ * antes de 2027 em diante. Na virada a janela fica parada um mês: o PA 01/2027 não ganha folha nova (null).
+ */
+export function folhaQueEntraNoPa(pa: string): string | null {
+  const c = somarMeses(pa, -defasagemDaFolha(pa));
+  const doAnterior = somarMeses(somarMeses(pa, -1), -defasagemDaFolha(somarMeses(pa, -1)));
+  return c === doAnterior ? null : c;
+}
+
+/** As linhas da projeção, de 'de' até 'ate': a receita do mês, a folha que entra no PA, o fator do mês e o Fator R do PA. */
 export function linhasDoFatorR(meses: MesesDoFatorR, de: string, ate: string): LinhaDoFatorR[] {
   return competenciasEntre(de, ate).map(c => {
-    const m = meses[c];
-    const receita = m?.receita ?? null, folha = m?.folha ?? null;
+    const receita = meses[c]?.receita ?? null;
+    const folhaCompetencia = folhaQueEntraNoPa(c);
+    const folha = folhaCompetencia ? meses[folhaCompetencia]?.folha ?? null : null;
     return {
-      ...fatorRDoPa(meses, c), competencia: c, receita, folha,
+      ...fatorRDoPa(meses, c), competencia: c, receita, folha, folhaCompetencia,
       fatorDoMes: receita && receita.valor > 0 && folha ? truncar((folha.valor / receita.valor) * 100, 2) : null,
     };
   });
