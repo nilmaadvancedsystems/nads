@@ -3,25 +3,28 @@
 // campos da consulta" que o SCI exporta (.xls), lida e mostrada na tabela do minimum, com o nome das contas e dos históricos. Só para
 // ver: nada volta para o SCI nem para os Lançamentos. O arquivo fica guardado por empresa, só neste navegador.
 import { sci } from '@nads/core';
-import { CampoDataComCalendario, Icone, useRetorno } from '@nads/ui';
+import { BotaoAcao, CampoDataComCalendario, Icone, LogoSci, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { BalaoDeGuia } from './BalaoDeGuia';
 import { ContaNaTabela, HistoricoNaTabela } from './CelulasDaTabela';
 import { Paleta, type ItemDaPaleta } from './Paleta';
+import { rotuloDaCompetenciaDoSci, useLancamentosDoSciPeloRobo, type RoboDoSci } from './useLancamentosDoSciPeloRobo';
 import type { VmShadersCi } from './useShadersCi';
 
 interface Guardado { arquivo: string; importadoEm: string; lancamentos: sci.LancamentoDaConsulta[] }
 const PREFIXO = 'nads-minimum-razao-v1|';
-function lerGuardado(codigo: number | null): Guardado | null {
+// a Contabilização (27/11/2026) guarda o que o robô puxou à parte do Visualizar lançamentos
+const PREFIXO_DA_CONTABILIZACAO = 'nads-minimum-contabilizacao-v1|';
+function lerGuardado(codigo: number | null, prefixo = PREFIXO): Guardado | null {
   if (codigo == null) return null;
-  try { const g = JSON.parse(localStorage.getItem(PREFIXO + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.lancamentos) ? g : null; } catch { return null; }
+  try { const g = JSON.parse(localStorage.getItem(prefixo + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.lancamentos) ? g : null; } catch { return null; }
 }
 /** a empresa já tem a consulta do SCI importada neste navegador (os Lançamentos escondem o "Quero visualizar lançamentos") */
 export const temConsultaDoSci = (codigo: number | null) => !!lerGuardado(codigo);
-function gravarGuardado(codigo: number, g: Guardado | null) {
-  try { if (g) localStorage.setItem(PREFIXO + codigo, JSON.stringify(g)); else localStorage.removeItem(PREFIXO + codigo); } catch { /* sem espaço: fica só na tela */ }
+function gravarGuardado(codigo: number, g: Guardado | null, prefixo = PREFIXO) {
+  try { if (g) localStorage.setItem(prefixo + codigo, JSON.stringify(g)); else localStorage.removeItem(prefixo + codigo); } catch { /* sem espaço: fica só na tela */ }
 }
 
 /** "Lançamento on-line fiscal" → "Fiscal" */
@@ -53,10 +56,18 @@ function chaveDoRazao(l: LinhaDoRazao, c: ColunaDoRazao): string | number {
 /** o valor com o lado: positivo é devedor (D), negativo é credor (C) */
 const saldoTexto = (v: number) => sci.valorParaTexto(Math.abs(v)) + (v ? (v > 0 ? ' D' : ' C') : '');
 
-export function RazaoDoSci({ vm }: { vm: VmShadersCi }) {
+/**
+ * modo: 'razao' é o Visualizar lançamentos (o arquivo trazido à mão); 'contabilizacao' é a Contabilização (27/11/2026: "pega o layout
+ * completo de lancamentos, e cria um botao chamado vitor com o icone da sci"): a mesma tela, com o botão Vitor do SCI, que pede ao
+ * robô do PC os lançamentos da competência e mostra a planilha quando ela volta.
+ */
+export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'razao' | 'contabilizacao' }) {
   const codigo = vm.empresa?.codigo ?? null;
+  const contabilizacao = modo === 'contabilizacao';
+  const prefixo = contabilizacao ? PREFIXO_DA_CONTABILIZACAO : PREFIXO;
   const { aviso } = useRetorno();
-  const [guardado, setGuardado] = useState<Guardado | null>(() => lerGuardado(codigo));
+  const [guardado, setGuardado] = useState<Guardado | null>(() => lerGuardado(codigo, prefixo));
+  const robo = useLancamentosDoSciPeloRobo({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', chegou: f => importar(f) });
   const [busca, setBusca] = useState('');
   const [tipo, setTipo] = useState('');
   const [ordem, setOrdem] = useState<{ coluna: ColunaDoRazao; desc: boolean } | null>(null);
@@ -98,14 +109,15 @@ export function RazaoDoSci({ vm }: { vm: VmShadersCi }) {
       return;
     }
     const g: Guardado = { arquivo: arquivo.name, importadoEm: new Date().toISOString(), lancamentos: lidos };
-    gravarGuardado(codigo, g);
+    gravarGuardado(codigo, g, prefixo);
     setGuardado(g); setTipo(''); setBusca(''); setAberto(null); setJanela(false);
     aviso({ tom: 'ok', titulo: lidos.length === 1 ? '1 lançamento do SCI' : lidos.length + ' lançamentos do SCI', texto: arquivo.name });
   }
   const escolher = () => campo.current?.click();
   // sem consulta importada, a janela de trazer o arquivo já abre (25/11/2026: "Que na outra tela ja aparece uma popup para upar os
   // lancamentos a serem visualizados"); fechada, fica o Importar a consulta pulsando em cima
-  const [janela, setJanela] = useState(() => !lerGuardado(codigo));
+  // na Contabilização, sem janela: o botão Vitor fica no meio da tela vazia
+  const [janela, setJanela] = useState(() => !contabilizacao && !lerGuardado(codigo, prefixo));
   const [arrastando, setArrastando] = useState(false);
   useEffect(() => {
     if (!janela) return;
@@ -181,6 +193,14 @@ export function RazaoDoSci({ vm }: { vm: VmShadersCi }) {
 
   return (
     <>
+      {contabilizacao ? (
+        <AcoesDoTopo>
+          <button type="button" className="btn btn-outline sci-btn-icone" onClick={() => vm.abrirApp(null)} title="Voltar aos apps" aria-label="Voltar aos apps"><Icone nome="chevronLeft" /></button>
+          {guardado && robo.disponivel && <PuxarDoSci robo={robo} />}
+          {/* trazer a consulta à mão também (quem não tem o robô, ou o arquivo já exportado) */}
+          <button type="button" className="btn btn-outline sci-btn-icone" onClick={escolher} title="Importar a consulta do SCI à mão (.xls, .xlsx ou .csv)" aria-label="Importar a consulta do SCI à mão"><Icone nome="upload" /></button>
+        </AcoesDoTopo>
+      ) : (
       <AcoesDoTopo>
         <button type="button" className="btn btn-outline sci-btn-icone" onClick={() => vm.abrirApp('lancamentos')} title="Voltar aos Lançamentos" aria-label="Voltar aos Lançamentos"><Icone nome="chevronLeft" /></button>
         {/* sem consulta importada, o Importar pulsa em destaque para guiar (25/11/2026: "Essa tela tbm, deixar piscando") */}
@@ -193,6 +213,8 @@ export function RazaoDoSci({ vm }: { vm: VmShadersCi }) {
             </BalaoDeGuia>
           )}
       </AcoesDoTopo>
+      )}
+      {contabilizacao && <SituacaoDoRobo robo={robo} />}
       <input ref={campo} type="file" accept=".xls,.xlsx,.csv" hidden onChange={e => { void importar(e.target.files?.[0]); e.target.value = ''; }} />
       {janela && createPortal(
         <div className="sci-paleta-fundo" onMouseDown={e => { if (e.target === e.currentTarget) setJanela(false); }}>
@@ -215,7 +237,24 @@ export function RazaoDoSci({ vm }: { vm: VmShadersCi }) {
       )}
 
       {/* sem consulta importada, nada (25/11/2026: "Remove isso", a caixa de trazer o arquivo): o Importar a consulta fica em cima */}
-      {!guardado ? null : (
+      {!guardado ? (contabilizacao ? (
+        // a Contabilização vazia: o botão Vitor no meio, com a competência do SCI
+        <div className="sci-contab-vazia">
+          <span className="sci-contab-marca" aria-hidden="true"><LogoSci altura={28} /></span>
+          <h3>Os lançamentos do SCI</h3>
+          {robo.disponivel ? (
+            <>
+              <p>Escolha a competência e o robô do PC de {robo.rotulo} puxa a consulta do SCI, com as contrapartidas de todos os lançamentos.</p>
+              <PuxarDoSci robo={robo} />
+            </>
+          ) : (
+            <>
+              <p>O SCI é puxado pelo robô do PC de quem tem o robô. Daqui, traga a <b>Impressão de campos da consulta</b> exportada do SCI.</p>
+              <button type="button" className="btn btn-primary" onClick={escolher}><Icone nome="upload" />Importar a consulta</button>
+            </>
+          )}
+        </div>
+      ) : null) : (
         <>
           {/* os filtros, no jeito da Consulta de Movimentos do SCI (25/11/2026: "Nesse layout"; "tirando a organizacao das colunas, mas
               queria a organizacao dos elementos assim"): o rótulo em cima de cada um, o tipo, a conta com o nome, o período e o Consultar.
@@ -339,5 +378,48 @@ export function RazaoDoSci({ vm }: { vm: VmShadersCi }) {
         </>
       )}
     </>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------- o botão Vitor do SCI
+const MESES_DO_SCI: readonly (readonly [string, string])[] = [['00', 'Ano todo'], ['01', 'Janeiro'], ['02', 'Fevereiro'], ['03', 'Março'], ['04', 'Abril'], ['05', 'Maio'],
+  ['06', 'Junho'], ['07', 'Julho'], ['08', 'Agosto'], ['09', 'Setembro'], ['10', 'Outubro'], ['11', 'Novembro'], ['12', 'Dezembro']];
+
+/**
+ * A competência do SCI e o botão Vitor (27/11/2026: "cria um botao chamado vitor com o icone da sci, ao inves do alterdata"): o mês
+ * (ou o ano todo, o 00 do SCI) e o ano; o clique pede ao robô do PC e a planilha entra na tela quando volta.
+ */
+function PuxarDoSci({ robo }: { robo: RoboDoSci }) {
+  const [mes, setMes] = useState('00');
+  const [ano, setAno] = useState(String(new Date().getFullYear()));
+  const valido = /^\d{4}$/.test(ano);
+  const competencia = mes + '/' + ano;
+  return (
+    <span className="sci-puxar">
+      <MenuSuspenso rotulo={MESES_DO_SCI.find(m => m[0] === mes)?.[1] || mes} className="btn btn-outline sci-puxar-mes" titulo="A competência do SCI" largura={180}
+        itens={MESES_DO_SCI.map(([v, r]) => ({ rotulo: r, icone: v === mes ? 'check' as const : undefined, onClick: () => setMes(v) }))} />
+      <input className="input sci-puxar-ano" aria-label="O ano da competência" inputMode="numeric" maxLength={4} value={ano}
+        onChange={e => setAno(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyDown={e => { if (e.key === 'Enter' && valido) void robo.pedir(competencia); }} />
+      <BotaoAcao className="btn btn-primary btn-icone-alterdata sci-puxar-botao" carregando={robo.andando} textoCarregando={robo.rotulo} disabled={!valido}
+        onClick={() => { void robo.pedir(competencia); }} title={'Puxar os lançamentos de ' + rotuloDaCompetenciaDoSci(competencia) + ' do SCI, pelo robô do PC de ' + robo.rotulo}
+        aria-label={'Puxar os lançamentos do SCI pelo robô de ' + robo.rotulo}>
+        <LogoSci altura={14} />{robo.rotulo}
+      </BotaoAcao>
+    </span>
+  );
+}
+
+/** O andamento do robô do SCI: a barra, o passo do roteiro e o Cancelar; o erro, quando não deu. */
+function SituacaoDoRobo({ robo }: { robo: RoboDoSci }) {
+  const barra = robo.andando || robo.lendo;
+  const texto = robo.erro || (robo.lendo ? 'A planilha chegou: lendo os lançamentos…'
+    : robo.andando ? (robo.conectando ? 'Chamando o robô do PC de ' + robo.rotulo + '…' : 'Puxando ' + rotuloDaCompetenciaDoSci(robo.competencia) + ' do SCI' + (robo.etapa ? ' · ' + robo.etapa : '')) : '');
+  if (!barra && !texto) return null;
+  return (
+    <div className={'imp-robo-fiscal sci-contab-robo' + (robo.erro ? ' ext-neg' : '')} role="status" aria-label={barra ? 'Puxando do SCI' : undefined}>
+      {barra && <div className={'imp-robo-barra' + (robo.conectando && !robo.lendo ? ' conectando' : '')}><span style={robo.conectando && !robo.lendo ? undefined : { width: (robo.lendo ? 100 : Math.max(4, robo.pct)) + '%' }} /></div>}
+      {texto && <span>{texto}</span>}
+      {robo.andando && !robo.conectando && <button type="button" className="btn btn-ghost btn-sm imp-robo-cancelar" onClick={robo.cancelar} title="O robô para e fecha as janelas do SCI">Cancelar</button>}
+    </div>
   );
 }

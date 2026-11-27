@@ -8534,6 +8534,19 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-upload-area > svg{width:22px;height:22px;color:var(--ink-muted);}
 .sci-upload.arrastando .sci-upload-area{border-color:var(--accent);background:var(--accent-soft);}
 .sci-upload-pe{margin-top:4px !important;font-size:var(--fs-12) !important;}
+/* a Contabilização do minimum (27/11/2026): a tela vazia com o botão Vitor do SCI no meio, a competência e o andamento do robô */
+.sci-contab-vazia{display:flex;flex-direction:column;align-items:center;gap:10px;width:460px;max-width:100%;margin:8vh auto 0;padding:28px;border-radius:16px;
+  border:1px solid var(--border);background:var(--surface);text-align:center;}
+.sci-contab-vazia h3{margin:4px 0 0;font-size:var(--fs-18,18px);font-weight:600;color:var(--ink);}
+.sci-contab-vazia > p{margin:0 0 8px;max-width:360px;font-size:var(--fs-13);line-height:1.5;color:var(--ink-muted);}
+.sci-contab-vazia > p b{color:var(--ink);font-weight:600;}
+.sci-contab-marca{display:inline-grid;place-items:center;padding:8px 12px;border-radius:12px;background:#fff;}
+.sci-puxar{display:inline-flex;align-items:center;gap:6px;}
+.sci-puxar .sci-puxar-mes{min-width:120px;justify-content:space-between;}
+.sci-puxar input.sci-puxar-ano{width:64px;height:32px;text-align:center;font-variant-numeric:tabular-nums;}
+.sci-puxar-botao img{border-radius:3px;background:#fff;padding:1px 2px;}
+.sci-contab-robo{max-width:720px;margin:0 auto 10px;}
+.sci-contab-robo .imp-robo-barra{flex:1 1 200px;}
 /* o "Quero visualizar lançamentos", centrado (25/11/2026): embaixo da tabela, ou no meio da área vazia */
 .sci-ver-razao{display:flex;justify-content:center;margin-top:18px;}
 /* sem lançamento, no centro exato da tela (o resto da tela continua clicável) */

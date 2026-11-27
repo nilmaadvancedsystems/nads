@@ -335,7 +335,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // os Prazos do mês: o Fiscal, o admin e o Diretor, no modo desenvolvedor até ser aprovado (só o Fiscal tem prazos por ora)
     (a.id !== 'prazos' || ((op.admin || ehDiretor(op) || op.departamento === 'fiscal') && novidadeLigada('prazos'))) &&
     (a.id !== 'lancatudo' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('lancatudo'))) &&
-    (a.id !== 'shadersci' || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
+    // o minimum na versão final para os diretores (27/11/2026: "Publica o minimum na final apenas para diretores, pode publicar
+    // direto, irei precisar gravar algumas coisas no banco"); para o resto do Contábil, só no modo desenvolvedor
+    (a.id !== 'shadersci' || ehDiretor(op) || ((op.admin || op.departamento === 'contabil') && novidadeLigada('shadersci'))) &&
     // o Controle Forestry só para quem está liberado (25/11/2026: "Controle forestry somente para fernando, depois peco para
     // liberar para algum usuario pra nao ficar muito poluido"): nem o diretor, nem o admin
     (a.id !== 'controle-contabil' || t.controleContabilLiberadoPara(op.nome)) &&
