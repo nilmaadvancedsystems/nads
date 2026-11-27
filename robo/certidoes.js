@@ -145,10 +145,14 @@ async function fecharSemJanela() {
 }
 
 function criarPortalDeTaiobeiras(log) {
-  let browser = null;
+  let browser = null, doFgts = false;
   return {
     async emitir(cnpj) {
-      if (!browser) browser = await chromeSemJanela();
+      // o Chrome sem janela; se ele não abrir (27/11/2026: não abre enquanto o do FGTS está aberto), o Chrome do robô do FGTS
+      if (!browser) {
+        try { browser = await chromeSemJanela(); doFgts = false; }
+        catch (err) { log('Certidões: o Chrome sem janela não abriu (' + String(err.message || err).slice(0, 80) + '); uso o do robô'); ({ browser } = await require('./fgts-chrome').ligarNoChrome(log)); doFgts = true; }
+      }
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 1280, height: 900 });
@@ -255,7 +259,12 @@ function criarPortalDeTaiobeiras(log) {
         await page.close().catch(() => {});
       }
     },
-    async fechar() { browser = null; await fecharSemJanela(); },
+    async fechar() {
+      // o Chrome do robô do FGTS só se solta (fica aberto); o sem janela fecha
+      if (browser && doFgts) { try { browser.disconnect(); } catch (_) { /* já solto */ } }
+      browser = null; doFgts = false;
+      await fecharSemJanela();
+    },
   };
 }
 
@@ -302,14 +311,25 @@ function criarPortalDoFgts(log) {
         await page.waitForFunction(() => /Validade:/i.test(document.body.innerText || ''), { timeout: 30000 }).catch(() => {});
         const texto = await page.evaluate(() => document.body.innerText || '');
         const html = await page.content();
-        const p2 = await (await chromeSemJanela()).newPage();
-        try {
-          // sem os scripts da página (a impressão automática trava o PDF)
-          await p2.setJavaScriptEnabled(false);
-          await p2.setContent(html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<head>/i, '<head><base href="https://consulta-crf.caixa.gov.br/consultacrf/pages/">'), { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
-          const pdf = await p2.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', bottom: '8mm', left: '8mm', right: '8mm' } });
-          return { texto, pdf: Buffer.from(pdf) };
-        } finally { await p2.close().catch(() => {}); }
+        // o PDF: primeiro no próprio Chrome do robô (27/11/2026, a sétima volta: o Chrome sem janela não abre enquanto o do
+        // FGTS está aberto, "The browser is already running"); se esse não imprimir, no sem janela
+        const limpo = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<head>/i, '<head><base href="https://consulta-crf.caixa.gov.br/consultacrf/pages/">');
+        const imprimirEm = async b => {
+          const p2 = await b.newPage();
+          try {
+            // sem os scripts da página (a impressão automática trava o PDF)
+            await p2.setJavaScriptEnabled(false);
+            await p2.setContent(limpo, { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
+            return Buffer.from(await p2.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', bottom: '8mm', left: '8mm', right: '8mm' } }));
+          } finally { await p2.close().catch(() => {}); }
+        };
+        let pdf = null, falha = '';
+        try { pdf = await imprimirEm(browser); } catch (err) { falha = String(err.message || err).slice(0, 120); }
+        if (!pdf) {
+          try { pdf = await imprimirEm(await chromeSemJanela()); }
+          catch (err) { return { erro: 'o PDF do CRF não saiu (no Chrome do robô: ' + falha + '; no sem janela: ' + String(err.message || err).slice(0, 120) + ')' }; }
+        }
+        return { texto, pdf };
       } finally {
         await page.close().catch(() => {});
       }
@@ -368,7 +388,20 @@ function criarPortalEstadualMG(log) {
           await page.waitForFunction(() => location.host === 'cdt.fazenda.mg.gov.br', { timeout: 90000, polling: 1000 }).catch(() => {});
         }
         if (!noCdt()) return { erro: 'o Login Único da SEF-MG não entrou com o certificado (o Chrome pode ter pedido para escolher o certificado; regra: ' + regraDoCertificado + ') · tela: ' + await tela() };
-        await page.waitForFunction(() => !/^\s*Carregando\s*$/i.test(document.body.innerText || '') && document.querySelectorAll('input').length > 0, { timeout: 60000 }).catch(() => {});
+        // 27/11/2026, a sétima volta: dentro da CDT, a tela pede "Selecione uma das opções abaixo para emitir uma nova CDT":
+        // CIDADÃO, EMPRESA ou PRODUTOR RURAL PF. O robô escolhe EMPRESA (o menor elemento com esse texto) e espera o campo.
+        await page.waitForFunction(() => /EMPRESA/i.test(document.body.innerText || '') || document.querySelectorAll('input').length > 0, { timeout: 60000 }).catch(() => {});
+        const escolheu = await page.evaluate(() => {
+          const els = [...document.querySelectorAll('button, a, [role=button], div, span, label, li, p, h2, h3, h4')]
+            .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && /^\s*EMPRESA\s*$/i.test(e.innerText || ''); });
+          if (!els.length) return false;
+          els.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
+          const alvo = els[0].closest('button, a, [role=button]') || els[0];
+          alvo.click();
+          return true;
+        }).catch(() => false);
+        if (escolheu) await dormirPadrao(2000);
+        await page.waitForFunction(() => document.querySelectorAll('input:not([type=hidden]):not([type=radio]):not([type=checkbox])').length > 0, { timeout: 60000, polling: 500 }).catch(() => {});
         // o campo do CNPJ: pelo rótulo, pelo nome ou pelo placeholder
         const achou = await page.evaluate(() => {
           const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
