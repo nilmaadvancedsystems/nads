@@ -83,7 +83,7 @@ export function criarAreaClienteFirestore(quem: () => string): RepoAreaCliente {
     criadoEm: instante(x.criadoEm), atualizadoEm: instante(x.atualizadoEm),
     avaliacao: avaliacaoDe(x.avaliacao),
     passos: ac.lerPassos(texto(x.tipo), x.passos),
-    rhnet: x.rhnet && typeof x.rhnet === 'object' ? { situacao: texto((x.rhnet as Record<string, unknown>).situacao), id: numero((x.rhnet as Record<string, unknown>).id), erro: texto((x.rhnet as Record<string, unknown>).erro) } : null,
+    rhnet: x.rhnet && typeof x.rhnet === 'object' ? { situacao: texto((x.rhnet as Record<string, unknown>).situacao), id: numero((x.rhnet as Record<string, unknown>).id), erro: texto((x.rhnet as Record<string, unknown>).erro), erroLiberacao: texto((x.rhnet as Record<string, unknown>).erroLiberacao) } : null,
   }), maisRecente);
 
   // o comprovante mandado pela guia: a guia sai do nome (vale também para os que chegaram antes do robô novo) (plano do Acessórias, 18/11/2026, ficha comprovante-da-guia, parte B; frase do dono: "Seguir")

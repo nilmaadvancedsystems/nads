@@ -90,10 +90,13 @@ async function atenderLote(o) {
   let ultimoPerfilEm = o.ultimoPerfilEm || 0;
   if (!P.dentroDaJanelaDoEcac(agora())) return { feitos, parouPor: 'janela', esperarAte: agora() + P.esperaAteAJanela(agora()) };
   const entrada = await o.portal.entrar();
+  // a tela de agora, quando algo não fecha (27/11/2026): vai para o pedido, para acertar o caminho do portal
+  const tela = async () => { try { return o.portal.diagnostico ? String(await o.portal.diagnostico()) : ''; } catch (_) { return ''; } };
   if (entrada) {
+    const naTela = await tela();
     // a verificação de robô ou o login que não fecha: ninguém resolve de madrugada; tenta de novo só amanhã
     painel.erro(ROBO, entrada === 'captcha' ? 'O gov.br pediu a verificação "não sou um robô"' : 'O e-CAC não entrou com o certificado do escritório', 'os pedidos esperam a próxima noite');
-    for (const it of o.pedidos) await it.ref.update({ aviso: entrada === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô"; tento de novo na próxima noite' : 'o e-CAC não entrou com o certificado; tento de novo na próxima noite' }).catch(() => {});
+    for (const it of o.pedidos) await it.ref.update({ aviso: entrada === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô"; tento de novo na próxima noite' : 'o e-CAC não entrou com o certificado; tento de novo na próxima noite', ...(naTela ? { tela: naTela } : {}) }).catch(() => {});
     return { feitos, parouPor: entrada === 'captcha' ? 'captcha' : 'login', esperarAte: proximaNoite(agora()) };
   }
   for (const it of o.pedidos) {
@@ -110,7 +113,7 @@ async function atenderLote(o) {
     await it.ref.update({ status: 'trabalhando', inicioEm: new Date(agora()).toISOString(), tentativas, aviso: '' });
     painel.fazendo(ROBO, 'PGDAS-D de ' + quem(p));
     const passos = [];
-    const passo = t => { passos.push({ em: new Date(agora()).toISOString(), texto: String(t).slice(0, 300) }); };
+    const passo = t => { passos.push({ em: new Date(agora()).toISOString(), texto: String(t).slice(0, 900) }); };
     try {
       passo('trocando o perfil para Procurador de ' + p.cnpj);
       const perfil = await o.portal.trocarPerfil(p.cnpj);
@@ -146,6 +149,8 @@ async function atenderLote(o) {
       feitos++;
     } catch (err) {
       const motivo = String((err && err.message) || err).slice(0, 300);
+      const naTela = await tela();
+      if (naTela) passo('tela: ' + naTela);
       const deNovo = tentativas < MAX_TENTATIVAS && !/procura[cç][aã]o|outro CNPJ|n[aã]o h[aá] declara/i.test(motivo);
       await it.ref.update({ status: deNovo ? 'pendente' : 'erro', erro: motivo, fimEm: new Date(agora()).toISOString(), passos: passos.slice(-40) });
       painel.erro(ROBO, 'O PGDAS-D de ' + quem(p) + (deNovo ? ' fica para a próxima volta' : ' não saiu'), motivo, { pedido: it.ref.id });
@@ -173,15 +178,28 @@ function criarPortalNoChrome(log) {
   const textoDaPagina = () => page.evaluate(() => (document.body ? document.body.innerText : '')).catch(() => '');
   const temCaptcha = () => page.evaluate(() => [...document.querySelectorAll('iframe[src*="hcaptcha"], iframe[src*="recaptcha"]')]
     .some(f => { const r = f.getBoundingClientRect(); const s = getComputedStyle(f); return r.width > 250 && r.height > 60 && s.visibility !== 'hidden' && s.display !== 'none'; })).catch(() => false);
-  const clicarTexto = re => page.evaluate(fonte => {
-    const re = new RegExp(fonte, 'i');
-    const el = [...document.querySelectorAll('button, a, [role=button], input[type=submit], input[type=button]')]
-      .find(e => e.offsetParent !== null && re.test((e.innerText || e.value || e.getAttribute('aria-label') || e.title || '').trim()));
-    if (!el) return false;
-    el.click();
+  // Clica no elemento visível com este texto, na página e nos quadros (iframes). 27/11/2026: na primeira noite o "Acesso Gov
+  // BR" do login era uma IMAGEM com onclick (não botão nem link), e o robô não achava; agora olha também imagem (alt), o que
+  // tem onclick e os itens de menu, e escolhe o menor elemento que tem o texto (o próprio botão, não a página inteira).
+  const clicarEm = (quadro, fonte) => quadro.evaluate(f => {
+    const re = new RegExp(f, 'i');
+    const rotulo = e => (e.innerText || e.value || e.getAttribute('aria-label') || e.title || e.getAttribute('alt') || '').replace(/\s+/g, ' ').trim();
+    const visivel = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+    const candidatos = [...document.querySelectorAll('button, a, [role=button], [role=menuitem], input[type=submit], input[type=button], input[type=image], img[alt], [onclick], li, span, div')]
+      .filter(e => visivel(e) && re.test(rotulo(e)) && rotulo(e).length <= 120);
+    if (!candidatos.length) return false;
+    candidatos.sort((a, b) => rotulo(a).length - rotulo(b).length);
+    candidatos[0].click();
     return true;
-  }, re.source).catch(() => false);
-  const logado = async () => /cav\.receita\.fazenda\.gov\.br/.test(page.url()) && /Alterar perfil de acesso|Sair com seguran|Titular \(|Procurador/i.test(await textoDaPagina());
+  }, fonte).catch(() => false);
+  const clicarTexto = async re => {
+    for (const q of [page.mainFrame(), ...page.mainFrame().childFrames()]) if (await clicarEm(q, re.source)) return true;
+    return false;
+  };
+  // logado de verdade: a página interna do e-CAC (/ecac) com o cabeçalho de quem entrou. 27/11/2026: a página de LOGIN tem a
+  // palavra "procurador" no texto, e o robô achou que já estava dentro
+  const logado = async () => /cav\.receita\.fazenda\.gov\.br\/ecac/i.test(page.url()) && !/autenticacao/i.test(page.url())
+    && /Alterar perfil de acesso|Sair com seguran/i.test(await textoDaPagina());
   const resumoDaTela = async () => ({ em: new Date().toISOString(), texto: (page.url() + ' · ' + String(await textoDaPagina()).replace(/\s+/g, ' ')).slice(0, 300) });
 
   return {
@@ -194,10 +212,18 @@ function criarPortalNoChrome(log) {
       await dormirPadrao(3000);
       if (await logado()) return '';
       if (!/acesso\.gov\.br/.test(page.url())) {
-        await page.goto(PORTAL.login, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+        if (!/autenticacao/i.test(page.url())) await page.goto(PORTAL.login, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
         await dormirPadrao(2000);
-        await clicarTexto(/Entrar com gov\.?br|Acesso gov\.?br/);
-        await dormirPadrao(4000);
+        // o "Acesso Gov BR" é a imagem gov-br.png com onclick validarHcaptcha('govBr'): o hCaptcha invisível roda no clique,
+        // como para qualquer pessoa; se ele abrir um desafio de verdade, o laço abaixo para com 'captcha'
+        const clicouImagem = await page.evaluate(() => {
+          const img = document.querySelector('img[onclick*="govBr"], img[alt*="Gov BR" i], img[src*="gov-br"]');
+          if (!img) return false;
+          img.click();
+          return true;
+        }).catch(() => false);
+        if (!clicouImagem) await clicarTexto(/Entrar com gov\.?br|Acesso gov\.?br/);
+        await dormirPadrao(5000);
       }
       const ate = Date.now() + 90000;
       let clicouCert = false;
@@ -212,20 +238,27 @@ function criarPortalNoChrome(log) {
     async trocarPerfil(cnpj) {
       await page.goto(PORTAL.ecac, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
       await dormirPadrao(2000);
-      if (!(await clicarTexto(/Alterar perfil de acesso/))) return 'não achei o "Alterar perfil de acesso" no e-CAC';
+      const abriu = (await page.evaluate(() => { const b = document.querySelector('#btnPerfil'); if (!b) return false; b.click(); return true; }).catch(() => false))
+        || (await clicarTexto(/Alterar perfil de acesso/));
+      if (!abriu) return 'não achei o "Alterar perfil de acesso" no e-CAC';
       await dormirPadrao(2500);
-      // o campo do CNPJ do bloco "Procurador" (o mais perto do texto "Procurador")
-      const marcou = await page.evaluate(() => {
-        const campos = [...document.querySelectorAll('input[type=text], input:not([type])')].filter(e => e.offsetParent !== null);
-        const doProcurador = campos.find(e => { let p = e.parentElement; for (let i = 0; i < 5 && p; i++, p = p.parentElement) if (/Procurador/i.test(p.innerText || '')) return true; return false; });
-        if (!doProcurador) return false;
-        doProcurador.setAttribute('data-nads-pgdas', 'cnpj');
-        doProcurador.value = '';
-        return true;
-      }).catch(() => false);
-      if (!marcou) return 'não achei o campo do CNPJ de Procurador no "Alterar perfil de acesso"';
-      await page.type('[data-nads-pgdas="cnpj"]', cnpj, { delay: 40 });
-      const clicou = await page.evaluate(() => {
+      // o campo do CNPJ do bloco "Procurador" (o mais perto do texto "Procurador"), na página ou num quadro (o "Alterar
+      // perfil" pode abrir num iframe); o Alterar do mesmo bloco
+      let quadro = null;
+      for (const q of [page.mainFrame(), ...page.mainFrame().childFrames()]) {
+        const ok = await q.evaluate(() => {
+          const campos = [...document.querySelectorAll('input[type=text], input:not([type])')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+          const doProcurador = document.querySelector('#txtNIPapel2') || campos.find(e => { let p = e.parentElement; for (let i = 0; i < 5 && p; i++, p = p.parentElement) if (/Procurador/i.test(p.innerText || '')) return true; return false; });
+          if (!doProcurador) return false;
+          doProcurador.setAttribute('data-nads-pgdas', 'cnpj');
+          doProcurador.value = '';
+          return true;
+        }).catch(() => false);
+        if (ok) { quadro = q; break; }
+      }
+      if (!quadro) return 'não achei o campo do CNPJ de Procurador no "Alterar perfil de acesso"';
+      await quadro.type('[data-nads-pgdas="cnpj"]', cnpj, { delay: 40 });
+      const clicou = await quadro.evaluate(() => {
         const campo = document.querySelector('[data-nads-pgdas="cnpj"]');
         let p = campo && campo.parentElement;
         for (let i = 0; i < 6 && p; i++, p = p.parentElement) {
@@ -286,6 +319,13 @@ function criarPortalNoChrome(log) {
       }, r.href).catch(err => 'ERRO:' + err.message);
       if (/^ERRO:/.test(b64)) return { erro: 'o extrato não baixou (' + b64.slice(5, 80) + ')' };
       return { bytes: Buffer.from(b64, 'base64') };
+    },
+    /** a tela de agora, para o pedido (27/11/2026: acertar o caminho sem adivinhar): o endereço, o começo do texto e o que fala de perfil */
+    async diagnostico() {
+      if (!page) return '';
+      const texto = String(await textoDaPagina()).replace(/s+/g, ' ');
+      const quadros = page.mainFrame().childFrames().map(q => q.url()).filter(Boolean).slice(0, 4);
+      return (page.url() + (quadros.length ? ' [quadros: ' + quadros.join(' , ') + ']' : '') + ' · ' + texto.slice(0, 500)).slice(0, 900);
     },
     async fechar() {
       try { if (page) await page.close(); } catch (_) { /* já fechada */ }

@@ -33,8 +33,8 @@ export function ShadersCi() {
         // pode sair, que vai voltar para tela inicial de selecao de empresa. Ou aparece o nome dos outros aplicativos")
         menu={vm.empresa ? [
           ...vm.apps.filter(a => a !== vm.app).map(a => ({
-            rotulo: a === 'lancamentos' ? 'Lançamentos' : a === 'extratudo' ? 'Extratudo' : a === 'extrato' ? 'Extrato → SCI' : a === 'baixa' ? 'Baixa no caixa' : 'Visualizar lançamentos',
-            icone: a === 'lancamentos' ? 'list' as const : a === 'extratudo' ? 'landmark' as const : a === 'extrato' || a === 'baixa' ? 'upload' as const : 'olho' as const, onClick: () => vm.abrirApp(a),
+            rotulo: a === 'lancamentos' ? 'Lançamentos' : a === 'extratudo' ? 'Extratudo' : a === 'extrato' ? 'Extrato → SCI' : a === 'baixa' ? 'Baixa no caixa' : a === 'contabilizacao' ? 'Contabilização' : 'Visualizar lançamentos',
+            icone: a === 'lancamentos' ? 'list' as const : a === 'extratudo' ? 'landmark' as const : a === 'extrato' || a === 'baixa' ? 'upload' as const : a === 'contabilizacao' ? 'download' as const : 'olho' as const, onClick: () => vm.abrirApp(a),
           })),
           { rotulo: 'Trocar de empresa', icone: 'trocar' as const, separado: true, onClick: () => { void vm.trocarEmpresa(); } },
         ] : undefined} />
@@ -48,7 +48,7 @@ export function ShadersCi() {
         {/* sem o selo do plano e sem o campo do CNPJ (24/11/2026: "remove isso"): o plano e o CNPJ vêm do Cadastro da empresa;
             só a empresa sem plano no Cadastro ainda escolhe aqui */}
         {lancamentos && !vm.planoDoCadastro && <Segmentado<sci.IdDoPlanoSci> valor={vm.plano} onMudar={vm.setPlano} opcoes={vm.planos.map(p => ({ valor: p.id, rotulo: p.rotulo }))} />}
-        {vm.dev && vm.app !== 'extratudo' && vm.app !== 'razao' && vm.app !== 'extrato' && vm.app !== 'baixa' && (
+        {vm.dev && vm.app !== 'extratudo' && vm.app !== 'razao' && vm.app !== 'extrato' && vm.app !== 'baixa' && vm.app !== 'contabilizacao' && (
           <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · fica só neste navegador"
             itens={vm.empresa ? [
               { rotulo: 'Lançamentos de exemplo (' + vm.plano + ')', icone: 'zap', onClick: vm.teste.preencher },
@@ -82,7 +82,7 @@ export function ShadersCi() {
       {/* o Extratudo é o Lançatudo, com a empresa daqui: o mesmo leitor de extrato do fluxo de tarefas do Contábil */}
       {/* o Extrato → SCI (25/11/2026): o PDF do extrato direto na planilha do SCI, só no navegador */}
       {/* a Baixa no caixa (26/11/2026): as vendas da consulta do SCI viram a baixa D Caixa × C Clientes, na planilha do SCI */}
-      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'baixa' ? <BaixaNoCaixa min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
+      {lancamentos ? <Tabela vm={vm} /> : vm.app === 'razao' ? <RazaoDoSci vm={vm} /> : vm.app === 'contabilizacao' ? <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" /> : vm.app === 'extrato' ? <ExtratoParaSci min={vm} /> : vm.app === 'baixa' ? <BaixaNoCaixa min={vm} /> : vm.app === 'extratudo' ? <NomeDoAppDasJanelas value="Extratudo"><Lancatudo pagina="lancamentos" minimum={vm.extratudo} /></NomeDoAppDasJanelas> : <TelaInicial vm={vm} />}
     </section>
   );
 }
@@ -191,6 +191,17 @@ function AppsDaEmpresa({ vm }: { vm: VmShadersCi }) {
             <span className="sci-app-num">04</span>
             <span className="sci-app-nome">Baixa no caixa<span className="sci-app-seta" aria-hidden="true">→</span></span>
             <span className="sci-app-desc">Das vendas do SCI à baixa no caixa</span>
+          </button>
+        </>
+      )}
+      {/* a Contabilização (27/11/2026): os lançamentos do SCI pelo robô do PC, no layout da consulta do SCI */}
+      {vm.apps.includes('contabilizacao') && (
+        <>
+          <span className="sci-apps-divisor" aria-hidden="true" />
+          <button type="button" className="sci-app" onClick={() => vm.abrirApp('contabilizacao')}>
+            <span className="sci-app-num">{String(vm.apps.filter(a => a !== 'razao').indexOf('contabilizacao') + 1).padStart(2, '0')}</span>
+            <span className="sci-app-nome">Contabilização<span className="sci-app-seta" aria-hidden="true">→</span></span>
+            <span className="sci-app-desc">Os lançamentos do SCI, puxados pelo robô</span>
           </button>
         </>
       )}

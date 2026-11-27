@@ -19,6 +19,10 @@ export interface RepoSciReport {
   urlDoPdf(token: string, id: string): Promise<string>;
   /** (26/11/2026) o PDF em si, para abrir na mesma janela das outras guias; null quando não dá */
   pdf(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** (27/11/2026: "faz puxar o recibo de pró-labore pelo sci report") os recibos das pessoas da empresa ([] quando não dá) */
+  recibos(token: string): Promise<ac.ReciboDoSci[]>;
+  /** o PDF de um recibo; null quando não dá */
+  pdfDoRecibo(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
 }
 
 const SITUACOES = new Set<ac.SituacaoDaGuiaDoSci>(['a vencer', 'vence hoje', 'vencida', 'pagamento informado']);
@@ -40,6 +44,17 @@ export function lerGuiaDoSci(x: unknown): ac.GuiaDoSciReport | null {
   return guia;
 }
 
+/** Um recibo como volta da função: a lista branca (o id, o nome, a competência e a pessoa). */
+function lerReciboDoSci(x: unknown): ac.ReciboDoSci | null {
+  const r = x && typeof x === 'object' ? (x as Record<string, unknown>) : null;
+  if (!r) return null;
+  const id = typeof r.id === 'string' && /^\d{1,12}$/.test(r.id) ? r.id : '';
+  const competencia = typeof r.competencia === 'string' && COMPETENCIA.test(r.competencia) ? r.competencia : '';
+  const pessoa = typeof r.pessoa === 'string' ? r.pessoa.trim().slice(0, 120) : '';
+  const nome = typeof r.nome === 'string' && r.nome.trim() ? r.nome.trim().slice(0, 60) : 'Recibo';
+  return id && competencia && pessoa ? { id, nome, competencia, pessoa } : null;
+}
+
 const ERRO = 'Não deu para buscar as guias do SCI Report agora. Tente de novo em alguns minutos.';
 
 /**
@@ -47,14 +62,25 @@ const ERRO = 'Não deu para buscar as guias do SCI Report agora. Tente de novo e
  * entrar", o link tem "Exigir senha"), e aí o pedido vai de novo com ele.
  */
 export function criarRepoSciReportFuncao(idToken: () => Promise<string> = async () => ''): RepoSciReport {
-  async function uma(corpo: { token: string; guia?: string }, login: string): Promise<{ status: number; dados: Record<string, unknown> }> {
+  /** a função busca o PDF na SCI e devolve os bytes (a URL temporária da SCI não abre dentro da página) */
+  async function pdfDaFuncao(token: string, id: string, recibo: boolean): Promise<{ nome: string; arquivo: Blob } | null> {
+    const corpo = JSON.stringify({ token, guia: id, formato: 'pdf', ...(recibo ? { recibo: true } : {}) });
+    const uma = async (login: string) => fetch(ENDERECO_DA_FUNCAO, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(login ? { Authorization: 'Bearer ' + login } : {}) }, body: corpo, cache: 'no-store', referrerPolicy: 'no-referrer' });
+    try {
+      let r = await uma('');
+      if (r.status === 401) { const login = await idToken(); if (login) r = await uma(login); }
+      if (r.status !== 200 || !/pdf/i.test(r.headers.get('Content-Type') ?? '')) return null;
+      return { nome: (recibo ? 'Recibo ' : 'Guia ') + id + '.pdf', arquivo: await r.blob() };
+    } catch { return null; }
+  }
+  async function uma(corpo: { token: string; guia?: string; recibos?: boolean }, login: string): Promise<{ status: number; dados: Record<string, unknown> }> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(login ? { Authorization: 'Bearer ' + login } : {}) };
     const r = await fetch(ENDERECO_DA_FUNCAO, { method: 'POST', headers, body: JSON.stringify(corpo), cache: 'no-store', referrerPolicy: 'no-referrer' });
     let dados: Record<string, unknown> = {};
     try { dados = (await r.json()) as Record<string, unknown>; } catch { /* sem corpo */ }
     return { status: r.status, dados };
   }
-  async function pedir(corpo: { token: string; guia?: string }) {
+  async function pedir(corpo: { token: string; guia?: string; recibos?: boolean }) {
     const r = await uma(corpo, '');
     if (r.status !== 401) return r;
     const login = await idToken();
@@ -69,17 +95,15 @@ export function criarRepoSciReportFuncao(idToken: () => Promise<string> = async 
         return { estado: 'ok', guias: dados.guias.map(lerGuiaDoSci).filter((g): g is ac.GuiaDoSciReport => !!g) };
       } catch { return { estado: 'erro', mensagem: 'Sem internet agora. Confira a conexão e tente de novo.' }; }
     },
-    async pdf(token, id) {
-      // a função busca o PDF na SCI e devolve os bytes (a URL temporária da SCI não abre dentro da página)
-      const corpo = JSON.stringify({ token, guia: id, formato: 'pdf' });
-      const uma = async (login: string) => fetch(ENDERECO_DA_FUNCAO, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(login ? { Authorization: 'Bearer ' + login } : {}) }, body: corpo, cache: 'no-store', referrerPolicy: 'no-referrer' });
+    async recibos(token) {
       try {
-        let r = await uma('');
-        if (r.status === 401) { const login = await idToken(); if (login) r = await uma(login); }
-        if (r.status !== 200 || !/pdf/i.test(r.headers.get('Content-Type') ?? '')) return null;
-        return { nome: 'Guia ' + id + '.pdf', arquivo: await r.blob() };
-      } catch { return null; }
+        const { status, dados } = await pedir({ token, recibos: true });
+        if (status !== 200 || !Array.isArray(dados.recibos)) return [];
+        return (dados.recibos as unknown[]).map(lerReciboDoSci).filter((r): r is ac.ReciboDoSci => !!r);
+      } catch { return []; }
     },
+    pdfDoRecibo: (token, id) => pdfDaFuncao(token, id, true),
+    pdf: (token, id) => pdfDaFuncao(token, id, false),
     async urlDoPdf(token, id) {
       const { status, dados } = await pedir({ token, guia: id }).catch(() => ({ status: 0, dados: {} as Record<string, unknown> }));
       const url = typeof dados.url === 'string' && dados.url.startsWith('https://') ? dados.url : '';
@@ -104,10 +128,13 @@ export function criarRepoSciReportExemplo(hoje = new Date()): RepoSciReport {
     guias: async () => ({ estado: 'ok', guias }),
     urlDoPdf: async () => { throw new Error('No exemplo a guia não abre.'); },
     pdf: async () => null,
+    // o recibo de pró-labore do sócio do exemplo (o RH NET de exemplo tem o ROBERTO EXEMPLO)
+    recibos: async () => [{ id: '900101', nome: 'Recibo mensal', competencia, pessoa: 'ROBERTO EXEMPLO' }],
+    pdfDoRecibo: async () => null,
   };
 }
 
 const exemplo = criarRepoSciReportExemplo();
 export const repoSciReport: RepoSciReport = import.meta.env.VITE_FONTE === 'banco'
-  ? (() => { const funcao = criarRepoSciReportFuncao(idTokenDoCliente); return { guias: t => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).guias(t), urlDoPdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).urlDoPdf(t, id), pdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).pdf(t, id) }; })()
+  ? (() => { const funcao = criarRepoSciReportFuncao(idTokenDoCliente); return { guias: t => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).guias(t), urlDoPdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).urlDoPdf(t, id), pdf: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).pdf(t, id), recibos: t => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).recibos(t), pdfDoRecibo: (t, id) => (t === TOKEN_DE_EXEMPLO ? exemplo : funcao).pdfDoRecibo(t, id) }; })()
   : exemplo;

@@ -194,6 +194,11 @@ describe('SCI Report: o atendimento da Área do Cliente', () => {
       lerPublicacaoDoSci(linha({ publicadosId: 101, empresaId })) as PublicacaoDoSci,
       lerPublicacaoDoSci(linha({ publicadosId: 102, empresaId, dataPagamento: '2026-11-19' })) as PublicacaoDoSci,
     ].filter(p => !publicadosId || p.publicadosId === publicadosId),
+    // (27/11/2026) os recibos de cada pessoa: o de pró-labore do sócio e um modelo que não é recibo
+    individuais: async (empresaId: number, _de: string, _ate: string, publicadosId?: number) => [
+      lerPublicacaoDoSci(linha({ publicadosId: 201, empresaId, individual: 1, relatorioId: 'REME', nomeRelatorio: 'Recibo mensal', nomeFuncionario: 'JOSÉ  DA SILVA', tipoFolha: '05' })) as PublicacaoDoSci,
+      lerPublicacaoDoSci(linha({ publicadosId: 202, empresaId, individual: 1, relatorioId: 'REFO', nomeRelatorio: 'Espelho', nomeFuncionario: 'JOSE DA SILVA' })) as PublicacaoDoSci,
+    ].filter(p => !publicadosId || p.publicadosId === publicadosId),
     urlDoPdf: async (id: number) => { pdfs.push(String(id)); return 'https://s3.exemplo/' + id + '.pdf'; },
     publicar: async () => 1,
   });
@@ -233,5 +238,42 @@ describe('SCI Report: o atendimento da Área do Cliente', () => {
     expect(await a.pdf(TOKEN, '', '555', HOJE)).toEqual({ acesso: 'guia de outra empresa' });
     expect(await a.pdf(TOKEN, '', 'abc', HOJE)).toEqual({ acesso: 'guia de outra empresa' });
     expect(pdfs).toEqual(['101']);
+  });
+});
+
+describe('SCI Report: o número da publicação manual (26/11/2026)', () => {
+  it('acha o publicadosId em qualquer nível da resposta', async () => {
+    const { publicadosIdDaResposta } = await import('./sciReportCliente');
+    expect(publicadosIdDaResposta({ publicados: [{ publicadosId: 7 }] })).toBe(7);
+    expect(publicadosIdDaResposta({ dados: { publicados: [{ publicadosId: '51643495' }] } })).toBe(51643495);
+    expect(publicadosIdDaResposta({ retorno: { publicadosId: 9 } })).toBe(9);
+    expect(publicadosIdDaResposta({ mensagem: 'ok' })).toBe(0);
+  });
+});
+
+describe('SCI Report: os recibos (pró-labore e folha) na Área (27/11/2026)', () => {
+  it('só os modelos de recibo, com a pessoa; o PDF só do recibo da empresa do link', async () => {
+    const { criarAtendimentoDaArea, reciboDaPessoa, consultaDePublicados } = await import('./index');
+    const pdfs: string[] = [];
+    const sci = {
+      empresaPeloDocumento: async () => 7,
+      publicacoes: async () => [],
+      individuais: async (empresaId: number, _de: string, _ate: string, publicadosId?: number) => [
+        lerPublicacaoDoSci(linha({ publicadosId: 201, empresaId, individual: 1, relatorioId: 'REME', nomeRelatorio: 'Recibo mensal', nomeFuncionario: 'JOSÉ  DA SILVA' })) as PublicacaoDoSci,
+        lerPublicacaoDoSci(linha({ publicadosId: 202, empresaId, individual: 1, relatorioId: 'REFO', nomeFuncionario: 'JOSE DA SILVA' })) as PublicacaoDoSci,
+      ].filter(p => !publicadosId || p.publicadosId === publicadosId),
+      urlDoPdf: async (id: number) => { pdfs.push(String(id)); return 'https://s3.exemplo/' + id + '.pdf'; },
+      publicar: async () => 1,
+    };
+    const area = criarAtendimentoDaArea({ sci, lerLink: async () => ({ existe: true, exigeSenha: false, codigos: [583] }), lerEmpresas: async () => [{ codigo: 583, cnpj: CNPJ }], lerLogin: async () => null });
+    const hoje = new Date(2026, 10, 27);
+    const LINK = 'a'.repeat(40);
+    const r = await area.recibos(LINK, '', hoje);
+    expect(r).toEqual({ acesso: 'liberado', recibos: [{ id: '201', nome: 'Recibo mensal', competencia: '2026-10', pessoa: 'JOSÉ DA SILVA' }] });
+    if (r.acesso === 'liberado') expect(reciboDaPessoa(r.recibos[0], 'José da Silva')).toBe(true);
+    expect(await area.pdfDoRecibo(LINK, '', '201', hoje)).toEqual({ acesso: 'liberado', url: 'https://s3.exemplo/201.pdf' });
+    expect(await area.pdfDoRecibo(LINK, '', '202', hoje)).toEqual({ acesso: 'guia de outra empresa' });
+    const q = new URLSearchParams(consultaDePublicados({ empresaId: 7, de: '2026-01', ate: '2026-11', recibos: true }));
+    expect([q.get('tipoDocumento'), q.get('individual')]).toEqual(['relatorio', 'true']);
   });
 });

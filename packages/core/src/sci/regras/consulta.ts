@@ -27,6 +27,11 @@ export interface LancamentoDaConsulta {
   /** aaaa-mm-dd: quando entrou no SCI e a última alteração */
   lancadoEm: string;
   alteradoEm: string;
+  /**
+   * a coluna Lote (27/11/2026): no SCI é a primeira coluna da consulta e sai na planilha SEM título; o que o minimum importou leva
+   * ali o lote e a chave do lançamento (M583EDT001). Ausente nas consultas guardadas antes disso.
+   */
+  lote?: string;
 }
 
 type Campo = keyof LancamentoDaConsulta;
@@ -36,6 +41,7 @@ const TITULOS: Record<Campo, readonly string[]> = {
   documento: ['n doc.', 'n doc', 'no doc.', 'documento'], tipo: ['tipo de lancamento'],
   participanteD: ['participante a debito'], participanteC: ['participante a credito'],
   lancadoEm: ['data lancamento', 'data do lancamento'], alteradoEm: ['data ultima alteracao', 'data da ultima alteracao'],
+  lote: ['lote'],
 };
 const titulo = (v: unknown) => semAcento(String(v ?? '')).replace(/[º°]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -78,6 +84,8 @@ export function lancamentosDaConsulta(aoa: readonly (readonly unknown[])[]): Lan
   if (i < 0) return null;
   const ts = aoa[i].map(titulo);
   const col = Object.fromEntries((Object.keys(TITULOS) as Campo[]).map(c => [c, ts.findIndex(t => TITULOS[c].includes(t))])) as Record<Campo, number>;
+  // o Lote sai sem título, na primeira coluna (a consulta do Vitor, 27/11/2026)
+  if (col.lote < 0 && ts.length && !ts[0]) col.lote = 0;
   const texto = (r: readonly unknown[], c: Campo) => (col[c] < 0 ? '' : String(r[col[c]] ?? '').trim());
   const lidos: LancamentoDaConsulta[] = [];
   for (const r of aoa.slice(i + 1)) {
@@ -89,6 +97,7 @@ export function lancamentosDaConsulta(aoa: readonly (readonly unknown[])[]): Lan
       historico: texto(r, 'historico'), complemento: texto(r, 'complemento'), documento: texto(r, 'documento'), tipo: texto(r, 'tipo'),
       participanteD: texto(r, 'participanteD'), participanteC: texto(r, 'participanteC'),
       lancadoEm: col.lancadoEm < 0 ? '' : dataDaConsulta(r[col.lancadoEm]), alteradoEm: col.alteradoEm < 0 ? '' : dataDaConsulta(r[col.alteradoEm]),
+      lote: texto(r, 'lote').toUpperCase(),
     });
   }
   return lidos;
@@ -139,4 +148,62 @@ export function nomesDosParticipantes(ls: readonly LancamentoDaConsulta[]): Read
     for (const p of [l.participanteD, l.participanteC]) if (p && !nomes.has(p)) nomes.set(p, m[2]);
   }
   return nomes;
+}
+
+// ---------- juntar o que o robô puxa (27/11/2026, Vitor: "Puxa tudo de inicio e ao longo do tempo vai colocando so os lancamentos
+// novos. Se a pessoa pedir um mes em especifico, ai vc puxa") ----------
+
+/**
+ * O período de uma competência do SCI (MM/AAAA): '10/2026' → outubro; '00/2026' → o ano todo; '00/0000' → null (tudo).
+ * A consulta do SCI sai sem filtro (o robô retira o filtro), com tudo da empresa: o período é aplicado aqui.
+ */
+export function periodoDaCompetenciaDoSci(c: string): { de: string; ate: string } | null {
+  const m = /^(\d{2})\/(\d{4})$/.exec(c);
+  if (!m || m[2] === '0000') return null;
+  const mes = Number(m[1]);
+  if (!mes) return { de: m[2] + '-01-01', ate: m[2] + '-12-31' };
+  const ultimo = new Date(Date.UTC(Number(m[2]), mes, 0)).getUTCDate();
+  return { de: m[2] + '-' + m[1] + '-01', ate: m[2] + '-' + m[1] + '-' + String(ultimo).padStart(2, '0') };
+}
+
+/** o que identifica um lançamento da consulta (sem a data da última alteração: o mesmo lançamento, alterado, muda os campos) */
+const chaveDaConsulta = (l: LancamentoDaConsulta) =>
+  [l.data, l.debito, l.credito, l.valor, l.historico, l.complemento, l.documento, l.tipo, l.participanteD, l.participanteC, l.lancadoEm, l.lote || ''].join('\u0001');
+
+export interface ConsultasJuntas {
+  lancamentos: LancamentoDaConsulta[];
+  /** quantos entraram que não estavam (no "tudo"), ou quantos o período tem agora (no mês ou no ano) */
+  novos: number;
+  /** o período pedido, se não foi tudo */
+  periodo: { de: string; ate: string } | null;
+}
+
+/**
+ * Junta a consulta que o robô puxou com a que a tela já tem:
+ *  - tudo (00/0000): entra só o que é novo (o mesmo lançamento repetido conta quantas vezes aparece); o que já estava fica;
+ *  - um mês ou um ano: o período é trocado pelo que veio dele (o que foi alterado ou excluído no SCI se acerta); o resto fica.
+ */
+export function juntarConsultas(antigos: readonly LancamentoDaConsulta[], chegados: readonly LancamentoDaConsulta[], competencia: string): ConsultasJuntas {
+  const periodo = periodoDaCompetenciaDoSci(competencia);
+  if (periodo) {
+    const dentro = (l: LancamentoDaConsulta) => !!l.data && l.data >= periodo.de && l.data <= periodo.ate;
+    const doPeriodo = chegados.filter(dentro);
+    return { lancamentos: [...doPeriodo, ...antigos.filter(l => !dentro(l))], novos: doPeriodo.length, periodo };
+  }
+  // tudo: a ordem do SCI; o que só a tela tinha (excluído no SCI depois) vai no fim
+  const conta = new Map<string, number>();
+  for (const l of antigos) { const k = chaveDaConsulta(l); conta.set(k, (conta.get(k) || 0) + 1); }
+  let novos = 0;
+  for (const l of chegados) {
+    const k = chaveDaConsulta(l);
+    const n = conta.get(k) || 0;
+    if (n) conta.set(k, n - 1); else novos++;
+  }
+  const sobra: LancamentoDaConsulta[] = [];
+  for (const l of antigos) {
+    const k = chaveDaConsulta(l);
+    const n = conta.get(k) || 0;
+    if (n) { sobra.push(l); conta.set(k, n - 1); }
+  }
+  return { lancamentos: [...chegados, ...sobra], novos, periodo: null };
 }

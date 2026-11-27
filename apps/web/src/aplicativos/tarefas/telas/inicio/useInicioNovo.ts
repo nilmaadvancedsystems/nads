@@ -254,6 +254,10 @@ export function useInicioNovo() {
       reunioes: reunioesDoDia,
       linhas: doDia.slice(0, 6).map(t => ({
         id: t.id, titulo: t.titulo, prazo: ag.prazoCurto(t.prazo, hoje) || 'Sem prazo', atrasada: d.atrasada(t, hoje, agora),
+        /** "código – cliente", com a tarefa embaixo, como nas delegadas (27/11/2026: "Minhas tarefas, podeira mostrar a empresa e a tarefa embaixo") */
+        cliente: t.clientes[0] ? (t.clientes[0].codigo != null ? t.clientes[0].codigo + ' – ' : '') + t.clientes[0].nome + (t.clientes.length > 1 ? ' +' + (t.clientes.length - 1) : '') : '',
+        /** delegada por outra pessoa: a foto dela no lugar da caixinha (27/11/2026: "quando for delegada para mim, ao inves do check, coloca o icone/foto de perfil da pessoa") */
+        delegadaPor: t.criadaPor.uid !== uid ? comFoto(t.criadaPor) : null,
         concluir: () => concluir(t),
         /** quem faz foi cobrado e ainda não respondeu (o sino; 13/11/2026) */
         cobrada: d.deveResponderCobranca(t, uid),

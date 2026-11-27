@@ -204,3 +204,9 @@
   .cli-app .cli-ini .cli-ini-docs{grid-area:docs;}
   .cli-app .cli-ini .cli-ini-enviar{grid-area:enviar;}
 }
+/* (26/11/2026: "remover isso da tela em algum botao? caso a pessoa ja tenha pago") o "Já paguei" ao lado do "Pedir guia nova" */
+.cli-app .cli-ini .cli-ini-depois{justify-self:start;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;margin:0 0 0 60px;}
+.cli-app .cli-ini .cli-ini-depois .cli-ini-pedir-nova{margin:0;}
+.cli-app .cli-ini .cli-ini-ja-paguei{display:inline-flex;align-items:center;gap:5px;padding:2px 0;border:0;background:none;color:var(--ink-muted);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;}
+.cli-app .cli-ini .cli-ini-ja-paguei:hover{color:var(--ink);text-decoration:underline;}
+@media (max-width: 640px){ .cli-app .cli-ini .cli-ini-depois{margin-left:54px;} }

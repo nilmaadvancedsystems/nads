@@ -51,7 +51,25 @@ function pastaVazia(base) {
  * @param {number} [o.limiteMs]  o prazo de cada relatório
  */
 // quantos PASSO: cada roteiro escreve (mais o "pronto" da fila), para a porcentagem da barra
-const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6, fiscal: 7 };
+const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6, fiscal: 7, sciLancamentos: 5, sciExcluir: 6 };
+// a competência do SCI (27/11/2026): MM/AAAA; o mês 00 é o ano todo e 00/0000 é tudo
+const competenciaDoSciValida = c => /^(0\d|1[0-2])\/\d{4}$/.test(String(c || ''));
+/**
+ * O que excluir no SCI (27/11/2026): o lote do minimum (M583EDT: M + empresa + letras, 7) ou o do primeiro formato (M00583BR6W) e,
+ * para um lançamento só, a chave (M583EDT001). O SCI filtra pelo começo do texto: só lote do minimum e da própria empresa, nunca um
+ * texto curto que pegaria o que não é dele. Devolve o erro ('' = pode).
+ */
+function exclusaoDoSciInvalida(codigo, lote, chave) {
+  const l = String(lote || '');
+  const c = String(chave || '');
+  const novo = /^M(\d{1,5})[A-Z]+$/.exec(l);
+  const antigo = /^M(\d{5})[A-Z0-9]{4}$/.exec(l);
+  const empresa = novo && l.length === 7 ? Number(novo[1]) : antigo ? Number(antigo[1]) : null;
+  if (empresa == null) return 'o lote "' + l + '" não é um lote do minimum';
+  if (empresa !== codigo) return 'o lote ' + l + ' é da empresa ' + empresa + ', não da ' + codigo;
+  if (c && !(novo && l.length === 7 && c.length === 10 && c.startsWith(l) && /^\d{3}$/.test(c.slice(7)))) return 'a chave "' + c + '" não é de um lançamento do lote ' + l;
+  return '';
+}
 // as notas do Alterdata Fiscal (16/11/2026): o relatório de cada uma e o nome do arquivo
 const RELATORIOS_FISCAIS = { entradas: 'Entradas', saidas: 'Saídas', tomados: 'Tomados', prestados: 'Prestados' };
 // o razão de uma conta do Contábil (17/11/2026, o caminho que o Vitor gravou): o mesmo jeito do Fiscal, outro roteiro
@@ -252,6 +270,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const codigo = Number(p.codigo);
     if (tipo === 'importar') return importar(id, p, codigo);
     if (tipo === 'fiscal' || tipo === 'razaoConta' || tipo === 'balanceteDinamico' || tipo === 'balancetePeriodo') return fiscal(id, p, codigo);
+    if (tipo === 'sciLancamentos') return lancamentosDoSci(id, p, codigo);
+    if (tipo === 'sciExcluir') return excluirNoSci(id, p, codigo);
     if (tipo !== 'balancete' && tipo !== 'mensal') { await banco.atualizar(id, { status: 'erro', erro: 'tipo de relatório desconhecido: ' + tipo, fimEm: agora() }); return; }
     if (!Number.isInteger(codigo) || codigo <= 0) { await banco.atualizar(id, { status: 'erro', erro: 'código da empresa inválido', fimEm: agora() }); return; }
     if (!competenciaValida(p.competencia)) { await banco.atualizar(id, { status: 'erro', erro: 'competência inválida', fimEm: agora() }); return; }
@@ -553,6 +573,98 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     log('Alterdata: fim do Fiscal', id, nome, buf.length, 'bytes');
   }
 
+  /**
+   * Os lançamentos de uma empresa do SCI (27/11/2026, Vitor: "pega o layout completo de lancamentos, e cria um botao chamado
+   * vitor com o icone da sci"): o roteiro que ele ensinou (sci_extrair_lancamentos.py) exporta a "Impressão de campos da
+   * consulta" da competência do SCI (MM/AAAA; 00 = o ano todo) e a planilha sobe em pedaços (partes/fiscal-nnn), como as do
+   * Fiscal. Só no PC com o SCI aberto e logado; não mexe no Alterdata (nem limpa a tela dele, nem conta para reabrir o Contábil).
+   */
+  async function lancamentosDoSci(id, p, codigo) {
+    const andamentoFim = st => ({ pct: 100, etapa: st, clique: '', em: agora() });
+    const erro = msg => banco.atualizar(id, { status: 'erro', erro: String(msg).slice(0, 500), fimEm: agora(), andamento: andamentoFim('erro') });
+    if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
+    if (!competenciaDoSciValida(p.competencia)) return erro('competência do SCI inválida (MM/AAAA; 00 = o ano todo)');
+    const total = PASSOS_DO_ROTEIRO.sciLancamentos + 1;
+    const passos = [];
+    let etapa = 'começando';
+    const pct = () => Math.min(99, Math.round(passos.length / total * 100));
+    const passo = nome => {
+      passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), quando: agora() });
+      etapa = String(nome).slice(0, 200);
+      return banco.atualizar(id, { passos, andamento: { pct: pct(), etapa, clique: '', em: agora() } }).catch(() => {});
+    };
+    await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    if (painel) painel.fazendo('alterdata', 'Lançamentos do SCI ' + codigo + ' ' + p.competencia);
+    log('SCI: lançamentos', codigo, p.competencia, id);
+    const r = await comPrazo('sciLancamentos', { codigo, competenciaSci: p.competencia }, passo, () => {}, id);
+    const fimP = await banco.ler(id);
+    if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
+      await banco.atualizar(id, { andamento: { pct: 0, etapa: 'cancelado', clique: '', em: agora() } }).catch(() => {});
+      log('SCI: cancelado no meio', id);
+      return;
+    }
+    const arquivo = r.ok && r.arquivo && fs.existsSync(r.arquivo) ? r.arquivo : '';
+    if (!arquivo) {
+      const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
+      await banco.atualizar(id, { status: 'erro', erro: msg, arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
+      if (painel) painel.erro('alterdata', 'Lançamentos do SCI ' + codigo + ' ' + p.competencia, msg, { pedido: id });
+      log('SCI: fim dos lançamentos', id, 'erro:', msg);
+      return;
+    }
+    const buf = fs.readFileSync(arquivo);
+    const nome = path.basename(arquivo);
+    const g = await banco.gravarArquivo(id, 'fiscal', buf, nome, 'fiscal');
+    // a planilha fica também na pasta do SCI (Downloads\robo_sci_nads\<dia>\<empresa>\lancamentos), onde o roteiro a salvou
+    await banco.atualizar(id, { status: 'pronto', erro: '', arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
+    if (painel) painel.atividade('alterdata', 'Puxou os lançamentos do SCI ' + codigo + ' ' + p.competencia, p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+    log('SCI: fim dos lançamentos', id, nome, buf.length, 'bytes');
+  }
+
+  /**
+   * Excluir no SCI (27/11/2026, o Vitor: um lançamento excluído no nads sai do SCI pela chave): com a chave, o roteiro filtra a coluna
+   * Lote por ela e usa a lixeira verde (sem senha); sem a chave, filtra pelo lote e usa a vermelha, e a "Senha de segurança do
+   * processo" a PESSOA digita no SCI (o roteiro espera até 5 min; nenhuma senha passa pelo robô nem pelo banco).
+   */
+  async function excluirNoSci(id, p, codigo) {
+    const andamentoFim = st => ({ pct: 100, etapa: st, clique: '', em: agora() });
+    const erro = msg => banco.atualizar(id, { status: 'erro', erro: String(msg).slice(0, 500), fimEm: agora(), andamento: andamentoFim('erro') });
+    if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
+    const lote = String(p.lote || '');
+    const chave = String(p.chave || '');
+    const invalida = exclusaoDoSciInvalida(codigo, lote, chave);
+    if (invalida) return erro(invalida);
+    const alvo = chave ? 'o lançamento ' + chave : 'o lote ' + lote;
+    const total = PASSOS_DO_ROTEIRO.sciExcluir + 1;
+    const passos = [];
+    let etapa = 'começando';
+    const pct = () => Math.min(99, Math.round(passos.length / total * 100));
+    const passo = nome => {
+      passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), quando: agora() });
+      etapa = String(nome).slice(0, 200);
+      return banco.atualizar(id, { passos, andamento: { pct: pct(), etapa, clique: '', em: agora() } }).catch(() => {});
+    };
+    await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    if (painel) painel.fazendo('alterdata', 'Excluir no SCI ' + codigo + ': ' + alvo);
+    log('SCI: excluir', codigo, chave || lote, id);
+    const r = await comPrazo('sciExcluir', { codigo, lote, chave }, passo, () => {}, id);
+    const fimP = await banco.ler(id);
+    if (r.cancelado || (fimP && fimP.status === 'cancelado')) {
+      await banco.atualizar(id, { andamento: { pct: 0, etapa: 'cancelado', clique: '', em: agora() } }).catch(() => {});
+      log('SCI: exclusão cancelada no meio', id);
+      return;
+    }
+    if (!r.ok) {
+      const msg = String(r.erro || 'o roteiro parou sem dizer').slice(0, 500);
+      await banco.atualizar(id, { status: 'erro', erro: msg, andamento: andamentoFim('erro'), fimEm: agora() });
+      if (painel) painel.erro('alterdata', 'Excluir no SCI ' + codigo + ': ' + alvo, msg, { pedido: id });
+      log('SCI: fim da exclusão', id, 'erro:', msg);
+      return;
+    }
+    await banco.atualizar(id, { status: 'pronto', erro: '', resultado: String(r.mensagem || '').slice(0, 300), andamento: andamentoFim('pronto'), fimEm: agora() });
+    if (painel) painel.atividade('alterdata', 'Excluiu no SCI ' + codigo + ': ' + alvo, p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+    log('SCI: fim da exclusão', id, chave || lote);
+  }
+
   return {
     chegou,
     saiu,
@@ -569,4 +681,4 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   };
 }
 
-module.exports = { criarFilaAlterdata, periodo, pastaVazia, classeDoErro, mensagemClara, RELATORIOS_FISCAIS };
+module.exports = { criarFilaAlterdata, exclusaoDoSciInvalida, periodo, pastaVazia, classeDoErro, mensagemClara, RELATORIOS_FISCAIS };

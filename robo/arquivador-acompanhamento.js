@@ -157,7 +157,7 @@ function classificarErro(texto) {
   if (/corromp|invalid pdf|bad xref|xref|unexpected end|password|criptograf|FormatError|InvalidPDF/i.test(t)) return { tipo: 'corrompido', titulo: 'Arquivo corrompido', oQueFazer: 'O arquivo não abre (corrompido ou com senha). Peça de novo ao cliente.' };
   if (/OCR|tesseract|tempo esgotado|timeout/i.test(t)) return { tipo: 'ocr', titulo: 'A leitura (OCR) falhou ou demorou demais', oQueFazer: 'O PDF escaneado é grande ou ruim. Peça o PDF original; se acontecer com muitos, avise.' };
   if (/hash não confere|o original mudou/i.test(t)) return { tipo: 'conferencia', titulo: 'A cópia não conferiu', oQueFazer: 'O arquivo mudou no meio da cópia. O original ficou na pasta; o robô tenta de novo.' };
-  if (/Google Drive|não está acessível|ENOENT.*Meu Drive|EIO|ENOTCONN/i.test(t)) return { tipo: 'drive', titulo: 'Google Drive fora do ar', oQueFazer: 'Abra o Google Drive no PC do robô e confira se o G: aparece. O robô espera o Drive voltar e continua sozinho.' };
+  if (/Google Drive|não está acessível|ENOENT.*Meu Drive|\bEIO\b|ENOTCONN/i.test(t)) return { tipo: 'drive', titulo: 'Google Drive fora do ar', oQueFazer: 'Abra o Google Drive no PC do robô e confira se o G: aparece. O robô espera o Drive voltar e continua sozinho.' };
   return { tipo: 'outro', titulo: 'Erro', oQueFazer: 'Se repetir, avise o administrador com o texto do erro.' };
 }
 

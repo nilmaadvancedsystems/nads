@@ -2,7 +2,7 @@
 // Cadastro (o responsável do DP, em Cadastro › Responsáveis) e nas Configurações do DP (os parâmetros). Usado pelo Painel
 // e pelas Configurações do DP; grava no cadastro da empresa (cadastro/{slug}).
 import { empresas, formatos } from '@nads/core';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useGravarCadastro, useRepo, useTodosOsCadastros } from '../../dados/repo';
 
@@ -16,10 +16,25 @@ export function useClientesDoDp(competencia?: string) {
   // banco devolver; as gravações da mesma empresa vão em fila (o segundo clique não desfaz o primeiro)
   const [pendentes, setPendentes] = useState<ReadonlyMap<number, empresas.cadastro.CadastroDaEmpresa>>(new Map());
   const fila = useRef(new Map<number, Promise<void>>());
+  // a hora (atualizadoEm) da última gravação de cada empresa: a lista ao vivo vem do espelho, que o banco atualiza uns
+  // segundos depois; a tela só solta o que mudou quando o espelho chega nessa hora (27/11/2026: com Pró-Labore "o sistema
+  // não deixa gravar as marcações abaixo" — o espelho atrasado voltava a tela para a planilha e o clique seguinte gravava
+  // a lista velha por cima)
+  const gravadoEm = useRef(new Map<number, string>());
   const daLista = new Map(repo.listarEmpresas().filter(e => e.codigo != null).map(e => [e.codigo as number, e]));
+  const doEspelho = (nome: string) => todos.porId.get(formatos.slug(nome)) || null;
+  // o espelho chegou na última gravação (e nada mais na fila): solta o que estava só na tela
+  useEffect(() => {
+    const soltar = [...pendentes.entries()].filter(([codigo, c]) => {
+      if (fila.current.has(codigo)) return false;
+      const hora = gravadoEm.current.get(codigo);
+      return !hora || (todos.porId.get(formatos.slug(c.nome))?.atualizadoEm || '') >= hora;
+    }).map(([codigo]) => codigo);
+    if (soltar.length) setPendentes(m => { const n = new Map(m); for (const k of soltar) n.delete(k); return n; });
+  }, [pendentes, todos.porId]);
   const clientes = empresas.CLIENTES_DO_DP.map(base => {
     const emp = daLista.get(base.codigo) || { codigo: base.codigo, nome: base.nome, regime: base.enquadramento };
-    const cadastro = pendentes.get(base.codigo) || todos.porId.get(formatos.slug(emp.nome)) || null;
+    const cadastro = pendentes.get(base.codigo) || doEspelho(emp.nome);
     const mudadoNoMes = !!competencia && !!cadastro?.dp?.porCompetencia?.[competencia];
     return { ...empresas.clienteDoDpNoCadastro(base, cadastro, competencia), base, nomeNaTela: emp.nome, cadastro, mudado: !!cadastro?.dp && Object.keys(cadastro.dp).length > 0, mudadoNoMes };
   });
@@ -31,13 +46,23 @@ export function useClientesDoDp(competencia?: string) {
     const novo = mudar(c.cadastro || empresas.cadastro.cadastroVazio(c.nomeNaTela, c.codigo));
     setPendentes(m => new Map(m).set(codigo, novo));
     const anterior = fila.current.get(codigo) || Promise.resolve();
-    const esta = anterior.then(() => gravar(c.nomeNaTela, c.codigo, mudar));
+    const esta = anterior.then(() => gravar(c.nomeNaTela, c.codigo, cad => {
+      const gravado = mudar(cad);
+      if (gravado !== cad && gravado.atualizadoEm) gravadoEm.current.set(codigo, gravado.atualizadoEm);
+      return gravado;
+    }));
     fila.current.set(codigo, esta);
     void esta.finally(() => {
       if (fila.current.get(codigo) !== esta) return;
       fila.current.delete(codigo);
-      // o banco já devolveu (a lista ao vivo): solta o que estava só na tela
-      setTimeout(() => setPendentes(m => { if (!m.has(codigo)) return m; const n = new Map(m); n.delete(codigo); return n; }), 1500);
+      // a tela confere de novo (o espelho talvez já tenha chegado); e, se o espelho nunca chegar (a gravação falhou),
+      // depois de 30 s a tela volta ao que o banco tem
+      setPendentes(m => new Map(m));
+      setTimeout(() => {
+        if (fila.current.has(codigo)) return;
+        gravadoEm.current.delete(codigo);
+        setPendentes(m => { if (!m.has(codigo)) return m; const n = new Map(m); n.delete(codigo); return n; });
+      }, 30000);
     });
   }
   return {

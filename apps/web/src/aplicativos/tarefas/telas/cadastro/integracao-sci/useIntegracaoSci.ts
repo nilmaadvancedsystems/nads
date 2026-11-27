@@ -26,6 +26,8 @@ export function useIntegracaoSci() {
   // o rascunho só existe depois da primeira mudança; até lá, a tela mostra o que está gravado
   const [rascunho, setRascunho] = useState<Config | null>(null);
   const [empresasTexto, setEmpresasTexto] = useState<string | null>(null);
+  // (27/11/2026: "cria a lista para esconder a guia de teste da área") os números das publicações que a Área não mostra
+  const [ocultasTexto, setOcultasTexto] = useState<string | null>(null);
   const [gravando, setGravando] = useState(false);
   const atual = rascunho ?? config;
   // o RH NET (25/11/2026): o teste só de leitura por empresa ligada, pela fila do robô
@@ -86,6 +88,7 @@ export function useIntegracaoSci() {
   const mudarRelatorio = (chave: sci.integracao.ChaveDaGuiaNoSci, valor: string) =>
     mudar(c => ({ ...c, relatorios: { ...c.relatorios, [chave]: valor.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 4) } }));
   const mudarEmpresas = (texto: string) => { setEmpresasTexto(texto); mudar(c => ({ ...c, empresas: sci.integracao.empresasDoTexto(texto) })); };
+  const mudarOcultas = (texto: string) => { setOcultasTexto(texto); mudar(c => ({ ...c, ocultas: sci.integracao.publicacoesDoTexto(texto) })); };
 
   async function gravar() {
     setGravando(true);
@@ -93,6 +96,7 @@ export function useIntegracaoSci() {
       await repo.salvar(atual);
       setRascunho(null);
       setEmpresasTexto(null);
+      setOcultasTexto(null);
       toast('Integração SCI gravada.');
     } catch {
       toast('Não deu para gravar. Confira a internet e se você é administrador.');
@@ -102,7 +106,8 @@ export function useIntegracaoSci() {
   return {
     carregando: !carregada, exemplos: repo.exemplos, config: atual, mudado: !!rascunho, gravando,
     partes: PARTES_DO_SCI.map(p => ({ ...p, ligado: atual[p.chave], bloqueado: !!p.precisa && !atual[p.precisa] })),
-    alternar, gravar, descartar: () => { setRascunho(null); setEmpresasTexto(null); },
+    alternar, gravar, descartar: () => { setRascunho(null); setEmpresasTexto(null); setOcultasTexto(null); },
+    ocultasTexto: ocultasTexto ?? atual.ocultas.join(', '), mudarOcultas,
     empresasTexto: empresasTexto ?? atual.empresas.join(', '), mudarEmpresas,
     guias: sci.integracao.GUIAS_DO_SCI.map(g => ({ ...g, codigo: atual.relatorios[g.chave] ?? '' })), mudarRelatorio,
     algumaLigada: PARTES_DO_SCI.some(p => atual[p.chave]),

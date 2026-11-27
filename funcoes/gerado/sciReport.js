@@ -112,7 +112,9 @@ function lerPublicacaoDoSci(x) {
 		visualizado: sim(p.visualizado),
 		vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
 		pagamentoEm: dataDoSci(p.dataPagamento),
-		valorPago: Number.isFinite(valorPago) ? valorPago : 0
+		valorPago: Number.isFinite(valorPago) ? valorPago : 0,
+		funcionario: texto(p.nomeFuncionario),
+		tipoFolha: texto(p.tipoFolha)
 	};
 }
 function lerPaginaDePublicados(resposta) {
@@ -136,12 +138,12 @@ function janelaDoSci(hoje, meses = 3) {
 }
 function consultaDePublicados(p) {
 	const q = new URLSearchParams({
-		tipoDocumento: "imposto",
+		tipoDocumento: p.recibos ? "relatorio" : "imposto",
 		status: "todos",
 		empresaId: String(p.empresaId),
 		referenciaInicial: referenciaDoSci(p.de),
 		referenciaFinal: referenciaDoSci(p.ate),
-		individual: "false",
+		individual: p.recibos ? "true" : "false",
 		page: String(p.pagina ?? 1),
 		registrosPorPagina: String(200)
 	});
@@ -192,14 +194,53 @@ function acessoDaArea(token, link, login) {
 	if (link.exigeSenha !== true) return "liberado";
 	return login?.cliente === true && Array.isArray(login.a) && login.a.includes(token) ? "liberado" : "precisa entrar";
 }
+const RECIBOS_DO_SCI = {
+	REME: "Recibo mensal",
+	REMI: "Recibo mensal (intermitente)",
+	RE13: "Recibo de 13º salário",
+	READ: "Recibo de adiantamento do 13º",
+	RECO: "Recibo de complemento do 13º",
+	REFE: "Recibo de férias",
+	RERE: "Recibo de rescisão",
+	RECT: "Recibo de autônomo"
+};
+function recibosDoSciReport(publicacoes) {
+	const porId = /* @__PURE__ */ new Map();
+	for (const p of publicacoes) {
+		const nome = RECIBOS_DO_SCI[p.relatorioId.toUpperCase()];
+		if (!p.individual || !nome || !p.funcionario.trim()) continue;
+		porId.set(String(p.publicadosId), {
+			id: String(p.publicadosId),
+			nome,
+			competencia: p.competencia,
+			pessoa: p.funcionario.replace(/\s+/g, " ").trim()
+		});
+	}
+	return [...porId.values()].sort((a, b) => b.competencia.localeCompare(a.competencia) || a.nome.localeCompare(b.nome));
+}
 
 //#endregion
 //#region packages/core/src/areaCliente/sciReportCliente.ts
 function publicadosIdDaResposta(resposta) {
-	const lista = resposta && typeof resposta === "object" ? resposta.publicados : null;
-	const primeiro = Array.isArray(lista) && lista[0] && typeof lista[0] === "object" ? lista[0].publicadosId : 0;
-	const n = Number(primeiro);
-	return Number.isInteger(n) && n > 0 ? n : 0;
+	const achar = (x, fundo) => {
+		if (!x || typeof x !== "object" || fundo > 4) return 0;
+		if (Array.isArray(x)) {
+			for (const i of x) {
+				const n = achar(i, fundo + 1);
+				if (n) return n;
+			}
+			return 0;
+		}
+		const o = x;
+		const n = Number(o.publicadosId);
+		if (Number.isInteger(n) && n > 0) return n;
+		for (const v of Object.values(o)) {
+			const m = achar(v, fundo + 1);
+			if (m) return m;
+		}
+		return 0;
+	};
+	return achar(resposta, 0);
 }
 var ErroDoSci = class extends Error {
 	status;
@@ -277,6 +318,22 @@ function criarClienteSciReport(deps) {
 			empresas.set(d, id);
 			return id;
 		},
+		async individuais(empresaId, de, ate, publicadosId) {
+			const todas = [];
+			for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
+				const p = lerPaginaDePublicados(await chamar("GET", "/api/v1/publicados/busca?" + consultaDePublicados({
+					empresaId,
+					de,
+					ate,
+					pagina,
+					publicadosId,
+					recibos: true
+				})));
+				todas.push(...p.itens.filter((x) => x.empresaId === empresaId && x.individual));
+				if (p.paginaAtual >= p.ultimaPagina) break;
+			}
+			return todas;
+		},
 		async publicacoes(empresaId, de, ate, publicadosId) {
 			const todas = [];
 			for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
@@ -308,8 +365,13 @@ function criarClienteSciReport(deps) {
 				f.append("arquivo", new Blob([new Uint8Array(pdf)], { type: "application/pdf" }), nomeDoArquivo.replace(/[^\w.-]+/g, "_") || "guia.pdf");
 				return f;
 			}));
-			if (!id) throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
-			return id;
+			if (id) return id;
+			const competencia = campos.anoRef + "-" + campos.mesRef;
+			const venc = String(campos.dataVencimento || "").replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3/$2/$1");
+			const valor = Math.round(Number(campos.valor) * 100);
+			const achada = (await this.publicacoes(Number(campos.empresaId), competencia, competencia)).filter((p) => p.vencimento === venc && Math.round(p.valor * 100) === valor && (!p.relatorioId || p.relatorioId === campos.relatorioId)).sort((x, y) => y.publicadosId - x.publicadosId)[0];
+			if (achada) return achada.publicadosId;
+			throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
 		}
 	};
 }
@@ -358,6 +420,34 @@ function criarAtendimentoDaArea(deps) {
 				guias: guiasDoSciReport(publicacoes, hoje),
 				semEmpresaNoSci
 			};
+		},
+		async recibos(token, idToken, hoje) {
+			const acesso = await conferir(token, idToken);
+			if (acesso !== "liberado") return { acesso };
+			const doLink = await empresasDoLink(token);
+			if (!doLink) return {
+				acesso,
+				recibos: []
+			};
+			const { de, ate } = janelaDoSci(hoje, 12);
+			const publicacoes = [];
+			for (const id of doLink.ids) publicacoes.push(...await deps.sci.individuais(id, de, ate));
+			return {
+				acesso,
+				recibos: recibosDoSciReport(publicacoes)
+			};
+		},
+		async pdfDoRecibo(token, idToken, publicadosId, hoje) {
+			const acesso = await conferir(token, idToken);
+			if (acesso !== "liberado") return { acesso };
+			const id = Number(publicadosId);
+			if (!Number.isInteger(id) || id <= 0) return { acesso: "guia de outra empresa" };
+			const { de, ate } = janelaDoSci(hoje, 12);
+			for (const empresaId of (await empresasDoLink(token))?.ids ?? []) if (recibosDoSciReport(await deps.sci.individuais(empresaId, de, ate, id)).some((r) => r.id === String(id))) return {
+				acesso,
+				url: await deps.sci.urlDoPdf(id, empresaId)
+			};
+			return { acesso: "guia de outra empresa" };
 		},
 		async pdf(token, idToken, publicadosId, hoje) {
 			const acesso = await conferir(token, idToken);

@@ -226,6 +226,75 @@ function novo(id, tipo, codigo, competencia) {
     assert.deepStrictEqual(fins, ['01/11/2026-31/12/2026', '01/11/2026-30/11/2026'], 'sem movimento no mês seguinte, não puxou de novo até o pedido: ' + fins.join(', '));
   }
 
+  // ── os lançamentos do SCI (27/11/2026): a empresa e a competência do SCI (MM/AAAA) vão para o roteiro; a planilha sobe em
+  // fiscal; a competência fora do jeito do SCI e o erro do roteiro viram erro, sem limpar a tela do Alterdata
+  {
+    const recebidos = [];
+    let limpou = 0;
+    const f6 = criarFilaAlterdata({ banco, limiteMs: 5000, pastaDoPedido: id => path.join(BASE, 'sci', id), limparTela: async () => { limpou++; },
+      rodar: async (rel, a6, passo6) => {
+        recebidos.push([rel, a6.codigo, a6.competenciaSci].join(' '));
+        await passo6('empresa: ' + a6.codigo);
+        if (a6.codigo === 604) return { ok: false, erro: 'a consulta continuou filtrada' };
+        fs.mkdirSync(path.join(BASE, 'sci-saida'), { recursive: true });
+        const arq = path.join(BASE, 'sci-saida', 'lancamentos-' + a6.codigo + '-' + a6.competenciaSci.replace('/', '-') + '.xls');
+        fs.writeFileSync(arq, 'consulta ' + a6.codigo);
+        return { ok: true, arquivo: arq };
+      } });
+    const sci = (id, codigo, competencia) => { pedidos.set(id, { status: 'pendente', tipo: 'sciLancamentos', codigo, competencia, criadoEm: new Date().toISOString() }); f6.chegou(id); };
+    sci('s1', 590, '00/2026');
+    sci('s2', 604, '02/2026');
+    sci('s3', 590, '2026-02');
+    sci('s4', 590, '13/2026');
+    await espera(5);
+    await f6.ocioso();
+    assert.deepStrictEqual(recebidos, ['sciLancamentos 590 00/2026', 'sciLancamentos 604 02/2026']);
+    assert.strictEqual(st('s1'), 'pronto');
+    assert.strictEqual(pedidos.get('s1').arquivos.fiscal.nome, 'lancamentos-590-00-2026.xls');
+    assert.strictEqual(partes.get('s1').fiscal.toString(), 'consulta 590');
+    assert.strictEqual(st('s2'), 'erro');
+    assert.match(pedidos.get('s2').erro, /continuou filtrada/);
+    assert.match(pedidos.get('s3').erro, /competência do SCI inválida/);
+    assert.match(pedidos.get('s4').erro, /competência do SCI inválida/);
+    assert.strictEqual(limpou, 0, 'o erro do SCI não mexe na tela do Alterdata');
+  }
+
+  // ── excluir no SCI (27/11/2026): a chave vai para a lixeira verde, o lote sozinho para a vermelha; lote de fora do minimum, de
+  // outra empresa ou chave de outro lote viram erro sem rodar o roteiro
+  {
+    const recebidos = [];
+    let limpou = 0;
+    const f7 = criarFilaAlterdata({ banco, limiteMs: 5000, pastaDoPedido: id => path.join(BASE, 'sciex', id), limparTela: async () => { limpou++; },
+      rodar: async (rel, a7, passo7) => {
+        recebidos.push([rel, a7.codigo, a7.lote, a7.chave].join(' '));
+        await passo7('empresa: ' + a7.codigo);
+        if (a7.lote === 'M583ZZZ') return { ok: false, erro: 'a consulta não filtrou por M583ZZZ' };
+        return { ok: true, mensagem: (a7.chave ? 'lançamento ' + a7.chave : 'lote ' + a7.lote) + ' excluído da empresa ' + a7.codigo };
+      } });
+    const ex = (id, codigo, lote, chave) => { pedidos.set(id, { status: 'pendente', tipo: 'sciExcluir', codigo, lote, chave, criadoEm: new Date().toISOString() }); f7.chegou(id); };
+    ex('x1', 583, 'M583EDT', 'M583EDT002');
+    ex('x2', 583, 'M583EDT', '');
+    ex('x3', 583, 'M00583BR6W', '');
+    ex('x4', 583, 'M583ZZZ', '');
+    ex('x5', 583, 'M58', '');
+    ex('x6', 584, 'M583EDT', '');
+    ex('x7', 583, 'M583EDT', 'M583ABC001');
+    ex('x8', 583, 'M00583BR6W', 'M00583BR6W');
+    await espera(5);
+    await f7.ocioso();
+    assert.deepStrictEqual(recebidos, ['sciExcluir 583 M583EDT M583EDT002', 'sciExcluir 583 M583EDT ', 'sciExcluir 583 M00583BR6W ', 'sciExcluir 583 M583ZZZ ']);
+    assert.strictEqual(st('x1'), 'pronto');
+    assert.match(pedidos.get('x1').resultado, /lançamento M583EDT002 excluído/);
+    assert.strictEqual(st('x2'), 'pronto');
+    assert.strictEqual(st('x3'), 'pronto');
+    assert.match(pedidos.get('x4').erro, /não filtrou/);
+    assert.match(pedidos.get('x5').erro, /não é um lote do minimum/);
+    assert.match(pedidos.get('x6').erro, /é da empresa 583, não da 584/);
+    assert.match(pedidos.get('x7').erro, /não é de um lançamento do lote/);
+    assert.match(pedidos.get('x8').erro, /não é de um lançamento do lote/);
+    assert.strictEqual(limpou, 0, 'o SCI não mexe na tela do Alterdata');
+  }
+
   fs.rmSync(BASE, { recursive: true, force: true });
   console.log('ok: ' + pedidos.size + ' pedidos, ' + chamadas.length + ' roteiros, no máximo ' + maximo + ' ao mesmo tempo; o travado virou erro e a fila seguiu; duas máquinas: ' + porMaquina.s.length / 2 + ' no servidor + ' + porMaquina.p.length / 2 + ' no PC, nenhum repetido');
 })().catch(err => { console.error('FALHOU:', err.message); process.exit(1); });

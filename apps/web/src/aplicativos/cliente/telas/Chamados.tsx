@@ -170,7 +170,7 @@ export function Chamados(props: DaCasca) {
                 )}
                 <div className="cli-sol-rodape">
                   <button type="button" className="btn btn-ghost" onClick={vm.cancelarNova}>Cancelar</button>
-                  <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={vm.criar}><Icone nome="seta" width={16} height={16} />{vm.enviando ? 'Enviando…' : 'Enviar solicitação'}</button>
+                  <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={vm.criar}><Icone nome="seta" width={16} height={16} />{vm.enviando ? 'Enviando…' : vm.tipo === 'admissao' ? 'Liberar admissão preliminar' : 'Enviar solicitação'}</button>
                 </div>
               </>
             )

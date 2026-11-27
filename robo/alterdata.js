@@ -31,7 +31,11 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py'), balancetePeriodo: path.join(__dirname, 'alterdata_balancete_periodo.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py'), razaoConta: path.join(__dirname, 'alterdata_razao_conta.py'), dinamicoPeriodo: path.join(__dirname, 'alterdata_dinamico_periodo.py'), balancetePeriodo: path.join(__dirname, 'alterdata_balancete_periodo.py'),
+  // os lançamentos do SCI (27/11/2026): o roteiro que o Vitor ensinou no SCI, no PC dele
+  sciLancamentos: path.join(__dirname, 'sci_extrair_lancamentos.py'),
+  // excluir no SCI um lançamento (pela chave) ou o lote inteiro (27/11/2026, a rotina que o Vitor ensinou)
+  sciExcluir: path.join(__dirname, 'sci_excluir_lote.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a sessão do Windows do robô (19/11/2026, o acesso remoto no meio dos pedidos): a de agora, para explicar um erro
 const ROTEIRO_SESSAO = path.join(__dirname, 'alterdata_sessao.py');
@@ -105,7 +109,9 @@ let registrarDiag = () => {};
 
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
-  const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
+  const args = relatorio === 'sciLancamentos' ? [String(a.codigo), a.competenciaSci]
+    : relatorio === 'sciExcluir' ? (a.chave ? [String(a.codigo), '--chave', a.chave] : [String(a.codigo), a.lote])
+    : relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
       : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]
         : relatorio === 'razaoConta' ? [String(a.codigo), a.conta, a.inicio, a.fim, a.destino]
@@ -127,6 +133,20 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
       const linhas = resto.split(/\r?\n/);
       resto = linhas.pop();
       for (const l of linhas) {
+        // o roteiro do SCI escreve em português simples (27/11/2026): cada linha é um passo; "pronto: <arquivo> (n bytes)" é o
+        // fim que deu certo, "parei: …" e "o SCI … não está aberto" são o erro
+        if (relatorio === 'sciLancamentos' || relatorio === 'sciExcluir') {
+          const t = l.trim();
+          const pronto = relatorio === 'sciExcluir' ? t.match(/^pronto:\s*(.+)$/) : t.match(/^pronto:\s*(.+?)\s*\(\d+ bytes\)$/);
+          // a exclusão: "pronto: lote M583EDT excluído da empresa 583" (depois ainda fecha as janelas: o fim é quando o roteiro sai)
+          if (pronto && relatorio === 'sciExcluir') { resultado = { ok: true, mensagem: pronto[1] }; void passo(t); }
+          else if (/^uso:/.test(t)) resultado = { ok: false, erro: 'o roteiro recusou o pedido: ' + t };
+          else if (pronto) resultado = { ok: true, arquivo: pronto[1] };
+          else if (/^parei:/.test(t)) resultado = { ok: false, erro: t.replace(/^parei:\s*/, '') };
+          else if (/não está aberto/.test(t)) resultado = { ok: false, erro: t };
+          else if (t) void passo(t);
+          continue;
+        }
         const m = l.match(/^PASSO:\s*(.+)$/);
         if (m) void passo(m[1]);
         const c = l.match(/^CLIQUE:\s*(.+)$/);
@@ -348,12 +368,16 @@ function iniciarAlterdata(db, log) {
       const quem = ped.exists ? String(ped.data().criadoPorUid || '') : '';
       // o robô de um PC sem dono no robosDePc.json não pega nada (ALTERDATA_SO_DONO, alterdata-no-pc.js)
       if (process.env.ALTERDATA_SO_DONO === '1' && !DONO_UID) return null;
-      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && DONOS_DE_PC.has(quem) && ['fiscal', 'importar'].includes(ped.data().tipo))) return null;
+      // o SCI (27/11/2026) só existe no PC: o servidor nunca pega
+      if (DONO_UID ? quem !== DONO_UID : (ONDE === 'servidor' && ((DONOS_DE_PC.has(quem) && ['fiscal', 'importar'].includes(ped.data().tipo)) || (ped.exists && ['sciLancamentos', 'sciExcluir'].includes(ped.data().tipo))))) return null;
       const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
+      // os lançamentos do SCI não usam o Alterdata: nem o estado do Contábil, nem a espera de assentar (o roteiro vê se o SCI
+      // está aberto e diz no erro)
+      const doSci = ped.exists && ['sciLancamentos', 'sciExcluir'].includes(ped.data().tipo);
       // o razão de uma conta usa o Contábil (o de sempre)
-      if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
+      if (!doSci && (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok')) return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
-      const falta = doFiscal ? 0 : ASSENTAR_MS - (Date.now() - okDesde);
+      const falta = doFiscal || doSci ? 0 : ASSENTAR_MS - (Date.now() - okDesde);
       if (falta > 0) { setTimeout(() => fila.chegou(id), falta + 1000).unref(); return null; }
       const ref = pedidos.doc(id);
       return db.runTransaction(async t => {

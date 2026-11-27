@@ -43,7 +43,7 @@ function Area() {
   const { area } = vm;
   // a tela recriada a cada navegação: o que a busca geral pede (a busca preenchida, a solicitação) vale de novo
   const { key: chaveDaTela } = useLocation();
-  const daCasca = { token: vm.token, area, hoje: vm.hoje, irPara: vm.irPara, copiar: vm.copiar, exemplos: vm.exemplos, marcarLida: vm.marcarLida };
+  const daCasca = { token: vm.token, area, hoje: vm.hoje, irPara: vm.irPara, copiar: vm.copiar, exemplos: vm.exemplos, marcarLida: vm.marcarLida, marcarGuiaPaga: vm.marcarGuiaPaga };
   // o link que pede senha e ninguém entrou: a tela de entrar no lugar da área (18/11/2026: "a area de cliente vai ter senha de acesso")
   const valido = area.carregado && area.valido && !area.pedeLogin;
   const c = vm.contato;

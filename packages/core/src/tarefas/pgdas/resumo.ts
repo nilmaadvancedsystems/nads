@@ -6,6 +6,10 @@
 //   1. o extrato do próprio mês (origem 'extrato') vale mais que o mês visto nos "anteriores" de um extrato mais novo;
 //   2. entre dois da mesma origem, vale o da declaração transmitida depois (a retificação);
 //   3. sem data de transmissão, vale o consultado depois.
+//
+// A folha de salários (26/11/2026, a Projeção do Fator R): o "2.3) Folha de Salários Anteriores" de cada extrato vai para
+// folhas, por mês, à parte dos meses da receita (a folha de um mês só vem no extrato dos meses seguintes, nunca no do próprio
+// mês). Entre dois extratos com a folha do mesmo mês, vale a da declaração transmitida depois; sem data, a do PA mais novo.
 import { extratoDaEmpresa, type AtividadeDoExtrato, type DasDoExtrato, type ExtratoDoPgdas } from './extrato';
 
 export const FONTE_RECEITA = 'Receita (PGDAS-D)';
@@ -33,6 +37,25 @@ export interface MesDoPgdas {
   atividades?: AtividadeDoExtrato[];
 }
 
+/** a folha de salários de um mês, como o PGDAS-D declarou (salários, pró-labore, FGTS e CPP: a do Fator R) */
+export interface FolhaDoPgdas {
+  competencia: string;
+  valor: number;
+  /** o PA do extrato que trouxe */
+  doPa: string;
+  transmitidaEm: string | null;
+  consultadoEm: string;
+}
+
+/** esta folha ganha da que já estava? (a declaração transmitida depois; sem data, o PA mais novo; depois, a consultada depois) */
+export function folhaValeMais(nova: FolhaDoPgdas, atual: FolhaDoPgdas | null | undefined): boolean {
+  if (!atual) return true;
+  const a = nova.transmitidaEm || '', b = atual.transmitidaEm || '';
+  if (a && b && a !== b) return a > b;
+  if (nova.doPa !== atual.doPa) return nova.doPa > atual.doPa;
+  return nova.consultadoEm >= atual.consultadoEm;
+}
+
 export interface PgdasDaEmpresa {
   codigo: number;
   cnpj: string;
@@ -41,6 +64,8 @@ export interface PgdasDaEmpresa {
   /** a última consulta do robô (ISO) */
   consultadoEm: string;
   meses: Record<string, MesDoPgdas>;
+  /** a folha dos meses pelo 2.3 dos extratos (só a empresa com atividade no Fator R); pode faltar */
+  folhas?: Record<string, FolhaDoPgdas>;
 }
 
 const COMPETENCIA = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -70,10 +95,17 @@ export function juntarExtrato(atual: PgdasDaEmpresa | null, extrato: ExtratoDoPg
   por({ competencia: extrato.competencia, receita: extrato.receita.total, interno: extrato.receita.interno, externo: extrato.receita.externo, rbt12: extrato.rbt12,
     declaracao: extrato.declaracao, transmitidaEm: extrato.transmitidaEm, origem: 'extrato', consultadoEm: em, das: extrato.das, atividades: extrato.atividades });
   const guardar = Object.keys(meses).sort().slice(-MESES_GUARDADOS);
+  const folhas: Record<string, FolhaDoPgdas> = { ...(atual?.folhas || {}) };
+  for (const f of extrato.folhas || []) {
+    const nova: FolhaDoPgdas = { competencia: f.competencia, valor: f.valor, doPa: extrato.competencia, transmitidaEm: extrato.transmitidaEm, consultadoEm: em };
+    if (folhaValeMais(nova, folhas[f.competencia])) folhas[f.competencia] = nova;
+  }
+  const guardarFolhas = Object.keys(folhas).sort().slice(-MESES_GUARDADOS);
   return {
     codigo: empresa.codigo, cnpj: String(empresa.cnpj).replace(/\D/g, ''), nome: String(empresa.nome || atual?.nome || '').slice(0, 200),
     fonte: FONTE_RECEITA, consultadoEm: em,
     meses: Object.fromEntries(guardar.map(c => [c, meses[c]])),
+    ...(guardarFolhas.length ? { folhas: Object.fromEntries(guardarFolhas.map(c => [c, folhas[c]])) } : {}),
   };
 }
 
@@ -120,7 +152,17 @@ export function lerPgdasDaEmpresa(dados: unknown): PgdasDaEmpresa | null {
     };
   }
   if (!Object.keys(meses).length) return null;
-  return { codigo, cnpj: texto(d.cnpj), nome: texto(d.nome), fonte: texto(d.fonte) || FONTE_RECEITA, consultadoEm: texto(d.consultadoEm), meses };
+  const folhas: Record<string, FolhaDoPgdas> = {};
+  const brutas = d.folhas && typeof d.folhas === 'object' ? d.folhas as Record<string, unknown> : {};
+  for (const [c, v] of Object.entries(brutas)) {
+    if (!COMPETENCIA.test(c) || !v || typeof v !== 'object') continue;
+    const f = v as Record<string, unknown>;
+    const valor = numero(f.valor);
+    if (valor == null || valor < 0) continue;
+    folhas[c] = { competencia: c, valor, doPa: COMPETENCIA.test(texto(f.doPa)) ? texto(f.doPa) : '', transmitidaEm: texto(f.transmitidaEm) || null, consultadoEm: texto(f.consultadoEm) };
+  }
+  return { codigo, cnpj: texto(d.cnpj), nome: texto(d.nome), fonte: texto(d.fonte) || FONTE_RECEITA, consultadoEm: texto(d.consultadoEm), meses,
+    ...(Object.keys(folhas).length ? { folhas } : {}) };
 }
 
 /**

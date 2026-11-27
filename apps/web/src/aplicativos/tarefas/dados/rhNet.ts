@@ -4,7 +4,7 @@
 // rhNet.firestore.ts. Os dados pessoais de uma admissão vão no pedido (dados) e o robô apaga assim que termina.
 import { sci } from '@nads/core';
 
-export type AcaoDoRhNet = 'cadastros' | 'admissao' | 'liberarAdmissao' | 'lancamentos' | 'liberarLancamentos';
+export type AcaoDoRhNet = 'cadastros' | 'admissao' | 'liberarAdmissao' | 'excluirAdmissao' | 'lancamentos' | 'liberarLancamentos';
 
 /** Um pedido ao RH NET como a tela vê (sem os dados pessoais). */
 export interface PedidoRhNet {
@@ -34,6 +34,8 @@ export interface RepoRhNet {
   pedirAdmissao(codigo: number, admissao: sci.integracao.AdmissaoParaRhNet): Promise<void>;
   /** libera para a folha do SCI (ou volta para não liberado) */
   pedirLiberacao(codigo: number, ids: number[], situacao: 'liberado' | 'nao_liberado', chamadoId?: string): Promise<void>;
+  /** (27/11/2026) apaga a admissão no RH NET (antes de ir para a folha) */
+  pedirExclusao(codigo: number, id: number, chamadoId?: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -44,7 +46,7 @@ export function pedidoRhNetDoBanco(id: string, d: Record<string, unknown>): Pedi
   const r = d.rhnet && typeof d.rhnet === 'object' ? (d.rhnet as Record<string, unknown>) : {};
   const a = r.admissao && typeof r.admissao === 'object' ? (r.admissao as Record<string, unknown>) : null;
   const criado = d.criadoEm as { toDate?: () => Date } | string | undefined;
-  const acoes: AcaoDoRhNet[] = ['cadastros', 'admissao', 'liberarAdmissao', 'lancamentos', 'liberarLancamentos'];
+  const acoes: AcaoDoRhNet[] = ['cadastros', 'admissao', 'liberarAdmissao', 'excluirAdmissao', 'lancamentos', 'liberarLancamentos'];
   const status = (['pendente', 'processando', 'concluido', 'erro'] as const).find(s => s === d.status) ?? 'pendente';
   const admissoes = r.admissoes && typeof r.admissoes === 'object' ? Object.fromEntries(Object.entries(r.admissoes as Record<string, unknown>).map(([k, v]) => [k, Number(v) || 0])) : {};
   return {
@@ -80,6 +82,10 @@ export function criarRhNetMemoria(): RepoRhNet {
       const erro = sci.integracao.erroDaAdmissao(a);
       if (erro) throw new Error(erro);
       lista = [novo(codigo, 'admissao', { admissao: { id: 99, situacao: 'nao_liberado', primeiroNome: a.nome.split(/\s+/)[0].toUpperCase(), admissao: a.admissao }, resumo: 'Admissão no RH NET (não liberada)' }), ...lista];
+      mudou();
+    },
+    async pedirExclusao(codigo, id) {
+      lista = [novo(codigo, 'excluirAdmissao', { resumo: 'Apagou a admissão ' + id + ' do RH NET' }), ...lista];
       mudou();
     },
     async pedirLiberacao(codigo, ids, situacao) {

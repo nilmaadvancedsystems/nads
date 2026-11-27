@@ -10,7 +10,9 @@
 //   - a RBT12 (os 12 meses antes do PA), a RBA (o ano até o PA) e a RBAA (o ano anterior), pelo total;
 //   - os meses anteriores (mercado interno e externo), que enchem o histórico com um extrato só.
 //   - o DAS gerado na apuração (número, vencimento, valor) e o pagamento dele (data e valor pago), quando o extrato traz;
-//   - a receita de cada atividade (a "Receita Bruta Informada" de cada uma).
+//   - a receita de cada atividade (a "Receita Bruta Informada" de cada uma);
+//   - a folha de salários dos meses antes do PA (o "2.3) Folha de Salários Anteriores", 26/11/2026: a Projeção do Fator R
+//     do Fiscal), quando a empresa tem atividade com o Fator R; sem ela, o extrato traz "Nenhuma" e a lista fica vazia.
 // Nada é inventado: o que não está no texto fica null; um extrato sem PA ou sem RPA não é extrato (null).
 // O formato foi conferido num extrato real do PGDAS-D 2018 (25/11/2026; o PDF ficou fora do repositório): o número da
 // apuração vem sem rótulo depois de "2) Informações da Apuração", a data vem como "Apurado em", os rótulos da RBT12 e da
@@ -34,6 +36,8 @@ export interface DasDoExtrato {
 }
 
 export interface AtividadeDoExtrato { descricao: string; receita: number }
+/** a folha de salários de um mês antes do PA, como o extrato traz (a do Fator R: salários, pró-labore, FGTS e CPP) */
+export interface FolhaAnteriorDoExtrato { competencia: Competencia; valor: number }
 
 export interface ExtratoDoPgdas {
   /** o período de apuração */
@@ -57,6 +61,8 @@ export interface ExtratoDoPgdas {
   das: DasDoExtrato | null;
   /** a receita de cada atividade declarada */
   atividades: AtividadeDoExtrato[];
+  /** a folha dos meses antes do PA (o 2.3), do mais antigo ao mais novo; vazia sem atividade com o Fator R */
+  folhas: FolhaAnteriorDoExtrato[];
 }
 
 const VALOR = /\d{1,3}(?:\.\d{3})*,\d{2}/g;
@@ -125,6 +131,20 @@ function anterioresDe(u: string): MesAnteriorDoExtrato[] {
 }
 
 /**
+ * A folha de salários dos meses antes do PA (o "2.3) Folha de Salários Anteriores (R$)"): os períodos e os valores na mesma
+ * ordem, como nos anteriores; vai até a seção seguinte. "Nenhuma", ou um número de valores que não fecha com o de períodos,
+ * dá a lista vazia (melhor sem a folha do que com a folha no mês errado).
+ */
+function folhasDe(u: string): FolhaAnteriorDoExtrato[] {
+  const ini = u.search(/FOLHAS? DE SALARIOS ANTERIORES/);
+  if (ini < 0) return [];
+  const depois = u.slice(ini + 20);
+  const fim = depois.search(/\b2\.3\.\d\)|\b2\.4\)|\b3\)\s|RESUMO DA DECLARACAO|FATOR R\b|TOTAL\b|PARA A ATIVIDADE|INFORMACOES SOBRE/);
+  const bloco = depois.slice(0, fim < 0 ? 1500 : fim);
+  return [...mesesDoTrecho(bloco)].sort((a, b) => a[0].localeCompare(b[0])).map(([competencia, valor]) => ({ competencia, valor }));
+}
+
+/**
  * O extrato do PGDAS-D pelo texto do PDF. null = o texto não é um extrato do PGDAS-D (sem o PA ou sem a receita do PA).
  * A declaração (o PDF "Declaração") também tem o PA e a RPA: serve do mesmo jeito.
  */
@@ -160,6 +180,7 @@ export function extratoDoPgdas(texto: string): ExtratoDoPgdas | null {
     anteriores: anterioresDe(u).filter(m => m.competencia < competencia),
     das: dasDe(u),
     atividades: atividadesDe(texto),
+    folhas: folhasDe(u).filter(f => f.competencia < competencia),
   };
 }
 

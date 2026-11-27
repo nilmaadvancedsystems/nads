@@ -40,6 +40,11 @@ describe('SCI: a configuração (config/sci)', () => {
     expect(chaveDaGuiaNoSci('DARF', 'cofins')).toBe('DARF-COFINS');
     expect(chaveDaGuiaNoSci('DAE', 'ICMS')).toBe('DAE-ICMS');
     expect(chaveDaGuiaNoSci('GPS', '')).toBe('OUTRA');
+    // (27/11/2026) o DARF da DCTFWeb: INSS e IRRF
+    expect(chaveDaGuiaNoSci('DARF', 'INSS')).toBe('DARF-DCTFWEB');
+    expect(chaveDaGuiaNoSci('DARF', 'IRRF')).toBe('DARF-DCTFWEB');
+    expect(chaveDaGuiaNoSci('DARF', 'INSS/IRRF')).toBe('DARF-DCTFWEB');
+    expect(relatorioDaGuia(configDoSci({ relatorios: { 'DARF-DCTFWEB': 'DCWG' } }), 'DARF', 'INSS')).toBe('DCWG');
     // (26/11/2026) o DAE pela coluna do Relatório: cada tipo com o modelo dele no SCI Report
     expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms-dif-ativo')).toBe('DAE-DIFAL');
     expect(chaveDaGuiaNoSci('DAE', 'ICMS', 'icms-dif')).toBe('DAE-DIFAL');
@@ -195,5 +200,16 @@ describe('SCI: publicar no SCI Report', () => {
     const f = pub.body as FormData;
     expect(f.get('relatorioId')).toBe('0001');
     expect((f.get('arquivo') as File).name).toBe('DAS_out.pdf');
+  });
+});
+
+describe('as publicações escondidas da Área (27/11/2026)', () => {
+  it('lê do texto e do documento, e tira da lista de guias', async () => {
+    const { publicacoesDoTexto, semAsOcultas, configDoSci, documentoDaConfigDoSci } = await import('./index');
+    expect(publicacoesDoTexto('51643495, 12;51643495 abc 0')).toEqual(['51643495', '12']);
+    const c = configDoSci({ ocultas: ['51643495', 'x'] });
+    expect(c.ocultas).toEqual(['51643495']);
+    expect(documentoDaConfigDoSci(c, 'G', new Date(0)).ocultas).toEqual(['51643495']);
+    expect(semAsOcultas([{ id: '51643495' }, { id: '7' }], c.ocultas)).toEqual([{ id: '7' }]);
   });
 });
