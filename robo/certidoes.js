@@ -129,14 +129,26 @@ async function atenderPedidos(o) {
 
 // ---------- o portal de verdade (um Chrome só do robô, sem janela: a prefeitura não pede certificado) ----------
 
+// Um Chrome sem janela só, para o lote inteiro (27/11/2026, a sexta volta: a municipal e o CRF abriam um cada, e o segundo dava
+// "The browser is already running"). Pasta de perfil própria, por processo; fecha no fim do lote (fecharSemJanela).
+let semJanelaDoLote = null;
+async function chromeSemJanela() {
+  if (semJanelaDoLote && semJanelaDoLote.isConnected()) return semJanelaDoLote;
+  const os = require('os');
+  const pasta = path.join(os.tmpdir(), 'nads-certidoes-' + process.pid + '-' + Date.now());
+  semJanelaDoLote = await require('puppeteer-core').launch({ executablePath: require('./fgts-chrome').CHROME, headless: true, userDataDir: pasta, args: ['--lang=pt-BR', '--no-first-run'] });
+  return semJanelaDoLote;
+}
+async function fecharSemJanela() {
+  try { if (semJanelaDoLote) await semJanelaDoLote.close(); } catch (_) { /* já fechado */ }
+  semJanelaDoLote = null;
+}
+
 function criarPortalDeTaiobeiras(log) {
   let browser = null;
   return {
     async emitir(cnpj) {
-      if (!browser) {
-        const CHROME = require('./fgts-chrome').CHROME;
-        browser = await require('puppeteer-core').launch({ executablePath: CHROME, headless: true, args: ['--lang=pt-BR', '--no-first-run'] });
-      }
+      if (!browser) browser = await chromeSemJanela();
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 1280, height: 900 });
@@ -243,7 +255,7 @@ function criarPortalDeTaiobeiras(log) {
         await page.close().catch(() => {});
       }
     },
-    async fechar() { try { if (browser) await browser.close(); } catch (_) { /* já fechado */ } browser = null; },
+    async fechar() { browser = null; await fecharSemJanela(); },
   };
 }
 
@@ -255,7 +267,7 @@ function criarPortalDeTaiobeiras(log) {
 const CRF = 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf';
 
 function criarPortalDoFgts(log) {
-  let browser = null, semJanela = null;
+  let browser = null;
   return {
     async emitir(cnpj) {
       if (!browser) ({ browser } = await require('./fgts-chrome').ligarNoChrome(log));
@@ -290,8 +302,7 @@ function criarPortalDoFgts(log) {
         await page.waitForFunction(() => /Validade:/i.test(document.body.innerText || ''), { timeout: 30000 }).catch(() => {});
         const texto = await page.evaluate(() => document.body.innerText || '');
         const html = await page.content();
-        if (!semJanela) semJanela = await require('puppeteer-core').launch({ executablePath: require('./fgts-chrome').CHROME, headless: true, args: ['--lang=pt-BR'] });
-        const p2 = await semJanela.newPage();
+        const p2 = await (await chromeSemJanela()).newPage();
         try {
           // sem os scripts da página (a impressão automática trava o PDF)
           await p2.setJavaScriptEnabled(false);
@@ -305,8 +316,8 @@ function criarPortalDoFgts(log) {
     },
     async fechar() {
       try { if (browser) browser.disconnect(); } catch (_) { /* já solto: o Chrome do FGTS fica aberto */ }
-      try { if (semJanela) await semJanela.close(); } catch (_) { /* já fechado */ }
-      browser = null; semJanela = null;
+      await fecharSemJanela();
+      browser = null;
     },
   };
 }
@@ -317,6 +328,19 @@ function criarPortalDoFgts(log) {
 // o robô procura o campo do CNPJ e o botão de emitir pelos textos de costume e, se algo não fechar, a tela vai junto do erro
 // no pedido, para acertar o caminho.
 const CDT = 'https://cdt.fazenda.mg.gov.br/';
+// 27/11/2026, a sexta volta: a regra do certificado foi gravada com o Chrome do robô já aberto, e ele não a releu; antes do
+// primeiro login na SEF-MG, o robô manda o Chrome reler as regras (o botão da página chrome://policy), sem fechar o Chrome
+let regrasRelidas = false;
+async function relerRegrasDoChrome(browser) {
+  if (regrasRelidas) return;
+  const p = await browser.newPage();
+  try {
+    await p.goto('chrome://policy', { timeout: 20000 }).catch(() => {});
+    await p.evaluate(() => { const b = document.querySelector('#reload-policies') || [...document.querySelectorAll('button, cr-button')].find(x => /reload|recarregar|atualizar/i.test(x.innerText || '')); if (b) b.click(); }).catch(() => {});
+    await dormirPadrao(4000);
+    regrasRelidas = true;
+  } finally { await p.close().catch(() => {}); }
+}
 // o que aconteceu com a regra do certificado da SEF-MG ao ligar (vai junto do erro do Login Único)
 let regraDoCertificado = 'ainda não conferida';
 const SEFMG_PADRAO = 'https://[*.]fazenda.mg.gov.br';
@@ -326,6 +350,7 @@ function criarPortalEstadualMG(log) {
   return {
     async emitir(cnpj) {
       if (!browser) ({ browser } = await require('./fgts-chrome').ligarNoChrome(log));
+      await relerRegrasDoChrome(browser).catch(() => {});
       const page = await browser.newPage();
       const tela = async () => (page.url() + ' · ' + String(await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => '')).replace(/\s+/g, ' ')).slice(0, 400);
       // o PDF da certidão: pela resposta (application/pdf) ou pela janela nova
