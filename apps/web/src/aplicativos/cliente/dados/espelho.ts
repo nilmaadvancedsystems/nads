@@ -132,6 +132,8 @@ export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
     codigo: typeof e.codigo === 'number' ? e.codigo : Number(e.codigo) || 0, nome: texto(e.nome).trim(), regime: texto(e.regime).trim(),
     meses: lista(e.meses).map(objeto).filter((m): m is Solto => !!m && COMPETENCIA.test(texto(m.competencia))).map(m => ({
       competencia: texto(m.competencia), nfe: numeroOuNulo(m.nfe), nfce: numeroOuNulo(m.nfce), notas: typeof m.notas === 'number' ? m.notas : 0,
+      // as notas de serviço do mês (27/11/2026)
+      ...(typeof m.nfse === 'number' && Number.isFinite(m.nfse) ? { nfse: m.nfse } : {}),
       total: numeroOuNulo(m.total), variacao: numeroOuNulo(m.variacao),
       // a receita declarada no PGDAS-D (25/11/2026): o total do mês veio da Receita
       ...(() => { const r = objeto(m.receita); return r && typeof r.valor === 'number' && Number.isFinite(r.valor) ? { receita: { valor: r.valor, rbt12: numeroOuNulo(r.rbt12), consultadoEm: instante(r.consultadoEm) } } : {}; })(),

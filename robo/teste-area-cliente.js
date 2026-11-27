@@ -371,6 +371,12 @@ if (modulo) {
   igual('o faturamento: o regime (o limite do Simples/MEI)', fat.empresas[0].regime, 'Simples');
   igual('o faturamento: as séries do mês (o detalhamento)', fat.empresas[0].meses[0].series.length, 1);
   {
+    // a nota de serviço (27/11/2026: o campo nfse faltava na lista branca e o robô recusava o faturamento de todas as empresas)
+    const soServico = G.faturamentoDoCliente([{ codigo: 481, nome: 'B LIMA', regime: 'Presumido' }], ['2026-10'], () => ({ codigo: '481', competencia: '2026-10', em: '', series: [], servicos: { notas: 11, valor: 70480.44 } }), new Date(2026, 10, 27));
+    igual('o faturamento só com NFS-e passa na lista branca', joga(() => R.conferirListaBranca('faturamento', soServico)), '');
+    igual('o faturamento só com NFS-e: o total e as notas', [soServico.empresas[0].meses[0].total, soServico.empresas[0].meses[0].nfse, soServico.empresas[0].meses[0].notas], [70480.44, 70480.44, 11]);
+  }
+  {
     // o PGDAS-D do robô do e-CAC (25/11/2026): o total do mês é a receita declarada; o resumo passa na lista branca
     const pg = { codigo: 292, cnpj: '99888777000166', nome: 'FITO', fonte: 'Receita (PGDAS-D)', consultadoEm: '2026-11-26T02:00:00.000Z',
       meses: { '2026-10': { competencia: '2026-10', receita: 650, interno: 650, externo: 0, rbt12: 7000, declaracao: '99888777202610001', transmitidaEm: '2026-11-18T14:05:31', origem: 'extrato', consultadoEm: '2026-11-26T02:00:00.000Z' } } };

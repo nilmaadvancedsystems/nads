@@ -1074,8 +1074,14 @@ function iniciarAreaDoCliente(db, log) {
     if (dbConferencia || semConferencia) return dbConferencia;
     try {
       const admin = require('firebase-admin');
-      const app = admin.apps.find(a => a && a.name === 'conferencia') || admin.initializeApp({ projectId: 'conferencia-nilma' }, 'conferencia');
-      dbConferencia = admin.firestore(app);
+      // (27/11/2026: "Cannot read properties of undefined (reading 'find')": nesta versão do firebase-admin a lista dos apps
+      // pode não vir em admin.apps; vale a do firebase-admin/app)
+      let modApp = null;
+      try { modApp = require('firebase-admin/app'); } catch { /* versão antiga: só o admin.apps */ }
+      const apps = Array.isArray(admin.apps) ? admin.apps : (modApp && typeof modApp.getApps === 'function' ? modApp.getApps() : []);
+      const iniciar = typeof admin.initializeApp === 'function' ? admin.initializeApp.bind(admin) : modApp.initializeApp;
+      const app = apps.find(a => a && a.name === 'conferencia') || iniciar({ projectId: 'conferencia-nilma' }, 'conferencia');
+      dbConferencia = typeof admin.firestore === 'function' ? admin.firestore(app) : require('firebase-admin/firestore').getFirestore(app);
     } catch (e) { semConferencia = true; log('Área do Cliente: os extratos da Conferência não abriram -', e.message); }
     return dbConferencia;
   }

@@ -756,7 +756,7 @@ const CAMPOS_DO_ESPELHO = {
   // a receita do PGDAS-D no mês e a data da consulta no e-CAC (25/11/2026)
   faturamento: ['empresas', 'fonte', 'atualizadoEm', 'receitaConsultadaEm'],
   empresaFat: ['codigo', 'nome', 'regime', 'meses'],
-  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes', 'banco', 'receita'],
+  mesFat: ['competencia', 'nfe', 'nfce', 'nfse', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes', 'banco', 'receita'],
   receitaFat: ['valor', 'rbt12', 'consultadoEm'],
   // o que entrou nas contas pelos extratos (13/11/2026): só a soma do mês e quantas contas, nenhum lançamento
   bancoFat: ['entradas', 'saidas', 'contas', 'saldo', 'porBanco'],
