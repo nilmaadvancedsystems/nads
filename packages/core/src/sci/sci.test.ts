@@ -72,9 +72,10 @@ describe('os lançamentos do SCI', () => {
     expect(s[1]).toMatchObject({ debito: '2101', historico: '116', lote: 'LANC2611' });
   });
 
-  it('recusa CNPJ inválido, mesma conta nos dois lados e linha sem valor', () => {
+  // o CNPJ inválido não impede mais (27/11/2026: ele não vai na planilha; "Sim, tira")
+  it('recusa mesma conta nos dois lados e linha sem valor; o CNPJ inválido não impede', () => {
     const s = lancamentosParaOSci([{ data: '2026-11-01', debito: '5', credito: '5', valor: 0, codHistorico: '1', complemento: '', documento: '', origem: 'x' }], { cnpjEmpresa: '11222333000100' });
-    expect(s[0].problemas).toEqual(['débito e crédito na mesma conta', 'sem valor', 'CNPJ da empresa inválido']);
+    expect(s[0].problemas).toEqual(['débito e crédito na mesma conta', 'sem valor']);
   });
 
   it('resume por origem e soma só os prontos', () => {

@@ -219,7 +219,6 @@ function Avisos({ vm }: { vm: VmExtratoParaSci }) {
   if (!vm.contaDoBanco) avisos.push(!vm.bancos.length ? 'A empresa não tem conta bancária no Cadastro: escolha a conta do banco no SCI aqui em cima.' : vm.origemDaContaDoBanco === 'semPar' ? 'A conta ' + vm.contaDoNads + ' do Cadastro não tem par no plano do SCI: escolha a conta do banco no SCI.' : 'Falta a conta do banco no SCI: escolha aqui em cima.');
   if (vm.contaDoBancoForaDoPlano) avisos.push('A conta ' + vm.contaDoBanco + ' não está no plano ' + vm.plano + ' do SCI.');
   if (!vm.historicoPadrao.entrada || !vm.historicoPadrao.saida) avisos.push('Escolha o histórico padrão do SCI (o número) do que entrou e do que saiu: sem ele as linhas sem regra não vão.');
-  if (!vm.cnpjOk) avisos.push('A empresa está sem CNPJ no Cadastro: a planilha precisa dele.');
   if (!avisos.length) return null;
   return <ul className="sci-ext-avisos">{avisos.map(a => <li key={a}><Icone nome="alert" />{a}</li>)}</ul>;
 }

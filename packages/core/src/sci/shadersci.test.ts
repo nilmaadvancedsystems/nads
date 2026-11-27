@@ -283,7 +283,8 @@ describe('a planilha do SCI', () => {
     expect(importar[2].slice(1, 11)).toEqual([7, 16, 150, 1, 'Depósito', '10', '', '', '', '120']);
   });
 
-  it('sem CNPJ válido, nada fica pronto', () => {
-    expect(lancamentosDoShaderParaOSci([base], p113, '123')[0].problemas).toEqual(['CNPJ da empresa inválido']);
+  // o CNPJ não vai mais na planilha e não impede (27/11/2026: a coluna I vazia; "Sim, tira")
+  it('sem CNPJ válido, o lançamento fica pronto do mesmo jeito', () => {
+    expect(lancamentosDoShaderParaOSci([base], p113, '123')[0].problemas).toEqual([]);
   });
 });
