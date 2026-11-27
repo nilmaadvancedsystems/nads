@@ -22,6 +22,10 @@ function lerGuardado(codigo: number | null, prefixo = PREFIXO): Guardado | null 
   if (codigo == null) return null;
   try { const g = JSON.parse(localStorage.getItem(prefixo + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.lancamentos) ? g : null; } catch { return null; }
 }
+/** a consulta que a Contabilização guarda da empresa (a Importação mostra e troca; 27/11/2026) */
+export interface ConsultaGuardada { arquivo: string; importadoEm: string; lancamentos: sci.LancamentoDaConsulta[] }
+export const consultaDaContabilizacao = (codigo: number | null): ConsultaGuardada | null => lerGuardado(codigo, PREFIXO_DA_CONTABILIZACAO);
+export const gravarConsultaDaContabilizacao = (codigo: number, g: ConsultaGuardada) => gravarGuardado(codigo, g, PREFIXO_DA_CONTABILIZACAO);
 /** os lançamentos do SCI que a Contabilização puxou para a empresa (o balancete abre cada conta com eles; 27/11/2026) */
 export const lancamentosDaContabilizacao = (codigo: number | null): sci.LancamentoDaConsulta[] => lerGuardado(codigo, PREFIXO_DA_CONTABILIZACAO)?.lancamentos || [];
 /** a empresa já tem a consulta do SCI importada neste navegador (os Lançamentos escondem o "Quero visualizar lançamentos") */

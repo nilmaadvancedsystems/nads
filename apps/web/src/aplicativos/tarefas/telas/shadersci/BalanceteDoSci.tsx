@@ -14,12 +14,16 @@ import { useContaDoBalancete, useFechamentoDoBalancete } from './useContaDoBalan
 import { rotuloDaCompetenciaDoSci, useLancamentosDoSciPeloRobo } from './useLancamentosDoSciPeloRobo';
 import type { VmShadersCi } from './useShadersCi';
 
-interface Guardado { arquivo: string; importadoEm: string; competencia: string; balancete: sci.BalanceteSci }
+export interface Guardado { arquivo: string; importadoEm: string; competencia: string; balancete: sci.BalanceteSci }
 const PREFIXO = 'nads-minimum-balancete-v1|';
 function lerGuardado(codigo: number | null): Guardado | null {
   if (codigo == null) return null;
   try { const g = JSON.parse(localStorage.getItem(PREFIXO + codigo) || 'null') as Guardado | null; return g && Array.isArray(g.balancete?.contas) ? g : null; } catch { return null; }
 }
+/** o balancete guardado (a Importação mostra e troca; 27/11/2026) */
+export type BalanceteGuardado = Guardado;
+export const balanceteGuardado = (codigo: number | null) => lerGuardado(codigo);
+export const gravarBalancete = (codigo: number, g: Guardado) => gravarGuardado(codigo, g);
 /** o balancete que a empresa tem neste navegador (o fluxo da Contabilização vê se o passo 2 está feito; o fechamento usa) */
 export const balanceteDaEmpresa = (codigo: number | null): sci.BalanceteSci | null => lerGuardado(codigo)?.balancete || null;
 function gravarGuardado(codigo: number, g: Guardado) {
@@ -160,7 +164,7 @@ function Campo({ rotulo, valor, mudar, dica, placeholder, numero }: { rotulo: st
 /** O passo 4 do fluxo da Contabilização: o fechamento, com o balancete que o passo 2 trouxe. */
 export function FechamentoDoPeriodo({ vm }: { vm: VmShadersCi }) {
   const b = balanceteDaEmpresa(vm.empresa?.codigo ?? null);
-  if (!b) return <section className="card"><Vazio icone="scale" titulo="Falta o balancete" texto="Puxe o balancete no passo 2: o fechamento usa o período e as contas dele." /></section>;
+  if (!b) return <section className="card"><Vazio icone="scale" titulo="Falta o balancete" texto="Traga o balancete do SCI na Importação: o fechamento usa o período e as contas dele." /></section>;
   return <Fechamento vm={vm} b={b} />;
 }
 
@@ -189,7 +193,7 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
         )}
       </div>
       {f.semLancamentos ? (
-        <p className="hint" style={{ margin: 0 }}>Puxe os lançamentos do SCI na aba <b>Lançamentos</b> (o botão Vitor, "Tudo"): o fechamento usa as provisões deles.</p>
+        <p className="hint" style={{ margin: 0 }}>Traga os lançamentos do SCI na <b>Importação</b> (o botão Vitor, "Tudo"): o fechamento usa as provisões deles.</p>
       ) : (
         <>
           <div className="bal-campos">
@@ -201,7 +205,7 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
           </div>
           <div className="bal-campos" style={{ marginTop: 0 }}>
             <label className="card-head-ctl"><input type="checkbox" checked={f.caixaLigado} onChange={e => f.setCaixaLigado(e.target.checked)} />O que não está no extrato vai para o caixa</label>
-            <p className="hint bal-extrato" style={{ marginTop: 0 }}>{f.extrato ? <>Extrato da aba Extratos: <b>{f.extrato.arquivo}</b>. O que ele mostra sai pelo banco (com a multa e os juros, se pagou a mais).</> : <>Sem extrato na aba Extratos: nada sai pelo banco.</>}</p>
+            <p className="hint bal-extrato" style={{ marginTop: 0 }}>{f.extrato ? <>Extrato da Importação: <b>{f.extrato.arquivo}</b>. O que ele mostra sai pelo banco (com a multa e os juros, se pagou a mais).</> : <>Sem extrato na Importação: nada sai pelo banco.</>}</p>
           </div>
           {x && (
             <div className="table-wrap" style={{ maxHeight: 'none', marginTop: 12 }}>
@@ -301,9 +305,9 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
  * A conta aberta no balancete (27/11/2026, o Vitor: "o relatorio de todos os lancamentos de cada conta em um dropdown ... ver as
  * provisoes ... quais meses tao com pagamento e quais estao sem ... com um botao ele ja gerar os lancamentos e pagar sem esforco").
  */
-function ContaAberta({ vm, b, conta }: { vm: VmShadersCi; b: sci.BalanceteSci; conta: sci.ContaDoBalanceteSci }) {
+export function ContaAberta({ vm, b, conta }: { vm: VmShadersCi; b: sci.BalanceteSci; conta: sci.ContaDoBalanceteSci }) {
   const c = useContaDoBalancete(vm, b, conta);
-  if (c.semLancamentos) return <p className="hint" style={{ margin: 0 }}>Puxe os lançamentos do SCI na aba <b>Lançamentos</b> (o botão Vitor, "Tudo") para ver aqui os lançamentos e as provisões desta conta.</p>;
+  if (c.semLancamentos) return <p className="hint" style={{ margin: 0 }}>Traga os lançamentos do SCI na <b>Importação</b> (o botão Vitor, "Tudo") para ver aqui os lançamentos e as provisões desta conta.</p>;
   const p = c.provisoes;
   return (
     <div className="bal-conta">
