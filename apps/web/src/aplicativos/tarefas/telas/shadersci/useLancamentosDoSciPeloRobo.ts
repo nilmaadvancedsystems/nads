@@ -11,10 +11,10 @@ const ANDANDO = ['pendente', 'pendentePc', 'trabalhando'];
 const VISTOS = new Set<string>();
 const IMPORTADOS = new Set<string>();
 
-/** "00/2026" → "2026 inteiro"; "02/2026" → "02/2026"; "00/0000" → "todos os anos" */
-export const rotuloDaCompetenciaDoSci = (c: string) => (c === '00/0000' ? 'todos os anos' : c.startsWith('00/') ? c.slice(3) + ' inteiro' : c);
+/** "00/2026" → "2026 inteiro"; "02/2026" → "02/2026"; "00/0000" → "tudo" */
+export const rotuloDaCompetenciaDoSci = (c: string) => (c === '00/0000' ? 'tudo' : c.startsWith('00/') ? c.slice(3) + ' inteiro' : c);
 
-export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa: string; chegou: (f: File) => unknown }) {
+export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa: string; chegou: (f: File, competencia: string) => unknown }) {
   const doPc = roboDePcDoUsuario();
   const disponivel = !!doPc && o.codigo != null;
   const [pedidos, setPedidos] = useState<PedidoDoFiscal[]>([]);
@@ -35,7 +35,7 @@ export function useLancamentosDoSciPeloRobo(o: { codigo: number | null; empresa:
     if (atual.status !== 'pronto' || !atual.arquivo || !VISTOS.has(atual.id) || IMPORTADOS.has(atual.id)) return;
     IMPORTADOS.add(atual.id);
     setLendo(true);
-    planilhaDoFiscal(atual).then(f => Promise.resolve(chegou.current(f)), e => setFalha('Não consegui baixar a planilha do robô: ' + (e instanceof Error ? e.message : String(e))))
+    planilhaDoFiscal(atual).then(f => Promise.resolve(chegou.current(f, atual.competencia)), e => setFalha('Não consegui baixar a planilha do robô: ' + (e instanceof Error ? e.message : String(e))))
       .finally(() => setLendo(false));
   }, [atual]);
   const andando = pedindo || (!!atual && ANDANDO.includes(atual.status));

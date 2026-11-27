@@ -67,7 +67,7 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
   const prefixo = contabilizacao ? PREFIXO_DA_CONTABILIZACAO : PREFIXO;
   const { aviso } = useRetorno();
   const [guardado, setGuardado] = useState<Guardado | null>(() => lerGuardado(codigo, prefixo));
-  const robo = useLancamentosDoSciPeloRobo({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', chegou: f => importar(f) });
+  const robo = useLancamentosDoSciPeloRobo({ codigo: contabilizacao ? codigo : null, empresa: vm.empresa?.nome || '', chegou: (f, c) => importar(f, c) });
   const [busca, setBusca] = useState('');
   const [tipo, setTipo] = useState('');
   const [ordem, setOrdem] = useState<{ coluna: ColunaDoRazao; desc: boolean } | null>(null);
@@ -101,17 +101,28 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
   const plano = useMemo(() => sci.planoDoSci(idDoPlano), [idDoPlano]);
   const participantes = useMemo(() => sci.nomesDosParticipantes(guardado?.lancamentos || []), [guardado]);
 
-  async function importar(arquivo: File | undefined) {
+  /**
+   * competencia: a do pedido ao robô (Contabilização). Na Contabilização a consulta se junta à que a tela tem (27/11/2026: "Puxa tudo
+   * de inicio e ao longo do tempo vai colocando so os lancamentos novos. Se a pessoa pedir um mes em especifico, ai vc puxa"): tudo
+   * (e o arquivo trazido à mão) acrescenta só os novos; o mês ou o ano troca só aquele período. No Visualizar, o arquivo substitui.
+   */
+  async function importar(arquivo: File | undefined, competencia = '00/0000') {
     if (!arquivo || codigo == null) return;
     const lidos = await arquivo.arrayBuffer().then(b => sci.lerConsultaDoSci(b)).catch(() => null);
     if (!lidos) {
       aviso({ tom: 'info', titulo: 'Não é a consulta do SCI', texto: 'Use a "Impressão de campos da consulta" dos lançamentos, exportada para o Excel, com Data, Débito, Crédito e Valor.' });
       return;
     }
-    const g: Guardado = { arquivo: arquivo.name, importadoEm: new Date().toISOString(), lancamentos: lidos };
+    const antes = contabilizacao ? lerGuardado(codigo, prefixo)?.lancamentos || [] : [];
+    const junto = contabilizacao ? sci.juntarConsultas(antes, lidos, competencia) : { lancamentos: lidos, novos: lidos.length, periodo: null };
+    const g: Guardado = { arquivo: arquivo.name, importadoEm: new Date().toISOString(), lancamentos: junto.lancamentos };
     gravarGuardado(codigo, g, prefixo);
     setGuardado(g); setTipo(''); setBusca(''); setAberto(null); setJanela(false);
-    aviso({ tom: 'ok', titulo: lidos.length === 1 ? '1 lançamento do SCI' : lidos.length + ' lançamentos do SCI', texto: arquivo.name });
+    const qtd = (n: number) => (n === 1 ? '1 lançamento' : n + ' lançamentos');
+    const titulo = !contabilizacao || !antes.length ? qtd(junto.lancamentos.length) + ' do SCI'
+      : junto.periodo ? rotuloDaCompetenciaDoSci(competencia) + ': ' + qtd(junto.novos)
+        : junto.novos ? (junto.novos === 1 ? '1 lançamento novo' : junto.novos + ' lançamentos novos') : 'Nenhum lançamento novo';
+    aviso({ tom: 'ok', titulo, texto: arquivo.name });
   }
   const escolher = () => campo.current?.click();
   // sem consulta importada, a janela de trazer o arquivo já abre (25/11/2026: "Que na outra tela ja aparece uma popup para upar os
@@ -196,7 +207,7 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
       {contabilizacao ? (
         <AcoesDoTopo>
           <button type="button" className="btn btn-outline sci-btn-icone" onClick={() => vm.abrirApp(null)} title="Voltar aos apps" aria-label="Voltar aos apps"><Icone nome="chevronLeft" /></button>
-          {guardado && robo.disponivel && <PuxarDoSci robo={robo} />}
+          {guardado && robo.disponivel && <PuxarDoSci robo={robo} temLancamentos />}
           {/* trazer a consulta à mão também (quem não tem o robô, ou o arquivo já exportado) */}
           <button type="button" className="btn btn-outline sci-btn-icone" onClick={escolher} title="Importar a consulta do SCI à mão (.xls, .xlsx ou .csv)" aria-label="Importar a consulta do SCI à mão"><Icone nome="upload" /></button>
         </AcoesDoTopo>
@@ -382,26 +393,33 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
 }
 
 // ------------------------------------------------------------------------------------------------- o botão Vitor do SCI
-const MESES_DO_SCI: readonly (readonly [string, string])[] = [['00', 'Ano todo'], ['01', 'Janeiro'], ['02', 'Fevereiro'], ['03', 'Março'], ['04', 'Abril'], ['05', 'Maio'],
+const MESES_DO_SCI: readonly (readonly [string, string])[] = [['tudo', 'Tudo'], ['00', 'Ano todo'], ['01', 'Janeiro'], ['02', 'Fevereiro'], ['03', 'Março'], ['04', 'Abril'], ['05', 'Maio'],
   ['06', 'Junho'], ['07', 'Julho'], ['08', 'Agosto'], ['09', 'Setembro'], ['10', 'Outubro'], ['11', 'Novembro'], ['12', 'Dezembro']];
 
 /**
  * A competência do SCI e o botão Vitor (27/11/2026: "cria um botao chamado vitor com o icone da sci, ao inves do alterdata"): o mês
  * (ou o ano todo, o 00 do SCI) e o ano; o clique pede ao robô do PC e a planilha entra na tela quando volta.
  */
-function PuxarDoSci({ robo }: { robo: RoboDoSci }) {
-  const [mes, setMes] = useState('00');
-  const [ano, setAno] = useState(String(new Date().getFullYear()));
-  const valido = /^\d{4}$/.test(ano);
-  const competencia = mes + '/' + ano;
+function PuxarDoSci({ robo, temLancamentos = false }: { robo: RoboDoSci; temLancamentos?: boolean }) {
+  // o que foi pedido por último fica escolhido (27/11/2026: voltava para o "Ano todo" quando a planilha chegava); sem pedido, tudo
+  const ultimo = /^(\d{2})\/(\d{4})$/.exec(robo.competencia);
+  const [mes, setMes] = useState(() => (!ultimo || ultimo[2] === '0000' ? 'tudo' : ultimo[1]));
+  const [ano, setAno] = useState(() => (ultimo && ultimo[2] !== '0000' ? ultimo[2] : String(new Date().getFullYear())));
+  const tudo = mes === 'tudo';
+  const valido = tudo || /^\d{4}$/.test(ano);
+  const competencia = tudo ? '00/0000' : mes + '/' + ano;
+  // com lançamentos na tela, o "tudo" acrescenta só os novos
+  const rotuloDe = (v: string, r: string) => (v === 'tudo' && temLancamentos ? 'Só os novos' : r);
+  const dica = tudo ? (temLancamentos ? 'Puxar do SCI e acrescentar só os lançamentos novos' : 'Puxar todos os lançamentos do SCI')
+    : 'Puxar os lançamentos de ' + rotuloDaCompetenciaDoSci(competencia) + ' do SCI (troca esse período na tela)';
   return (
     <span className="sci-puxar">
-      <MenuSuspenso rotulo={MESES_DO_SCI.find(m => m[0] === mes)?.[1] || mes} className="btn btn-outline sci-puxar-mes" titulo="A competência do SCI" largura={180}
-        itens={MESES_DO_SCI.map(([v, r]) => ({ rotulo: r, icone: v === mes ? 'check' as const : undefined, onClick: () => setMes(v) }))} />
-      <input className="input sci-puxar-ano" aria-label="O ano da competência" inputMode="numeric" maxLength={4} value={ano}
-        onChange={e => setAno(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyDown={e => { if (e.key === 'Enter' && valido) void robo.pedir(competencia); }} />
+      <MenuSuspenso rotulo={rotuloDe(mes, MESES_DO_SCI.find(m => m[0] === mes)?.[1] || mes)} className="btn btn-outline sci-puxar-mes" titulo="O que puxar do SCI" largura={180}
+        itens={MESES_DO_SCI.flatMap(([v, r]) => [{ rotulo: rotuloDe(v, r), icone: v === mes ? 'check' as const : undefined, onClick: () => setMes(v) }, ...(v === 'tudo' ? ['separador' as const] : [])])} />
+      {!tudo && <input className="input sci-puxar-ano" aria-label="O ano da competência" inputMode="numeric" maxLength={4} value={ano}
+        onChange={e => setAno(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyDown={e => { if (e.key === 'Enter' && valido) void robo.pedir(competencia); }} />}
       <BotaoAcao className="btn btn-primary btn-icone-alterdata sci-puxar-botao" carregando={robo.andando} textoCarregando={robo.rotulo} disabled={!valido}
-        onClick={() => { void robo.pedir(competencia); }} title={'Puxar os lançamentos de ' + rotuloDaCompetenciaDoSci(competencia) + ' do SCI, pelo robô do PC de ' + robo.rotulo}
+        onClick={() => { void robo.pedir(competencia); }} title={dica + ', pelo robô do PC de ' + robo.rotulo}
         aria-label={'Puxar os lançamentos do SCI pelo robô de ' + robo.rotulo}>
         <LogoSci altura={14} />{robo.rotulo}
       </BotaoAcao>
