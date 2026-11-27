@@ -59,6 +59,34 @@ def fechar_rotina():
             esperar(lambda: not win32gui.IsWindow(h) or not win32gui.IsWindowVisible(h), 5)
 
 
+def responde(h, segundos=5):
+    """O SCI está respondendo? (às vezes demora: o Vitor, 27/11/2026)"""
+    try:
+        win32gui.SendMessageTimeout(h, win32con.WM_NULL, 0, 0, win32con.SMTO_ABORTIFHUNG, segundos * 1000)
+        return True
+    except Exception:
+        return False
+
+
+def voltar_a_tela_inicial(principal):
+    """Depois do "concluída": fecha a Consulta e depois a Importação, UMA POR VEZ, só com o SCI respondendo e calmo.
+    Nunca a TfrUnico: fechar o sistema só com permissão do Vitor. Em 27/11/2026 o WM_CLOSE nas duas, 1,5 s depois do OK,
+    derrubou o SCI inteiro (APPCRASH no SCIPackagesComponents.bpl)."""
+    for cls in (CONSULTA, IMPORTACAO):
+        h = janela(cls)
+        if not h:
+            continue
+        if not esperar(lambda: responde(principal) and responde(h), 120, 2):
+            print('o SCI não respondeu em 2 min: deixei a "' + win32gui.GetWindowText(h) + '" aberta', flush=True)
+            return
+        time.sleep(5)   # o SCI termina de gravar depois do OK
+        win32gui.PostMessage(h, win32con.WM_CLOSE, 0, 0)
+        if not esperar(lambda: not win32gui.IsWindow(h) or not win32gui.IsWindowVisible(h), 60, 1):
+            print('a "' + win32gui.GetWindowText(h) + '" não fechou: deixei como está', flush=True)
+            return
+    print('de volta à tela inicial', flush=True)
+
+
 def relativo(h, ret):
     x0, y0, _, _ = win32gui.GetWindowRect(h)
     return ((ret.left + ret.right) // 2 - x0, (ret.top + ret.bottom) // 2 - y0)
@@ -159,10 +187,13 @@ def acompanhar(principal, h_imp, vistas, segundos=180):
         ultimo = time.time()
         for h in novas:
             vistas.add(h)
-            titulo = win32gui.GetWindowText(h)
-            if win32gui.GetClassName(h) == 'TfrStatusProcessoForm':   # "Aguarde, processando..." (só o Cancelar): espera
+            try:
+                titulo, classe = win32gui.GetWindowText(h), win32gui.GetClassName(h)
+            except Exception:   # o SCI abre e fecha janelas rápidas (a do "Aguarde"): a que já sumiu, pula
                 continue
-            if win32gui.GetClassName(h) == CONSULTA:
+            if classe == 'TfrStatusProcessoForm':   # "Aguarde, processando..." (só o Cancelar): espera
+                continue
+            if classe == CONSULTA:
                 # abre atrás do "Aguarde" (que fica em 100%) e não vem sozinha: trazer para a frente (o Vitor, 27/11/2026)
                 frente(h)
                 print('a "' + titulo + '" veio para a frente', flush=True)
@@ -174,15 +205,20 @@ def acompanhar(principal, h_imp, vistas, segundos=180):
                 barra[0].children()[BOTAO_IMPORTAR_DADOS].click_input()
                 print('cliquei no Importar dados (F12)', flush=True)
                 continue
-            if win32gui.GetClassName(h).startswith('TfrInconsistencias'):
+            if classe.startswith('TfrInconsistencias'):
                 itens = []
                 for li in uia.window(handle=h).descendants(control_type='ListItem'):
                     partes = [li.element_info.name] + [c.element_info.name for c in li.children()]
                     itens.append(' '.join(x.strip() for x in partes if x and x.strip()))
                 raise Parou('o SCI listou inconsistências: ' + ('; '.join(i for i in itens if i) or 'veja a janela na tela'))
-            textos = textos_da_janela(h)
-            botoes = [b for b in uia.window(handle=h).descendants(control_type='Button')]
-            nomes = [(b.element_info.name or '').replace('&', '').strip() for b in botoes]
+            try:
+                textos = textos_da_janela(h)
+                botoes = [b for b in uia.window(handle=h).descendants(control_type='Button')]
+                nomes = [(b.element_info.name or '').replace('&', '').strip() for b in botoes]
+            except Exception:
+                if not win32gui.IsWindow(h):
+                    continue
+                raise
             texto = ' · '.join(t for t in textos if t not in nomes and t != titulo)[:400]
             print('o SCI mostrou "' + titulo + '": ' + texto + (' [' + ', '.join(n for n in nomes if n) + ']' if nomes else ''), flush=True)
             so_ok = [b for b, n in zip(botoes, nomes) if n.upper() == 'OK']
@@ -252,6 +288,7 @@ def main():
         if 'NENHUM REGISTRO IMPORTADO' in resumo.upper():
             raise Parou('o SCI não importou nada: ' + resumo)
         print('pronto: ' + resumo, flush=True)
+        voltar_a_tela_inicial(principal)
     except Parou as e:
         print('parei: ' + str(e), flush=True)
         sys.exit(1)
