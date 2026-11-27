@@ -7137,6 +7137,8 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .cobranca-tempo{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border-muted);}
 /* a empresa junto do título e a escolha do tempo antes do motivo (18/11/2026) */
 .cobranca-topo > span{display:flex;flex-direction:column;gap:2px;}
+/* o X só no modo desenvolvedor (27/11/2026) */
+.cobranca-fechar{margin-left:auto;align-self:flex-start;flex:none;}
 .cobranca-empresa{font-weight:600;color:var(--ink);font-size:var(--fs-15,15px);}
 .cobranca-tempo-titulo{font-weight:600;}
 .cobranca-escolha{justify-content:flex-start;}
