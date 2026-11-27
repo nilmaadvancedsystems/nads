@@ -91,6 +91,16 @@ export function provisoesDaConta(todos: readonly LancamentoDaConsulta[], conta: 
 /** Uma linha do extrato para casar com o pagamento: a data (aaaa-mm-dd) e o valor (centavos; + entrada, − saída). */
 export interface LinhaDoExtratoParaPagar { data: string; valor: number; historico: string }
 
+/**
+ * Os históricos padrão do SCI do Vitor (27/11/2026): "813 Pagamento de título nº" e "478 Recebimento de clientes cfe NF nº". O
+ * complemento leva o número e o nome (o que a provisão diz), porque o histórico termina no "nº".
+ */
+export const HISTORICO_DO_PAGAMENTO = '813';
+export const HISTORICO_DO_RECEBIMENTO = '478';
+/** a multa e os juros (27/11/2026, o Vitor: "recorra ao banco, se tem multa e juros"): o extrato pode ter até 30% a mais, em até 120 dias */
+export const ACRESCIMO_MAXIMO = 0.3;
+export const DIAS_DO_ACRESCIMO = 120;
+
 export interface OpcoesDoPagamento {
   /** a conta da provisão (o código reduzido) */
   conta: string;
@@ -100,6 +110,8 @@ export interface OpcoesDoPagamento {
   /** a conta do banco no SCI e as linhas do extrato (vazio = tudo pelo caixa) */
   banco?: string;
   extrato?: readonly LinhaDoExtratoParaPagar[];
+  /** a conta da multa e dos juros pagos (a despesa financeira): o que o extrato pagou a mais que a provisão */
+  juros?: string;
   /** o número do histórico padrão do SCI do pagamento */
   historico: string;
   /** as linhas do extrato já usadas (o fechamento passa a mesma para todas as contas: cada linha paga uma provisão só) */
@@ -118,35 +130,72 @@ export function ultimoDiaUtil(mes: string): string {
 
 export interface PagamentoGerado {
   lancamento: CamposDoLancamento;
+  /** a multa e os juros: o que o extrato pagou a mais (D a conta de juros × C o banco) */
+  acrescimo?: CamposDoLancamento;
   /** por onde: o banco (achou no extrato) ou o caixa */
   pelo: 'banco' | 'caixa';
   provisao: LancamentoDaConsulta;
+  /** a linha do extrato que pagou (o índice), no banco */
+  linhaDoExtrato?: number;
 }
 
+/** A chave de uma provisão (a conta e o lançamento): a tela guarda por ela o "deixar em aberto". */
+export const chaveDaProvisao = (conta: string, p: LancamentoDaConsulta) => [conta, p.data, p.valor, p.documento, p.complemento].join('|');
+
+const diasEntre = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+
 /**
- * Os pagamentos das provisões abertas: cada uma vira um lançamento do valor aberto. Pelo banco quando o extrato tem a linha do mesmo
- * valor (a saída, no passivo; a entrada, no a receber) na data da provisão ou depois, ainda não usada; senão, pelo caixa, no último
- * dia útil do mês da provisão. O participante e o documento da provisão vão junto (sem documento, o mês da provisão, MMAAAA).
+ * Os pagamentos das provisões abertas: cada uma vira um lançamento do valor aberto.
+ *   1. pelo banco, quando o extrato tem a linha do mesmo valor (a saída, no passivo; a entrada, no a receber) na data da provisão ou
+ *      depois, ainda não usada;
+ *   2. no passivo, pelo banco com multa e juros, quando o extrato tem a saída maior (até 30% a mais, em até 120 dias): a provisão
+ *      paga e o acréscimo na conta de juros, os dois na data do extrato;
+ *   3. senão, pelo caixa, no último dia útil do mês da provisão.
+ * Primeiro os valores iguais de todas, depois os com acréscimo (um igual nunca é tomado por outro com juros). O complemento leva o
+ * número e o nome da provisão (o documento; sem ele, o mês da provisão, MMAAAA).
  */
 export function pagamentosDasProvisoes(abertas: readonly ProvisaoAberta[], o: OpcoesDoPagamento): PagamentoGerado[] {
   const usadas = o.usadas || new Set<number>();
   const extrato = o.banco ? o.extrato || [] : [];
-  return abertas.filter(x => x.aberto > 0).map(x => {
+  const sinal = o.lado === 'credito' ? -1 : 1;
+  const lista = abertas.filter(x => x.aberto > 0);
+  const linha = new Map<ProvisaoAberta, number>();
+  for (const x of lista) {
+    const i = extrato.findIndex((e, k) => !usadas.has(k) && e.valor === sinal * x.aberto && e.data >= x.lancamento.data);
+    if (i >= 0) { usadas.add(i); linha.set(x, i); }
+  }
+  if (o.lado === 'credito') {
+    for (const x of lista) {
+      if (linha.has(x)) continue;
+      let melhor = -1;
+      extrato.forEach((e, k) => {
+        const pago = -e.valor;
+        if (usadas.has(k) || pago <= x.aberto || pago > Math.round(x.aberto * (1 + ACRESCIMO_MAXIMO)) || e.data < x.lancamento.data || diasEntre(x.lancamento.data, e.data) > DIAS_DO_ACRESCIMO) return;
+        if (melhor < 0 || e.data < extrato[melhor].data) melhor = k;
+      });
+      if (melhor >= 0) { usadas.add(melhor); linha.set(x, melhor); }
+    }
+  }
+  return lista.map(x => {
     const p = x.lancamento;
-    const sinal = o.lado === 'credito' ? -1 : 1;
-    const i = extrato.findIndex((e, k) => !usadas.has(k) && e.valor === sinal * x.aberto && e.data >= p.data);
-    if (i >= 0) usadas.add(i);
-    const pelo: 'banco' | 'caixa' = i >= 0 ? 'banco' : 'caixa';
+    const i = linha.get(x);
+    const pelo: 'banco' | 'caixa' = i != null ? 'banco' : 'caixa';
     const contra = pelo === 'banco' ? o.banco! : o.caixa;
-    const data = i >= 0 ? extrato[i].data : (/^\d{4}-\d{2}/.test(p.data) ? ultimoDiaUtil(p.data.slice(0, 7)) : '');
+    const data = i != null ? extrato[i].data : (/^\d{4}-\d{2}/.test(p.data) ? ultimoDiaUtil(p.data.slice(0, 7)) : '');
     // o documento é obrigatório no SCI: o da provisão; sem ele, o mês da provisão (MMAAAA)
     const documento = p.documento || (/^\d{4}-\d{2}/.test(p.data) ? p.data.slice(5, 7) + p.data.slice(0, 4) : '');
     const participante = o.lado === 'credito' ? p.participanteC : p.participanteD;
-    const complemento = (o.lado === 'credito' ? 'Pagamento ' : 'Recebimento ') + (p.complemento || 'da provisão de ' + p.data.slice(5, 7) + '/' + p.data.slice(0, 4));
+    // o histórico termina no "nº": o complemento começa pelo número (o complemento do fiscal já começa: "245 - CLIENTE")
+    const texto = p.complemento.trim();
+    const complemento = !texto ? documento : documento && !texto.startsWith(documento) ? documento + ' - ' + texto : texto;
     const lancamento: CamposDoLancamento = o.lado === 'credito'
       ? { data, debito: o.conta, credito: contra, valor: x.aberto, historico: o.historico, complemento, documento, participanteD: participante, participanteC: '' }
       : { data, debito: contra, credito: o.conta, valor: x.aberto, historico: o.historico, complemento, documento, participanteD: '', participanteC: participante };
-    return { lancamento, pelo, provisao: p };
+    const pago = i != null ? Math.abs(extrato[i].valor) : x.aberto;
+    const acrescimo: CamposDoLancamento | undefined = pago > x.aberto
+      ? { data, debito: o.juros || '', credito: contra, valor: pago - x.aberto, historico: o.historico, complemento: 'Multa e juros - ' + complemento, documento, participanteD: '', participanteC: '' }
+      : undefined;
+    return { lancamento, ...(acrescimo ? { acrescimo } : {}), pelo, provisao: p, ...(i != null ? { linhaDoExtrato: i } : {}) };
   });
 }
 
@@ -163,12 +212,20 @@ export interface OpcoesDoFechamento {
   /** o período das provisões que entram (aaaa-mm, os dois inclusive) */
   de: string;
   ate: string;
+  /** a conta da multa e dos juros */
+  juros?: string;
+  /** o que não está no extrato fica em aberto, em vez de ir para o caixa (27/11/2026: "ajustavel na aplicacao para termos controle") */
+  semCaixa?: boolean;
+  /** as provisões que a pessoa deixou em aberto (chaveDaProvisao) */
+  deixarAbertas?: ReadonlySet<string>;
 }
 
-export interface PagamentoDoFechamento extends PagamentoGerado { conta: ContaParaFechar }
+export interface PagamentoDoFechamento extends PagamentoGerado { conta: ContaParaFechar; chave: string }
 
 export interface Fechamento {
   pagamentos: PagamentoDoFechamento[];
+  /** as que ficaram em aberto (a pessoa deixou, ou o caixa desligado), com o pagamento que teriam */
+  abertas: PagamentoDoFechamento[];
   /** por conta: quantos, quanto pelo banco e quanto pelo caixa */
   porConta: { conta: ContaParaFechar; qtd: number; banco: number; caixa: number }[];
   /** o que os pagamentos mexem no banco e no caixa (centavos; + entra, − sai) */
@@ -186,6 +243,7 @@ export interface Fechamento {
 export function fechamentoDoPeriodo(todos: readonly LancamentoDaConsulta[], contas: readonly ContaParaFechar[], o: OpcoesDoFechamento): Fechamento {
   const usadas = new Set<number>();
   const pagamentos: PagamentoDoFechamento[] = [];
+  const deixadas: PagamentoDoFechamento[] = [];
   const porConta: Fechamento['porConta'] = [];
   const noPeriodo = (data: string) => data.slice(0, 7) >= o.de && data.slice(0, 7) <= o.ate;
   for (const conta of contas) {
@@ -193,21 +251,31 @@ export function fechamentoDoPeriodo(todos: readonly LancamentoDaConsulta[], cont
     if (!p || !p.aberto) continue;
     const abertas = p.meses.flatMap(m => m.provisoes).filter(x => x.aberto > 0 && noPeriodo(x.lancamento.data));
     if (!abertas.length) continue;
-    const g = pagamentosDasProvisoes(abertas, {
-      conta: conta.codigo, lado: p.lado, caixa: o.caixa, banco: o.banco, extrato: o.extrato, usadas,
+    const todas = pagamentosDasProvisoes(abertas, {
+      conta: conta.codigo, lado: p.lado, caixa: o.caixa, banco: o.banco, extrato: o.extrato, usadas, juros: o.juros,
       historico: p.lado === 'credito' ? o.historicoPagamento : o.historicoRecebimento,
     });
-    for (const x of g) pagamentos.push({ ...x, conta });
+    const g: PagamentoDoFechamento[] = [];
+    for (const x of todas) {
+      const comConta = { ...x, conta, chave: chaveDaProvisao(conta.codigo, x.provisao) };
+      // deixada em aberto: a linha do extrato que ela usaria volta a ficar livre
+      if (o.deixarAbertas?.has(comConta.chave) || (o.semCaixa && x.pelo === 'caixa')) {
+        if (x.linhaDoExtrato != null) usadas.delete(x.linhaDoExtrato);
+        deixadas.push(comConta);
+      } else g.push(comConta);
+    }
+    pagamentos.push(...g);
+    if (!g.length) continue;
     porConta.push({
       conta, qtd: g.length,
-      banco: g.filter(x => x.pelo === 'banco').reduce((t, x) => t + x.lancamento.valor, 0),
+      banco: g.filter(x => x.pelo === 'banco').reduce((t, x) => t + x.lancamento.valor + (x.acrescimo?.valor || 0), 0),
       caixa: g.filter(x => x.pelo === 'caixa').reduce((t, x) => t + x.lancamento.valor, 0),
     });
   }
   // + entra, − sai: o pagamento do passivo sai; o recebimento do a receber entra
   const movimento = (pelo: 'banco' | 'caixa') => pagamentos.filter(x => x.pelo === pelo)
-    .reduce((t, x) => t + (x.lancamento.credito === (pelo === 'banco' ? o.banco : o.caixa) ? -x.lancamento.valor : x.lancamento.valor), 0);
+    .reduce((t, x) => t + (x.lancamento.credito === (pelo === 'banco' ? o.banco : o.caixa) ? -x.lancamento.valor : x.lancamento.valor) - (x.acrescimo?.valor || 0), 0);
   const extratoSemProvisao = (o.banco ? o.extrato || [] : []).filter((e, k) => !usadas.has(k) && noPeriodo(e.data));
-  return { pagamentos, porConta, movimentoNoBanco: movimento('banco'), movimentoNoCaixa: movimento('caixa'), extratoSemProvisao };
+  return { pagamentos, abertas: deixadas, porConta, movimentoNoBanco: movimento('banco'), movimentoNoCaixa: movimento('caixa'), extratoSemProvisao };
 }
 

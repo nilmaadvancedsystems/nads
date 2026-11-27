@@ -5,7 +5,7 @@
 // do nads, precisa ser visual diferente nao, pra nao confundir o usuario ... a tabela e a interface"): o card com a faixa do título,
 // a tabela compacta e as etiquetas (badge).
 import { sci } from '@nads/core';
-import { Icone, LogoSci, useRetorno } from '@nads/ui';
+import { Icone, Vazio, useRetorno } from '@nads/ui';
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { PuxarDoSci, SituacaoDoRobo } from './RazaoDoSci';
@@ -65,18 +65,12 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
       <SituacaoDoRobo robo={robo} />
       <input ref={campo} type="file" accept=".xls,.xlsx,.csv" hidden onChange={e => { void importar(e.target.files?.[0]); e.target.value = ''; }} />
       {!b ? (
-        // vazio, no padrão da tela inicial do minimum: a marca no meio e a barra larga com o período e o botão Vitor
-        <div className="sci-inicio sci-contab-inicio">
-          <span className="sci-inicio-marca">
-            <span className="sci-contab-logo" aria-hidden="true"><LogoSci altura={52} /></span>
-            <h1 className="sci-contab-titulo">Qual período do balancete?</h1>
-          </span>
-          <div className="sci-inicio-corpo sci-contab-corpo">
-            {robo.disponivel
-              ? <PuxarDoSci robo={robo} grande semTudo />
-              : <button type="button" className="sci-escolher" onClick={() => campo.current?.click()}><Icone nome="upload" /><span className="sci-escolher-rotulo">Importar o balancete do SCI</span></button>}
-          </div>
-        </div>
+        // vazio, na interface de sempre do nads (27/11/2026: "o resto siga o padrao nads de design")
+        <section className="card">
+          <Vazio icone="calendar" titulo="Qual período do balancete?" texto={robo.disponivel ? 'O robô do PC de ' + robo.rotulo + ' puxa o balancete do SCI.' : 'Traga o balancete exportado do SCI (.xls).'}>
+            {robo.disponivel ? <PuxarDoSci robo={robo} semTudo /> : <button type="button" className="btn btn-primary" onClick={() => campo.current?.click()}><Icone nome="upload" />Importar o balancete</button>}
+          </Vazio>
+        </section>
       ) : (
         <>
           <Fechamento vm={vm} b={b} />
@@ -183,9 +177,13 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
           <div className="bal-campos">
             <Campo rotulo="Caixa" valor={f.caixa} mudar={f.setCaixa} dica={f.nomeDoCaixa} placeholder="código" />
             <Campo rotulo="Banco" valor={f.banco} mudar={f.setBanco} dica={f.nomeDoBanco} placeholder="código" />
-            <Campo rotulo="Histórico do pagamento" valor={f.historicoPagamento} mudar={f.setHistoricoPagamento} placeholder="nº no SCI" numero />
-            {f.temRecebimento && <Campo rotulo="Histórico do recebimento" valor={f.historicoRecebimento} mudar={f.setHistoricoRecebimento} placeholder="nº no SCI" numero />}
-            <p className="hint bal-extrato">{f.extrato ? <>Extrato da aba Extratos: <b>{f.extrato.arquivo}</b>. O que ele mostra sai pelo banco; o resto, pelo caixa.</> : <>Sem extrato na aba Extratos: tudo sai pelo caixa.</>}</p>
+            <Campo rotulo="Multa e juros" valor={f.juros} mudar={f.setJuros} dica={f.nomeDosJuros} placeholder="código" />
+            <Campo rotulo="Histórico do pagamento" valor={f.historicoPagamento} mudar={f.setHistoricoPagamento} placeholder="nº no SCI" numero dica="813 Pagamento de título nº" />
+            {f.temRecebimento && <Campo rotulo="Histórico do recebimento" valor={f.historicoRecebimento} mudar={f.setHistoricoRecebimento} placeholder="nº no SCI" numero dica="478 Recebimento de clientes cfe NF nº" />}
+          </div>
+          <div className="bal-campos" style={{ marginTop: 0 }}>
+            <label className="card-head-ctl"><input type="checkbox" checked={f.caixaLigado} onChange={e => f.setCaixaLigado(e.target.checked)} />O que não está no extrato vai para o caixa</label>
+            <p className="hint bal-extrato" style={{ marginTop: 0 }}>{f.extrato ? <>Extrato da aba Extratos: <b>{f.extrato.arquivo}</b>. O que ele mostra sai pelo banco (com a multa e os juros, se pagou a mais).</> : <>Sem extrato na aba Extratos: nada sai pelo banco.</>}</p>
           </div>
           {x && (
             <div className="table-wrap" style={{ maxHeight: 'none', marginTop: 12 }}>
@@ -212,19 +210,26 @@ function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
               </table>
             </div>
           )}
-          {x && x.porConta.length > 0 && (
+          {x && (x.pagamentos.length > 0 || x.abertas.length > 0) && (
             <div className="table-wrap" style={{ marginTop: 12 }}>
               <table className="table-compact">
-                <thead><tr><th>Conta</th><th className="num">Pagamentos</th><th className="num">Pelo banco</th><th className="num">Pelo caixa</th></tr></thead>
+                <thead><tr><th>Pagar</th><th>Conta</th><th>Pelo</th><th>Data</th><th className="num">Valor</th><th className="num">Multa e juros</th><th>Complemento</th></tr></thead>
                 <tbody>
-                  {x.porConta.map(c => (
-                    <tr key={c.conta.codigo}>
-                      <td>{c.conta.codigo} · {c.conta.nome}</td>
-                      <td className="num">{c.qtd}</td>
-                      <td className="num">{valorTexto(c.banco)}</td>
-                      <td className="num">{valorTexto(c.caixa)}</td>
-                    </tr>
-                  ))}
+                  {[...x.pagamentos, ...x.abertas].sort((a, z) => a.conta.codigo.localeCompare(z.conta.codigo) || a.provisao.data.localeCompare(z.provisao.data)).map(p => {
+                    const aberta = x.abertas.includes(p);
+                    return (
+                      <tr key={p.chave} className={aberta ? 'bal-participante' : undefined}>
+                        <td><input type="checkbox" checked={!aberta} disabled={!f.caixaLigado && p.pelo === 'caixa' && !f.deixada(p.chave)} onChange={() => f.alternar(p.chave)}
+                          title={aberta ? 'Fica em aberto: marque para pagar' : 'Desmarque para deixar em aberto'} aria-label="Pagar" /></td>
+                        <td>{p.conta.codigo} · {p.conta.nome}</td>
+                        <td>{aberta ? <span className="badge badge-neutral">em aberto</span> : pelo(p.pelo)}</td>
+                        <td>{dataTexto(p.lancamento.data)}</td>
+                        <td className="num">{valorTexto(p.lancamento.valor)}</td>
+                        <td className="num">{p.acrescimo ? valorTexto(p.acrescimo.valor) : ''}</td>
+                        <td>{p.lancamento.complemento}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -282,17 +287,18 @@ function ContaAberta({ vm, b, conta }: { vm: VmShadersCi; b: sci.BalanceteSci; c
               <div className="bal-campos">
                 <Campo rotulo="Caixa" valor={c.caixa} mudar={c.setCaixa} dica={c.nomeDoCaixa} placeholder="código" />
                 <Campo rotulo="Banco" valor={c.banco} mudar={c.setBanco} dica={c.nomeDoBanco || (c.extrato ? '' : 'sem extrato')} placeholder="código" />
-                <Campo rotulo="Histórico" valor={c.historico} mudar={c.setHistorico} placeholder="nº no SCI" numero />
+                {p.lado === 'credito' && <Campo rotulo="Multa e juros" valor={c.juros} mudar={c.setJuros} dica={c.nomeDosJuros} placeholder="código" />}
+                <Campo rotulo="Histórico" valor={c.historico} mudar={c.setHistorico} placeholder="nº no SCI" numero dica={p.lado === 'credito' ? '813 Pagamento de título nº' : '478 Recebimento de clientes cfe NF nº'} />
                 <button type="button" className="btn btn-primary" disabled={c.gerando || !c.previa.length} onClick={c.gerar}>
                   <Icone nome="download" />{c.gerando ? 'Gerando…' : 'Pagar esta conta (' + c.previa.length + ')'}
                 </button>
               </div>
               {c.previa.length > 0 && (
                 <table className="table-compact">
-                  <thead><tr><th>Pelo</th><th>Data</th><th className="num">Valor</th><th>Débito × Crédito</th><th>Complemento</th></tr></thead>
+                  <thead><tr><th>Pelo</th><th>Data</th><th className="num">Valor</th><th className="num">Multa e juros</th><th>Débito × Crédito</th><th>Complemento</th></tr></thead>
                   <tbody>
                     {c.previa.map((x, i) => (
-                      <tr key={i}><td>{pelo(x.pelo)}</td><td>{dataTexto(x.lancamento.data)}</td><td className="num">{valorTexto(x.lancamento.valor)}</td><td>{x.lancamento.debito} × {x.lancamento.credito}</td><td>{x.lancamento.complemento}</td></tr>
+                      <tr key={i}><td>{pelo(x.pelo)}</td><td>{dataTexto(x.lancamento.data)}</td><td className="num">{valorTexto(x.lancamento.valor)}</td><td className="num">{x.acrescimo ? valorTexto(x.acrescimo.valor) : ''}</td><td>{x.lancamento.debito} × {x.lancamento.credito}</td><td>{x.lancamento.complemento}</td></tr>
                     ))}
                   </tbody>
                 </table>
