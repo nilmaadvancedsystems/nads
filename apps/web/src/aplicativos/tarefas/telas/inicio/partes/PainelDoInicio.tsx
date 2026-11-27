@@ -159,8 +159,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             ))}
           </div>
         )}
-        {/* a dica, só por enquanto (Vitor, 18/11/2026: "coloca embaixo... so por enquanto, depois tiramos") */}
-        {(vm.reunioes.length + vm.avisosNoQuadro.length > 0) && <p className="hint ini-quadro-dica"><Icone nome="lampada" width={13} height={13} />Passe o mouse em cima do aviso e marque recebido</p>}
+        {/* a dica "Passe o mouse em cima do aviso e marque recebido" saiu (27/11/2026: "remove isso") */}
         <Cartao titulo={<>{vm.proximas.titulo} <span className="fraco num">({vm.proximas.total})</span></>}
           acao={c.dia ? <button type="button" className="btn btn-ghost" onClick={() => c.escolher(null)}><Icone nome="x" />Todas</button>
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>
@@ -173,8 +172,15 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
           ))}
           {vm.proximas.linhas.length ? vm.proximas.linhas.map(t => (
             <div key={t.id} className="ini-linha">
-              <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
-              <button type="button" className="ini-linha-texto ini-abrir" onClick={() => vm.abrir(t.id)}>{t.titulo}</button>
+              {/* delegada por outra pessoa: a foto dela no lugar da caixinha (27/11/2026); a minha, a caixinha de concluir */}
+              <span className="ini-marca">{t.delegadaPor
+                ? <span title={'Delegada por ' + t.delegadaPor.nome}><Foto p={t.delegadaPor} /></span>
+                : <button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} />}</span>
+              {/* a empresa em cima e a tarefa embaixo, como nas delegadas (27/11/2026); sem empresa, só a tarefa */}
+              <span className="ini-linha-texto">
+                <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.cliente ? <span className="ini-empresa">{t.cliente}</span> : t.titulo}</button>
+                {t.cliente && <><br /><span className="hint">{t.titulo}</span></>}
+              </span>
               {cobrarLigado && t.cobrada && <span className="ini-sino" title={t.dicaDaCobranca}><Icone nome="sino" />{!discreta && 'Cobrada'}</span>}
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
