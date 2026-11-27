@@ -41,7 +41,7 @@ function contexto(pedidos, emitir) {
 
 (async () => {
   igual('pedido bom', R.motivoDoPedidoRuim(base()), '');
-  verdade('pedido de órgão que o robô ainda não emite', /ainda não emite/.test(R.motivoDoPedidoRuim(base({ orgao: 'estadual' }))));
+  verdade('pedido de órgão que o robô ainda não emite', /ainda não emite/.test(R.motivoDoPedidoRuim(base({ orgao: 'tjmg' }))));
   verdade('a prefeitura sem a empresa', R.semCadastroNaPrefeitura('a prefeitura respondeu: Contribuinte não encontrado!'));
   igual('o código de emissão não é "sem cadastro"', R.semCadastroNaPrefeitura('Código de emissão não informado!'), false);
   igual('o dia e a hora em Brasília', R.diaEHora(Date.parse('2026-11-27T02:30:00Z')), { dia: '2026-11-26', hora: 23 });
@@ -103,8 +103,27 @@ function contexto(pedidos, emitir) {
   const doCatalogo = catalogo.robos.find(r => r.id === 'certidoes');
   verdade('o catálogo tem o robô das certidões, no servidor', doCatalogo && doCatalogo.maquina === 'servidor');
   igual('o catálogo e o robô usam a mesma coleção', doCatalogo && doCatalogo.itens.colecao, R.COLECAO);
-  igual('os pedidos do catálogo são os que a central sabe fazer', (doCatalogo ? doCatalogo.pedidos : []).map(p => p.id),
-    Object.keys(central.PEDIDOS_POR_CLIENTE).filter(k => k.startsWith('certidoes:')).map(k => k.slice(10)));
+  igual('os pedidos do catálogo são os que a central sabe fazer', (doCatalogo ? doCatalogo.pedidos : []).map(p => p.id).sort(),
+    Object.keys(central.PEDIDOS_POR_CLIENTE).filter(k => k.startsWith('certidoes:')).map(k => k.slice(10)).sort());
+  igual('cada pedido da central é um órgão que o robô emite', Object.keys(central.PEDIDOS_POR_CLIENTE).filter(k => k.startsWith('certidoes:')).map(k => R.motivoDoPedidoRuim(central.PEDIDOS_POR_CLIENTE[k].modelo({ codigo: '9001', nome: 'X', documento: CNPJ }, {}))), ['', '', '']);
+
+  // ---------- a regra do certificado da SEF-MG (27/11/2026) ----------
+  {
+    const C = require('./chrome-certificado');
+    const govbr = '{"pattern":"https://[*.]acesso.gov.br","filter":{"ISSUER":{"CN":"AC FICTICIA"}}}';
+    const saida = ['HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\AutoSelectCertificateForUrls', '    1    REG_SZ    ' + govbr,
+      '    2    REG_SZ    {"pattern":"https://x.gov.br","filter":{}}', ''].join('\r\n');
+    igual('lê as regras do registro', C.lerSaidaDoReg(saida).map(e => e.nome), ['1', '2']);
+    igual('a regra nova copia o filtro do gov.br, com o próximo número', C.regraNova(C.lerSaidaDoReg(saida), 'https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br'),
+      { nome: '3', valor: '{"pattern":"https://[*.]fazenda.mg.gov.br","filter":{"ISSUER":{"CN":"AC FICTICIA"}}}' });
+    const feitos = [];
+    const rodar = (cmd, args) => { feitos.push(args[0]); if (args[0] === 'query' && /^HKLM/.test(args[1])) return saida; if (args[0] === 'query') throw new Error('sem a chave'); return ''; };
+    verdade('grava no HKLM, onde está a do gov.br', /gravada em HKLM \(número 3\)/.test(C.garantirRegra('https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br', rodar)));
+    igual('só uma consulta e uma gravação', feitos, ['query', 'add']);
+    const jaTem = (cmd, args) => (args[0] === 'query' && /^HKLM/.test(args[1]) ? saida + '    3    REG_SZ    {"pattern":"https://[*.]fazenda.mg.gov.br","filter":{}}\r\n' : (() => { throw new Error('x'); })());
+    verdade('a regra que já existe não é mexida', /já existe/.test(C.garantirRegra('https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br', jaTem)));
+    verdade('sem a do gov.br para copiar, avisa', /não achei a regra/.test(C.garantirRegra('p', 'fazenda.mg.gov.br', () => { throw new Error('nada'); })));
+  }
   igual('o pedido da central sai no formato do robô', R.motivoDoPedidoRuim(central.PEDIDOS_POR_CLIENTE['certidoes:municipal'].modelo({ codigo: '9001', nome: 'X', documento: CNPJ }, {})), '');
   verdade('a fila do painel é a do catálogo', painel.FILAS.pc.some(f => f.id === 'certidoes' && f.colecao === R.COLECAO));
 

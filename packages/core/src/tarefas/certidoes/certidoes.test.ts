@@ -67,3 +67,14 @@ describe('o lote do dia', () => {
     expect(certidoesParaPedir({ empresas: [e(1), e(2), e(6)], resumos, naFila: new Set(), hoje: '2026-11-27', limite: 2 })).toHaveLength(2);
   });
 });
+
+describe('a CDT de Minas (27/11/2026; o formato real ainda será conferido)', () => {
+  it('lê a validade, a emissão e o CNPJ pelos rótulos de costume', async () => {
+    const { certidaoEstadualDoTexto } = await import('./index');
+    const t = 'GOVERNO DO ESTADO DE MINAS GERAIS SECRETARIA DE ESTADO DE FAZENDA CERTIDÃO DE DÉBITOS TRIBUTÁRIOS NEGATIVA Certidão Nº 2026.000.111 '
+      + 'CNPJ: 99.888.777/0001-66 Data de emissão: 27/11/2026 Válida até: 26/12/2026';
+    expect(certidaoEstadualDoTexto(t)).toMatchObject({ orgao: 'estadual', cnpj: '99888777000166', emitidaEm: '2026-11-27', vence: '2026-12-26', negativa: true });
+    expect(certidaoEstadualDoTexto(t.replace('NEGATIVA', 'POSITIVA'))?.negativa).toBe(false);
+    expect(certidaoEstadualDoTexto('Login Único da SEF-MG')).toBeNull();
+  });
+});
