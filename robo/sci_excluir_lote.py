@@ -145,7 +145,9 @@ def esperar_fim(principal, c, lixeira, segundos=300):
             x, titulo, texto, botoes = d
             vistas.add(x)
             print('o SCI mostrou "' + titulo + '": ' + texto + ' [' + ', '.join(botoes) + ']', flush=True)
-            if 'EXCLU' in (texto + ' ' + titulo).upper() and 'Sim' in botoes:   # a pergunta de excluir: SEMPRE Sim (o Vitor, 27/11/2026)
+            # a pergunta de excluir: SEMPRE Sim (o Vitor, 27/11/2026); a da lixeira verde vem só com o título "Confirmação!"
+            # e o texto não se lê por UIA
+            if ('EXCLU' in (texto + ' ' + titulo).upper() or titulo.upper().startswith('CONFIRMA')) and 'Sim' in botoes:
                 botoes['Sim'].invoke()
                 print('respondi Sim', flush=True)
                 confirmou = True
