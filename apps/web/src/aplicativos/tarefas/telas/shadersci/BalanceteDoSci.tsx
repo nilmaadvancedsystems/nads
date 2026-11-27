@@ -1,13 +1,15 @@
 // O balancete do SCI na Contabilização do minimum (27/11/2026, a etapa 2 do Vitor: "robo puxar o balancete no sci para verificar os
 // saldos"): o robô do PC puxa o balancete do período (Ctrl+B no SCI, exportado em .xls) e ele aparece aqui, conta por conta, com
 // o saldo anterior, o débito, o crédito e o saldo atual. Os saldos ao contrário da natureza ficam em vermelho. Fica guardado por
-// empresa, só neste navegador; puxar de novo troca.
+// empresa, só neste navegador; puxar de novo troca. Na interface de sempre do nads (27/11/2026, o Vitor: "faz o programa na interface
+// do nads, precisa ser visual diferente nao, pra nao confundir o usuario ... a tabela e a interface"): o card com a faixa do título,
+// a tabela compacta e as etiquetas (badge).
 import { sci } from '@nads/core';
 import { Icone, LogoSci, useRetorno } from '@nads/ui';
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { PuxarDoSci, SituacaoDoRobo } from './RazaoDoSci';
-import { useContaDoBalancete } from './useContaDoBalancete';
+import { useContaDoBalancete, useFechamentoDoBalancete } from './useContaDoBalancete';
 import { rotuloDaCompetenciaDoSci, useLancamentosDoSciPeloRobo } from './useLancamentosDoSciPeloRobo';
 import type { VmShadersCi } from './useShadersCi';
 
@@ -77,28 +79,19 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
         </div>
       ) : (
         <>
-          <div className="sci-balancete-cabeca">
-            <div>
-              <h2>Balancete de {dataTexto(b.inicio)} a {dataTexto(b.fim)}</h2>
-              <p className="hint">
-                {b.contas.filter(c => !c.participante).length} contas
-                {invertidos.size > 0 && <> · <span className="sci-balancete-alerta">{invertidos.size === 1 ? '1 saldo ao contrário da natureza' : invertidos.size + ' saldos ao contrário da natureza'}</span></>}
-                {guardado?.competencia && <> · puxado de {rotuloDaCompetenciaDoSci(guardado.competencia)}</>}
-              </p>
+          <Fechamento vm={vm} b={b} />
+          <section className="card">
+            <div className="card-head">
+              <h3>Balancete de {dataTexto(b.inicio)} a {dataTexto(b.fim)}</h3>
+              <span className="badge badge-neutral">{b.contas.filter(c => !c.participante).length} contas</span>
+              {invertidos.size > 0 && <span className="badge badge-bad" title="Saldo ao contrário da natureza da conta">{invertidos.size === 1 ? '1 saldo invertido' : invertidos.size + ' saldos invertidos'}</span>}
+              {guardado?.competencia && <span className="hint">puxado de {rotuloDaCompetenciaDoSci(guardado.competencia)}</span>}
+              <span style={{ flex: 1 }} />
+              <label className="card-head-ctl"><input type="checkbox" checked={soAnaliticas} onChange={e => setSoAnaliticas(e.target.checked)} />Só as analíticas</label>
+              <input className="input" style={{ width: 220 }} type="text" placeholder="Conta, classificação ou nome" value={busca} onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} aria-label="Buscar no balancete" />
             </div>
-            <div className="sci-balancete-filtros">
-              <label className="sci-balancete-so">
-                <input type="checkbox" checked={soAnaliticas} onChange={e => setSoAnaliticas(e.target.checked)} />Só as analíticas
-              </label>
-              <label className="busca-curta">
-                <Icone nome="search" />
-                <input type="text" placeholder="Conta, classificação ou nome" value={busca} onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} aria-label="Buscar no balancete" />
-              </label>
-            </div>
-          </div>
-          <section className="card ini-grupo sci-tabela-card">
-            <div className="table-wrap sci-tabela-caixa">
-              <table className="table-compact ini-delegadas sci-tabela sci-balancete">
+            <div className="table-wrap bal-tabela">
+              <table className="table-compact">
                 <thead>
                   <tr>
                     <th>Classificação</th><th>Conta</th><th>Nome</th>
@@ -110,27 +103,27 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
                     const abre = c.analitica && !c.participante;
                     const estaAberta = abre && aberta === c.classificacao;
                     return (
-                    <Fragment key={c.classificacao + '|' + i}>
-                    <tr className={'ini-tr' + (c.analitica || c.participante ? '' : ' sci-balancete-sintetica') + (c.participante ? ' sci-balancete-participante' : '') + (abre ? ' sci-balancete-abre' : '') + (estaAberta ? ' aberta' : '')}
-                      onClick={abre ? () => setAberta(a => (a === c.classificacao ? null : c.classificacao)) : undefined} aria-expanded={abre ? estaAberta : undefined}
-                      title={abre ? 'Ver os lançamentos e as provisões da conta' : undefined}>
-                      <td className="ini-delegadas-curta sci-balancete-class">{abre && <Icone nome={estaAberta ? 'chevronDown' : 'chevronRight'} width={14} height={14} />}{c.classificacao}</td>
-                      <td className="ini-delegadas-curta">{c.participante ? '' : c.codigo}</td>
-                      <td><span style={{ paddingLeft: recuo(c) * 14 }}>{c.nome}</span></td>
-                      <td className="num">{saldoTexto(c.anterior)}</td>
-                      <td className="num">{valorTexto(c.debito)}</td>
-                      <td className="num">{valorTexto(c.credito)}</td>
-                      <td className={'num' + (invertidos.has(c.classificacao) ? ' sci-balancete-invertido' : '')} title={invertidos.has(c.classificacao) ? 'Saldo ao contrário da natureza da conta' : undefined}>{saldoTexto(c.atual)}</td>
-                    </tr>
-                    {estaAberta && <tr className="sci-balancete-painel-linha"><td colSpan={7}><ContaAberta vm={vm} b={b} conta={c} /></td></tr>}
-                    </Fragment>
+                      <Fragment key={c.classificacao + '|' + i}>
+                        <tr className={(c.analitica || c.participante ? '' : 'bal-sintetica') + (c.participante ? ' bal-participante' : '') + (abre ? ' bal-abre' : '')}
+                          onClick={abre ? () => setAberta(a => (a === c.classificacao ? null : c.classificacao)) : undefined} aria-expanded={abre ? estaAberta : undefined}
+                          title={abre ? 'Ver os lançamentos e as provisões da conta' : undefined}>
+                          <td className="bal-class">{abre && <Icone nome={estaAberta ? 'chevronDown' : 'chevronRight'} width={14} height={14} />}{c.classificacao}</td>
+                          <td>{c.participante ? '' : c.codigo}</td>
+                          <td><span style={{ paddingLeft: recuo(c) * 14 }}>{c.nome}</span></td>
+                          <td className="num">{saldoTexto(c.anterior)}</td>
+                          <td className="num">{valorTexto(c.debito)}</td>
+                          <td className="num">{valorTexto(c.credito)}</td>
+                          <td className={'num' + (invertidos.has(c.classificacao) ? ' bal-invertido' : '')} title={invertidos.has(c.classificacao) ? 'Saldo ao contrário da natureza da conta' : undefined}>{saldoTexto(c.atual)}</td>
+                        </tr>
+                        {estaAberta && <tr className="bal-painel"><td colSpan={7}><ContaAberta vm={vm} b={b} conta={c} /></td></tr>}
+                      </Fragment>
                     );
                   })}
-                  {!contas.length && <tr><td colSpan={7} className="hint sci-razao-nada">Nenhuma conta com essa busca.</td></tr>}
+                  {!contas.length && <tr><td colSpan={7} className="hint">Nenhuma conta com essa busca.</td></tr>}
                 </tbody>
                 <tfoot>
-                  <tr className="sci-balancete-total">
-                    <td colSpan={4}>Movimento das analíticas{totais.d === totais.c ? ' · débito e crédito batem' : ' · não bate: diferença de ' + sci.valorParaTexto(Math.abs(totais.d - totais.c))}</td>
+                  <tr className="bal-total">
+                    <td colSpan={4}>Movimento das analíticas {totais.d === totais.c ? <span className="badge badge-ok">débito e crédito batem</span> : <span className="badge badge-bad">diferença de {sci.valorParaTexto(Math.abs(totais.d - totais.c))}</span>}</td>
                     <td className="num">{sci.valorParaTexto(totais.d)}</td>
                     <td className="num">{sci.valorParaTexto(totais.c)}</td>
                     <td />
@@ -139,7 +132,7 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
               </table>
             </div>
           </section>
-          <p className="hint sci-razao-pe">Última importação: {guardado?.arquivo} · {new Date(guardado?.importadoEm || 0).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+          <p className="hint">Última importação: {guardado?.arquivo} · {new Date(guardado?.importadoEm || 0).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
         </>
       )}
     </>
@@ -148,7 +141,112 @@ export function BalanceteDoSci({ vm }: { vm: VmShadersCi }) {
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const mesCurto = (m: string) => (/^\d{4}-\d{2}$/.test(m) ? MESES[Number(m.slice(5)) - 1] + '/' + m.slice(0, 4) : m);
-const ROTULO_DA_SITUACAO = { pago: 'Pago', parcial: 'Parcial', aberto: 'Sem pagamento' } as const;
+const SITUACAO = { pago: ['badge badge-ok', 'Pago'], parcial: ['badge badge-warn', 'Parcial'], aberto: ['badge badge-bad', 'Sem pagamento'] } as const;
+const comSinal = (v: number) => (v < 0 ? '−' : '') + sci.valorParaTexto(Math.abs(v));
+const pelo = (q: 'banco' | 'caixa') => <span className={q === 'banco' ? 'badge badge-ok' : 'badge badge-warn'}>{q === 'banco' ? 'Banco' : 'Caixa'}</span>;
+
+/** Os campos de sempre do nads, com o rótulo em cima e o nome da conta embaixo. */
+function Campo({ rotulo, valor, mudar, dica, placeholder, numero }: { rotulo: string; valor: string; mudar: (v: string) => void; dica?: string; placeholder?: string; numero?: boolean }) {
+  return (
+    <label className="bal-campo">
+      <span>{rotulo}</span>
+      <input className="input" value={valor} onChange={e => mudar(numero ? e.target.value.replace(/\D/g, '') : e.target.value.trim())} placeholder={placeholder} />
+      {dica !== undefined && <small className="hint">{dica || '—'}</small>}
+    </label>
+  );
+}
+
+/**
+ * O fechamento do período (27/11/2026, o Vitor: "Exportar uma planilha com tudo pago, conciliacao bancaria com o extrato batendo e o
+ * que nao tem no banco jogar caixa"): as provisões abertas de todas as contas, pagas numa planilha só, com a conferência do banco e do
+ * caixa e o que sobrou do extrato.
+ */
+function Fechamento({ vm, b }: { vm: VmShadersCi; b: sci.BalanceteSci }) {
+  const f = useFechamentoDoBalancete(vm, b);
+  const x = f.fechamento;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3>Fechamento de {mesCurto(f.de)} a {mesCurto(f.ate)}</h3>
+        {x && (x.pagamentos.length
+          ? <span className="badge badge-warn">{x.pagamentos.length === 1 ? '1 provisão sem pagamento' : x.pagamentos.length + ' provisões sem pagamento'}</span>
+          : <span className="badge badge-ok">tudo pago</span>)}
+        <span style={{ flex: 1 }} />
+        {x && x.pagamentos.length > 0 && (
+          <button type="button" className="btn btn-primary" disabled={f.gerando} onClick={f.pagarTudo}><Icone nome="download" />{f.gerando ? 'Gerando…' : 'Pagar tudo e baixar a planilha'}</button>
+        )}
+      </div>
+      {f.semLancamentos ? (
+        <p className="hint" style={{ margin: 0 }}>Puxe os lançamentos do SCI na aba <b>Lançamentos</b> (o botão Vitor, "Tudo"): o fechamento usa as provisões deles.</p>
+      ) : (
+        <>
+          <div className="bal-campos">
+            <Campo rotulo="Caixa" valor={f.caixa} mudar={f.setCaixa} dica={f.nomeDoCaixa} placeholder="código" />
+            <Campo rotulo="Banco" valor={f.banco} mudar={f.setBanco} dica={f.nomeDoBanco} placeholder="código" />
+            <Campo rotulo="Histórico do pagamento" valor={f.historicoPagamento} mudar={f.setHistoricoPagamento} placeholder="nº no SCI" numero />
+            {f.temRecebimento && <Campo rotulo="Histórico do recebimento" valor={f.historicoRecebimento} mudar={f.setHistoricoRecebimento} placeholder="nº no SCI" numero />}
+            <p className="hint bal-extrato">{f.extrato ? <>Extrato da aba Extratos: <b>{f.extrato.arquivo}</b>. O que ele mostra sai pelo banco; o resto, pelo caixa.</> : <>Sem extrato na aba Extratos: tudo sai pelo caixa.</>}</p>
+          </div>
+          {x && (
+            <div className="table-wrap" style={{ maxHeight: 'none', marginTop: 12 }}>
+              <table className="table-compact">
+                <thead><tr><th>Conferência</th><th className="num">Saldo no SCI</th><th className="num">Depois dos pagamentos</th><th className="num">Extrato</th><th>Situação</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>Banco {f.banco}{f.nomeDoBanco && ' · ' + f.nomeDoBanco}</td>
+                    <td className="num">{f.saldoDoBanco != null ? comSinal(f.saldoDoBanco) : '—'}</td>
+                    <td className="num">{f.bancoDepois != null ? comSinal(f.bancoDepois) : '—'}</td>
+                    <td className="num">{f.extrato?.saldoFinal != null ? comSinal(f.extrato.saldoFinal) + ' em ' + dataTexto(f.extrato.ultimaData) : '—'}</td>
+                    <td>{f.diferencaNoBanco == null ? <span className="badge badge-neutral">sem como conferir</span>
+                      : !f.diferencaNoBanco ? <span className="badge badge-ok">bate com o extrato</span>
+                        : <span className="badge badge-bad">diferença de {comSinal(f.diferencaNoBanco)}</span>}</td>
+                  </tr>
+                  <tr>
+                    <td>Caixa {f.caixa}{f.nomeDoCaixa && ' · ' + f.nomeDoCaixa}</td>
+                    <td className="num">{f.saldoDoCaixa != null ? comSinal(f.saldoDoCaixa) : '—'}</td>
+                    <td className="num">{f.caixaDepois != null ? comSinal(f.caixaDepois) : '—'}</td>
+                    <td className="num">—</td>
+                    <td>{f.caixaDepois == null ? <span className="badge badge-neutral">—</span> : f.caixaDepois < 0 ? <span className="badge badge-bad">caixa negativo</span> : <span className="badge badge-ok">positivo</span>}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+          {x && x.porConta.length > 0 && (
+            <div className="table-wrap" style={{ marginTop: 12 }}>
+              <table className="table-compact">
+                <thead><tr><th>Conta</th><th className="num">Pagamentos</th><th className="num">Pelo banco</th><th className="num">Pelo caixa</th></tr></thead>
+                <tbody>
+                  {x.porConta.map(c => (
+                    <tr key={c.conta.codigo}>
+                      <td>{c.conta.codigo} · {c.conta.nome}</td>
+                      <td className="num">{c.qtd}</td>
+                      <td className="num">{valorTexto(c.banco)}</td>
+                      <td className="num">{valorTexto(c.caixa)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {x && x.extratoSemProvisao.length > 0 && (
+            <>
+              <p className="hint" style={{ margin: '12px 0 6px' }}>{x.extratoSemProvisao.length === 1 ? '1 linha do extrato não pagou nenhuma provisão' : x.extratoSemProvisao.length + ' linhas do extrato não pagaram nenhuma provisão'}: lance na aba <b>Extratos</b>.</p>
+              <div className="table-wrap">
+                <table className="table-compact">
+                  <thead><tr><th>Data</th><th>Histórico do banco</th><th className="num">Valor</th></tr></thead>
+                  <tbody>
+                    {x.extratoSemProvisao.map((e, i) => <tr key={i}><td>{dataTexto(e.data)}</td><td>{e.historico}</td><td className="num">{comSinal(e.valor)}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
 
 /**
  * A conta aberta no balancete (27/11/2026, o Vitor: "o relatorio de todos os lancamentos de cada conta em um dropdown ... ver as
@@ -156,73 +254,72 @@ const ROTULO_DA_SITUACAO = { pago: 'Pago', parcial: 'Parcial', aberto: 'Sem paga
  */
 function ContaAberta({ vm, b, conta }: { vm: VmShadersCi; b: sci.BalanceteSci; conta: sci.ContaDoBalanceteSci }) {
   const c = useContaDoBalancete(vm, b, conta);
-  if (c.semLancamentos) return <p className="hint sci-conta-vazia">Puxe os lançamentos do SCI na aba <b>Lançamentos</b> (o botão Vitor, "Tudo") para ver aqui os lançamentos e as provisões desta conta.</p>;
+  if (c.semLancamentos) return <p className="hint" style={{ margin: 0 }}>Puxe os lançamentos do SCI na aba <b>Lançamentos</b> (o botão Vitor, "Tudo") para ver aqui os lançamentos e as provisões desta conta.</p>;
   const p = c.provisoes;
-  const porBanco = c.previa.filter(x => x.pelo === 'banco').length;
   return (
-    <div className="sci-conta">
+    <div className="bal-conta">
       {p && (
-        <section className="sci-conta-provisoes">
-          <header>
-            <h3>Provisões por mês</h3>
-            <span className="hint">{p.lado === 'credito' ? 'A provisão é o crédito; o pagamento, o débito' : 'A provisão é o débito; o recebimento, o crédito'}</span>
-          </header>
+        <>
+          <h4>Provisões por mês <span className="hint">{p.lado === 'credito' ? 'a provisão é o crédito; o pagamento, o débito' : 'a provisão é o débito; o recebimento, o crédito'}</span></h4>
           {p.meses.length ? (
-            <div className="sci-conta-meses">
-              {p.meses.map(m => (
-                <div key={m.mes} className={'sci-conta-mes ' + m.situacao} title={'Provisionado ' + valorTexto(m.provisionado) + ' · pago ' + valorTexto(m.pago)}>
-                  <b>{mesCurto(m.mes)}</b>
-                  <span className="sci-conta-mes-valor">{valorTexto(m.provisionado)}</span>
-                  <span className="sci-conta-mes-situacao">{ROTULO_DA_SITUACAO[m.situacao]}{m.situacao === 'parcial' ? ': falta ' + valorTexto(m.aberto) : ''}</span>
-                </div>
-              ))}
-            </div>
+            <table className="table-compact">
+              <thead><tr><th>Mês</th><th className="num">Provisionado</th><th className="num">Pago</th><th className="num">Em aberto</th><th>Situação</th></tr></thead>
+              <tbody>
+                {p.meses.map(m => (
+                  <tr key={m.mes}>
+                    <td>{mesCurto(m.mes)}</td>
+                    <td className="num">{valorTexto(m.provisionado)}</td>
+                    <td className="num">{valorTexto(m.pago)}</td>
+                    <td className="num">{valorTexto(m.aberto)}</td>
+                    <td><span className={SITUACAO[m.situacao][0]}>{SITUACAO[m.situacao][1]}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : <p className="hint">Nenhuma provisão nos lançamentos puxados.</p>}
           {p.aberto > 0 && (
-            <div className="sci-conta-pagar">
-              <p><b>{valorTexto(p.aberto)}</b> sem pagamento em {p.meses.filter(m => m.aberto).length === 1 ? '1 mês' : p.meses.filter(m => m.aberto).length + ' meses'}.
-                {c.extrato ? <> Com o extrato da aba Extratos ({c.extrato.arquivo}), {porBanco === 1 ? '1 sai' : porBanco + ' saem'} pelo banco; o resto, pelo caixa.</> : <> Sem extrato na aba Extratos: tudo pelo caixa.</>}</p>
-              <div className="sci-conta-campos">
-                <label>Caixa<input className="input" value={c.caixa} onChange={e => c.setCaixa(e.target.value.trim())} placeholder="código" /><small>{c.nomeDoCaixa || '—'}</small></label>
-                <label>Banco<input className="input" value={c.banco} onChange={e => c.setBanco(e.target.value.trim())} placeholder="código" /><small>{c.nomeDoBanco || (c.extrato ? '—' : 'sem extrato')}</small></label>
-                <label>Histórico<input className="input" value={c.historico} onChange={e => c.setHistorico(e.target.value.replace(/\D/g, ''))} placeholder="nº no SCI" /><small>do pagamento</small></label>
+            <>
+              <div className="bal-campos">
+                <Campo rotulo="Caixa" valor={c.caixa} mudar={c.setCaixa} dica={c.nomeDoCaixa} placeholder="código" />
+                <Campo rotulo="Banco" valor={c.banco} mudar={c.setBanco} dica={c.nomeDoBanco || (c.extrato ? '' : 'sem extrato')} placeholder="código" />
+                <Campo rotulo="Histórico" valor={c.historico} mudar={c.setHistorico} placeholder="nº no SCI" numero />
                 <button type="button" className="btn btn-primary" disabled={c.gerando || !c.previa.length} onClick={c.gerar}>
-                  <Icone nome="download" />{c.gerando ? 'Gerando…' : 'Gerar ' + (c.previa.length === 1 ? '1 pagamento' : c.previa.length + ' pagamentos')}
+                  <Icone nome="download" />{c.gerando ? 'Gerando…' : 'Pagar esta conta (' + c.previa.length + ')'}
                 </button>
               </div>
               {c.previa.length > 0 && (
-                <ul className="sci-conta-previa">
-                  {c.previa.map((x, i) => (
-                    <li key={i}><span className={'sci-conta-pelo ' + x.pelo}>{x.pelo === 'banco' ? 'Banco' : 'Caixa'}</span>{dataTexto(x.lancamento.data)} · {valorTexto(x.lancamento.valor)} · D {x.lancamento.debito} × C {x.lancamento.credito} · {x.lancamento.complemento}</li>
-                  ))}
-                </ul>
+                <table className="table-compact">
+                  <thead><tr><th>Pelo</th><th>Data</th><th className="num">Valor</th><th>Débito × Crédito</th><th>Complemento</th></tr></thead>
+                  <tbody>
+                    {c.previa.map((x, i) => (
+                      <tr key={i}><td>{pelo(x.pelo)}</td><td>{dataTexto(x.lancamento.data)}</td><td className="num">{valorTexto(x.lancamento.valor)}</td><td>{x.lancamento.debito} × {x.lancamento.credito}</td><td>{x.lancamento.complemento}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
-            </div>
+            </>
           )}
-        </section>
+        </>
       )}
-      <section className="sci-conta-lancamentos">
-        <header><h3>Lançamentos da conta</h3><span className="hint">{c.lancamentos.length === 1 ? '1 lançamento' : c.lancamentos.length + ' lançamentos'} puxados do SCI</span></header>
-        <table className="table-compact">
-          <thead><tr><th>Data</th><th className="num">Débito</th><th className="num">Crédito</th><th>Contrapartida</th><th>Histórico</th></tr></thead>
-          <tbody>
-            {c.lancamentos.slice(0, 300).map((l, i) => {
-              const debito = l.debito === conta.codigo;
-              const contra = debito ? l.credito : l.debito;
-              return (
-                <tr key={i}>
-                  <td>{dataTexto(l.data)}</td>
-                  <td className="num">{debito ? valorTexto(l.valor) : ''}</td>
-                  <td className="num">{debito ? '' : valorTexto(l.valor)}</td>
-                  <td>{contra ? contra + (c.nomeDa(contra) ? ' · ' + c.nomeDa(contra) : '') : '—'}</td>
-                  <td className="sci-conta-hist">{l.complemento}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
+      <h4>Lançamentos da conta <span className="hint">{c.lancamentos.length === 1 ? '1 lançamento' : c.lancamentos.length + ' lançamentos'} puxados do SCI</span></h4>
+      <table className="table-compact">
+        <thead><tr><th>Data</th><th className="num">Débito</th><th className="num">Crédito</th><th>Contrapartida</th><th>Histórico</th></tr></thead>
+        <tbody>
+          {c.lancamentos.slice(0, 300).map((l, i) => {
+            const debito = l.debito === conta.codigo;
+            const contra = debito ? l.credito : l.debito;
+            return (
+              <tr key={i}>
+                <td>{dataTexto(l.data)}</td>
+                <td className="num">{debito ? valorTexto(l.valor) : ''}</td>
+                <td className="num">{debito ? '' : valorTexto(l.valor)}</td>
+                <td>{contra ? contra + (c.nomeDa(contra) ? ' · ' + c.nomeDa(contra) : '') : '—'}</td>
+                <td>{l.complemento}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
-

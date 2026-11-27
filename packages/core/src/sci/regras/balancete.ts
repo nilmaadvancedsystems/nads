@@ -10,7 +10,7 @@
 import { lerPlanilhaDoPlano } from '../../empresas/cadastro/plano';
 import type { LancamentoSci } from '../tipos';
 import { classificacaoNormal } from './dePara';
-import { semAcento, type PlanoSci } from './plano';
+import { semAcento, type ContaDoPlanoSci, type PlanoSci } from './plano';
 
 export interface ContaDoBalanceteSci {
   classificacao: string;
@@ -221,3 +221,23 @@ export function conferirComOBalancete(lancamentos: readonly LancamentoSci[], b: 
     return { ...base, classificacao: c.classificacao, nome: c.nome, sciDebito: c.debito, sciCredito: c.credito, situacao };
   }).sort((a, b) => a.classificacao.localeCompare(b.classificacao));
 }
+
+/**
+ * O plano do nads com as contas do balancete do SCI (27/11/2026: a cópia do plano no nads é de 23/11 e não tem as contas criadas
+ * depois, como a 12 do Banco do Brasil da 583): o balancete vem do próprio SCI, então a conta que está nele existe lá. As contas do
+ * balancete entram por cima das do plano (o nome e se é analítica valem os do SCI); o participante não é conta e fica de fora.
+ */
+export function planoComOBalancete(plano: PlanoSci, b: BalanceteSci): PlanoSci {
+  const porCodigo = new Map(plano.porCodigo);
+  for (const c of b.contas) {
+    if (c.participante || !c.codigo) continue;
+    const antes = porCodigo.get(c.codigo);
+    porCodigo.set(c.codigo, {
+      ...(antes || { apelido: '', participante: null }),
+      codigo: c.codigo, classificacao: c.classificacao, nome: c.nome || antes?.nome || '', analitica: c.analitica,
+      nivel: antes?.nivel ?? c.classificacao.split('.').length,
+    } as ContaDoPlanoSci);
+  }
+  return { id: plano.id, contas: [...porCodigo.values()], porCodigo };
+}
+
