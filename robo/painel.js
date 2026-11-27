@@ -47,7 +47,7 @@ const DOCS = { pc: 'painelPC', vm: 'painelVM' };
 const NOMES = { pc: 'Robô do PC', vm: 'Robô da nuvem' };
 
 /** Os tipos de atividade (o filtro do painel). Tipo fora da lista vira 'robo'. */
-const TIPOS = ['robo', 'arquivamento', 'fgts', 'pgdas', 'alterdata', 'sieg', 'area-cliente', 'gmail', 'cobranca', 'envios', 'nfse', 'sefaz', 'extratos'];
+const TIPOS = ['robo', 'arquivamento', 'fgts', 'pgdas', 'certidoes', 'alterdata', 'sieg', 'area-cliente', 'gmail', 'cobranca', 'envios', 'nfse', 'sefaz', 'extratos'];
 
 /**
  * As filas que cada robô atende. esperando/andamento: os status de cada lado (sem status nenhum, todo documento da
@@ -59,6 +59,7 @@ const FILAS = {
     { id: 'arquivamento', nome: 'Arquivamento', colecao: 'solicitacoesArquivo', esperando: ['pendente', 'aguardando'], andamento: ['processando'] },
     { id: 'fgts', nome: 'FGTS Digital', colecao: 'pedidosFgts', esperando: ['pendente'], andamento: ['trabalhando', 'verificacao', 'login'] },
     { id: 'pgdas', nome: 'Simples na Receita (e-CAC, 23h às 8h)', colecao: 'pedidosPgdas', esperando: ['pendente'], andamento: ['trabalhando'] },
+    { id: 'certidoes', nome: 'Certidões (a municipal de Taiobeiras)', colecao: 'pedidosCertidao', esperando: ['pendente'], andamento: ['trabalhando'] },
     { id: 'alterdata', nome: 'Alterdata (balancete e razão)', colecao: 'pedidosAlterdata', esperando: ['pendente'], andamento: ['trabalhando'] },
     { id: 'sieg', nome: 'SIEG', colecao: 'pedidosSieg', esperando: ['pendente'], andamento: ['processando'] },
     { id: 'area-chamados', nome: 'Chamados da Área do Cliente', colecao: 'areaClienteChamados', consultar: true },

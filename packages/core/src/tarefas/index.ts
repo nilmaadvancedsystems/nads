@@ -55,6 +55,8 @@ export * from './regras/adiantamentoSalarial';
 export * as sieg from './sieg';
 // o faturamento fiel do Simples pelo extrato do PGDAS-D no e-CAC (25/11/2026): tarefas.pgdas.*
 export * as pgdas from './pgdas';
+// as certidões que o robô emite (27/11/2026; a municipal de Taiobeiras primeiro): tarefas.certidoes.*
+export * as certidoes from './certidoes';
 // a Projeção do Fator R (26/11/2026: a planilha do Fiscal em Fiscal › Ferramentas): tarefas.fatorR.*
 export * as fatorR from './fatorR';
 export * as sintegra from './sintegra';
