@@ -9036,3 +9036,28 @@ tr.cad-linha-sci:hover > td{background:color-mix(in srgb,var(--info, #3b82f6) 20
 .sci-balancete-invertido{color:var(--danger) !important;font-weight:600;}
 .sci-balancete-total td{font-weight:600;border-top:1px solid var(--border);color:var(--ink);}
 
+/* a aba Extratos da Contabilização (27/11/2026): o banco e o mês na barra, as vias de puxar e os arquivos achados */
+.sci-extrato-puxar{flex-direction:column;align-items:center;gap:16px;}
+.sci-puxar.sci-barra .sci-barra-campo{flex:1;min-width:0;height:44px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-15,15px);}
+.sci-puxar.sci-barra select.sci-barra-campo{cursor:pointer;}
+.sci-puxar.sci-barra select.sci-barra-campo:hover{background:color-mix(in srgb,var(--ink) 5%,transparent);}
+.sci-barra-texto{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sci-barra-texto svg{flex:none;color:var(--accent);}
+.sci-barra-mes{flex:none;height:44px;padding:0 10px;border:0;border-left:1px solid var(--border);border-radius:0 10px 10px 0;background:transparent;color:var(--ink);font:inherit;color-scheme:dark;}
+.sci-extrato-vias{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:440px;max-width:100%;}
+.sci-extrato-via{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border-radius:12px;border:1px solid var(--border);cursor:pointer;
+  background:transparent;color:var(--ink);font:inherit;text-align:center;transition:border-color .2s,background .2s,transform .2s;}
+.sci-extrato-via svg{color:var(--accent);margin-bottom:2px;}
+.sci-extrato-via b{font-size:var(--fs-13);font-weight:600;}
+.sci-extrato-via span{font-size:11px;color:var(--ink-muted);}
+.sci-extrato-via:hover:not(:disabled){border-color:var(--accent-border);background:var(--accent-soft);transform:translateY(-1px);}
+.sci-extrato-via:disabled{opacity:.5;cursor:default;}
+.sci-extrato-msg{margin:0;max-width:440px;font-size:var(--fs-13);color:var(--ink-muted);}
+.sci-extrato-msg.erro{color:var(--danger);}
+.sci-extrato-lista{list-style:none;margin:0;padding:0;width:440px;max-width:100%;display:flex;flex-direction:column;gap:6px;text-align:left;}
+.sci-extrato-lista-titulo{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);padding:4px 2px;}
+.sci-extrato-lista button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-13);cursor:pointer;}
+.sci-extrato-lista button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sci-extrato-lista button b{color:var(--accent);font-weight:600;}
+.sci-extrato-lista button:hover:not(:disabled){border-color:var(--accent-border);background:var(--accent-soft);}
+

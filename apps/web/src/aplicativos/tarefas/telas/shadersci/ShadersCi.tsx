@@ -89,21 +89,22 @@ export function ShadersCi() {
 }
 
 // ------------------------------------------------------------------------------------------------- a Contabilização
-type AbaDaContabilizacao = 'lancamentos' | 'balancete';
+type AbaDaContabilizacao = 'lancamentos' | 'balancete' | 'extratos';
 const CHAVE_DA_ABA = 'nads-minimum-contabilizacao-aba';
 /**
  * A Contabilização (27/11/2026): os lançamentos do SCI e, na etapa 2 do Vitor ("robo puxar o balancete no sci para verificar os
  * saldos"), o balancete; as duas pelo robô do PC. A aba fica lembrada neste navegador.
  */
 function Contabilizacao({ vm }: { vm: VmShadersCi }) {
-  const [aba, setAba] = useState<AbaDaContabilizacao>(() => { try { return localStorage.getItem(CHAVE_DA_ABA) === 'balancete' ? 'balancete' : 'lancamentos'; } catch { return 'lancamentos'; } });
+  const [aba, setAba] = useState<AbaDaContabilizacao>(() => { try { const a = localStorage.getItem(CHAVE_DA_ABA); return a === 'balancete' || a === 'extratos' ? a : 'lancamentos'; } catch { return 'lancamentos'; } });
   const mudar = (a: AbaDaContabilizacao) => { setAba(a); try { localStorage.setItem(CHAVE_DA_ABA, a); } catch { /* sem armazenamento */ } };
   return (
     <>
       <div className="sci-contab-abas">
-        <Segmentado<AbaDaContabilizacao> valor={aba} onMudar={mudar} opcoes={[{ valor: 'lancamentos', rotulo: 'Lançamentos' }, { valor: 'balancete', rotulo: 'Balancete' }]} />
+        <Segmentado<AbaDaContabilizacao> valor={aba} onMudar={mudar} opcoes={[{ valor: 'lancamentos', rotulo: 'Lançamentos' }, { valor: 'balancete', rotulo: 'Balancete' }, { valor: 'extratos', rotulo: 'Extratos' }]} />
       </div>
-      {aba === 'balancete' ? <BalanceteDoSci key="balancete" vm={vm} /> : <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" />}
+      {/* os extratos (27/11/2026: "pra poder puxar os extratos"): o Extrato → SCI, com o Drive, o e-mail e os recebidos */}
+      {aba === 'balancete' ? <BalanceteDoSci key="balancete" vm={vm} /> : aba === 'extratos' ? <ExtratoParaSci key="extratos" min={vm} naContabilizacao /> : <RazaoDoSci key="contabilizacao" vm={vm} modo="contabilizacao" />}
     </>
   );
 }
