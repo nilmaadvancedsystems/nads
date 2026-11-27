@@ -481,6 +481,70 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
       .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
   }
   // a via WhatsApp (ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo"): o robô manda a mensagem com o link da Área
+  // do Cliente (a guia já vai para lá no disparo), só de ida. Desde 27/11/2026 liga pela chave guias de config/whatsapp
+  // (robo/whatsapp.js › pedirPeloWhatsapp; desligada, nada vai); com a trava fechada, vai ao escritório como TESTE. Sem link
+  // ou sem telefone, fica como antes (a pessoa manda pelo "Abrir no WhatsApp")
+  const Z = require('./whatsapp');
+  if (via === 'zap' && doc && Z.chavesDoWhatsapp().guias) {
+    try {
+      const ponteiro = await db.collection('areasClientePorEmpresa').doc(String(codigo)).get();
+      const token = ponteiro.exists ? String(ponteiro.get('token') || '') : '';
+      const link = /^[0-9a-f]{40}$/.test(token) ? 'https://cliente.nilmacontabilidade.com/cliente/' + token + '/guias' : '';
+      const W = require('./gerado/whatsapp');
+      resultado.whatsapp = link
+        ? (await Z.pedirPeloWhatsapp(db, 'guias', {
+          telefone: doc.data().telefone || '', cliente: nome, clienteId: doc.id,
+          mensagem: atende => W.mensagemDasGuias({ cliente: nome, competencia, link }, atende),
+          extra: { origem: 'lote-fiscal', lote: ref.id, competencia }, criadoPor: lote.disparadoPor || 'robô', criadoPorUid: lote.disparadoPorUid || '',
+        })) || { semEnvio: 'a chave das guias pelo WhatsApp está desligada' }
+        : { semEnvio: 'a empresa não tem a Área do Cliente' };
+    } catch (err) { resultado.whatsapp = { erro: String(err.message || err).slice(0, 200) }; }
+  }
+  try {
+    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: '', entregue: 'impresso', agora, quem: 'robô (impresso de ' + (lote.disparadoPor || 'guias') + ')' });
+  } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
+  return resultado;
+}
+
+// 6. o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias no Drive, o registro (a aba "Enviados", via 'econtador') e o
+// Relatório com o valor de cada coluna, a data do disparo e Entregue = eContador; sem e-mail e sem entrega na rota
+// e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o mesmo, com via e Entregue = 'scireport'
+// e o WhatsApp (12/11/2026, ticket 1ORUBY: "Inserir tipo de envio 'Whastapp'"): o mesmo, com via e Entregue = 'zap'; quem manda
+// é a pessoa, pela tela (o wa.me com a mensagem do modelo e as guias baixadas para anexar)
+async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via = 'econtador', deps }) {
+  let doc = null;
+  ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
+  const nome = doc ? String(doc.data().nome || '').trim() : '';
+  const buffers = [];
+  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i, deps));
+  const salvos = await salvarNoDrive(itens, buffers);
+  const agora = new Date().toISOString();
+  const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: '', preenchidos: [], erroNoRelatorio: '' };
+  const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
+  // a via SCI Report com a publicação ligada (24/11/2026, sci.js; desligada por padrão em config/sci): cada guia vai de
+  // verdade para o SCI Report da empresa; o registro guarda o número de cada publicação (a leitura de volta usa)
+  let sciReport = null;
+  if (via === 'scireport') {
+    sciReport = await SCI.publicarGuias(db, {
+      codigo, cnpj: doc ? String(doc.data().documento || doc.data().cnpj || '') : '',
+      guias: itens.map((i, k) => ({ nome: i.vai.nome, tipo: i.vai.tipo, tributo: i.vai.tributo, coluna: i.vai.coluna || '', valor: i.vai.valor, vencimento: (i.leitura && i.leitura.vencimento) || '', competencia, pdf: buffers[k] })),
+    }).catch(err => ({ empresaId: 0, publicadas: [], falhas: [], erro: String(err.message || err).slice(0, 200) }));
+    if (sciReport) resultado.sciReport = { publicadas: sciReport.publicadas.length, falhas: sciReport.falhas, erro: sciReport.erro };
+  }
+  const registro = await db.collection('solicitacoesEmail').add({
+    tipo: 'envioFiscal', via, origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
+    empresa: nome, arquivos: [], para: [], enviados: itens.map(i => i.vai.nome),
+    enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
+    ...(sciReport ? { sciReport: { empresaId: sciReport.empresaId, publicadas: sciReport.publicadas, falhas: sciReport.falhas, erro: sciReport.erro, pendente: sciReport.publicadas.length > 0, em: agora } } : {}),
+  }).catch(() => null);
+  // a via eContador com a pasta do UpDocs ligada (07/11/2026, econtador.js; desligada por padrão): as guias, já no Drive,
+  // entram na fila da pasta que o UpDocs vigia no NILMA-SERVER; o registro ganha econtadorSaida (e, gravadas, econtador)
+  if (via === 'econtador' && await EC.pastaLigada(db)) {
+    const arquivos = salvos.map((s, k) => ({ driveId: s.id || '', nome: s.nome, rotulo: [itens[k].vai.tipo === 'OUTRO' ? '' : itens[k].vai.tipo, itens[k].vai.tributo].filter(Boolean).join(' ') }));
+    resultado.econtadorSaida = await EC.anotarSaida(db, { origem: 'lote-fiscal', codigo, competencia, empresa: nome, registro: registro ? registro.id : '', arquivos })
+      .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
+  }
+  // a via WhatsApp (ficha 49 guias-pelo-whatsapp; o dono, 25/11/2026: "tudo"): o robô manda a mensagem com o link da Área
   // do Cliente (a guia já vai para lá no disparo), só de ida; com a trava fechada, vai ao escritório como TESTE. Sem link ou
   // sem telefone, fica como antes (a pessoa manda pelo "Abrir no WhatsApp")
   // desligado até a Área do Cliente entrar em uso (25/11/2026): a chave GUIAS_PELO_WHATSAPP_LIGADO em whatsapp-regras.js

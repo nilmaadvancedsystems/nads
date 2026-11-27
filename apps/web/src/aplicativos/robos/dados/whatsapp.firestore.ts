@@ -3,13 +3,19 @@
 //                          documento só enquanto a aba WhatsApp está aberta (ele muda a cada pedido da fila do Gmail)
 //   solicitacoesEmail      os pedidos, na mesma fila do Gmail: tipo 'whatsapp-conectar' / 'whatsapp-desconectar' (o robô
 //                          confere que é admin) e 'whatsapp' (a mensagem de teste para o número do escritório)
+//   config/whatsapp        as chaves (27/11/2026): a regra geral de config deixa a equipe ler e só o admin gravar; lidas uma
+//                          vez quando a aba abre (o robô é quem escuta)
+//   solicitacoesEmail      as respostas: os pedidos com respondidoEm dos últimos 7 dias (e os whatsapp-recebida do
+//                          autoatendimento), lidos uma vez quando a pessoa pede, até 30
 import { robos as r } from '@nads/core';
-import { addDoc as addDocBruto, collection, doc, onSnapshot, serverTimestamp, type DocumentReference } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc as setDocBruto, where, type DocumentReference } from 'firebase/firestore';
 import { guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas, contaDoEntregas } from '../../tarefas/dados/entregas.firestore';
 import type { RepoWhatsapp } from './whatsapp';
 
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
+const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
+const MAX_RESPOSTAS = 30;
 const ESPERA_MS = 60000;
 
 /** Espera o robô responder no próprio pedido (feito, erro com o motivo, ou 'na-fila' depois de 1 minuto). */
@@ -58,6 +64,18 @@ export function criarWhatsappFirestore(): RepoWhatsapp {
     },
     comandar: (c, por) => pedir({ tipo: c === 'conectar' ? r.TIPOS_DO_WHATSAPP.conectar : r.TIPOS_DO_WHATSAPP.desconectar }, por),
     testar: (numero, texto, por) => pedir({ tipo: r.TIPOS_DO_WHATSAPP.enviar, para: numero, texto, clienteNome: 'Teste do escritório' }, por),
+    async chaves() {
+      const s = await getDoc(doc(db, 'config', 'whatsapp'));
+      return r.lerChaves(s.exists() ? s.data() : null);
+    },
+    async gravarChaves(c, por) {
+      await setDoc(doc(db, 'config', 'whatsapp'), r.chavesParaGravar(c, por || 'Central dos robôs', new Date().toISOString()));
+    },
+    async respostas() {
+      const q = query(collection(db, 'solicitacoesEmail'), where('respondidoEm', '>=', r.desdeDasRespostas(new Date())), orderBy('respondidoEm', 'desc'), limit(MAX_RESPOSTAS));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => r.lerRespostaRecebida(d.id, d.data()));
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

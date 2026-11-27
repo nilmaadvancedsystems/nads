@@ -1,7 +1,10 @@
 // ViewModel da aba WhatsApp dos Ajustes da Central (12/11/2026): a situação do chip do robô, o QR code para conectar, o
 // desconectar (com confirmação) e a mensagem de teste para o número do escritório (a trava do robô só deixa esse).
+// Desde 27/11/2026 (pronto para o chip): as chaves do que o robô faz pelo WhatsApp, gravadas depois da confirmação com o
+// "de → para" (ligar a trava pede uma confirmação de perigo), e as respostas dos clientes dos últimos 7 dias, lidas quando
+// a pessoa pede.
 import { robos as r } from '@nads/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWhatsappDoRobo } from '../dados/repo';
 import type { ComandoDoWhatsapp } from '../dados/whatsapp';
 import { useQr } from '../../tarefas/telas/entregas/useQr';
@@ -29,6 +32,50 @@ export function useAbaWhatsapp(por: string) {
   const [escolhido, setEscolhido] = useState('');
   // para quem vai o teste: um dos números que a trava deixa (o primeiro, se ninguém escolheu)
   const numeroDeTeste = w.teste.includes(escolhido) ? escolhido : w.teste[0] || '';
+
+  // as chaves: as gravadas e o rascunho da tela
+  const [salvas, setSalvas] = useState<r.ChavesDoWhatsapp | null>(null);
+  const [rascunho, setRascunho] = useState<r.ChavesDoWhatsapp | null>(null);
+  const [erroDasChaves, setErroDasChaves] = useState('');
+  const [confirmarChaves, setConfirmarChaves] = useState(false);
+  const [gravandoChaves, setGravandoChaves] = useState(false);
+  // os números de teste a mais como a pessoa digita (separados por vírgula); viram lista no rascunho
+  const [textoDosNumeros, setTextoDosNumeros] = useState('');
+  useEffect(() => {
+    let vivo = true;
+    repo.chaves().then(c => { if (vivo) { setSalvas(c); setRascunho(c); setTextoDosNumeros(c.numerosDeTeste.map(numeroFormatado).join(', ')); } }, e => { if (vivo) setErroDasChaves(mensagemDe(e)); });
+    return () => { vivo = false; };
+  }, [repo]);
+  const mudancas = salvas && rascunho ? r.mudancasDasChaves(salvas, rascunho) : [];
+  async function gravarChaves() {
+    if (!rascunho || gravandoChaves) return;
+    setGravandoChaves(true);
+    setErroDasChaves('');
+    try {
+      await repo.gravarChaves(rascunho, por);
+      // relê para mostrar quem gravou e quando (e o que o banco guardou de fato)
+      const gravadas = await repo.chaves().catch(() => rascunho);
+      setSalvas(gravadas);
+      setRascunho(gravadas);
+      setConfirmarChaves(false);
+    } catch (e) {
+      const m = mensagemDe(e);
+      setErroDasChaves(/permission|insufficient/i.test(m) ? 'O banco não deixou: só o administrador grava as chaves.' : m);
+    } finally {
+      setGravandoChaves(false);
+    }
+  }
+
+  // as respostas: uma leitura quando a pessoa pede
+  const [respostas, setRespostas] = useState<r.RespostaRecebida[] | null>(null);
+  const [lendoRespostas, setLendoRespostas] = useState(false);
+  const [erroDasRespostas, setErroDasRespostas] = useState('');
+  async function lerRespostas() {
+    if (lendoRespostas) return;
+    setLendoRespostas(true);
+    setErroDasRespostas('');
+    try { setRespostas(await repo.respostas()); } catch (e) { setErroDasRespostas(mensagemDe(e)); } finally { setLendoRespostas(false); }
+  }
 
   async function fazer(rotulo: string, f: () => Promise<'feito' | 'na-fila'>, feito: string) {
     if (ocupado) return;
@@ -68,6 +115,46 @@ export function useAbaWhatsapp(por: string) {
     confirmarDesconectar,
     cancelarDesconectar: () => setConfirmarDesconectar(false),
     desconectar: () => { setConfirmarDesconectar(false); void comandar('desconectar'); },
+    chaves: {
+      carregadas: !!rascunho,
+      erro: erroDasChaves,
+      lista: r.CHAVES_DO_WHATSAPP.map(c => ({ ...c, ligada: !!rascunho?.[c.chave], mudou: !!rascunho && !!salvas && rascunho[c.chave] !== salvas[c.chave] })),
+      trocar: (chave: r.ChaveDoWhatsapp) => setRascunho(c => (c ? { ...c, [chave]: !c[chave] } : c)),
+      empresaDeTeste: rascunho?.empresaDeTeste ?? '',
+      escreverEmpresa: (v: string) => setRascunho(c => (c ? { ...c, empresaDeTeste: v.replace(/\D/g, '').slice(0, 8) } : c)),
+      numerosDeTeste: textoDosNumeros,
+      escreverNumeros: (v: string) => {
+        setTextoDosNumeros(v);
+        setRascunho(c => (c ? { ...c, numerosDeTeste: v.split(/[,;\n]/).map(x => x.trim()).filter(Boolean) } : c));
+      },
+      maxNumeros: r.MAX_NUMEROS_DE_TESTE,
+      gravadoPor: salvas?.atualizadoPor ? salvas.atualizadoPor + (salvas.atualizadoEm ? ' em ' + new Date(salvas.atualizadoEm).toLocaleString('pt-BR') : '') : '',
+      mudancas,
+      /** a trava vai abrir: a confirmação é de perigo */
+      liberando: !!rascunho?.liberado && !salvas?.liberado,
+      pode: mudancas.length > 0 && !gravandoChaves,
+      desfazer: () => { setRascunho(salvas); setTextoDosNumeros(salvas ? salvas.numerosDeTeste.map(numeroFormatado).join(', ') : ''); },
+      pedirGravar: () => setConfirmarChaves(true),
+      confirmar: confirmarChaves,
+      cancelar: () => { setConfirmarChaves(false); setErroDasChaves(''); },
+      gravar: () => { void gravarChaves(); },
+      gravando: gravandoChaves,
+    },
+    respostas: {
+      lidas: respostas !== null,
+      lendo: lendoRespostas,
+      erro: erroDasRespostas,
+      lista: (respostas || []).map(x => ({
+        id: x.id,
+        empresa: x.empresa,
+        detalhe: [x.origem, x.numero, x.teste ? 'teste' : ''].filter(Boolean).join(' · '),
+        quando: x.quando ? new Date(x.quando).toLocaleString('pt-BR') : '',
+        ultima: x.ultima,
+        escritorio: x.pedeEscritorio,
+        todas: x.respostas.length > 1 ? x.respostas.map(r.textoDaResposta) : [],
+      })),
+      ler: () => { void lerRespostas(); },
+    },
     teste: {
       texto, escrever: setTexto,
       para: numeroDeTeste,

@@ -13,6 +13,8 @@ const LIBERADO_PARA_CLIENTES = false;
 const INTERNOS = ['nilmacontabilidade@gmail.com'];
 const EMAIL = /^[^\s@,;<>()]+@[^\s@,;<>()]+\.[a-z]{2,}$/i;
 const CODIGO = /^[A-Za-z0-9]{10,40}$/;
+/** o formulário do link (o mesmo de apps/web › dados/mandei.firestore.ts) */
+const LINK_DO_FORMULARIO = 'https://cliente.nilmacontabilidade.com/mandei/';
 
 const texto = v => (typeof v === 'string' ? v : '');
 
@@ -78,7 +80,22 @@ async function atenderMandei(p, deps) {
   const em = agora();
   await marcar({ enviadoEm: em, emailId: pedidoId, erroDoEmail: null });
   log('Mandei: enviado', p.numero || p.ticket, 'para', para);
-  return { status: 'enviado', enviadoEm: em, gmailId: String(gmailId || ''), para };
+  // o link pelo WhatsApp do ticket também (27/11/2026, a chave mandei de config/whatsapp; desligada, nada); com a trava
+  // fechada, vai ao escritório como TESTE. Falhar aqui não desfaz o e-mail
+  let whatsapp = null;
+  const fone = ticket.para && ticket.para.whatsapp;
+  if (fone) {
+    try {
+      const W = require('./gerado/whatsapp');
+      const cliente = texto(p.empresa) || texto(ticket.empresa && ticket.empresa.nome);
+      whatsapp = await require('./whatsapp').pedirPeloWhatsapp(db, 'mandei', {
+        telefone: fone, cliente,
+        mensagem: atende => W.mensagemDoMandei({ cliente, numero: texto(p.numero), link: LINK_DO_FORMULARIO + p.link }, atende),
+        extra: { origem: 'mandei', ticket: texto(p.ticket), link: texto(p.link) }, criadoPor: texto(p.criadoPor) || 'robô', criadoPorUid: texto(p.criadoPorUid),
+      });
+    } catch (e) { log('Mandei: o WhatsApp de', p.numero || p.ticket, 'não foi para a fila -', e.message); }
+  }
+  return Object.assign({ status: 'enviado', enviadoEm: em, gmailId: String(gmailId || ''), para }, whatsapp ? { whatsapp } : {});
 }
 
 module.exports = { atenderMandei, motivoParaNaoMandar, linksComEmail, LIBERADO_PARA_CLIENTES, INTERNOS };

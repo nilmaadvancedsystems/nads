@@ -351,11 +351,73 @@ function AbaWhatsapp({ central }: { central: Central }) {
         </label>
         <div className="cr-botoes"><button type="button" className="cr-botao" disabled={!w.teste.pode} onClick={w.teste.mandar}>Mandar o teste</button></div>
       </section>
+      <section className="cr-secao">
+        <h2>O que o robô faz pelo WhatsApp</h2>
+        <p className="cr-fraco cr-pequeno">Tudo vem desligado. Cada chave liga uma parte; o robô obedece na hora, sem atualizar nada.{w.chaves.gravadoPor ? ' Gravado por ' + w.chaves.gravadoPor + '.' : ''}</p>
+        {!w.chaves.carregadas && !w.chaves.erro && <p className="cr-fraco cr-pequeno" role="status">Lendo as chaves…</p>}
+        {w.chaves.carregadas && (
+          <>
+            <ul className="cr-whats-chaves">
+              {w.chaves.lista.map(c => (
+                <li key={c.chave}>
+                  <label className="cr-chave">
+                    <input type="checkbox" checked={c.ligada} onChange={() => w.chaves.trocar(c.chave)} />
+                    <span><b>{c.rotulo}</b>{c.mudou ? ' (mudou)' : ''}</span>
+                  </label>
+                  <span className="cr-fraco cr-pequeno">{c.explica}</span>
+                </li>
+              ))}
+            </ul>
+            <label className="cr-campo" style={{ marginTop: 8 }}>
+              <span>Empresa de teste</span>
+              <input className="cr-busca" inputMode="numeric" aria-label="Código da empresa de teste" placeholder="código do cliente" value={w.chaves.empresaDeTeste} onChange={e => w.chaves.escreverEmpresa(e.target.value)} />
+            </label>
+            <p className="cr-fraco cr-pequeno">Com a trava fechada, os números de teste usam o autoatendimento como se fossem esta empresa.</p>
+            <label className="cr-campo" style={{ marginTop: 8 }}>
+              <span>Números de teste a mais</span>
+              <input className="cr-busca" aria-label="Números de teste a mais" placeholder="(38) 90000-0000, separados por vírgula" value={w.chaves.numerosDeTeste} onChange={e => w.chaves.escreverNumeros(e.target.value)} />
+            </label>
+            <p className="cr-fraco cr-pequeno">Até {w.chaves.maxNumeros}, além do escritório e do celular do teste. Ficam só no banco. Com a trava fechada, a mensagem para um cliente cujo telefone é um destes vai direto a ele.</p>
+            <div className="cr-botoes">
+              <button type="button" className="cr-botao primario" disabled={!w.chaves.pode} onClick={w.chaves.pedirGravar}>Gravar as chaves</button>
+              {w.chaves.mudancas.length > 0 && <button type="button" className="cr-botao" onClick={w.chaves.desfazer}>Desfazer</button>}
+            </div>
+          </>
+        )}
+        {w.chaves.erro && !w.chaves.confirmar && <p className="cr-erro-linha" role="alert" style={{ marginTop: 8 }}>{w.chaves.erro}</p>}
+      </section>
+      <section className="cr-secao">
+        <h2>Respostas dos clientes</h2>
+        <p className="cr-fraco cr-pequeno">O que chegou nos últimos 7 dias (com a chave Registrar respostas ligada) e quem pediu para falar com o escritório pelo autoatendimento.</p>
+        <div className="cr-botoes"><button type="button" className="cr-botao" disabled={w.respostas.lendo} onClick={w.respostas.ler}>{w.respostas.lidas ? 'Ler de novo' : 'Ler as respostas'}</button></div>
+        {w.respostas.lendo && <p className="cr-fraco cr-pequeno" role="status">Lendo…</p>}
+        {w.respostas.erro && <p className="cr-erro-linha" role="alert">{w.respostas.erro}</p>}
+        {w.respostas.lidas && !w.respostas.lendo && !w.respostas.lista.length && <p className="cr-fraco cr-pequeno">Nenhuma resposta nos últimos 7 dias.</p>}
+        {w.respostas.lista.length > 0 && (
+          <ul className="cr-whats-respostas">
+            {w.respostas.lista.map(x => (
+              <li key={x.id} className={x.escritorio ? 'cr-whats-escritorio' : undefined}>
+                <div><b>{x.empresa}</b> <span className="cr-fraco cr-pequeno">{x.detalhe}{x.quando ? ' · ' + x.quando : ''}</span></div>
+                <div>{x.escritorio ? 'Pediu para falar com o escritório.' : x.ultima}</div>
+                {x.todas.length > 0 && <ol className="cr-pequeno cr-fraco">{x.todas.map((t, i) => <li key={i}>{t}</li>)}</ol>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <p className="cr-nota">
         {w.liberado ? 'Liberado para clientes: o Pedir extratos manda pelo robô quando ele está conectado.' : 'Trava de teste: por enquanto o robô só manda para os números de teste. Para os clientes, o Pedir extratos continua abrindo o WhatsApp com o texto pronto.'}
         {' '}Não é o WhatsApp oficial: o número pode ser bloqueado. Por isso o robô manda um de cada vez, com intervalo, até 30 por hora e 150 por dia, e só para o telefone do cadastro do cliente.
         {w.exemplos ? ' Dados de exemplo: nada vai para o banco nem para o WhatsApp.' : ''}
       </p>
+      {w.chaves.confirmar && (
+        <Confirmacao titulo={w.chaves.liberando ? 'Liberar o WhatsApp para os clientes?' : 'Gravar as chaves do WhatsApp?'} rotuloSim={w.chaves.liberando ? 'Liberar' : 'Gravar'}
+          perigo={w.chaves.liberando} enviando={w.chaves.gravando} erro={w.chaves.erro} aoConfirmar={w.chaves.gravar} aoCancelar={w.chaves.cancelar}
+          texto={<>
+            <ul>{w.chaves.mudancas.map(m => <li key={m}>{m}</li>)}</ul>
+            {w.chaves.liberando && <p>Com a trava aberta, o robô manda de verdade aos clientes (só para o telefone do cadastro), pelas chaves ligadas. Não é o WhatsApp oficial: o número pode ser bloqueado.</p>}
+          </>} />
+      )}
       {w.confirmarDesconectar && (
         <Confirmacao titulo="Desconectar o WhatsApp?" rotuloSim="Desconectar" perigo enviando={false} erro="" aoConfirmar={w.desconectar} aoCancelar={w.cancelarDesconectar}
           texto={<p>O robô sai do chip {w.numero} e para de mandar pelo WhatsApp. Para voltar, é preciso ler o QR code de novo com o celular.</p>} />
