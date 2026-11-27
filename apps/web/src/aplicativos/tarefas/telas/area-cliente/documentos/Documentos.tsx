@@ -113,9 +113,14 @@ function GruposPorEmpresa<T>({ grupos, titulo, linha }: {
   grupos: readonly { codigo: string; nome: string; itens: T[]; quando: string; resumo: string }[];
   titulo: readonly string[]; linha: (x: T) => ReactNode;
 }) {
+  // os que a pessoa abriu e, com uma empresa só (que já vem aberta), os que ela fechou (27/11/2026: "nao tem como clicar
+  // para minimizar")
   const [abertos, setAbertos] = useState<ReadonlySet<string>>(new Set());
-  const aberto = (c: string) => grupos.length === 1 || abertos.has(c);
-  const alternar = (c: string) => setAbertos(a => { const n = new Set(a); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  const [fechados, setFechados] = useState<ReadonlySet<string>>(new Set());
+  const sozinho = grupos.length === 1;
+  const aberto = (c: string) => (sozinho ? !fechados.has(c) : abertos.has(c));
+  const trocar = (s: ReadonlySet<string>, c: string) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; };
+  const alternar = (c: string) => (sozinho ? setFechados(f => trocar(f, c)) : setAbertos(a => trocar(a, c)));
   return (
     <div className="fat-grupos area-grupos">
       {grupos.map(g => (
