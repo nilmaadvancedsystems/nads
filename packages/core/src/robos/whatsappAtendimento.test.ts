@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -312,5 +312,61 @@ describe('o Claude do escritório entendendo o cliente', () => {
     expect(passoComOClaude(null, 0, [PADARIA], AGORA)?.responder).toContain('Escolha uma opção');
     // com mais de uma empresa e nenhuma escolhida, o Claude não decide
     expect(passoComOClaude(null, 1, [PADARIA, MERCADO], AGORA)).toBeNull();
+  });
+});
+
+describe('os documentos da pasta do Drive', () => {
+  it('os meses a olhar, do atual para trás', () => {
+    expect(mesesParaProcurar(Date.parse('2026-01-15T12:00:00Z'))).toEqual(['2026-01', '2025-12', '2025-11']);
+  });
+  it('a lista do mês vira registro; o que o DP tirou não vai', () => {
+    const doc = { clientes: { '123': { arquivos: [{ i: 'a1', n: 'HOLERITE.pdf' }, { i: 'a2', n: 'FGTS.pdf' }, { n: 'sem id' }] }, '456': { arquivos: [{ i: 'x', n: 'outro' }] } } };
+    const fora = { clientes: { '123': { arquivos: ['a2'] } } };
+    expect(registrosDaPasta([{ competencia: '2026-11', doc, fora }], '123')).toEqual([{ competencia: '2026-11', enviadoEm: '', arquivos: [{ nome: 'HOLERITE.pdf', id: 'a1' }] }]);
+    expect(registrosDaPasta([{ competencia: '2026-11', doc, fora: { clientes: { '123': { tudo: true } } } }], '123')).toEqual([]);
+    expect(registrosDaPasta([{ competencia: '2026-11', doc: null }], '123')).toEqual([]);
+  });
+  it('no mesmo mês, o já enviado ganha da pasta', () => {
+    const r = envioMaisRecente([
+      { competencia: '2026-11', enviadoEm: '', arquivos: [{ nome: 'da pasta', id: 'p' }] },
+      { competencia: '2026-11', enviadoEm: '2026-12-01', arquivos: [{ nome: 'enviado', id: 'e' }] },
+    ]);
+    expect(r?.arquivos[0].nome).toBe('enviado');
+  });
+});
+
+describe('o Claude escrevendo a resposta', () => {
+  const docs = documentosParaOClaude([
+    { tipo: 'guia', registros: [
+      { competencia: '2026-10', enviadoEm: '', arquivos: [{ nome: '10-2026.pdf', id: 'das10' }, { nome: '10-2026 - DAE ICMS - VALOR R$344,12.pdf', id: 'dae10' }] },
+      { competencia: '2026-11', enviadoEm: '', arquivos: [{ nome: '11-2026.pdf', id: 'das11' }] },
+    ] },
+    { tipo: 'boleto', registros: [{ competencia: '2026-11', enviadoEm: 'x', arquivos: [{ nome: 'Boleto.pdf', id: 'b1' }] }] },
+  ]);
+  it('a lista com os códigos, do mês mais novo, sem o id', () => {
+    expect(docs.map(d => d.codigo + ':' + d.id)).toEqual(['D1:das11', 'D2:das10', 'D3:dae10', 'D4:b1']);
+    const p = conversaParaOClaude({ empresa: 'DORNAS HAVANA LTDA - ME', agora: AGORA, documentos: docs, historico: [{ de: 'cliente', texto: 'oi' }, { de: 'robo', texto: 'Olá!' }], recebido: 'quero o das, meu cpf 12345678901' });
+    expect(p).toContain('Empresa: Dornas Havana LTDA - ME');
+    expect(p).toContain('D3 | Guia DAE ICMS | outubro de 2026 | 10-2026 - DAE ICMS - VALOR R$344,12.pdf');
+    expect(p).toContain('D1 | Guia DAS | novembro de 2026 | 11-2026.pdf');
+    expect(especieDaGuia('10-2026 - DARF INSS - VALOR R$10,00 - VENCIMENTO 20-11-2026.pdf')).toBe('DARF INSS');
+    expect(especieDaGuia('extrato.pdf')).toBe('');
+    expect(p).toContain('Cliente: oi\nAtendimento: Olá!');
+    expect(p).toContain('quero o das, meu cpf [número]');
+    expect(p).not.toContain('das11');
+  });
+  it('a resposta: o texto e só os documentos que existem', () => {
+    const r = respostaDoEscritor('{"resposta": "Segue o DAS de novembro!", "documentos": ["D1", "D9", "d1"], "equipe": false}', docs);
+    expect(r?.resposta).toBe('Segue o DAS de novembro!');
+    expect(r?.documentos.map(d => d.id)).toEqual(['das11']);
+    expect(respostaDoEscritor('Claro! {"resposta": "A equipe vai ver.", "documentos": [], "equipe": true}', docs)?.equipe).toBe(true);
+    expect(respostaDoEscritor('{"resposta": ""}', docs)).toBeNull();
+    expect(respostaDoEscritor('não é json', docs)).toBeNull();
+  });
+  it('o histórico guarda só as últimas falas', () => {
+    let h: { de: 'cliente' | 'robo'; texto: string }[] = [];
+    for (let i = 0; i < 12; i++) h = historicoCom(h, { de: 'cliente', texto: 'f' + i });
+    expect(h.length).toBe(MAX_HISTORICO);
+    expect(h[0].texto).toBe('f4');
   });
 });

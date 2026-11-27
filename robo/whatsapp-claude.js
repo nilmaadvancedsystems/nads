@@ -18,7 +18,10 @@ const W = require('./gerado/whatsapp');
 const CLAUDE = process.env.CLAUDE_EXE || path.join(os.homedir(), '.local', 'bin', 'claude.exe');
 const COLECAO = 'whatsappInterpretacoes';
 const MODELO = 'haiku';                 // só classificar: o mais rápido
-const LIMITE_MS = 20000;                // o robô da nuvem desiste em 25 s
+// escrever a resposta ao cliente (27/11/2026: "quero que o claude realmente escreva"): o sonnet, que escreve melhor
+const MODELO_QUE_ESCREVE = process.env.WHATSAPP_CLAUDE_MODELO || 'sonnet';
+const LIMITE_MS = 20000;                // classificar; o robô da nuvem desiste em ESPERA_DO_CLAUDE_MS
+const LIMITE_PARA_ESCREVER_MS = 35000;
 const PASTA = path.join(os.tmpdir(), 'nilma-whatsapp');
 const VELHO_MS = 10 * 60000;
 
@@ -28,22 +31,24 @@ function ambienteLimpo() {
   return env;
 }
 
-/** Os argumentos do `claude -p`: só classificar, sem ferramenta nenhuma. */
-function argumentos() {
-  return ['-p', '--model', MODELO, '--system-prompt', W.INSTRUCOES_DO_CLAUDE, '--tools', '', '--strict-mcp-config',
+/** Os argumentos do `claude -p`, sem ferramenta nenhuma: 'escrever' (a resposta ao cliente) ou só classificar. */
+function argumentos(modo) {
+  const escrever = modo === 'escrever';
+  return ['-p', '--model', escrever ? MODELO_QUE_ESCREVE : MODELO, '--system-prompt', escrever ? W.INSTRUCOES_DO_ESCRITOR : W.INSTRUCOES_DO_CLAUDE, '--tools', '', '--strict-mcp-config',
     '--permission-mode', 'dontAsk', '--no-session-persistence', '--setting-sources', 'project', '--disable-slash-commands',
     '--output-format', 'text'];
 }
 
 /** Pergunta ao Claude deste PC; devolve a saída (texto) ou erro. `rodar` é trocado no teste. */
-function perguntar(pergunta, rodar) {
-  if (rodar) return rodar(pergunta);
+function perguntar(pergunta, rodar, modo) {
+  if (rodar) return rodar(pergunta, modo);
+  const limite = modo === 'escrever' ? LIMITE_PARA_ESCREVER_MS : LIMITE_MS;
   fs.mkdirSync(PASTA, { recursive: true });
   return new Promise((ok, falha) => {
-    const filho = spawn(CLAUDE, argumentos(), { cwd: PASTA, env: ambienteLimpo(), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const filho = spawn(CLAUDE, argumentos(modo), { cwd: PASTA, env: ambienteLimpo(), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let saida = '';
     let erro = '';
-    const relogio = setTimeout(() => { try { filho.kill(); } catch (e) { /* segue */ } falha(new Error('o Claude passou de 20 s')); }, LIMITE_MS);
+    const relogio = setTimeout(() => { try { filho.kill(); } catch (e) { /* segue */ } falha(new Error('o Claude passou de ' + Math.round(limite / 1000) + ' s')); }, limite);
     filho.stdout.on('data', b => { saida += String(b); });
     filho.stderr.on('data', b => { erro += String(b); });
     filho.on('error', err => { clearTimeout(relogio); falha(err); });
@@ -63,7 +68,14 @@ async function atender(db, ref, { log, rodar } = {}) {
   });
   if (!pegou) return null;
   try {
-    const saida = await perguntar(String(pegou.pergunta || '').slice(0, 2000), rodar);
+    const modo = pegou.modo === 'escrever' ? 'escrever' : 'classificar';
+    const saida = await perguntar(String(pegou.pergunta || '').slice(0, 8000), rodar, modo);
+    if (modo === 'escrever') {
+      // a nuvem confere a resposta (respostaDoEscritor): aqui só devolve o que o Claude escreveu
+      await ref.update({ status: 'feito', saida: String(saida || '').slice(0, 4000), feitoEm: new Date().toISOString() });
+      if (log) log('whatsapp: o Claude escreveu a resposta ao cliente');
+      return saida;
+    }
     const opcao = W.opcaoDoClaude(saida);
     await ref.update({ status: 'feito', opcao, feitoEm: new Date().toISOString() });
     if (log) log('whatsapp: o Claude entendeu a mensagem do cliente como', opcao === null ? 'nenhuma opção' : 'a opção ' + opcao);

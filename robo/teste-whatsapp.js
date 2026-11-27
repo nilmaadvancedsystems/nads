@@ -93,14 +93,14 @@ const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'nads-whatsapp-'));
 const BOLETO_PDF = Buffer.from('%PDF-boleto');
 
 let esperas = [];
-// o Claude do escritório de mentira: anota as perguntas e responde a opção combinada (null = não entendeu)
+// o Claude do escritório de mentira: anota as perguntas e devolve a saída combinada (uma função da pergunta; null = calado)
 let perguntasAoClaude = [];
-let opcaoDoClaude = null;
-const claudeFalso = async (textoDoCliente, empresa) => { perguntasAoClaude.push([textoDoCliente, empresa]); return opcaoDoClaude; };
+let saidaDoClaude = () => null;
+const claudeFalso = async pergunta => { perguntasAoClaude.push(pergunta); return saidaDoClaude(pergunta); };
 function cenario(chaves) {
   esperas = [];
   perguntasAoClaude = [];
-  opcaoDoClaude = null;
+  saidaDoClaude = () => null;
   const db = bancoFalso({
     'clientes/c1': { ativo: true, codigoOrigem: '123', nome: 'Padaria Boa', telefone: '(38) 99999-1234' },
     'clientes/c2': { ativo: true, codigoOrigem: '456', nome: 'Mercado Bom', telefone: '(38) 3221-0000' },
@@ -258,20 +258,46 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     verdade('e o cliente recebe o menu', sock.mandadas[0] && sock.mandadas[0].text.includes('Escolha uma opção'));
   }
   {
-    const { sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
-    opcaoDoClaude = 1;
-    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda o DAS de outubro'));
-    igual('a pergunta vai com o texto e a empresa', perguntasAoClaude, [['me manda o DAS de outubro', 'Padaria Boa']]);
-    igual('o Claude disse 1: vai a guia, sem passar pelo menu', [sock.mandadas.length, sock.mandadas[0] && sock.mandadas[0].fileName], [1, 'DAS 10-2026.pdf']);
+    const { db, sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
+    // a pasta do Drive de novembro tem a guia que ninguém enviou ainda (fiscalArquivos), além das enviadas
+    const nov = W.mesesParaProcurar(Date.now())[0];
+    db._docs.set('fiscalArquivos/' + nov, { clientes: { '123': { arquivos: [{ i: 'drvNov', n: '11-2026.pdf' }] } } });
+    // o Claude escolhe pelo código o arquivo cujo nome é o DAS de novembro e ainda inventa um código
+    saidaDoClaude = p => {
+      const linha = p.split('\n').find(l => l.includes('11-2026.pdf'));
+      return '{"resposta": "Segue o DAS de novembro!", "documentos": ["' + (linha ? linha.split(' | ')[0] : '') + '", "D99"], "equipe": false}';
+    };
+    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda o DAS de novembro'));
+    const pergunta = perguntasAoClaude[0] || '';
+    verdade('a pergunta leva a empresa, a lista (com a pasta do Drive) e a mensagem', pergunta.includes('Empresa: Padaria Boa') && pergunta.includes('Guia DAS') && pergunta.includes('11-2026.pdf') && pergunta.includes('me manda o DAS de novembro'));
+    verdade('o Claude não vê o id do Drive nem o telefone', !pergunta.includes('drvNov') && !pergunta.includes(CELULAR_DO_TESTE));
+    igual('o texto do Claude e só o arquivo da lista', [sock.mandadas[0] && sock.mandadas[0].text, sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString(), sock.mandadas.length],
+      ['Segue o DAS de novembro!', '11-2026.pdf', '%PDF-guia-drvNov', 2]);
     await Z.receber(texto(CELULAR_DO_TESTE, '2'));
-    igual('o número digitado não passa pelo Claude', perguntasAoClaude.length, 1);
-    igual('e é atendido (o boleto)', sock.mandadas[1] && sock.mandadas[1].fileName, 'Boleto de honorários - Padaria Boa.pdf');
+    igual('o número digitado não passa pelo Claude (a conversa ficou no menu)', perguntasAoClaude.length, 1);
+    igual('e é atendido (o boleto)', sock.mandadas[2] && sock.mandadas[2].fileName, 'Boleto de honorários - Padaria Boa.pdf');
+    // na próxima, o Claude recebe a conversa até aqui
+    saidaDoClaude = () => '{"resposta": "A equipe vai verificar, tá?", "documentos": [], "equipe": true}';
+    await Z.receber(texto(CELULAR_DO_TESTE, 'o valor do DAS está errado'));
+    verdade('a conversa vai junto na 2ª pergunta', (perguntasAoClaude[1] || '').includes('Cliente: me manda o DAS de novembro') && (perguntasAoClaude[1] || '').includes('Atendimento: Segue o DAS de novembro!'));
+    const recebida = [...db._docs.values()].find(d => d.tipo === 'whatsapp-recebida');
+    verdade('o Claude chamou a equipe: fica o pedido para o escritório', !!recebida && recebida.pedeEscritorio && /o valor do DAS/.test(recebida.ultimaResposta));
   }
   {
     const { sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
-    opcaoDoClaude = null;
+    saidaDoClaude = () => null;
     await Z.receber(texto(CELULAR_DO_TESTE, 'blablabla qualquer coisa'));
-    verdade('o Claude não entendeu (ou o PC está desligado): segue o menu de sempre', sock.mandadas[0] && sock.mandadas[0].text.includes('Escolha uma opção'));
+    verdade('o Claude calado (o PC desligado): segue o menu de sempre', sock.mandadas[0] && sock.mandadas[0].text.includes('Escolha uma opção'));
+  }
+  {
+    // o menu (sem o Claude) também acha na pasta do Drive: o mês mais novo ganha
+    const { db, sock } = cenario({ autoatendimento: true, empresaDeTeste: '123' });
+    const nov = W.mesesParaProcurar(Date.now())[0];
+    db._docs.set('dpArquivos/' + nov, { clientes: { '123': { arquivos: [{ i: 'hol1', n: 'HOLERITE.pdf' }, { i: 'fgts1', n: 'FGTS.pdf' }] } } });
+    db._docs.set('dpEnviosFora/' + nov, { clientes: { '123': { arquivos: ['fgts1'] } } });
+    await Z.receber(texto(CELULAR_DO_TESTE, 'menu'));
+    await Z.receber(texto(CELULAR_DO_TESTE, '3'));
+    igual('3: o DP da pasta, sem o que o DP tirou do envio', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas.length], ['HOLERITE.pdf', 2]);
   }
 
   // ---------- 6f. o lado do PC do escritório (whatsapp-claude.js) ----------
@@ -289,6 +315,12 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     db._docs.set('whatsappInterpretacoes/p2', { status: 'pendente', pergunta: 'x' });
     await C.atender(db, db.doc('whatsappInterpretacoes/p2'), { rodar: async () => { throw new Error('limite de uso'); } });
     igual('o Claude falhou: o pedido fica com o erro (a nuvem segue sem ele)', db._docs.get('whatsappInterpretacoes/p2').status, 'erro');
+    db._docs.set('whatsappInterpretacoes/p3', { status: 'pendente', modo: 'escrever', pergunta: 'Empresa: X' });
+    let modoVisto = '';
+    await C.atender(db, db.doc('whatsappInterpretacoes/p3'), { rodar: async (p, modo) => { modoVisto = modo; return '{"resposta": "Oi!", "documentos": [], "equipe": false}'; } });
+    igual('modo escrever: o PC devolve o texto do Claude para a nuvem conferir', [modoVisto, db._docs.get('whatsappInterpretacoes/p3').status, db._docs.get('whatsappInterpretacoes/p3').saida], ['escrever', 'feito', '{"resposta": "Oi!", "documentos": [], "equipe": false}']);
+    const escrever = C.argumentos('escrever');
+    verdade('o Claude que escreve também roda sem ferramenta, com as instruções de escrever', escrever[escrever.indexOf('--tools') + 1] === '' && escrever[escrever.indexOf('--system-prompt') + 1] === W.INSTRUCOES_DO_ESCRITOR);
   }
 
   // ---------- 7. o freio ----------

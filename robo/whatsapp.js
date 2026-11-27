@@ -462,12 +462,12 @@ async function empresasDoNumero(numero, teste) {
 }
 
 /**
- * Pergunta ao Claude do PC do escritório (robo/whatsapp-claude.js, no claude-do-pc.js) qual opção do menu o cliente quis:
- * deixa a pergunta em whatsappInterpretacoes/{id}, espera até ESPERA_DO_CLAUDE_MS e apaga. null = sem resposta (o PC
- * desligado, o Claude sem limite, ou não deu para saber). O teste troca por um de mentira.
+ * Pede ao Claude do PC do escritório (robo/whatsapp-claude.js, no claude-do-pc.js) que escreva a resposta ao cliente: deixa
+ * a pergunta em whatsappInterpretacoes/{id} (modo 'escrever'), espera até ESPERA_DO_CLAUDE_MS e apaga. Devolve a saída do
+ * Claude (texto) ou null (o PC desligado, o Claude sem limite, sem resposta). O teste troca por um de mentira.
  */
-let perguntarAoClaude = async (textoDoCliente, empresa) => {
-  const ref = await st.db.collection('whatsappInterpretacoes').add({ status: 'pendente', pergunta: W.perguntaAoClaude(textoDoCliente, empresa), criadoEm: agoraIso() });
+let perguntarAoClaude = async pergunta => {
+  const ref = await st.db.collection('whatsappInterpretacoes').add({ status: 'pendente', modo: 'escrever', pergunta, criadoEm: agoraIso() });
   try {
     return await new Promise(ok => {
       let parar = () => {};
@@ -476,7 +476,7 @@ let perguntarAoClaude = async (textoDoCliente, empresa) => {
         const d = s.data() || {};
         if (d.status !== 'feito' && d.status !== 'erro') return;
         clearTimeout(fim); parar();
-        ok(d.status === 'feito' && Number.isInteger(d.opcao) ? d.opcao : null);
+        ok(d.status === 'feito' && typeof d.saida === 'string' ? d.saida : null);
       }, () => { clearTimeout(fim); ok(null); });
     });
   } finally {
@@ -484,21 +484,77 @@ let perguntarAoClaude = async (textoDoCliente, empresa) => {
   }
 };
 
+/** O pedido para falar com a equipe (o 4, o "não entendi" 2x, ou o Claude chamando): fica na fila como whatsapp-recebida. */
+async function avisarAEquipe(e, r, oque) {
+  const agora = agoraIso();
+  await st.db.collection('solicitacoesEmail').add({
+    tipo: 'whatsapp-recebida', status: 'recebida', origem: 'autoatendimento', pedeEscritorio: true, numero: r.numero, codigo: e.codigo,
+    clienteId: e.clienteId, clienteNome: e.nome, empresa: e.nome, ultimaResposta: String(oque).slice(0, 200), respondidoEm: agora,
+    criadoEm: agora, criadoPor: 'robô',
+  });
+  st.log('whatsapp: ' + e.nome + ' pediu para falar com o escritório');
+}
+
+/** Manda os arquivos (cada um baixado na hora); a legenda vai no primeiro. Devolve quantos foram. */
+async function mandarArquivos(numero, arquivos, baixar, legenda) {
+  let mandou = 0;
+  for (const a of arquivos) {
+    let arq;
+    try { arq = await baixar(a); } catch (err) { st.log('whatsapp: não baixei', a.nome || a.id, '-', err.message); continue; }
+    if (!arq || !arq.buffer || !arq.buffer.length || arq.buffer.length > MAX_ARQUIVO_BYTES) continue;
+    await enviar(numero, { document: arq.buffer, mimetype: arq.mime, fileName: (a.nome || arq.nome).slice(0, 120), ...(mandou || !legenda ? {} : { caption: legenda }) }, true);
+    mandou++;
+  }
+  return mandou;
+}
+
+/**
+ * O Claude escreve (chave ia, 27/11/2026: "quero que o claude realmente escreva"): junta os documentos da empresa (o já
+ * enviado e a pasta do Drive), manda ao Claude com as últimas falas, confere a resposta (só códigos da lista) e manda o
+ * texto e os arquivos. false = o Claude não respondeu direito: quem chamou segue com o menu.
+ */
+async function escreverComOClaude(r, empresa, guardada, agora) {
+  const achados = {};
+  const grupos = [];
+  for (const [tipo, acao] of [['guia', 'guias'], ['boleto', 'boleto'], ['dp', 'dp']]) {
+    const a = await registrosDe(acao, empresa).catch(err => { st.log('whatsapp: não li os documentos (' + acao + ') de', empresa.codigo, '-', err.message); return null; });
+    if (a) { achados[tipo] = a; grupos.push({ tipo, registros: a.registros }); }
+  }
+  const documentos = W.documentosParaOClaude(grupos);
+  const historico = (guardada && guardada.historico) || [];
+  const saida = await perguntarAoClaude(W.conversaParaOClaude({ empresa: empresa.nome, agora, documentos, historico, recebido: r.texto })).catch(() => null);
+  const resp = W.respostaDoEscritor(saida, documentos);
+  if (!resp) return false;
+  const h = W.historicoCom(W.historicoCom(historico, { de: 'cliente', texto: r.texto }), { de: 'robo', texto: resp.resposta });
+  // a conversa fica aberta no menu (o número digitado continua valendo), com as falas para a próxima vez
+  atendimentos[r.numero] = Object.assign({}, W.CONVERSA_NOVA, guardada || {}, { etapa: 'menu', empresa, empresas: [], menuEm: agora, aguardando: false, invalidas: 0, historico: h });
+  guardarJson(ARQUIVO_DO_ATENDIMENTO, atendimentos, 'o autoatendimento');
+  await enviar(r.numero, { text: resp.resposta }, true);
+  let mandou = 0;
+  for (const d of resp.documentos) {
+    const a = achados[d.tipo];
+    if (a) mandou += await mandarArquivos(r.numero, [{ id: d.id, nome: d.nome }], a.baixar, '');
+  }
+  if (resp.equipe) await avisarAEquipe(empresa, r, 'o Claude chamou a equipe: ' + r.texto);
+  st.log('whatsapp: o Claude respondeu a ' + empresa.nome + ' (' + mandou + ' arquivo(s)' + (resp.equipe ? ', chamou a equipe' : '') + ')');
+  return true;
+}
+
 /** O autoatendimento: a regra (core) diz o que responder e o que buscar; aqui só busca e manda. */
 async function atender(r, agora) {
   const teste = numerosDeTeste().some(t => W.mesmoNumero(t, r.numero));
   if (!chaves.liberado && !teste) return;
   const empresas = await empresasDoNumero(r.numero, teste);
   const guardada = atendimentos[r.numero] || null;
-  let passo = null;
-  // o texto livre ("me manda o DAS") vai ao Claude do PC do escritório (chave ia): ele só escolhe a opção do menu
+  // o texto livre ("me manda o DAS") com a chave ia: o Claude do escritório escreve a resposta
   if (chaves.ia && W.vaiAoClaude(r.texto) && empresas.length) {
     const empresa = (guardada && guardada.empresa && empresas.find(e => e.codigo === guardada.empresa.codigo)) || (empresas.length === 1 ? empresas[0] : null);
-    const opcao = empresa ? await perguntarAoClaude(r.texto, empresa.nome).catch(() => null) : null;
-    if (opcao !== null) passo = W.passoComOClaude(guardada, opcao, empresas, agora, ultimoPedidoPara(r.numero));
+    if (empresa && await escreverComOClaude(r, empresa, guardada, agora)) return;
   }
-  if (!passo) passo = W.passoDoAtendimento(guardada, r.texto, empresas, agora, ultimoPedidoPara(r.numero));
-  atendimentos[r.numero] = Object.assign({}, passo.conversa, { empresas: [] });
+  const passo = W.passoDoAtendimento(guardada, r.texto, empresas, agora, ultimoPedidoPara(r.numero));
+  const h = W.historicoCom(W.historicoCom((guardada && guardada.historico) || [], { de: 'cliente', texto: r.texto }),
+    { de: 'robo', texto: passo.responder || (passo.acao ? '(mandou: ' + passo.acao.tipo + ')' : '') });
+  atendimentos[r.numero] = Object.assign({}, passo.conversa, { empresas: [], historico: h });
   guardarJson(ARQUIVO_DO_ATENDIMENTO, atendimentos, 'o autoatendimento');
   if (passo.responder) await enviar(r.numero, { text: passo.responder }, true);
   if (passo.acao) await fazer(passo.acao, r);
@@ -514,21 +570,35 @@ async function doDrive(id) {
   return { nome: String(meta.data.name || 'documento'), mime: String(meta.data.mimeType || 'application/octet-stream'), buffer: Buffer.from(r.data) };
 }
 
-/** O que o escritório já mandou à empresa: { registro, baixar(arquivo) } ou null. Só lê quando o cliente pede. */
-async function documentosDe(tipo, e) {
+/**
+ * Os documentos da empresa: { registros, baixar(arquivo) }. Guias e DP: o que o escritório já enviou pelo nads e, desde
+ * 27/11/2026 ("procura no drive"), as listas da pasta do Drive dos últimos meses (fiscalArquivos / dpArquivos, sem o que o
+ * DP tirou em dpEnviosFora). Boleto: só o lote já mandado por e-mail. Só lê quando o cliente pede.
+ */
+async function registrosDe(tipo, e) {
   const db = st.db;
   if (tipo === 'guias' || tipo === 'dp') {
     const snap = await db.collection('solicitacoesEmail').where('codigo', '==', e.codigo).where('tipo', '==', tipo === 'guias' ? 'envioFiscal' : 'envioDp').get();
-    const registros = snap.docs.map(d => d.data()).filter(x => x.status === 'enviado').map(x => ({
+    const enviados = snap.docs.map(d => d.data()).filter(x => x.status === 'enviado').map(x => ({
       competencia: String(x.competencia || ''), enviadoEm: String(x.enviadoEm || ''),
       arquivos: tipo === 'guias'
         ? (Array.isArray(x.guiasDrive) ? x.guiasDrive : []).filter(g => g && g.id).map(g => ({ nome: String(g.nome || ''), id: String(g.id) }))
         : (Array.isArray(x.arquivos) ? x.arquivos : []).filter(id => typeof id === 'string' && id).map(id => ({ nome: '', id })),
     }));
-    const registro = W.envioMaisRecente(registros);
-    return registro ? { registro, baixar: a => doDrive(a.id) } : null;
+    const colecao = tipo === 'guias' ? 'fiscalArquivos' : 'dpArquivos';
+    const meses = await Promise.all(W.mesesParaProcurar(Date.now()).map(async competencia => {
+      const d = await db.collection(colecao).doc(competencia).get();
+      const fora = tipo === 'dp' ? await db.collection('dpEnviosFora').doc(competencia).get() : null;
+      return { competencia, doc: d.exists ? d.data() : null, fora: fora && fora.exists ? fora.data() : null };
+    }));
+    const daPasta = W.registrosDaPasta(meses, String(e.codigo));
+    // o envio do DP guarda só os ids: o nome vem da lista da pasta
+    const nomes = new Map();
+    daPasta.forEach(x => x.arquivos.forEach(a => nomes.set(a.id, a.nome)));
+    enviados.forEach(x => x.arquivos.forEach(a => { if (!a.nome) a.nome = nomes.get(a.id) || ''; }));
+    return { registros: enviados.concat(daPasta), baixar: a => doDrive(a.id) };
   }
-  // o boleto: os contratos da empresa nos Honorários e o último boleto já enviado por e-mail
+  // o boleto: os contratos da empresa nos Honorários e os boletos já enviados por e-mail
   const contratos = await db.collection('financeiroHonorarios').where('codigo', '==', e.codigo).get();
   const registros = [];
   const dados = new Map();
@@ -541,38 +611,21 @@ async function documentosDe(tipo, e) {
       registros.push({ competencia: String(x.competencia || ''), enviadoEm: String(x.envio.enviadoEm || ''), arquivos: [{ nome: 'Boleto de honorários - ' + e.nome + '.pdf', id: b.id }] });
     }
   }
-  const registro = W.envioMaisRecente(registros);
-  if (!registro) return null;
   return {
-    registro,
+    registros,
     baixar: async a => ({ nome: a.nome, mime: 'application/pdf', buffer: await require('./lote-dp').bufferDoArquivo(db.collection('financeiroBoletos').doc(a.id), dados.get(a.id)) }),
   };
 }
 
-/** A opção que o cliente escolheu: o pedido para falar com o escritório ou os arquivos. */
+/** A opção que o cliente escolheu no menu: o pedido para falar com a equipe ou os arquivos do mês mais recente. */
 async function fazer(acao, r) {
   const e = acao.empresa;
-  const agora = agoraIso();
-  if (acao.tipo === 'escritorio') {
-    await st.db.collection('solicitacoesEmail').add({
-      tipo: 'whatsapp-recebida', status: 'recebida', origem: 'autoatendimento', pedeEscritorio: true, numero: r.numero, codigo: e.codigo,
-      clienteId: e.clienteId, clienteNome: e.nome, empresa: e.nome, ultimaResposta: 'pediu para falar com o escritório', respondidoEm: agora,
-      criadoEm: agora, criadoPor: 'robô',
-    });
-    st.log('whatsapp: ' + e.nome + ' pediu para falar com o escritório');
-    return;
-  }
-  const achado = await documentosDe(acao.tipo, e).catch(err => { st.log('whatsapp: não achei os documentos (' + acao.tipo + ') de', e.codigo, '-', err.message); return null; });
-  const legenda = W.textoDosDocumentos(acao.tipo, e, achado && achado.registro);
-  if (!achado) { await enviar(r.numero, { text: legenda }, true); return; }
-  let mandou = 0;
-  for (const a of achado.registro.arquivos) {
-    let arq;
-    try { arq = await achado.baixar(a); } catch (err) { st.log('whatsapp: não baixei', a.nome || a.id, '-', err.message); continue; }
-    if (!arq || !arq.buffer || !arq.buffer.length || arq.buffer.length > MAX_ARQUIVO_BYTES) continue;
-    await enviar(r.numero, { document: arq.buffer, mimetype: arq.mime, fileName: (a.nome || arq.nome).slice(0, 120), ...(mandou ? {} : { caption: legenda }) }, true);
-    mandou++;
-  }
+  if (acao.tipo === 'escritorio') { await avisarAEquipe(e, r, 'pediu para falar com o escritório'); return; }
+  const achado = await registrosDe(acao.tipo, e).catch(err => { st.log('whatsapp: não achei os documentos (' + acao.tipo + ') de', e.codigo, '-', err.message); return null; });
+  const registro = achado ? W.envioMaisRecente(achado.registros) : null;
+  const legenda = W.textoDosDocumentos(acao.tipo, e, registro);
+  if (!registro) { await enviar(r.numero, { text: legenda }, true); return; }
+  const mandou = await mandarArquivos(r.numero, registro.arquivos, achado.baixar, legenda);
   if (!mandou) await enviar(r.numero, { text: 'Não conseguimos pegar os arquivos agora. Fale com o escritório pelo WhatsApp ' + W.numeroFormatado(W.NUMERO_DO_ESCRITORIO) + '.' }, true);
   st.log('whatsapp: autoatendimento mandou', mandou, 'arquivo(s) (' + acao.tipo + ') para', e.nome);
 }
