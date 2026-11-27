@@ -423,7 +423,7 @@ function passoDoAtendimento(guardada, recebido, empresas, agora, ultimoEnvioEm =
 			},
 			conversa: {
 				...c,
-				etapa: "",
+				etapa: "menu",
 				empresa,
 				menuEm: agora
 			}

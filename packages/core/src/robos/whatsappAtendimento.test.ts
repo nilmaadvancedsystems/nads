@@ -126,7 +126,10 @@ describe('o autoatendimento', () => {
     const p2 = passoDoAtendimento(p1.conversa, ' 2 ', [PADARIA], AGORA + 60000);
     expect(p2.acao).toEqual({ tipo: 'boleto', empresa: PADARIA });
     expect(p2.responder).toBe('');
-    expect(p2.conversa.etapa).toBe('');
+    // depois de atender, outro número da lista vale direto (sem repetir o menu)
+    const p3 = passoDoAtendimento(p2.conversa, '4', [PADARIA], AGORA + 120000);
+    expect(p3.acao).toEqual({ tipo: 'escritorio', empresa: PADARIA });
+    expect(p3.responder).toBe(TEXTO_DO_ESCRITORIO);
   });
   it('falar com o escritório responde e avisa a equipe', () => {
     const p1 = passoDoAtendimento(null, 'menu', [PADARIA], AGORA);

@@ -367,8 +367,9 @@ export function passoDoAtendimento(
   if (n && vale && c.etapa === 'menu' && empresa) {
     const opcao = OPCOES[n - 1];
     if (!opcao) return { responder: textoDoMenu(empresa), acao: null, conversa: { ...c, empresa, menuEm: agora } };
-    // depois de atender, o "obrigado" que vem não puxa o menu de novo (menuEm = agora); o número digitado reabre o menu
-    return { responder: opcao.acao === 'escritorio' ? TEXTO_DO_ESCRITORIO : '', acao: { tipo: opcao.acao, empresa }, conversa: { ...c, etapa: '', empresa, menuEm: agora } };
+    // depois de atender, o menu continua valendo (27/11/2026, o dono: "se ja mandei uma mensagem ele so repete"): outro número
+    // da lista é atendido direto por mais 30 min; o "obrigado" que vem não puxa o menu de novo (menuEm = agora)
+    return { responder: opcao.acao === 'escritorio' ? TEXTO_DO_ESCRITORIO : '', acao: { tipo: opcao.acao, empresa }, conversa: { ...c, etapa: 'menu', empresa, menuEm: agora } };
   }
   if (n) return abrirMenu();
   // texto solto: é resposta a uma mensagem do robô, ou o menu acabou de ir? então não repete o menu
