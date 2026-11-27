@@ -117,6 +117,9 @@ export interface PublicacaoDoSci {
   /** 'dd/mm/aaaa' ou '' */
   pagamentoEm: string;
   valorPago: number;
+  /** (27/11/2026) na publicação individual (recibo): o nome da pessoa e o tipo de folha */
+  funcionario: string;
+  tipoFolha: string;
 }
 
 export interface PaginaDoSci<T> { itens: T[]; paginaAtual: number; ultimaPagina: number }
@@ -148,6 +151,7 @@ export function lerPublicacaoDoSci(x: unknown): PublicacaoDoSci | null {
     vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
     pagamentoEm: dataDoSci(p.dataPagamento),
     valorPago: Number.isFinite(valorPago) ? valorPago : 0,
+    funcionario: texto(p.nomeFuncionario), tipoFolha: texto(p.tipoFolha),
   };
 }
 
@@ -174,11 +178,12 @@ export function janelaDoSci(hoje: Date, meses = SCI_MESES_NA_AREA): { de: string
  * A consulta de /publicados/busca: os IMPOSTOS de uma empresa entre duas competências, sem os individuais (de
  * funcionário). Com `publicadosId`, só aquela publicação (a conferência antes de abrir o PDF).
  */
-export function consultaDePublicados(p: { empresaId: number; de: string; ate: string; pagina?: number; publicadosId?: number }): string {
+export function consultaDePublicados(p: { empresaId: number; de: string; ate: string; pagina?: number; publicadosId?: number; recibos?: boolean }): string {
   const q = new URLSearchParams({
-    tipoDocumento: 'imposto', status: 'todos', empresaId: String(p.empresaId),
+    // (27/11/2026) os recibos (pró-labore, folha) são relatórios individuais, de uma pessoa
+    tipoDocumento: p.recibos ? 'relatorio' : 'imposto', status: 'todos', empresaId: String(p.empresaId),
     referenciaInicial: referenciaDoSci(p.de), referenciaFinal: referenciaDoSci(p.ate),
-    individual: 'false', page: String(p.pagina ?? 1), registrosPorPagina: String(SCI_POR_PAGINA),
+    individual: p.recibos ? 'true' : 'false', page: String(p.pagina ?? 1), registrosPorPagina: String(SCI_POR_PAGINA),
   });
   if (p.publicadosId) q.set('publicadosId', String(p.publicadosId));
   return q.toString();
@@ -299,3 +304,45 @@ export function guiasDoSciNaArea(sci: readonly GuiaDoSciReport[], existentes: re
   return { aPagar, pagas };
 }
 const ROTULO_CURTO: Record<TipoDeGuia, string> = { FGTS: 'FGTS', DAS: 'DAS', DAE: 'DAE', DARF: 'DARF', DAM: 'DAM', HON: 'Honorários', outra: 'Guia' };
+
+// ---------------------------------- os recibos (pró-labore e folha) ----------------------------------
+// (27/11/2026: "faz puxar o recibo de pró-labore pelo sci report") os recibos que o SCI publica para cada pessoa: o
+// recibo mensal (pró-labore e salário), o de férias, de 13º e de rescisão. A API do RH NET não tem o pró-labore calculado;
+// o SCI Report tem o recibo pronto.
+
+/** Os modelos do SCI Report que são recibo de uma pessoa. */
+export const RECIBOS_DO_SCI: Readonly<Record<string, string>> = {
+  REME: 'Recibo mensal', REMI: 'Recibo mensal (intermitente)', RE13: 'Recibo de 13º salário', READ: 'Recibo de adiantamento do 13º',
+  RECO: 'Recibo de complemento do 13º', REFE: 'Recibo de férias', RERE: 'Recibo de rescisão', RECT: 'Recibo de autônomo',
+};
+
+/** Um recibo como a Área mostra. LISTA BRANCA: só estes campos saem da função para o navegador. */
+export interface ReciboDoSci {
+  /** o publicadosId (é por ele que o PDF é pedido) */
+  id: string;
+  nome: string;
+  /** 'aaaa-mm' */
+  competencia: string;
+  /** o nome da pessoa como está no SCI */
+  pessoa: string;
+}
+
+/** As publicações individuais → os recibos (só os modelos de recibo, com a pessoa), os mais novos primeiro. */
+export function recibosDoSciReport(publicacoes: readonly PublicacaoDoSci[]): ReciboDoSci[] {
+  const porId = new Map<string, ReciboDoSci>();
+  for (const p of publicacoes) {
+    const nome = RECIBOS_DO_SCI[p.relatorioId.toUpperCase()];
+    if (!p.individual || !nome || !p.funcionario.trim()) continue;
+    porId.set(String(p.publicadosId), { id: String(p.publicadosId), nome, competencia: p.competencia, pessoa: p.funcionario.replace(/\s+/g, ' ').trim() });
+  }
+  return [...porId.values()].sort((a, b) => b.competencia.localeCompare(a.competencia) || a.nome.localeCompare(b.nome));
+}
+
+/** O recibo é desta pessoa? Pelo nome, sem acento e sem diferença de maiúscula (o SCI e o nads escrevem igual). */
+export function reciboDaPessoa(r: Pick<ReciboDoSci, 'pessoa'>, nome: string): boolean {
+  const n = (t: string) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim();
+  return !!n(nome) && n(r.pessoa) === n(nome);
+}
+
+/** Os meses de recibo que a Área mostra (um ano). */
+export const SCI_MESES_DE_RECIBO = 12;

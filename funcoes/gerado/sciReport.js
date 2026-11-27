@@ -112,7 +112,9 @@ function lerPublicacaoDoSci(x) {
 		visualizado: sim(p.visualizado),
 		vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
 		pagamentoEm: dataDoSci(p.dataPagamento),
-		valorPago: Number.isFinite(valorPago) ? valorPago : 0
+		valorPago: Number.isFinite(valorPago) ? valorPago : 0,
+		funcionario: texto(p.nomeFuncionario),
+		tipoFolha: texto(p.tipoFolha)
 	};
 }
 function lerPaginaDePublicados(resposta) {
@@ -136,12 +138,12 @@ function janelaDoSci(hoje, meses = 3) {
 }
 function consultaDePublicados(p) {
 	const q = new URLSearchParams({
-		tipoDocumento: "imposto",
+		tipoDocumento: p.recibos ? "relatorio" : "imposto",
 		status: "todos",
 		empresaId: String(p.empresaId),
 		referenciaInicial: referenciaDoSci(p.de),
 		referenciaFinal: referenciaDoSci(p.ate),
-		individual: "false",
+		individual: p.recibos ? "true" : "false",
 		page: String(p.pagina ?? 1),
 		registrosPorPagina: String(200)
 	});
@@ -191,6 +193,30 @@ function acessoDaArea(token, link, login) {
 	if (!/^[0-9a-f]{40}$/.test(token) || !link?.existe) return "link invalido";
 	if (link.exigeSenha !== true) return "liberado";
 	return login?.cliente === true && Array.isArray(login.a) && login.a.includes(token) ? "liberado" : "precisa entrar";
+}
+const RECIBOS_DO_SCI = {
+	REME: "Recibo mensal",
+	REMI: "Recibo mensal (intermitente)",
+	RE13: "Recibo de 13º salário",
+	READ: "Recibo de adiantamento do 13º",
+	RECO: "Recibo de complemento do 13º",
+	REFE: "Recibo de férias",
+	RERE: "Recibo de rescisão",
+	RECT: "Recibo de autônomo"
+};
+function recibosDoSciReport(publicacoes) {
+	const porId = /* @__PURE__ */ new Map();
+	for (const p of publicacoes) {
+		const nome = RECIBOS_DO_SCI[p.relatorioId.toUpperCase()];
+		if (!p.individual || !nome || !p.funcionario.trim()) continue;
+		porId.set(String(p.publicadosId), {
+			id: String(p.publicadosId),
+			nome,
+			competencia: p.competencia,
+			pessoa: p.funcionario.replace(/\s+/g, " ").trim()
+		});
+	}
+	return [...porId.values()].sort((a, b) => b.competencia.localeCompare(a.competencia) || a.nome.localeCompare(b.nome));
 }
 
 //#endregion
@@ -292,6 +318,22 @@ function criarClienteSciReport(deps) {
 			empresas.set(d, id);
 			return id;
 		},
+		async individuais(empresaId, de, ate, publicadosId) {
+			const todas = [];
+			for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
+				const p = lerPaginaDePublicados(await chamar("GET", "/api/v1/publicados/busca?" + consultaDePublicados({
+					empresaId,
+					de,
+					ate,
+					pagina,
+					publicadosId,
+					recibos: true
+				})));
+				todas.push(...p.itens.filter((x) => x.empresaId === empresaId && x.individual));
+				if (p.paginaAtual >= p.ultimaPagina) break;
+			}
+			return todas;
+		},
 		async publicacoes(empresaId, de, ate, publicadosId) {
 			const todas = [];
 			for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
@@ -378,6 +420,34 @@ function criarAtendimentoDaArea(deps) {
 				guias: guiasDoSciReport(publicacoes, hoje),
 				semEmpresaNoSci
 			};
+		},
+		async recibos(token, idToken, hoje) {
+			const acesso = await conferir(token, idToken);
+			if (acesso !== "liberado") return { acesso };
+			const doLink = await empresasDoLink(token);
+			if (!doLink) return {
+				acesso,
+				recibos: []
+			};
+			const { de, ate } = janelaDoSci(hoje, 12);
+			const publicacoes = [];
+			for (const id of doLink.ids) publicacoes.push(...await deps.sci.individuais(id, de, ate));
+			return {
+				acesso,
+				recibos: recibosDoSciReport(publicacoes)
+			};
+		},
+		async pdfDoRecibo(token, idToken, publicadosId, hoje) {
+			const acesso = await conferir(token, idToken);
+			if (acesso !== "liberado") return { acesso };
+			const id = Number(publicadosId);
+			if (!Number.isInteger(id) || id <= 0) return { acesso: "guia de outra empresa" };
+			const { de, ate } = janelaDoSci(hoje, 12);
+			for (const empresaId of (await empresasDoLink(token))?.ids ?? []) if (recibosDoSciReport(await deps.sci.individuais(empresaId, de, ate, id)).some((r) => r.id === String(id))) return {
+				acesso,
+				url: await deps.sci.urlDoPdf(id, empresaId)
+			};
+			return { acesso: "guia de outra empresa" };
 		},
 		async pdf(token, idToken, publicadosId, hoje) {
 			const acesso = await conferir(token, idToken);

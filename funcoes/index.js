@@ -107,7 +107,16 @@ export const guiasDoSciReport = onRequest(
       const hoje = hojeEmBrasilia();
       const ocultas = (await configDaArea()).ocultas;
       if (guia && ocultas.includes(String(guia))) { res.status(403).json({ acesso: 'guia de outra empresa' }); return; }
-      const r = guia ? await area.pdf(token, idToken, guia, hoje) : await area.guias(token, idToken, hoje);
+      // (27/11/2026: "faz puxar o recibo de pró-labore pelo sci report") recibos: true lista os recibos das pessoas; com
+      // recibo: true e a guia, é o PDF de um recibo (só da empresa do link)
+      const deRecibo = corpo.recibo === true;
+      if (corpo.recibos === true && !guia) {
+        const rr = await area.recibos(token, idToken, hoje);
+        if (rr.acesso === 'liberado' && ocultas.length) rr.recibos = rr.recibos.filter(x => !ocultas.includes(String(x.id)));
+        res.status(rr.acesso === 'liberado' ? 200 : rr.acesso === 'precisa entrar' ? 401 : 403).json(rr);
+        return;
+      }
+      const r = guia ? await (deRecibo ? area.pdfDoRecibo(token, idToken, guia, hoje) : area.pdf(token, idToken, guia, hoje)) : await area.guias(token, idToken, hoje);
       if (!guia && Array.isArray(r.guias) && ocultas.length) r.guias = r.guias.filter(g => !ocultas.includes(String(g.id)));
       // (26/11/2026: "tem que parecer que sci report nem existe para o usuario") com formato 'pdf', a função busca o PDF na
       // URL temporária da SCI e devolve os bytes: a guia abre na mesma janela das outras guias da Área

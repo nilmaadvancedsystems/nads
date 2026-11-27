@@ -134,6 +134,26 @@ function CalendarioDasFerias({ pedido, hoje, aoMarcar }: { pedido: PedidoDeFeria
  *  (13/11/2026: "melhore visualmente esses dois, principalmente a parte de programar férias"): as férias escolhem a pessoa
  *  por cartões (com o selo das férias de cada um), os dias em botões e mostram a conta (o pagamento, de quando a quando e a
  *  volta); a admissão tem a foto no alto, os campos em dois blocos e o prazo do eSocial pela data. */
+/** (27/11/2026: "faz puxar o recibo de pró-labore pelo sci report") os recibos da pessoa (pró-labore, salário, férias, 13º) */
+function RecibosDaPessoa({ recibos, abrindo, onAbrir }: { recibos: { id: string; nome: string; quando: string }[]; abrindo: string; onAbrir: (id: string) => void }) {
+  if (!recibos.length) return null;
+  return (
+    <div className="cli-ficha-docs">
+      <p className="cli-ficha-sub">Recibos · {recibos.length}</p>
+      <ul className="cli-reg-docs">
+        {recibos.slice(0, 12).map(r => (
+          <li key={r.id} className="cli-recibo">
+            <span className="cli-recibo-nome"><b>{r.nome}</b><span className="hint">{r.quando}</span></span>
+            <button type="button" className="btn btn-outline btn-sm" disabled={abrindo === r.id} onClick={() => onAbrir(r.id)}>
+              <Icone nome="olho" width={15} height={15} />{abrindo === r.id ? 'Abrindo…' : 'Ver'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** as opções do cadastro completo (26/11/2026), as mesmas que o robô lê para o RH NET */
 const OPC = sci.integracao.OPCOES_DA_ADMISSAO;
 const rotulos = (l: readonly (readonly [string, number])[]) => l.map(([r]) => r);
@@ -421,6 +441,7 @@ export function DepartamentoPessoal(props: DaCasca) {
             <div><dt>{f.admissao ? 'Admissão' : 'No registro desde'}</dt><dd>{f.admissao || f.desde || '—'}</dd></div>
             <div><dt>CPF</dt><dd>{f.cpf || '—'}</dd></div>
           </dl>
+          <RecibosDaPessoa recibos={f.recibos} abrindo={vm.abrindoRecibo} onAbrir={vm.abrirRecibo} />
           <div className="cli-ficha-docs">
             <p className="cli-ficha-sub">Documentos{f.docs.length ? ' · ' + f.docs.length : ''}</p>
             {f.docs.length
@@ -461,6 +482,7 @@ export function DepartamentoPessoal(props: DaCasca) {
             <div><dt>CPF</dt><dd>{c.cpf}</dd></div>
           </dl>
           <p className="hint cli-ficha-sem">{c.explica}</p>
+          <RecibosDaPessoa recibos={c.recibos} abrindo={vm.abrindoRecibo} onAbrir={vm.abrirRecibo} />
           {c.podeCompletar
             ? <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Falta completar o cadastro. Preencha tudo e libere: o departamento pessoal só importa para a folha.</p>
             : <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Para mudar um dado ou mandar um documento, abra uma solicitação.</p>}

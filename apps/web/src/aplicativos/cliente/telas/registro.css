@@ -115,3 +115,7 @@
 .modal.modal-centro > .cli-app.cli-pedido.cli-pd{scrollbar-gutter:auto;}
 
 /* o cartão do RH NET da SCI na grade da equipe (25/11/2026: "integra isso mais bonito"): o mesmo cartão, sem clique */
+/* (27/11/2026) os recibos do SCI Report na ficha da pessoa */
+.cli-app .cli-recibo{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-recibo:last-child{border-bottom:0;}
+.cli-app .cli-recibo-nome{display:flex;flex-direction:column;gap:1px;min-width:0;}
