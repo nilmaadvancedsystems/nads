@@ -13,15 +13,18 @@ const PLANILHA = [
   linha({ 2: '29/10/2026', 4: '16', 6: '265', 8: 1234.5, 10: '29', 12: '101 - CLIENTE FICTICIO LTDA ', 14: '101', 16: 'Lançamento on-line fiscal', 18: '900', 22: '17/11/2026' }),
   linha({}),
   linha({ 2: '31/10/2026', 6: '169', 8: '1,400.00', 12: 'Líquido da folha 10/2026', 16: 'Lançamento on-line folha' }),
+  // o importado pelo minimum: o lote e a chave na primeira coluna, que sai sem título
+  linha({ 0: 'm583kqt002', 2: '05/11/2026', 4: '12', 6: '16', 8: '50.00', 16: 'Importação TXT' }),
 ];
 
 describe('a consulta dos lançamentos do SCI', () => {
   it('acha as colunas pelo título, pula a linha vazia e lê a data, o valor e o resto', () => {
     const ls = lancamentosDaConsulta(PLANILHA);
-    expect(ls).toHaveLength(3);
+    expect(ls).toHaveLength(4);
+    expect(ls?.[3]).toMatchObject({ lote: 'M583KQT002', debito: '12', valor: 5000 });
     expect(ls?.[0]).toEqual({
       data: '2026-10-31', debito: '284', credito: '200', valor: 270000, historico: '', complemento: 'Provisão de Impostos: 10/2026', documento: '',
-      tipo: 'Lançamento on-line fiscal', participanteD: '', participanteC: '', lancadoEm: '2026-11-17', alteradoEm: '2026-11-17',
+      tipo: 'Lançamento on-line fiscal', participanteD: '', participanteC: '', lancadoEm: '2026-11-17', alteradoEm: '2026-11-17', lote: '',
     });
     expect(ls?.[1]).toMatchObject({ valor: 123450, historico: '29', complemento: '101 - CLIENTE FICTICIO LTDA', documento: '101', participanteD: '900' });
     // a partida da folha vem com um lado só
@@ -46,7 +49,7 @@ describe('a consulta dos lançamentos do SCI', () => {
 
   it('lê o CSV em UTF-8 e em Windows-1252, com os acentos dos títulos', () => {
     const csv = PLANILHA.map(r => r.map(c => '"' + String(c) + '"').join(',')).join('\n');
-    expect(lerConsultaDoSci(new TextEncoder().encode(csv))).toHaveLength(3);
+    expect(lerConsultaDoSci(new TextEncoder().encode(csv))).toHaveLength(4);
     // o mesmo texto em Windows-1252 (o "é" num byte só)
     const latin = Uint8Array.from([...csv].map(c => c.charCodeAt(0) & 0xff));
     expect(lerConsultaDoSci(latin)?.[0].debito).toBe('284');
@@ -74,7 +77,7 @@ describe('a consulta dos lançamentos do SCI', () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(PLANILHA), 'Planilha1');
     const bytes = XLSX.write(wb, { bookType: 'xls', type: 'array' }) as ArrayBuffer;
-    expect(lerConsultaDoSci(bytes)?.map(l => l.valor)).toEqual([270000, 123450, 140000]);
+    expect(lerConsultaDoSci(bytes)?.map(l => l.valor)).toEqual([270000, 123450, 140000, 5000]);
   });
 });
 
