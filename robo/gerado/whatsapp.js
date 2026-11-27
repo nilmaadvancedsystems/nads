@@ -288,12 +288,30 @@ const CONVERSA_NOVA = {
 	empresas: [],
 	empresa: null,
 	menuEm: 0,
-	avisoEm: 0
+	avisoEm: 0,
+	aguardando: false,
+	invalidas: 0
 };
+const MAX_NAO_ENTENDI = 2;
 const MENU_VALE_MS = 18e5;
 const MENU_DE_NOVO_MS = 216e5;
 const RESPONDENDO_MS = 864e5;
 const AVISO_DE_NOVO_MS = 864e5;
+const NOME_DO_ATENDIMENTO = "Autoatendimento Nilma Contabilidade";
+const TITULO = "*Autoatendimento Nilma Contabilidade*";
+const EMOJI_DO_NUMERO = [
+	"0️⃣",
+	"1️⃣",
+	"2️⃣",
+	"3️⃣",
+	"4️⃣",
+	"5️⃣",
+	"6️⃣",
+	"7️⃣",
+	"8️⃣",
+	"9️⃣"
+];
+const numeroEmEmoji = (n) => EMOJI_DO_NUMERO[n] ?? String(n) + " –";
 const OPCOES = [
 	{
 		acao: "guias",
@@ -309,19 +327,88 @@ const OPCOES = [
 	},
 	{
 		acao: "escritorio",
-		rotulo: "Falar com o escritório"
+		rotulo: "Falar com a equipe do escritório"
 	}
 ];
+function saudacaoDoAtendimento(agora) {
+	const h = (/* @__PURE__ */ new Date(agora - 108e5)).getUTCHours();
+	if (h >= 5 && h < 12) return "Bom dia";
+	return h >= 12 && h < 18 ? "Boa tarde" : "Boa noite";
+}
+const SIGLAS = /* @__PURE__ */ new Set([
+	"LTDA",
+	"ME",
+	"EPP",
+	"EIRELI",
+	"SA",
+	"S/A",
+	"S.A.",
+	"MEI",
+	"SS",
+	"CIA"
+]);
+const MIUDAS = /* @__PURE__ */ new Set([
+	"e",
+	"de",
+	"da",
+	"do",
+	"das",
+	"dos"
+]);
+function nomeDaEmpresa(nome) {
+	return nome.trim().split(/\s+/).map((p, i) => {
+		if (SIGLAS.has(p.toUpperCase()) || SIGLAS.has(p.replace(/[.,]/g, "").toUpperCase())) return p.toUpperCase();
+		const baixa = p.toLowerCase();
+		if (i > 0 && MIUDAS.has(baixa)) return baixa;
+		return baixa.charAt(0).toUpperCase() + baixa.slice(1);
+	}).join(" ");
+}
+const LEMBRETE = "_A qualquer momento, digite *menu* para voltar aqui._";
+const TEXTO_DE_MAIS_ALGUMA = "Precisa de mais alguma coisa? Responda com outro número do menu ou *0* para encerrar.";
+const TEXTO_DE_ENCERRAR = "Atendimento encerrado. Obrigado! Quando precisar, é só mandar *menu*. 👋";
 const normal = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-const PEDE_MENU = /^(menu|oi|ola|bom dia|boa tarde|boa noite|inicio|opcoes|ajuda)$/;
-function textoDoMenu(empresa) {
-	return "Olá! Este é o atendimento automático da Nilma Contabilidade para " + empresa.nome + ".\n\nResponda com o número:\n" + OPCOES.map((o, i) => i + 1 + " – " + o.rotulo).join("\n");
+const PEDE_MENU = /^(menu|oi|oie|ola|bom dia|boa tarde|boa noite|inicio|opcoes|ajuda|voltar)$/;
+function textoDoMenu(empresa, agora) {
+	return [
+		TITULO,
+		"",
+		saudacaoDoAtendimento(agora) + "! Você está no atendimento de *" + nomeDaEmpresa(empresa.nome) + "*.",
+		"",
+		"Escolha uma opção e responda só com o número:",
+		"",
+		...OPCOES.map((o, i) => numeroEmEmoji(i + 1) + " " + o.rotulo),
+		numeroEmEmoji(0) + " Encerrar",
+		"",
+		LEMBRETE
+	].join("\n");
 }
-function textoDasEmpresas(empresas) {
-	return "Olá! Este número está no cadastro de mais de uma empresa. Responda com o número da empresa:\n" + empresas.map((e, i) => i + 1 + " – " + e.nome).join("\n");
+function textoDasEmpresas(empresas, agora) {
+	return [
+		TITULO,
+		"",
+		saudacaoDoAtendimento(agora) + "! Este número está no cadastro de mais de uma empresa. Qual delas?",
+		"",
+		...empresas.map((e, i) => numeroEmEmoji(i + 1) + " " + nomeDaEmpresa(e.nome)),
+		"",
+		"Responda só com o número."
+	].join("\n");
 }
-const TEXTO_FORA_DO_CADASTRO = "Olá! Este é o atendimento automático da Nilma Contabilidade, mas não achamos este número no cadastro de nenhuma empresa. Fale com o escritório pelo WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + ".";
-const TEXTO_DO_ESCRITORIO = "Certo! Avisamos a equipe do escritório. Se preferir, chame direto no WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + ".";
+const TEXTO_FORA_DO_CADASTRO = [
+	TITULO,
+	"",
+	"Olá! Não achamos este número no cadastro de nenhuma empresa. Fale com a equipe pelo WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + "."
+].join("\n");
+const TEXTO_DO_ESCRITORIO = [
+	"Certo! Avisamos a equipe do escritório, que vai te responder assim que possível. Se for urgente, chame direto no WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + ".",
+	"",
+	TEXTO_DE_MAIS_ALGUMA
+].join("\n");
+const TEXTO_NAO_ENTENDI = "Desculpe, não entendi. 🙂 Responda só com o número de uma das opções:";
+const TEXTO_NAO_ENTENDI_EQUIPE = [
+	"Desculpe, não consegui entender. Avisamos a equipe do escritório, que vai te responder assim que possível. Se for urgente, chame no WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + ".",
+	"",
+	"Para voltar às opções, digite *menu*."
+].join("\n");
 function passoDoAtendimento(guardada, recebido, empresas, agora, ultimoEnvioEm = 0) {
 	const c = {
 		...CONVERSA_NOVA,
@@ -350,32 +437,66 @@ function passoDoAtendimento(guardada, recebido, empresas, agora, ultimoEnvioEm =
 		};
 	}
 	const empresa = (c.empresa ? empresas.find((e) => e.codigo === c.empresa?.codigo) : void 0) || (empresas.length === 1 ? empresas[0] : null);
+	const esperando = {
+		aguardando: true,
+		invalidas: 0
+	};
 	const abrirMenu = () => empresa ? {
-		responder: textoDoMenu(empresa),
+		responder: textoDoMenu(empresa, agora),
 		acao: null,
 		conversa: {
 			...c,
+			...esperando,
 			etapa: "menu",
 			empresa,
 			menuEm: agora
 		}
 	} : {
-		responder: textoDasEmpresas(empresas),
+		responder: textoDasEmpresas(empresas, agora),
 		acao: null,
 		conversa: {
 			...c,
+			...esperando,
 			etapa: "empresa",
 			empresa: null,
 			menuEm: agora
 		}
 	};
 	const vale = agora - c.menuEm < MENU_VALE_MS;
-	if (pediuMenu) {
-		if (empresas.length > 1 && t === "menu") return {
-			responder: textoDasEmpresas(empresas),
+	const naoEntendeu = () => {
+		const invalidas = (c.invalidas || 0) + 1;
+		if (invalidas >= 2 && empresa) return {
+			responder: TEXTO_NAO_ENTENDI_EQUIPE,
+			acao: {
+				tipo: "escritorio",
+				empresa
+			},
+			conversa: {
+				...c,
+				empresa,
+				aguardando: false,
+				invalidas: 0,
+				menuEm: agora
+			}
+		};
+		return {
+			responder: "Desculpe, não entendi. 🙂 Responda só com o número de uma das opções:\n\n" + (empresa ? textoDoMenu(empresa, agora) : textoDasEmpresas(empresas, agora)),
 			acao: null,
 			conversa: {
 				...c,
+				aguardando: true,
+				invalidas,
+				menuEm: agora
+			}
+		};
+	};
+	if (pediuMenu) {
+		if (empresas.length > 1 && t === "menu") return {
+			responder: textoDasEmpresas(empresas, agora),
+			acao: null,
+			conversa: {
+				...c,
+				...esperando,
 				etapa: "empresa",
 				empresa: null,
 				menuEm: agora
@@ -385,36 +506,33 @@ function passoDoAtendimento(guardada, recebido, empresas, agora, ultimoEnvioEm =
 	}
 	if (n && vale && c.etapa === "empresa") {
 		const escolhida = empresas[n - 1];
-		if (!escolhida) return {
-			responder: textoDasEmpresas(empresas),
-			acao: null,
-			conversa: {
-				...c,
-				menuEm: agora
-			}
-		};
+		if (!escolhida) return naoEntendeu();
 		return {
-			responder: textoDoMenu(escolhida),
+			responder: textoDoMenu(escolhida, agora),
 			acao: null,
 			conversa: {
 				...c,
+				...esperando,
 				etapa: "menu",
 				empresa: escolhida,
 				menuEm: agora
 			}
 		};
 	}
+	if (t === "0" && c.etapa !== "") return {
+		responder: TEXTO_DE_ENCERRAR,
+		acao: null,
+		conversa: {
+			...c,
+			etapa: "",
+			aguardando: false,
+			invalidas: 0,
+			menuEm: agora
+		}
+	};
 	if (n && vale && c.etapa === "menu" && empresa) {
 		const opcao = OPCOES[n - 1];
-		if (!opcao) return {
-			responder: textoDoMenu(empresa),
-			acao: null,
-			conversa: {
-				...c,
-				empresa,
-				menuEm: agora
-			}
-		};
+		if (!opcao) return naoEntendeu();
 		return {
 			responder: opcao.acao === "escritorio" ? TEXTO_DO_ESCRITORIO : "",
 			acao: {
@@ -425,11 +543,14 @@ function passoDoAtendimento(guardada, recebido, empresas, agora, ultimoEnvioEm =
 				...c,
 				etapa: "menu",
 				empresa,
-				menuEm: agora
+				menuEm: agora,
+				aguardando: false,
+				invalidas: 0
 			}
 		};
 	}
 	if (n) return abrirMenu();
+	if (c.aguardando && vale && c.etapa !== "") return naoEntendeu();
 	if (agora - ultimoEnvioEm < 864e5 || agora - c.menuEm < 216e5) return nada();
 	return abrirMenu();
 }
@@ -449,10 +570,10 @@ const NOMES_DA_ACAO = {
 };
 function textoDosDocumentos(acao, empresa, achado) {
 	const [um, varios] = NOMES_DA_ACAO[acao];
-	if (!achado) return "Não achamos " + varios + " de " + empresa.nome + " já enviados pelo escritório. Se precisar, fale com a equipe pelo WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + ".";
+	if (!achado) return "Não achamos " + varios + " de " + nomeDaEmpresa(empresa.nome) + " já enviados pelo escritório. Se precisar, fale com a equipe pelo WhatsApp " + numeroFormatado(NUMERO_DO_ESCRITORIO) + ".\n\nPrecisa de mais alguma coisa? Responda com outro número do menu ou *0* para encerrar.";
 	const mes = mesPorExtenso(achado.competencia);
 	const qtos = achado.arquivos.length;
-	return (qtos === 1 ? "Segue " + um : "Seguem " + varios) + " de " + empresa.nome + (mes ? " (" + mes + ")" : "") + (qtos > 1 ? ", " + qtos + " arquivos" : "") + ".";
+	return (qtos === 1 ? "Segue " + um : "Seguem " + varios) + " de " + nomeDaEmpresa(empresa.nome) + (mes ? " (" + mes + ")" : "") + (qtos > 1 ? ", " + qtos + " arquivos" : "") + ".\n\nPrecisa de mais alguma coisa? Responda com outro número do menu ou *0* para encerrar.";
 }
 const DIAS_DAS_RESPOSTAS = 7;
 const ORIGENS_DO_PEDIDO = {
@@ -527,17 +648,23 @@ exports.CHAVES_DO_WHATSAPP = CHAVES_DO_WHATSAPP;
 exports.CONVERSA_NOVA = CONVERSA_NOVA;
 exports.DIAS_DAS_RESPOSTAS = DIAS_DAS_RESPOSTAS;
 exports.MAX_ARQUIVOS_DO_ATENDIMENTO = MAX_ARQUIVOS_DO_ATENDIMENTO;
+exports.MAX_NAO_ENTENDI = MAX_NAO_ENTENDI;
 exports.MAX_NUMEROS_DE_TESTE = MAX_NUMEROS_DE_TESTE;
 exports.MAX_RESPOSTAS_POR_PEDIDO = MAX_RESPOSTAS_POR_PEDIDO;
 exports.MENU_DE_NOVO_MS = MENU_DE_NOVO_MS;
 exports.MENU_VALE_MS = MENU_VALE_MS;
+exports.NOME_DO_ATENDIMENTO = NOME_DO_ATENDIMENTO;
 exports.NUMERO_DO_ESCRITORIO = NUMERO_DO_ESCRITORIO;
 exports.RESPONDENDO_MS = RESPONDENDO_MS;
 exports.RESPOSTA_MAX_MS = RESPOSTA_MAX_MS;
 exports.RESPOSTA_MIN_MS = RESPOSTA_MIN_MS;
 exports.RESPOSTA_VALE_MS = RESPOSTA_VALE_MS;
+exports.TEXTO_DE_ENCERRAR = TEXTO_DE_ENCERRAR;
+exports.TEXTO_DE_MAIS_ALGUMA = TEXTO_DE_MAIS_ALGUMA;
 exports.TEXTO_DO_ESCRITORIO = TEXTO_DO_ESCRITORIO;
 exports.TEXTO_FORA_DO_CADASTRO = TEXTO_FORA_DO_CADASTRO;
+exports.TEXTO_NAO_ENTENDI = TEXTO_NAO_ENTENDI;
+exports.TEXTO_NAO_ENTENDI_EQUIPE = TEXTO_NAO_ENTENDI_EQUIPE;
 exports.chavesParaGravar = chavesParaGravar;
 exports.desdeDasRespostas = desdeDasRespostas;
 exports.envioMaisRecente = envioMaisRecente;
@@ -552,6 +679,7 @@ exports.mensagemDoMandei = mensagemDoMandei;
 exports.mesPorExtenso = mesPorExtenso;
 exports.mesmoNumero = mesmoNumero;
 exports.mudancasDasChaves = mudancasDasChaves;
+exports.nomeDaEmpresa = nomeDaEmpresa;
 exports.numeroDoWhatsapp = numeroDoWhatsapp;
 exports.numeroFormatado = numeroFormatado;
 exports.passoDoAtendimento = passoDoAtendimento;
@@ -560,6 +688,7 @@ exports.pedidoRespondido = pedidoRespondido;
 exports.respostaParaGravar = respostaParaGravar;
 exports.respostasDoPedido = respostasDoPedido;
 exports.rodapeDasMensagens = rodapeDasMensagens;
+exports.saudacaoDoAtendimento = saudacaoDoAtendimento;
 exports.textoDaResposta = textoDaResposta;
 exports.textoDasEmpresas = textoDasEmpresas;
 exports.textoDoMenu = textoDoMenu;

@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -121,7 +121,7 @@ describe('o autoatendimento', () => {
   });
   it('uma empresa: menu, opção e o pedido ao robô', () => {
     const p1 = passoDoAtendimento(null, 'Bom dia!', [PADARIA], AGORA);
-    expect(p1.responder).toContain('1 – Guias do mês');
+    expect(p1.responder).toContain('1️⃣ Guias do mês');
     expect(p1.conversa.etapa).toBe('menu');
     const p2 = passoDoAtendimento(p1.conversa, ' 2 ', [PADARIA], AGORA + 60000);
     expect(p2.acao).toEqual({ tipo: 'boleto', empresa: PADARIA });
@@ -139,10 +139,10 @@ describe('o autoatendimento', () => {
   });
   it('mais de uma empresa: pergunta qual antes do menu', () => {
     const p1 = passoDoAtendimento(null, 'oi', [PADARIA, MERCADO], AGORA);
-    expect(p1.responder).toContain('2 – Mercado Bom');
+    expect(p1.responder).toContain('2️⃣ Mercado Bom');
     expect(p1.conversa.etapa).toBe('empresa');
     const p2 = passoDoAtendimento(p1.conversa, '2', [PADARIA, MERCADO], AGORA + 1000);
-    expect(p2.responder).toContain('para Mercado Bom');
+    expect(p2.responder).toContain('atendimento de *Mercado Bom*');
     const p3 = passoDoAtendimento(p2.conversa, '1', [PADARIA, MERCADO], AGORA + 2000);
     expect(p3.acao).toEqual({ tipo: 'guias', empresa: MERCADO });
   });
@@ -151,15 +151,54 @@ describe('o autoatendimento', () => {
     expect(passoDoAtendimento(p1.conversa, '9', [PADARIA], AGORA + 1000).acao).toBeNull();
     const tarde = passoDoAtendimento(p1.conversa, '1', [PADARIA], AGORA + MENU_VALE_MS + 1);
     expect(tarde.acao).toBeNull();
-    expect(tarde.responder).toContain('Responda com o número');
+    expect(tarde.responder).toContain('Escolha uma opção');
   });
-  it('texto solto não repete o menu nem atrapalha quem responde a uma mensagem do robô', () => {
+  it('texto solto depois de atender não repete o menu nem atrapalha quem responde a uma mensagem do robô', () => {
     const p1 = passoDoAtendimento(null, 'oi', [PADARIA], AGORA);
-    expect(passoDoAtendimento(p1.conversa, 'obrigado', [PADARIA], AGORA + 60000).responder).toBe('');
-    expect(passoDoAtendimento(p1.conversa, 'obrigado', [PADARIA], AGORA + MENU_DE_NOVO_MS + 1).responder).toContain('Responda com o número');
+    const p2 = passoDoAtendimento(p1.conversa, '1', [PADARIA], AGORA + 30000);
+    expect(passoDoAtendimento(p2.conversa, 'obrigado', [PADARIA], AGORA + 60000).responder).toBe('');
+    expect(passoDoAtendimento(p2.conversa, 'obrigado', [PADARIA], AGORA + 30000 + MENU_DE_NOVO_MS + 1).responder).toContain('Escolha uma opção');
     expect(passoDoAtendimento({ ...CONVERSA_NOVA }, 'mando amanhã', [PADARIA], AGORA, AGORA - 3600000).responder).toBe('');
     // "menu" sempre abre
-    expect(passoDoAtendimento({ ...CONVERSA_NOVA }, 'MENU', [PADARIA], AGORA, AGORA - 60000).responder).toContain('Responda com o número');
+    expect(passoDoAtendimento({ ...CONVERSA_NOVA }, 'MENU', [PADARIA], AGORA, AGORA - 60000).responder).toContain('Escolha uma opção');
+  });
+  it('não entendeu: pede de novo sem culpar e, na 2ª vez, chama a equipe', () => {
+    const p1 = passoDoAtendimento(null, 'oi', [PADARIA], AGORA);
+    const p2 = passoDoAtendimento(p1.conversa, 'quero a guia do das', [PADARIA], AGORA + 10000);
+    expect(p2.responder.startsWith(TEXTO_NAO_ENTENDI)).toBe(true);
+    expect(p2.responder).toContain('1️⃣ Guias do mês');
+    expect(p2.acao).toBeNull();
+    const p3 = passoDoAtendimento(p2.conversa, '7', [PADARIA], AGORA + 20000);
+    expect(p3.responder).toBe(TEXTO_NAO_ENTENDI_EQUIPE);
+    expect(p3.acao).toEqual({ tipo: 'escritorio', empresa: PADARIA });
+    // um número certo depois de um errado zera a conta
+    const p4 = passoDoAtendimento(p2.conversa, '2', [PADARIA], AGORA + 20000);
+    expect(p4.acao?.tipo).toBe('boleto');
+    expect(p4.conversa.invalidas).toBe(0);
+  });
+  it('o 0 encerra', () => {
+    const p1 = passoDoAtendimento(null, 'oi', [PADARIA], AGORA);
+    const p2 = passoDoAtendimento(p1.conversa, '0', [PADARIA], AGORA + 10000);
+    expect(p2.responder).toBe(TEXTO_DE_ENCERRAR);
+    expect(p2.conversa.etapa).toBe('');
+    expect(passoDoAtendimento(p2.conversa, 'valeu', [PADARIA], AGORA + 20000).responder).toBe('');
+  });
+});
+
+describe('o jeito do menu', () => {
+  it('o nome, a saudação pela hora de Brasília e o nome da empresa sem tudo em maiúsculas', () => {
+    expect(NOME_DO_ATENDIMENTO).toBe('Autoatendimento Nilma Contabilidade');
+    expect(saudacaoDoAtendimento(Date.parse('2026-11-27T11:00:00.000Z'))).toBe('Bom dia');     // 8h
+    expect(saudacaoDoAtendimento(Date.parse('2026-11-27T18:00:00.000Z'))).toBe('Boa tarde');   // 15h
+    expect(saudacaoDoAtendimento(Date.parse('2026-11-27T23:30:00.000Z'))).toBe('Boa noite');   // 20h30
+    expect(nomeDaEmpresa('TORIBA TECNOLOGIA E GESTAO EMPRESARIAL LTDA')).toBe('Toriba Tecnologia e Gestao Empresarial LTDA');
+    expect(nomeDaEmpresa('padaria do joão me')).toBe('Padaria do João ME');
+  });
+  it('o menu: título em negrito, opções com emoji, o 0 e o lembrete do menu', () => {
+    const m = passoDoAtendimento(null, 'oi', [PADARIA], Date.parse('2026-11-27T13:00:00.000Z')).responder;
+    expect(m.startsWith('*Autoatendimento Nilma Contabilidade*\n\nBom dia! Você está no atendimento de *Padaria Boa*.')).toBe(true);
+    expect(m).toContain('4️⃣ Falar com a equipe do escritório\n0️⃣ Encerrar');
+    expect(m).toContain('digite *menu*');
   });
 });
 
@@ -176,8 +215,8 @@ describe('os documentos do autoatendimento', () => {
   });
   it('o texto antes dos arquivos e o "não achei"', () => {
     expect(textoDosDocumentos('guias', PADARIA, { competencia: '2026-10', enviadoEm: '', arquivos: [{ nome: 'a', id: '1' }, { nome: 'b', id: '2' }] }))
-      .toBe('Seguem as guias de Padaria Boa (outubro de 2026), 2 arquivos.');
-    expect(textoDosDocumentos('boleto', PADARIA, { competencia: '2026-11', enviadoEm: '', arquivos: [{ nome: 'a', id: '1' }] })).toBe('Segue o boleto de honorários de Padaria Boa (novembro de 2026).');
+      .toBe('Seguem as guias de Padaria Boa (outubro de 2026), 2 arquivos.\n\n' + TEXTO_DE_MAIS_ALGUMA);
+    expect(textoDosDocumentos('boleto', PADARIA, { competencia: '2026-11', enviadoEm: '', arquivos: [{ nome: 'a', id: '1' }] })).toBe('Segue o boleto de honorários de Padaria Boa (novembro de 2026).\n\n' + TEXTO_DE_MAIS_ALGUMA);
     expect(textoDosDocumentos('dp', PADARIA, null)).toMatch(/^Não achamos os documentos do DP de Padaria Boa/);
   });
 });

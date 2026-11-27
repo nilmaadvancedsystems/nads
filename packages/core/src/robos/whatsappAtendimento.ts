@@ -282,9 +282,16 @@ export interface ConversaDoAtendimento {
   menuEm: number;
   /** quando o aviso de número fora do cadastro foi mandado, em ms */
   avisoEm: number;
+  /** o menu (ou a pergunta da empresa) foi a última coisa mandada: o robô espera a resposta com o número */
+  aguardando?: boolean;
+  /** quantas respostas seguidas o robô não entendeu (na 2ª, chama a equipe) */
+  invalidas?: number;
 }
 
-export const CONVERSA_NOVA: ConversaDoAtendimento = { etapa: '', empresas: [], empresa: null, menuEm: 0, avisoEm: 0 };
+export const CONVERSA_NOVA: ConversaDoAtendimento = { etapa: '', empresas: [], empresa: null, menuEm: 0, avisoEm: 0, aguardando: false, invalidas: 0 };
+
+/** depois de tantas respostas que o robô não entende, ele chama a equipe (boas práticas de menu: não prender o cliente) */
+export const MAX_NAO_ENTENDI = 2;
 
 /** a opção do menu vale por 30 min; depois, o número digitado mostra o menu de novo */
 export const MENU_VALE_MS = 30 * 60000;
@@ -295,32 +302,99 @@ export const RESPONDENDO_MS = 24 * 3600000;
 /** o aviso de "número fora do cadastro", no máximo uma vez por dia */
 const AVISO_DE_NOVO_MS = 24 * 3600000;
 
+// O jeito do autoatendimento (27/11/2026, o dono: "deixe o robo mais elaborado, ... troque o nome para 'autoatendimento
+// nilma contabilidade'"): o título em negrito, a saudação pela hora, o nome da empresa sem tudo em maiúsculas, os números
+// em emoji, o 0 para encerrar e a pergunta "precisa de mais alguma coisa?" depois de cada atendimento.
+export const NOME_DO_ATENDIMENTO = 'Autoatendimento Nilma Contabilidade';
+const TITULO = '*' + NOME_DO_ATENDIMENTO + '*';
+const EMOJI_DO_NUMERO = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+const numeroEmEmoji = (n: number) => EMOJI_DO_NUMERO[n] ?? String(n) + ' –';
+
 const OPCOES: { acao: AcaoDoAtendimento; rotulo: string }[] = [
   { acao: 'guias', rotulo: 'Guias do mês' },
   { acao: 'boleto', rotulo: 'Boleto de honorários' },
   { acao: 'dp', rotulo: 'Documentos do DP (folha, férias, rescisão)' },
-  { acao: 'escritorio', rotulo: 'Falar com o escritório' },
+  { acao: 'escritorio', rotulo: 'Falar com a equipe do escritório' },
 ];
 
+/** Bom dia / Boa tarde / Boa noite, pela hora de Brasília. */
+export function saudacaoDoAtendimento(agora: number): string {
+  const h = new Date(agora - 3 * 3600000).getUTCHours();
+  if (h >= 5 && h < 12) return 'Bom dia';
+  return h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite';
+}
+
+const SIGLAS = new Set(['LTDA', 'ME', 'EPP', 'EIRELI', 'SA', 'S/A', 'S.A.', 'MEI', 'SS', 'CIA']);
+const MIUDAS = new Set(['e', 'de', 'da', 'do', 'das', 'dos']);
+
+/** "TORIBA TECNOLOGIA E GESTAO EMPRESARIAL LTDA" → "Toriba Tecnologia e Gestao Empresarial LTDA" (as siglas ficam). */
+export function nomeDaEmpresa(nome: string): string {
+  return nome.trim().split(/\s+/).map((p, i) => {
+    if (SIGLAS.has(p.toUpperCase()) || SIGLAS.has(p.replace(/[.,]/g, '').toUpperCase())) return p.toUpperCase();
+    const baixa = p.toLowerCase();
+    if (i > 0 && MIUDAS.has(baixa)) return baixa;
+    return baixa.charAt(0).toUpperCase() + baixa.slice(1);
+  }).join(' ');
+}
+
+const LEMBRETE = '_A qualquer momento, digite *menu* para voltar aqui._';
+/** o fim de cada atendimento (os documentos, o "não achei" e o falar com a equipe) */
+export const TEXTO_DE_MAIS_ALGUMA = 'Precisa de mais alguma coisa? Responda com outro número do menu ou *0* para encerrar.';
+export const TEXTO_DE_ENCERRAR = 'Atendimento encerrado. Obrigado! Quando precisar, é só mandar *menu*. 👋';
+
 const normal = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-const PEDE_MENU = /^(menu|oi|ola|bom dia|boa tarde|boa noite|inicio|opcoes|ajuda)$/;
+const PEDE_MENU = /^(menu|oi|oie|ola|bom dia|boa tarde|boa noite|inicio|opcoes|ajuda|voltar)$/;
 
 /** O texto do menu da empresa. */
-export function textoDoMenu(empresa: EmpresaDoAtendimento): string {
-  return 'Olá! Este é o atendimento automático da Nilma Contabilidade para ' + empresa.nome + '.\n\nResponda com o número:\n' +
-    OPCOES.map((o, i) => (i + 1) + ' – ' + o.rotulo).join('\n');
+export function textoDoMenu(empresa: EmpresaDoAtendimento, agora: number): string {
+  return [
+    TITULO,
+    '',
+    saudacaoDoAtendimento(agora) + '! Você está no atendimento de *' + nomeDaEmpresa(empresa.nome) + '*.',
+    '',
+    'Escolha uma opção e responda só com o número:',
+    '',
+    ...OPCOES.map((o, i) => numeroEmEmoji(i + 1) + ' ' + o.rotulo),
+    numeroEmEmoji(0) + ' Encerrar',
+    '',
+    LEMBRETE,
+  ].join('\n');
 }
 
 /** A pergunta da empresa, para o número que está em mais de um cadastro. */
-export function textoDasEmpresas(empresas: EmpresaDoAtendimento[]): string {
-  return 'Olá! Este número está no cadastro de mais de uma empresa. Responda com o número da empresa:\n' +
-    empresas.map((e, i) => (i + 1) + ' – ' + e.nome).join('\n');
+export function textoDasEmpresas(empresas: EmpresaDoAtendimento[], agora: number): string {
+  return [
+    TITULO,
+    '',
+    saudacaoDoAtendimento(agora) + '! Este número está no cadastro de mais de uma empresa. Qual delas?',
+    '',
+    ...empresas.map((e, i) => numeroEmEmoji(i + 1) + ' ' + nomeDaEmpresa(e.nome)),
+    '',
+    'Responda só com o número.',
+  ].join('\n');
 }
 
-export const TEXTO_FORA_DO_CADASTRO = 'Olá! Este é o atendimento automático da Nilma Contabilidade, mas não achamos este número no cadastro de nenhuma empresa. ' +
-  'Fale com o escritório pelo WhatsApp ' + numeroFormatado(NUMERO_DO_ESCRITORIO) + '.';
+export const TEXTO_FORA_DO_CADASTRO = [
+  TITULO,
+  '',
+  'Olá! Não achamos este número no cadastro de nenhuma empresa. Fale com a equipe pelo WhatsApp ' + numeroFormatado(NUMERO_DO_ESCRITORIO) + '.',
+].join('\n');
 
-export const TEXTO_DO_ESCRITORIO = 'Certo! Avisamos a equipe do escritório. Se preferir, chame direto no WhatsApp ' + numeroFormatado(NUMERO_DO_ESCRITORIO) + '.';
+export const TEXTO_DO_ESCRITORIO = [
+  'Certo! Avisamos a equipe do escritório, que vai te responder assim que possível. Se for urgente, chame direto no WhatsApp ' +
+    numeroFormatado(NUMERO_DO_ESCRITORIO) + '.',
+  '',
+  TEXTO_DE_MAIS_ALGUMA,
+].join('\n');
+
+export const TEXTO_NAO_ENTENDI = 'Desculpe, não entendi. 🙂 Responda só com o número de uma das opções:';
+
+export const TEXTO_NAO_ENTENDI_EQUIPE = [
+  'Desculpe, não consegui entender. Avisamos a equipe do escritório, que vai te responder assim que possível. Se for urgente, chame no WhatsApp ' +
+    numeroFormatado(NUMERO_DO_ESCRITORIO) + '.',
+  '',
+  'Para voltar às opções, digite *menu*.',
+].join('\n');
 
 export interface PassoDoAtendimento {
   /** o que responder ('' = nada) */
@@ -349,29 +423,49 @@ export function passoDoAtendimento(
   }
   // a empresa escolhida antes ainda é deste número?
   const empresa = (c.empresa ? empresas.find(e => e.codigo === c.empresa?.codigo) : undefined) || (empresas.length === 1 ? empresas[0] : null);
+  const esperando = { aguardando: true, invalidas: 0 };
   const abrirMenu = (): PassoDoAtendimento => (empresa
-    ? { responder: textoDoMenu(empresa), acao: null, conversa: { ...c, etapa: 'menu', empresa, menuEm: agora } }
-    : { responder: textoDasEmpresas(empresas), acao: null, conversa: { ...c, etapa: 'empresa', empresa: null, menuEm: agora } });
+    ? { responder: textoDoMenu(empresa, agora), acao: null, conversa: { ...c, ...esperando, etapa: 'menu', empresa, menuEm: agora } }
+    : { responder: textoDasEmpresas(empresas, agora), acao: null, conversa: { ...c, ...esperando, etapa: 'empresa', empresa: null, menuEm: agora } });
   const vale = agora - c.menuEm < MENU_VALE_MS;
+  /**
+   * A resposta que o robô não entendeu enquanto esperava o número (boas práticas de menu, 27/11/2026): na 1ª, pede de novo
+   * sem culpar o cliente e mostra as opções; na 2ª, avisa a equipe (o mesmo do 4) para o cliente não ficar preso.
+   */
+  const naoEntendeu = (): PassoDoAtendimento => {
+    const invalidas = (c.invalidas || 0) + 1;
+    if (invalidas >= MAX_NAO_ENTENDI && empresa) {
+      return { responder: TEXTO_NAO_ENTENDI_EQUIPE, acao: { tipo: 'escritorio', empresa }, conversa: { ...c, empresa, aguardando: false, invalidas: 0, menuEm: agora } };
+    }
+    const opcoes = empresa ? textoDoMenu(empresa, agora) : textoDasEmpresas(empresas, agora);
+    return { responder: TEXTO_NAO_ENTENDI + '\n\n' + opcoes, acao: null, conversa: { ...c, aguardando: true, invalidas, menuEm: agora } };
+  };
 
   if (pediuMenu) {
     // "menu" com várias empresas pergunta de novo qual
-    if (empresas.length > 1 && t === 'menu') return { responder: textoDasEmpresas(empresas), acao: null, conversa: { ...c, etapa: 'empresa', empresa: null, menuEm: agora } };
+    if (empresas.length > 1 && t === 'menu') return { responder: textoDasEmpresas(empresas, agora), acao: null, conversa: { ...c, ...esperando, etapa: 'empresa', empresa: null, menuEm: agora } };
     return abrirMenu();
   }
   if (n && vale && c.etapa === 'empresa') {
     const escolhida = empresas[n - 1];
-    if (!escolhida) return { responder: textoDasEmpresas(empresas), acao: null, conversa: { ...c, menuEm: agora } };
-    return { responder: textoDoMenu(escolhida), acao: null, conversa: { ...c, etapa: 'menu', empresa: escolhida, menuEm: agora } };
+    if (!escolhida) return naoEntendeu();
+    return { responder: textoDoMenu(escolhida, agora), acao: null, conversa: { ...c, ...esperando, etapa: 'menu', empresa: escolhida, menuEm: agora } };
   }
+  // o 0 encerra a conversa aberta (o "obrigado" que vem depois não puxa o menu: menuEm = agora)
+  if (t === '0' && c.etapa !== '') return { responder: TEXTO_DE_ENCERRAR, acao: null, conversa: { ...c, etapa: '', aguardando: false, invalidas: 0, menuEm: agora } };
   if (n && vale && c.etapa === 'menu' && empresa) {
     const opcao = OPCOES[n - 1];
-    if (!opcao) return { responder: textoDoMenu(empresa), acao: null, conversa: { ...c, empresa, menuEm: agora } };
+    if (!opcao) return naoEntendeu();
     // depois de atender, o menu continua valendo (27/11/2026, o dono: "se ja mandei uma mensagem ele so repete"): outro número
     // da lista é atendido direto por mais 30 min; o "obrigado" que vem não puxa o menu de novo (menuEm = agora)
-    return { responder: opcao.acao === 'escritorio' ? TEXTO_DO_ESCRITORIO : '', acao: { tipo: opcao.acao, empresa }, conversa: { ...c, etapa: 'menu', empresa, menuEm: agora } };
+    return {
+      responder: opcao.acao === 'escritorio' ? TEXTO_DO_ESCRITORIO : '', acao: { tipo: opcao.acao, empresa },
+      conversa: { ...c, etapa: 'menu', empresa, menuEm: agora, aguardando: false, invalidas: 0 },
+    };
   }
   if (n) return abrirMenu();
+  // o robô acabou de mandar o menu e esperava o número: o texto solto é uma resposta que ele não entendeu
+  if (c.aguardando && vale && c.etapa !== '') return naoEntendeu();
   // texto solto: é resposta a uma mensagem do robô, ou o menu acabou de ir? então não repete o menu
   if (agora - ultimoEnvioEm < RESPONDENDO_MS || agora - c.menuEm < MENU_DE_NOVO_MS) return nada();
   return abrirMenu();
@@ -405,11 +499,13 @@ const NOMES_DA_ACAO: Record<Exclude<AcaoDoAtendimento, 'escritorio'>, [string, s
 export function textoDosDocumentos(acao: Exclude<AcaoDoAtendimento, 'escritorio'>, empresa: EmpresaDoAtendimento, achado: RegistroDeEnvio | null): string {
   const [um, varios] = NOMES_DA_ACAO[acao];
   if (!achado) {
-    return 'Não achamos ' + varios + ' de ' + empresa.nome + ' já enviados pelo escritório. Se precisar, fale com a equipe pelo WhatsApp ' + numeroFormatado(NUMERO_DO_ESCRITORIO) + '.';
+    return 'Não achamos ' + varios + ' de ' + nomeDaEmpresa(empresa.nome) + ' já enviados pelo escritório. Se precisar, fale com a equipe pelo WhatsApp ' +
+      numeroFormatado(NUMERO_DO_ESCRITORIO) + '.\n\n' + TEXTO_DE_MAIS_ALGUMA;
   }
   const mes = mesPorExtenso(achado.competencia);
   const qtos = achado.arquivos.length;
-  return (qtos === 1 ? 'Segue ' + um : 'Seguem ' + varios) + ' de ' + empresa.nome + (mes ? ' (' + mes + ')' : '') + (qtos > 1 ? ', ' + qtos + ' arquivos' : '') + '.';
+  return (qtos === 1 ? 'Segue ' + um : 'Seguem ' + varios) + ' de ' + nomeDaEmpresa(empresa.nome) + (mes ? ' (' + mes + ')' : '') +
+    (qtos > 1 ? ', ' + qtos + ' arquivos' : '') + '.\n\n' + TEXTO_DE_MAIS_ALGUMA;
 }
 
 // ---------- as respostas na tela (Central dos robôs › Ajustes › WhatsApp e o histórico do Pedir extratos) ----------

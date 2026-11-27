@@ -176,10 +176,10 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     await Z.receber(texto(CLIENTE_FONE, 'oi'));
     igual('trava fechada: cliente de verdade não recebe nada', sock.mandadas.length, 0);
     await Z.receber(texto(CELULAR_DO_TESTE, 'Bom dia'));
-    verdade('o celular do teste recebe o menu da empresa de teste', sock.mandadas[0] && sock.mandadas[0].text.includes('para Padaria Boa') && sock.mandadas[0].text.includes('1 – Guias do mês'));
+    verdade('o celular do teste recebe o menu da empresa de teste', sock.mandadas[0] && sock.mandadas[0].text.includes('atendimento de *Padaria Boa*') && sock.mandadas[0].text.includes('1️⃣ Guias do mês'));
     await Z.receber(texto(CELULAR_DO_TESTE, '1'));
     igual('1: a guia mais recente, do Drive, com a legenda', [sock.mandadas[1].fileName, sock.mandadas[1].document.toString(), sock.mandadas[1].caption],
-      ['DAS 10-2026.pdf', '%PDF-guia-drv1', 'Segue a guia de Padaria Boa (outubro de 2026).']);
+      ['DAS 10-2026.pdf', '%PDF-guia-drv1', 'Segue a guia de Padaria Boa (outubro de 2026).\n\n' + W.TEXTO_DE_MAIS_ALGUMA]);
     await Z.receber(texto(CELULAR_DO_TESTE, 'menu'));
     await Z.receber(texto(CELULAR_DO_TESTE, '2'));
     igual('2: o boleto já enviado', [sock.mandadas[3].fileName, sock.mandadas[3].document.toString()], ['Boleto de honorários - Padaria Boa.pdf', '%PDF-boleto']);
@@ -202,7 +202,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
   {
     const { sock } = cenario({ autoatendimento: true, liberado: true });
     await Z.receber(texto('553899991234', 'oi'));   // o mesmo celular, sem o 9 (conta antiga)
-    verdade('acha a empresa pelo telefone do cadastro, com ou sem o 9', sock.mandadas[0] && sock.mandadas[0].text.includes('para Padaria Boa'));
+    verdade('acha a empresa pelo telefone do cadastro, com ou sem o 9', sock.mandadas[0] && sock.mandadas[0].text.includes('atendimento de *Padaria Boa*'));
     await Z.receber(chega('', { conversation: 'oi' }, { remoteJid: '99887766@lid', remoteJidAlt: '5511911112222@s.whatsapp.net' }));
     igual('número fora do cadastro (contato novo em LID): o aviso', sock.mandadas[1] && sock.mandadas[1].text, W.TEXTO_FORA_DO_CADASTRO);
     await Z.receber(texto('5511911112222', 'oi de novo'));
@@ -215,7 +215,7 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     const { db, sock } = cenario({ autoatendimento: true, guias: true, empresaDeTeste: '456', numerosDeTeste: ['(38) 98888-7777'] });
     db._docs.set('clientes/c2', Object.assign({}, db._docs.get('clientes/c2'), { telefone: '(38) 98888-7777' }));
     await Z.receber(texto(GERENTE, 'oi'));
-    verdade('o número das chaves usa o menu, como a empresa de teste', sock.mandadas[0] && sock.mandadas[0].text.includes('para Mercado Bom'));
+    verdade('o número das chaves usa o menu, como a empresa de teste', sock.mandadas[0] && sock.mandadas[0].text.includes('atendimento de *Mercado Bom*'));
     const w = await Z.pedirPeloWhatsapp(db, 'guias', { cliente: 'Mercado Bom', clienteId: 'c2', mensagem: () => 'As guias' });
     igual('trava fechada, mas o telefone do cadastro é de teste: vai direto a ele', [w.para, w.teste], [GERENTE, true]);
     const [caminho, p] = pendentes(db)[0];
