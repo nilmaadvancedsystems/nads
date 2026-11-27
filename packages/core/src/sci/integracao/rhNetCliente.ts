@@ -23,6 +23,8 @@ export interface ClienteRhNet {
   admissoes(situacao?: SituacaoNoRhNet): Promise<AdmissaoNoRhNet[]>;
   /** as pessoas da empresa como a Área do Cliente mostra (o nome, o CPF mascarado, o tipo, a entrada e a situação; sem salário) */
   cadastrosParaArea(): Promise<CadastroNoRhNetNaArea[]>;
+  /** (27/11/2026: "Pode pôr") apaga a admissão no RH NET (sem registro de ponto, o RH NET remove de vez) */
+  excluirAdmissao(id: number): Promise<void>;
   /** (26/11/2026) completa uma admissão já cadastrada (PUT: o RH NET troca o cadastro INTEIRO pelo que vai) */
   atualizarAdmissao(id: number, a: AdmissaoParaRhNet): Promise<void>;
   /** cadastra (fica "não liberado"); devolve o id do funcionário no RH NET */
@@ -106,6 +108,11 @@ export function criarClienteRhNet(deps: { buscar: BuscarNoSci; tokens: () => Tok
     async cadastrosParaArea() {
       const funcoes = new Map(itensDoCadastro('funcoes', await listar(CADASTROS_DO_RH.funcoes.caminho)).map(f => [f.id, f.nome] as const));
       return cadastrosParaArea(await listar('/api/v1/admissoes'), funcoes);
+    },
+    async excluirAdmissao(id) {
+      if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, 'falta o número do funcionário no RH NET');
+      const { empresaId } = await identificacao();
+      await chamar('DELETE', '/api/v1/admissoes', { empresa_id: empresaId, funcionario_contribuinte_id: id });
     },
     async atualizarAdmissao(id, a) {
       const erro = erroDaAdmissao(a);

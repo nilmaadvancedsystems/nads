@@ -468,6 +468,8 @@ export function situacaoDaAdmissaoNaEquipe(situacao: string): { rotulo: string; 
       return { rotulo: 'Recusada', texto: 'O SCI do escritório recusou a admissão. Veja o motivo no RH NET.', tom: 'bad', podeLiberar: false };
     case 'enviando':
       return { rotulo: 'Cadastrando', texto: 'O robô está cadastrando no RH NET…', tom: 'neutral', podeLiberar: false };
+    case 'excluido':
+      return { rotulo: 'Apagada', texto: 'A admissão foi apagada do RH NET.', tom: 'neutral', podeLiberar: false };
     default:
       return { rotulo: 'Não cadastrada', texto: 'Não foi para o RH NET. Cadastre direto lá.', tom: 'bad', podeLiberar: false };
   }
@@ -535,4 +537,9 @@ export function codigoIbgeDaCidade(lista: readonly { id: number; nome: string }[
   const alvo = semAcento(nome).replace(/[^a-z0-9 ]/g, '');
   const achadas = lista.filter(m => semAcento(m.nome).replace(/[^a-z0-9 ]/g, '') === alvo);
   return achadas.length === 1 && /^\d{7}$/.test(String(achadas[0].id)) ? Number(achadas[0].id) : 0;
+}
+
+/** Pode apagar a admissão no RH NET? Só antes de ir para a folha (não depois de integrada ou na integração). (27/11/2026) */
+export function podeApagarNoRhNet(situacao: string): boolean {
+  return ['cadastrado', 'nao_liberado', 'liberado', 'recusado'].includes(situacao);
 }

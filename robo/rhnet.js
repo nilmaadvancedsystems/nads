@@ -119,6 +119,17 @@ async function atenderPedido(db, p) {
         await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', 'rhnet.liberadoEm': agora(), 'rhnet.liberadoPor': String(p.criadoPor || ''), 'rhnet.erroLiberacao': '' }).catch(() => {});
       }
       resumo = (d.situacao === 'nao_liberado' ? 'Voltou para não liberado: ' : 'Liberou para a folha: ') + ids.length + ' admissão(ões)';
+    } else if (p.acao === 'excluirAdmissao') {
+      // (27/11/2026: "Pode pôr") apaga a admissão no RH NET; só a desta empresa e antes de ir para a folha
+      const id = Number(d.id) || 0;
+      const da = (await rh.admissoes()).find(x => x.id === id);
+      if (!da) throw new Error('a admissão não está no RH NET desta empresa');
+      if (!S.podeApagarNoRhNet(da.situacao || 'nao_liberado')) throw new Error('a admissão já foi para a folha: apague pelo SCI do escritório');
+      await rh.excluirAdmissao(id);
+      if (d.chamadoId && typeof d.chamadoId === 'string') await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': 'excluido', 'rhnet.excluidoEm': agora(), 'rhnet.excluidoPor': String(p.criadoPor || '') }).catch(() => {});
+      gravadoNaNuvem.delete(Number(p.codigo));
+      rhnet = { excluida: id };
+      resumo = 'Apagou a admissão ' + id + ' do RH NET';
     } else if (p.acao === 'lancamentos') {
       const n = await rh.criarLancamentos(Array.isArray(d.lancamentos) ? d.lancamentos : [], d.tipo || 'normais');
       rhnet = { lancamentos: n };

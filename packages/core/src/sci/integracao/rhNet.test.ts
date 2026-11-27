@@ -155,3 +155,27 @@ describe('RH NET: a liberação como o RH NET faz (26/11/2026)', () => {
     expect(situacaoDaAdmissaoNaEquipe('recusado').tom).toBe('bad');
   });
 });
+
+describe('RH NET: apagar a admissão pelo nads (27/11/2026)', () => {
+  it('só antes de ir para a folha; a solicitação mostra "Apagada"', async () => {
+    const { podeApagarNoRhNet, situacaoDaAdmissaoNaEquipe } = await import('./index');
+    for (const s of ['cadastrado', 'nao_liberado', 'liberado', 'recusado']) expect(podeApagarNoRhNet(s)).toBe(true);
+    for (const s of ['integrado', 'aguardando_integracao', 'excluido', 'enviando', '']) expect(podeApagarNoRhNet(s)).toBe(false);
+    expect(situacaoDaAdmissaoNaEquipe('excluido').rotulo).toBe('Apagada');
+  });
+  it('o cliente manda o DELETE com a empresa e o funcionário', async () => {
+    const { criarClienteRhNet } = await import('./index');
+    const chamadas: { metodo: string; url: string; corpo: string }[] = [];
+    const jwt = 'cab.' + btoa(JSON.stringify({ usuario: { dados: { clienteId: 1, empresasVinculadas: [9] } }, exp: 9999999999 })).replace(/=+$/, '') + '.ass';
+    const buscar = async (url: string, init: { method: string; body?: unknown }) => {
+      chamadas.push({ metodo: init.method, url, corpo: String(init.body ?? '') });
+      return url.includes('/login') ? { status: 201, json: async () => ({ token: jwt, validade: 3600 }) } : { status: 200, json: async () => ({ sucesso: true }) };
+    };
+    const rh = criarClienteRhNet({ buscar, tokens: async () => ({ parceiro: 'p', empresa: 'e', empresaId: 590 }), agora: () => 0 });
+    await rh.excluirAdmissao(33201458);
+    const d = chamadas.find(c => c.metodo === 'DELETE')!;
+    expect(d.url).toMatch(/\/api\/v1\/admissoes$/);
+    expect(JSON.parse(d.corpo)).toEqual({ empresa_id: 590, funcionario_contribuinte_id: 33201458 });
+    await expect(rh.excluirAdmissao(0)).rejects.toThrow('falta o número');
+  });
+});

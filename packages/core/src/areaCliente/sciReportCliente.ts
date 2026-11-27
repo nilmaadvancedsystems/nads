@@ -24,7 +24,7 @@ export function publicadosIdDaResposta(resposta: unknown): number {
   return achar(resposta, 0);
 }
 
-export type MetodoDoSci = 'GET' | 'POST' | 'PUT';
+export type MetodoDoSci = 'GET' | 'POST' | 'PUT' | 'DELETE';
 /** O fetch, do tamanho que o cliente usa (o da função é o fetch do Node). */
 export type BuscarNoSci = (url: string, init: { method: MetodoDoSci; headers: Record<string, string>; body?: string | Uint8Array | FormData }) => Promise<{ status: number; json: () => Promise<unknown> }>;
 /** Os dois tokens: o de Parceiro (a SCI emite) e o de Cliente (gerado no SCI WEB com um usuário da contabilidade). */

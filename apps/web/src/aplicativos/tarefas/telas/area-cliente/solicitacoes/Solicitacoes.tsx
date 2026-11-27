@@ -109,6 +109,7 @@ function JanelaDaSolicitacao({ vm }: { vm: ReturnType<typeof useSolicitacoes> })
             <Icone nome="usuario" width={16} height={16} />
             <span style={{ flex: 1, minWidth: 0 }}><b>Sistema de folha (RH NET)</b> <span className={'badge badge-' + folha.tom}>{folha.rotulo}</span><br /><span className="hint">{folha.texto}</span>
               {folha.pendencias && <><br /><span className="hint" style={{ color: "var(--bad, #c62828)" }}><b>O RH NET não liberou.</b> Falta: {folha.pendencias.replace(/[.\s]+$/, "")}. Complete no RH NET e libere de novo.</span></>}</span>
+            {folha.podeApagar && <button type="button" className="btn btn-outline" disabled={folha.apagando} onClick={() => void vm.apagarNoRhNet(c)}>{folha.apagando ? 'Apagando…' : 'Apagar no RH NET'}</button>}
             {folha.podeLiberar && <button type="button" className="btn btn-primary" disabled={folha.liberando} onClick={() => void vm.liberarNaFolha(c)}>{folha.liberando ? 'Liberando…' : 'Liberar para a folha'}</button>}
           </div>
         )}

@@ -1280,6 +1280,12 @@ function situacaoDaAdmissaoNaEquipe(situacao) {
 			tom: "neutral",
 			podeLiberar: false
 		};
+		case "excluido": return {
+			rotulo: "Apagada",
+			texto: "A admissão foi apagada do RH NET.",
+			tom: "neutral",
+			podeLiberar: false
+		};
 		default: return {
 			rotulo: "Não cadastrada",
 			texto: "Não foi para o RH NET. Cadastre direto lá.",
@@ -1423,6 +1429,14 @@ function codigoIbgeDaCidade(lista, nome) {
 	const achadas = lista.filter((m) => semAcento(m.nome).replace(/[^a-z0-9 ]/g, "") === alvo);
 	return achadas.length === 1 && /^\d{7}$/.test(String(achadas[0].id)) ? Number(achadas[0].id) : 0;
 }
+function podeApagarNoRhNet(situacao) {
+	return [
+		"cadastrado",
+		"nao_liberado",
+		"liberado",
+		"recusado"
+	].includes(situacao);
+}
 
 //#endregion
 //#region packages/core/src/sci/integracao/rhNetCliente.ts
@@ -1518,6 +1532,14 @@ function criarClienteRhNet(deps) {
 		async cadastrosParaArea() {
 			const funcoes = new Map(itensDoCadastro("funcoes", await listar(CADASTROS_DO_RH.funcoes.caminho)).map((f) => [f.id, f.nome]));
 			return cadastrosParaArea(await listar("/api/v1/admissoes"), funcoes);
+		},
+		async excluirAdmissao(id) {
+			if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, "falta o número do funcionário no RH NET");
+			const { empresaId } = await identificacao();
+			await chamar("DELETE", "/api/v1/admissoes", {
+				empresa_id: empresaId,
+				funcionario_contribuinte_id: id
+			});
 		},
 		async atualizarAdmissao(id, a) {
 			const erro = erroDaAdmissao(a);
@@ -1732,6 +1754,7 @@ exports.mensagemDoRhNet = mensagemDoRhNet;
 exports.nomeNoIntegra = nomeNoIntegra;
 exports.pendenciasDaLiberacao = pendenciasDaLiberacao;
 exports.periodoNoIntegra = periodoNoIntegra;
+exports.podeApagarNoRhNet = podeApagarNoRhNet;
 exports.publicadasDoRegistro = publicadasDoRegistro;
 exports.relatorioDaGuia = relatorioDaGuia;
 exports.resumoDoIntegra = resumoDoIntegra;
