@@ -88,7 +88,10 @@ export function bibliotecaDoCliente(e: {
     ...e.envios.map(x => ({
       chave: 'env-' + x.id, pasta: 'enviados' as const, nome: x.nome.replace(/\.[a-z0-9]{2,5}$/i, ''),
       // recusado pelo escritório: o motivo no lugar do "recebido" (22/11/2026, Documentos do cliente)
-      detalhe: (ROTULO_DO_ENVIO.get(x.tipo) ?? 'Documento') + (x.recusa ? ' · recusado pelo escritório: ' + x.recusa.motivo : ' · recebido pelo escritório em ' + new Date(x.recebidoEm).toLocaleDateString('pt-BR')),
+      // aprovado pelo escritório (27/11/2026: "Conferido e cliente vê")
+      detalhe: (ROTULO_DO_ENVIO.get(x.tipo) ?? 'Documento') + (x.recusa ? ' · recusado pelo escritório: ' + x.recusa.motivo
+        : x.aprovado ? ' · aprovado pelo escritório em ' + new Date(x.aprovado.em).toLocaleDateString('pt-BR')
+        : ' · recebido pelo escritório em ' + new Date(x.recebidoEm).toLocaleDateString('pt-BR')),
       mes: x.recebidoEm.slice(0, 7), data: x.recebidoEm.slice(0, 10), formato: formatoPeloNome(x.nome), novo: false, abre: false,
       origem: { tipo: 'envio' as const, id: x.id },
     })),

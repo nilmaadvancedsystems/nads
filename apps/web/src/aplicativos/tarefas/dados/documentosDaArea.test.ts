@@ -73,3 +73,12 @@ describe('por empresa (27/11/2026: "quero que acumule por empresa")', () => {
     expect(g[1].itens.map(x => x.em)).toEqual(['2026-11-27T08:00', '2026-11-26T10:00']);
   });
 });
+
+describe('o aprovado (27/11/2026: "nao tem botao de aprovar")', () => {
+  it('sai dos novos e tem o filtro próprio', () => {
+    const r = { ...rec('a', 'extrato', '2026-11-26T10:00:00Z'), aprovado: { por: 'Ana', em: 'x' } };
+    const f = Object.fromEntries(filtrosDosRecebidos([r], agora, new Set()).map(x => [x.valor, x.conta]));
+    expect(f).toMatchObject({ novos: 0, aprovados: 1 });
+    expect(recebidosDoFiltro([r], 'aprovados', agora, new Set()).map(x => x.id)).toEqual(['a']);
+  });
+});

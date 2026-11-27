@@ -33,9 +33,15 @@ export function useDocumentos() {
   // só as empresas da pessoa (26/11/2026: "a pessoa vai ver apenas as empresas dela")
   const daPessoa = useEmpresasDaPessoa();
   const doBanco = repo.recebidos();
-  const todos = useMemo(() => ({ ...doBanco, carregada: doBanco.carregada && daPessoa.carregada, lista: doBanco.lista.filter(r => daPessoa.pode(r.codigo)) }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [doBanco, daPessoa.carregada, daPessoa.filtra, daPessoa.empresas]);
+  // a aprovação que acabou de ser gravada (27/11/2026: "nao tem botao de aprovar"): vale na tela até o robô anotar
+  const [aprovadosAgora, setAprovadosAgora] = useState<Record<string, string>>({});
+  const todos = useMemo(() => ({
+    ...doBanco, carregada: doBanco.carregada && daPessoa.carregada,
+    lista: doBanco.lista.filter(r => daPessoa.pode(r.codigo)).map(r => (aprovadosAgora[r.id] && !r.aprovado ? { ...r, aprovado: { por: 'Você', em: aprovadosAgora[r.id] } } : r)),
+  }),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [doBanco, daPessoa.carregada, daPessoa.filtra, daPessoa.empresas, aprovadosAgora]);
+  const [aprovando, setAprovando] = useState(false);
   // a recusa que acabou de ser gravada (o robô anota no recebido logo depois)
   const [recusados, setRecusados] = useState<Record<string, string>>({});
   const idsRecusados = useMemo(() => new Set(Object.keys(recusados)), [recusados]);
@@ -169,6 +175,18 @@ export function useDocumentos() {
     subDoAberto: (r: RecebidoDoCliente) => r.codigo + ' · ' + r.empresa + ' · ' + (ac.TIPOS_DE_ENVIO.find(t => t.valor === r.tipo)?.rotulo ?? r.tipo) + (r.guia ? ' · ' + r.guia : '') + ' · ' + dataEHora(r.recebidoEm),
     fechar() { setAberto(null); setRecusando(false); previa.fechar(); },
     recusaDe,
+    /** a aprovação (27/11/2026: "Conferido e cliente vê"): sai dos novos e o cliente vê "Aprovado pelo escritório" */
+    aprovadoDe: (r: RecebidoDoCliente) => !!(todos.lista.find(x => x.id === r.id)?.aprovado),
+    aprovando,
+    async aprovar(r: RecebidoDoCliente) {
+      setAprovando(true);
+      try {
+        await repo.aprovar(r.id);
+        setAprovadosAgora(x => ({ ...x, [r.id]: new Date().toISOString() }));
+        toast('Aprovado. O cliente vê "Aprovado pelo escritório" no arquivo.');
+      } catch (err) { toast(mensagemDoErro(err, 'Não deu para aprovar agora.')); }
+      finally { setAprovando(false); }
+    },
     detalhe: (r: RecebidoDoCliente) => [
       { rotulo: 'Tipo', valor: ac.TIPOS_DE_ENVIO.find(t => t.valor === r.tipo)?.rotulo ?? r.tipo },
       ...(r.guia ? [{ rotulo: 'Da guia', valor: r.guia }] : []),

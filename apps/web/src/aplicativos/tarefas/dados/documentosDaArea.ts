@@ -4,14 +4,15 @@
 import { areaCliente as ac, type entregas as e } from '@nads/core';
 import type { RecebidoDoCliente } from './areaCliente';
 
-export type FiltroDosRecebidos = 'novos' | 'todos' | ac.TipoDeEnvio | 'recusados';
+export type FiltroDosRecebidos = 'novos' | 'todos' | ac.TipoDeEnvio | 'aprovados' | 'recusados';
 
 /** "novo" = chegou nos últimos 7 dias e não foi recusado */
 const NOVO_MS = 7 * 24 * 36e5;
 
 export function ehNovo(r: RecebidoDoCliente, agora: Date): boolean {
   const t = Date.parse(r.recebidoEm);
-  return !r.recusa && Number.isFinite(t) && agora.getTime() - t <= NOVO_MS;
+  // (27/11/2026) o aprovado já foi conferido: sai dos novos
+  return !r.recusa && !r.aprovado && Number.isFinite(t) && agora.getTime() - t <= NOVO_MS;
 }
 
 /** o rótulo curto do filtro (as pílulas do mesmo tamanho; 26/11/2026: "ta tudo um maior que o outro") */
@@ -24,6 +25,7 @@ export function filtrosDosRecebidos(lista: readonly RecebidoDoCliente[], agora: 
     { valor: 'novos', rotulo: 'Novos', conta: lista.filter(r => ehNovo(r, agora) && !recusados.has(r.id)).length },
     { valor: 'todos', rotulo: 'Todos', conta: lista.length },
     ...ac.TIPOS_DE_ENVIO.map(t => ({ valor: t.valor as FiltroDosRecebidos, rotulo: CURTO[t.valor] ?? t.rotulo, conta: lista.filter(r => r.tipo === t.valor).length })),
+    { valor: 'aprovados', rotulo: 'Aprovados', conta: lista.filter(r => !!r.aprovado && !recusado(r)).length },
     { valor: 'recusados', rotulo: 'Recusados', conta: lista.filter(recusado).length },
   ];
 }
@@ -32,7 +34,7 @@ export function filtrosDosRecebidos(lista: readonly RecebidoDoCliente[], agora: 
 export function recebidosDoFiltro(lista: readonly RecebidoDoCliente[], filtro: FiltroDosRecebidos, agora: Date, recusados: ReadonlySet<string>): RecebidoDoCliente[] {
   const recusado = (r: RecebidoDoCliente) => !!r.recusa || recusados.has(r.id);
   return lista
-    .filter(r => filtro === 'todos' ? true : filtro === 'novos' ? ehNovo(r, agora) && !recusados.has(r.id) : filtro === 'recusados' ? recusado(r) : r.tipo === filtro)
+    .filter(r => filtro === 'todos' ? true : filtro === 'novos' ? ehNovo(r, agora) && !recusados.has(r.id) : filtro === 'recusados' ? recusado(r) : filtro === 'aprovados' ? !!r.aprovado && !recusado(r) : r.tipo === filtro)
     .slice().sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm));
 }
 
