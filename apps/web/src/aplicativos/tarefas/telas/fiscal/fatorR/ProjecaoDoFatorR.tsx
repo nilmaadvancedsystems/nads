@@ -170,14 +170,14 @@ function Tabela({ vm }: { vm: VmProjecaoDoFatorR }) {
   return (
     <section className="frx-cartao">
       <header className="frx-cartao-topo">
-        <h3>Mês a mês<Dica texto="A receita e a folha de cada mês (pela competência). O Fator R do PA é a folha dos meses da coluna Folha usada ÷ a receita dos 12 meses antes do PA. Passe o mouse na linha para ver a RBT12 e o FS12. O número do PGDAS-D do robô não se digita; os outros, sim: grava ao sair do campo, e apagar tira." /></h3>
+        <h3>Mês a mês<Dica texto="Em cada PA, a receita do mês e a folha que entra nele: a do mês anterior em 2026 e a de 2 meses antes de 2027 em diante (passe o mouse para ver a competência). O Fator R do PA é a folha dos meses da coluna Folha usada ÷ a receita dos 12 meses antes do PA. Passe o mouse na linha para ver a RBT12 e o FS12. O número do PGDAS-D do robô não se digita; os outros, sim: grava ao sair do campo, e apagar tira." /></h3>
         {vm.gravando && <span className="frx-gravando">Gravando…</span>}
       </header>
       <div className="frx-tabela-caixa">
         <table className="frx-tabela">
           <thead>
             <tr>
-              <th>PA</th><th className="num">Receita do mês</th><th className="num">Folha do mês</th><th className="frx-col-usada">Folha usada no Fator R</th>
+              <th>PA</th><th className="num">Receita do mês</th><th className="num">Folha</th><th className="frx-col-usada">Folha usada no Fator R</th>
               <th className="num">Fator R</th><th className="num">Falta p/ {pctCurto(vm.minimo)}</th>
             </tr>
           </thead>
@@ -192,7 +192,9 @@ function Tabela({ vm }: { vm: VmProjecaoDoFatorR }) {
                   <tr className={atual ? 'frx-atual' : undefined} title={'RBT12 ' + num(l.rbt12) + ' (receita ' + vm.mesAno(l.de) + ' a ' + vm.mesAno(l.ate) + ')  ·  FS12 ' + num(l.fs12) + (incompleto ? '  ·  só ' + l.mesesComReceita + ' de 12 meses com receita e ' + l.mesesComFolha + ' com folha' : '')}>
                     <td className="frx-pa">{vm.mesAno(l.competencia)}{atual && <small>hoje</small>}</td>
                     <td className="num"><Valor vm={vm} competencia={l.competencia} campo="receita" valor={l.receita} /></td>
-                    <td className="num"><Valor vm={vm} competencia={l.competencia} campo="folha" valor={l.folha} /></td>
+                    <td className="num">{l.folhaCompetencia
+                      ? <Valor vm={vm} competencia={l.folhaCompetencia} campo="folha" valor={l.folha} sobre={'A folha de ' + vm.mesAno(l.folhaCompetencia) + ', que entra neste PA.'} />
+                      : <span className="frx-fraco" title="Na virada para 2027 nenhuma folha nova entra neste PA: a de 11/2026 entrou em 12/2026 e a de 12/2026 entra em 02/2027.">—</span>}</td>
                     <td className="frx-somada">{vm.mesAno(l.folhaDe)} a {vm.mesAno(l.folhaAte)}</td>
                     <td className={'num frx-fator' + (l.anexo ? ' frx-fator-' + l.anexo : '') + (incompleto ? ' frx-incompleto' : '')}>
                       {l.fator == null ? <span className="frx-fraco">—</span> : <span className="frx-fator-caixa">{pct(l.fator)}{l.anexo && <Selo anexo={l.anexo} curto />}</span>}
@@ -211,9 +213,9 @@ function Tabela({ vm }: { vm: VmProjecaoDoFatorR }) {
 }
 
 /** o número do mês: o do PGDAS-D só se vê; os outros se digitam na célula (vazio tira) */
-function Valor({ vm, competencia, campo, valor }: { vm: VmProjecaoDoFatorR; competencia: string; campo: CampoDoMes; valor: tarefas.fatorR.ValorDoMes | null }) {
+function Valor({ vm, competencia, campo, valor, sobre }: { vm: VmProjecaoDoFatorR; competencia: string; campo: CampoDoMes; valor: tarefas.fatorR.ValorDoMes | null; /** o começo da dica (a competência da folha) */ sobre?: string }) {
   const [rascunho, setRascunho] = useState<string | null>(null);
-  const dica = vm.dicaDoValor(valor, campo);
+  const dica = (sobre ? sobre + ' ' : '') + vm.dicaDoValor(valor, campo);
   if (!vm.editavel(valor)) {
     return <span className="frx-valor frx-valor-pgdas" title={dica}><i className="frx-ponto-pgdas" aria-label="do PGDAS-D" />{num((valor as tarefas.fatorR.ValorDoMes).valor)}</span>;
   }
