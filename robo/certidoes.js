@@ -130,21 +130,33 @@ function criarPortalDeTaiobeiras(log) {
       try {
         await page.setViewport({ width: 1280, height: 900 });
         await page.goto(PORTAL_TAIOBEIRAS, { waitUntil: 'networkidle2', timeout: 90000 }).catch(() => {});
-        // o cartão "Emissão de Documentos" (o menor elemento com esse texto)
-        const clicarNoTexto = re => page.evaluate(f => {
-          const re = new RegExp(f, 'i');
-          const els = [...document.querySelectorAll('div, span, a, button, label, p, h1, h2, h3, h4, li')]
-            .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && re.test((e.innerText || '').replace(/\s+/g, ' ').trim()); });
-          if (!els.length) return false;
-          els.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
-          els[0].click();
+        // 27/11/2026, a primeira volta no servidor: o portal deixa a camada "Aguarde..." (div.mostrar_carregando e o
+        // DialogBoxLoad) por cima da tela por uns 24 s depois de abrir, e de novo a cada passo; o clique dado com ela por cima
+        // não chega. Antes de cada passo, o robô espera ela sumir.
+        const esperarLivre = (ms = 90000) => page.waitForFunction(() => ![...document.querySelectorAll('.mostrar_carregando, .DialogBoxLoad')].some(e => {
+          const r = e.getBoundingClientRect(); const s = getComputedStyle(e);
+          return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity) > 0.05;
+        }), { timeout: ms, polling: 500 }).then(() => true, () => false);
+        await page.waitForFunction(() => [...document.querySelectorAll('p.gpi-fav-card-title, p')].some(p => /^Emiss[aã]o de Documentos$/i.test((p.innerText || '').trim())), { timeout: 90000, polling: 1000 }).catch(() => {});
+        await esperarLivre();
+        // o cartão "Emissão de Documentos" (o cartão inteiro: div.gpi-fav-card)
+        const clicarNoCartao = () => page.evaluate(() => {
+          const t = [...document.querySelectorAll('p.gpi-fav-card-title, p')].find(p => /^Emiss[aã]o de Documentos$/i.test((p.innerText || '').trim()));
+          const c = t && (t.closest('.gpi-fav-card') || t);
+          if (!c) return false;
+          c.click();
           return true;
-        }, re.source).catch(() => false);
+        }).catch(() => false);
         let abriu = false;
-        for (let i = 0; i < 20 && !abriu; i++) { abriu = await clicarNoTexto(/^Emiss[aã]o de Documentos$/); if (!abriu) await dormirPadrao(1500); }
-        if (!abriu) return { erro: 'não achei a "Emissão de Documentos" no portal da prefeitura' };
-        await page.waitForFunction(() => /CERTIDAO NEGATIVA DE DEBITOS MUNICIPAIS/i.test(document.body.innerText || ''), { timeout: 30000 }).catch(() => {});
-        await dormirPadrao(1500);
+        for (let i = 0; i < 4 && !abriu; i++) {
+          if (!(await clicarNoCartao())) { await dormirPadrao(3000); continue; }
+          abriu = await page.waitForFunction(() => /CERTIDAO NEGATIVA DE DEBITOS MUNICIPAIS/i.test(document.body.innerText || ''), { timeout: 20000 }).then(() => true, () => false);
+          if (!abriu) await esperarLivre();
+        }
+        if (!abriu) return { erro: 'não abri a "Emissão de Documentos" no portal da prefeitura' };
+        await esperarLivre();
+        await page.waitForFunction(() => [...document.querySelectorAll('label')].some(l => /^CNPJ$/i.test((l.innerText || '').trim()) && l.getBoundingClientRect().width > 0), { timeout: 30000 }).catch(() => {});
+        await dormirPadrao(1000);
         // o modelo (a CND municipal) e o filtro (CNPJ), se não estiverem marcados
         const marcados = await page.evaluate(() => {
           const marcar = re => {
@@ -158,6 +170,7 @@ function criarPortalDeTaiobeiras(log) {
         }).catch(() => false);
         if (!marcados) return { erro: 'não achei o modelo da certidão ou o filtro CNPJ' };
         await dormirPadrao(1500);
+        await esperarLivre();
         // o campo do CNPJ: limpar, voltar ao começo e digitar tecla por tecla
         const temCampo = await page.evaluate(() => {
           const c = [...document.querySelectorAll('input[type=text]')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !/pesquis|digite o que/i.test(e.placeholder || ''); }).pop();
@@ -176,6 +189,7 @@ function criarPortalDeTaiobeiras(log) {
         const digitado = String(await page.$eval('[data-nads-cnpj="1"]', e => e.value).catch(() => '')).replace(/\D/g, '');
         if (digitado !== cnpj) return { erro: 'o campo do CNPJ não aceitou o número (ficou "' + digitado + '")' };
         // a certidão abre numa janela nova: o robô pega o endereço em vez de abrir a janela
+        await esperarLivre();
         await page.evaluate(() => { window.__nadsAbriu = []; window.open = u => { window.__nadsAbriu.push(String(u)); return null; }; });
         const imprimiu = await page.evaluate(() => {
           const b = [...document.querySelectorAll('button')].find(x => /^\s*Imprimir\s*$/i.test(x.innerText || '') && x.getBoundingClientRect().width > 0);
@@ -185,7 +199,7 @@ function criarPortalDeTaiobeiras(log) {
         }).catch(() => false);
         if (!imprimiu) return { erro: 'não achei o botão Imprimir' };
         let url = '';
-        for (let i = 0; i < 25 && !url; i++) {
+        for (let i = 0; i < 60 && !url; i++) {
           await dormirPadrao(1000);
           url = await page.evaluate(() => (window.__nadsAbriu || [])[0] || '').catch(() => '');
           if (!url) {
