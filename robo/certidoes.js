@@ -270,8 +270,10 @@ function criarPortalDoFgts(log) {
         await page.$eval(campo, e => { e.value = ''; });
         await page.type(campo, cnpj, { delay: 60 });
         // 27/11/2026, a terceira volta: a consulta não andava e o robô pegava um link de ajuda que também fala do CRF. Agora espera
-        // a página do resultado ("Situação de Regularidade do Empregador"); se não vier, clica de novo pelo próprio botão.
-        const resultado = () => page.waitForFunction(() => /Situa..o de Regularidade do Empregador/i.test(document.body.innerText || ''), { timeout: 30000, polling: 500 }).then(() => true, () => false);
+        // a página do resultado; se não vier, clica de novo pelo próprio botão. 27/11/2026, a quinta volta: "situação de
+        // regularidade do empregador" também está no texto da página INICIAL; o resultado se reconhece pelo "A empresa abaixo
+        // identificada" (regular ou não) ou pelo "não são suficientes" (a Caixa não decide sozinha).
+        const resultado = () => page.waitForFunction(() => /A empresa abaixo identificada|informa..es dispon.veis n.o s.o suficientes|n.o (foi )?(encontrad|localizad)/i.test(document.body.innerText || ''), { timeout: 30000, polling: 500 }).then(() => true, () => false);
         await page.click('[id="mainForm:btnConsultar"]').catch(() => {});
         let veio = await resultado();
         if (!veio) { await page.evaluate(() => { const b = document.getElementById('mainForm:btnConsultar'); if (b) b.click(); }).catch(() => {}); veio = await resultado(); }
@@ -280,7 +282,7 @@ function criarPortalDoFgts(log) {
         const link = await page.evaluate(() => { const a = [...document.querySelectorAll('a')].find(x => /^\s*Certificado de Regularidade do FGTS\s*-\s*CRF\s*$/i.test(x.innerText || '')); if (!a) return false; a.click(); return true; });
         if (!link) {
           // irregular, sem cadastro ou sem informação suficiente: o texto da Caixa vai para o pedido
-          const m = /Situa..o de Regularidade do Empregador\s*(.{0,220})/i.exec(consulta);
+          const m = /((?:A empresa abaixo identificada|As informa..es dispon.veis|.{0,40}n.o (?:foi )?(?:encontrad|localizad)).{0,220})/i.exec(consulta);
           return { erro: 'a Caixa não deu o CRF: ' + (m ? m[1] : consulta.slice(0, 220)), final: true };
         }
         await page.waitForFunction(() => /Validade:/i.test(document.body.innerText || ''), { timeout: 60000 }).catch(() => {});

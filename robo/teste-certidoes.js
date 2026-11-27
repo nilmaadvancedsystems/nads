@@ -118,11 +118,26 @@ function contexto(pedidos, emitir) {
       { nome: '3', valor: '{"pattern":"https://[*.]fazenda.mg.gov.br","filter":{"ISSUER":{"CN":"AC FICTICIA"}}}' });
     const feitos = [];
     const rodar = (cmd, args) => { feitos.push(args[0]); if (args[0] === 'query' && /^HKLM/.test(args[1])) return saida; if (args[0] === 'query') throw new Error('sem a chave'); return ''; };
-    verdade('grava no HKLM, onde está a do gov.br', /gravada em HKLM \(número 3\)/.test(C.garantirRegra('https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br', rodar)));
-    igual('só uma consulta e uma gravação', feitos, ['query', 'add']);
+    verdade('grava no HKLM, onde está a do gov.br', /gravada em HKLM \(número 3, o filtro da do gov\.br\)/.test(C.garantirRegra('https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br', rodar)));
+    igual('lê as duas chaves e grava uma vez', feitos, ['query', 'query', 'add']);
     const jaTem = (cmd, args) => (args[0] === 'query' && /^HKLM/.test(args[1]) ? saida + '    3    REG_SZ    {"pattern":"https://[*.]fazenda.mg.gov.br","filter":{}}\r\n' : (() => { throw new Error('x'); })());
     verdade('a regra que já existe não é mexida', /já existe/.test(C.garantirRegra('https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br', jaTem)));
     verdade('sem a do gov.br para copiar, avisa', /não achei a regra/.test(C.garantirRegra('p', 'fazenda.mg.gov.br', () => { throw new Error('nada'); })));
+    // 27/11/2026: no servidor a do gov.br não está no registro; a regra sai pelo certificado e-CNPJ instalado
+    const certs = ['CN=PESSOA FISICA:12345678901, OU=x|CN=AC QUALQUER, O=ICP-Brasil|2027-05-01',
+      'CN=ESCRITORIO FICTICIO LTDA:99888777000166, OU=RFB e-CNPJ A1, O=ICP-Brasil|CN=AC FICTICIA RFB v5, O=ICP-Brasil|2027-03-10',
+      'CN=ESCRITORIO FICTICIO LTDA:99888777000166, OU=RFB e-CNPJ A1|CN=AC FICTICIA RFB v5|2026-12-01'].join('\r\n');
+    igual('o certificado e-CNPJ: o titular com CNPJ, o que vence por último', C.certificadoECnpj(certs), { titular: 'ESCRITORIO FICTICIO LTDA:99888777000166', emissor: 'AC FICTICIA RFB v5', vence: '2027-03-10' });
+    igual('sem e-CNPJ, nada', C.certificadoECnpj('CN=PESSOA:12345678901|CN=AC|2027-01-01'), null);
+    const gravados = [];
+    const semRegra = (cmd, args) => {
+      if (cmd === 'reg' && args[0] === 'query') throw new Error('sem a chave');
+      if (cmd === 'powershell') return certs;
+      if (cmd === 'reg' && args[0] === 'add') { gravados.push([args[1].slice(0, 4), args[3], args[7]]); return ''; }
+      return '';
+    };
+    verdade('sem regra nenhuma: grava pelo certificado, no HKCU', /gravada em HKCU \(número 1, pelo certificado ESCRITORIO FICTICIO LTDA/.test(C.garantirRegra('https://[*.]fazenda.mg.gov.br', 'fazenda.mg.gov.br', semRegra)));
+    igual('a regra gravada pelo certificado', gravados, [['HKCU', '1', '{"pattern":"https://[*.]fazenda.mg.gov.br","filter":{"ISSUER":{"CN":"AC FICTICIA RFB v5"},"SUBJECT":{"CN":"ESCRITORIO FICTICIO LTDA:99888777000166"}}}']]);
   }
   igual('o pedido da central sai no formato do robô', R.motivoDoPedidoRuim(central.PEDIDOS_POR_CLIENTE['certidoes:municipal'].modelo({ codigo: '9001', nome: 'X', documento: CNPJ }, {})), '');
   verdade('a fila do painel é a do catálogo', painel.FILAS.pc.some(f => f.id === 'certidoes' && f.colecao === R.COLECAO));
