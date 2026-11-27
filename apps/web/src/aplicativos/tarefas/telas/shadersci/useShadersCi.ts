@@ -687,7 +687,6 @@ export function useShadersCi() {
     podeExportar: resumo.quantos > 0,
     exportar() {
       if (!entrada.empresa) return;
-      if (!cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
       const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, cnpj);
       const mes = sci.mesPrincipal(guardado.lancamentos);
       // um lote próprio por planilha, com a empresa no código (27/11/2026: "vamos usar esse controle de lotes")

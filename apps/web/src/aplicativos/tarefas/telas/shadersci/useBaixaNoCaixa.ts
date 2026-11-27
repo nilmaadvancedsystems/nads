@@ -103,7 +103,6 @@ export function useBaixaNoCaixa(min: VmShadersCi) {
     outras: r.outras,
     lote,
     baixar: () => {
-      if (!min.cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
       if (!prontos.length) { aviso({ tom: 'info', titulo: 'Nenhuma baixa pronta', texto: 'Passe o mouse na linha para ver o que falta: o caixa e o histórico precisam estar no plano.' }); return; }
       // um lote próprio por planilha, com a empresa no código (27/11/2026)
       const loteDaPlanilha = codigo != null ? sci.loteDoMinimum(codigo) : '';

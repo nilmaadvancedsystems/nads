@@ -5,7 +5,6 @@
 // A regra (26/11/2026: "Leva como regra nesses arquivos exportados da sci, eu quero ele 100% pronto, não quero editar. Então
 // remova: esse total e os dados da coluna lote, deixa vazia!"): sem a linha Total no fim e a coluna Lote só com o título.
 import * as XLSX from 'xlsx';
-import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci, LinhaDoNads, OpcoesDoSci, ResumoDoSci } from '../tipos';
 import { lerPlanilhaDoNads } from './leitura';
 import { classificacaoNormal } from './dePara';
@@ -117,7 +116,6 @@ function problemasNoPlano(plano: PlanoSci, lado: 'débito' | 'crédito', codigo:
 /** Os lançamentos do SCI a partir das linhas do nads: troca as contas pelo de/para e aponta o que impede a importação. */
 export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDoSci): LancamentoSci[] {
   const cnpj = documentoComMascara(op.cnpjEmpresa);
-  const cnpjOk = cnpjValido(op.cnpjEmpresa) || cpfValido(op.cnpjEmpresa);
   const lote = (op.lote?.trim() || loteDoMes(mesPrincipal(linhas))).slice(0, TAMANHO_DO_LOTE);
   const dePara = op.dePara && op.dePara.size ? op.dePara : null;
   const conta = (c: string) => {
@@ -139,7 +137,7 @@ export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDo
     if (l.debito && l.credito && d.codigo === c.codigo) problemas.push('débito e crédito na mesma conta');
     if (!(l.valor > 0)) problemas.push('sem valor');
     if (!historico) problemas.push('sem histórico');
-    if (!cnpjOk) problemas.push('CNPJ da empresa inválido');
+    // o CNPJ não vai mais na planilha (a coluna I vazia) e não impede mais (27/11/2026: "Sim, tira")
     if (op.planoSci) {
       if (!d.semPar) problemas.push(...problemasNoPlano(op.planoSci, 'débito', d.codigo, ''));
       if (!c.semPar) problemas.push(...problemasNoPlano(op.planoSci, 'crédito', c.codigo, ''));
