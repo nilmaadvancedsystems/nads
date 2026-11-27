@@ -17,10 +17,19 @@ import { contaDoPlano, type ContaDoPlanoSci, type PlanoSci } from './plano';
  * sentido"; "Nome da conta D? que isso nao ta no layout"). As colunas de análise (o nome das contas, a origem e o motivo) ficam
  * só na aba Conferir, que não vai para o SCI.
  */
+/**
+ * A coluna I (o CNPJ da filial) fica VAZIA, sem título e sem dado (27/11/2026, Vitor, depois de o SCI recusar a planilha com
+ * "Arquivo não corresponde ao leiaute esperado": "Coluna CNPJ filial, a coluna I e vazia, nao eh pra ter nada! Nem cabecalho").
+ * O '' aqui segura a posição; na planilha a célula nem existe.
+ */
 export const COLUNAS_DO_SCI = [
-  'Data', 'Débito', 'Crédito', 'Valor principal', 'Histórico', 'Complemento', 'Documento', 'Lote', 'CNPJ da filial',
+  'Data', 'Débito', 'Crédito', 'Valor principal', 'Histórico', 'Complemento', 'Documento', 'Lote', '',
   'Participante a débito', 'Participante a crédito',
 ] as const;
+/** a coluna I (índice 8): sem nada */
+const COLUNA_VAZIA = 8;
+type Celula = string | number | null;
+const titulos = (cs: readonly string[]): Celula[] => cs.map((c, i) => (i === COLUNA_VAZIA ? null : c));
 
 /** A aba Conferir: as colunas do SCI e, depois, as da análise. */
 export const COLUNAS_DA_CONFERENCIA = [...COLUNAS_DO_SCI, 'Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo'] as const;
@@ -172,17 +181,18 @@ const numeroOuTexto = (s: string): number | string => (/^\d{1,15}$/.test(s) ? Nu
  * lote: o da planilha toda (o do minimum, um por planilha; 27/11/2026: "ao exportar os arquivos, voce vai colocar na coluna lote, um
  * codigo propio"). Sem ele, a coluna Lote vai vazia, como antes (26/11/2026: "os dados da coluna lote, deixa vazia!").
  */
-function linhaDaPlanilha(l: LancamentoSci, lote = ''): (string | number)[] {
+function linhaDaPlanilha(l: LancamentoSci, lote = ''): Celula[] {
   return [
     serialExcel(l.data), numeroOuTexto(l.debito), numeroOuTexto(l.credito), l.valor / 100, numeroOuTexto(l.historico),
-    l.complemento, l.documento, lote, l.cnpjEmpresa, l.participanteD, l.participanteC,
+    // a coluna I vazia: nada, nem o CNPJ (27/11/2026)
+    l.complemento, l.documento, lote, null, l.participanteD, l.participanteC,
   ];
 }
 
 /** A linha da aba Conferir: a do SCI, o nome das contas, a origem e o motivo de não estar pronto. */
-const linhaDaConferencia = (l: LancamentoSci, lote = ''): (string | number)[] => [...linhaDaPlanilha(l, lote), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
+const linhaDaConferencia = (l: LancamentoSci, lote = ''): Celula[] => [...linhaDaPlanilha(l, lote), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
 
-function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkSheet {
+function aba(aoa: Celula[][], linhasDeLancamento: number): XLSX.WorkSheet {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   for (let r = 1; r <= linhasDeLancamento; r++) {
     const d = ws[XLSX.utils.encode_cell({ r, c: 0 })];
@@ -204,11 +214,11 @@ function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkS
 export function planilhaDoSci(lancamentos: readonly LancamentoSci[], lote = ''): Uint8Array {
   const prontos = lancamentos.filter(l => !l.problemas.length);
   const comProblema = lancamentos.filter(l => l.problemas.length);
-  const importar: (string | number)[][] = [[...COLUNAS_DO_SCI], ...prontos.map(l => linhaDaPlanilha(l, lote))];
+  const importar: Celula[][] = [titulos(COLUNAS_DO_SCI), ...prontos.map(l => linhaDaPlanilha(l, lote))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, aba(importar, prontos.length), 'Importar');
   if (comProblema.length) {
-    XLSX.utils.book_append_sheet(wb, aba([[...COLUNAS_DA_CONFERENCIA], ...comProblema.map(l => linhaDaConferencia(l, lote))], comProblema.length), 'Conferir');
+    XLSX.utils.book_append_sheet(wb, aba([titulos(COLUNAS_DA_CONFERENCIA), ...comProblema.map(l => linhaDaConferencia(l, lote))], comProblema.length), 'Conferir');
   }
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
 }

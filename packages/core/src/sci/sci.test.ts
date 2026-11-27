@@ -94,7 +94,13 @@ describe('a planilha do SCI', () => {
     expect(Object.keys(a)).toEqual(['Importar', 'Conferir']);
     expect(a.Importar[0]).toEqual([...COLUNAS_DO_SCI]);
     // só as 11 colunas do gerador (25/11/2026: "Nome da conta D? que isso nao ta no layout")
-    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', '', '11.222.333/0001-81', '', '']);
+    // a coluna I vazia, sem título e sem dado (27/11/2026: "Coluna CNPJ filial, a coluna I e vazia, nao eh pra ter nada! Nem cabecalho")
+    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', '', '', '', '']);
+    const ws = XLSX.read(planilhaDoSci(s), { type: 'array' }).Sheets.Importar;
+    expect(ws.I1).toBeUndefined();
+    expect(ws.I2).toBeUndefined();
+    expect(ws.H1.v).toBe('Lote');
+    expect(ws.J1.v).toBe('Participante a débito');
     expect(a.Importar[0]).toHaveLength(11);
     expect(a.Importar[2].slice(0, 5)).toEqual([46336, 2101, 1201, 830.4, 116]);
     expect(a.Importar).toHaveLength(3);

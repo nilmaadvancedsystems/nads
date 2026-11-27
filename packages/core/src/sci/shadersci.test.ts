@@ -271,7 +271,7 @@ describe('copiar e colar', () => {
 });
 
 describe('a planilha do SCI', () => {
-  it('os prontos em Importar (sem lote), os outros em Conferir, com o CNPJ e o nome das contas', () => {
+  it('os prontos em Importar (sem lote), os outros em Conferir, a coluna I vazia e o nome das contas', () => {
     const lsci = lancamentosDoShaderParaOSci([base, { ...base, debito: '7', credito: '16', participanteC: '120' }, { ...base, valor: 0 }], p113, CNPJ);
     expect(lsci.map(l => l.problemas)).toEqual([[], [], ['sem valor']]);
     expect(lsci[1]).toMatchObject({ lote: '', cnpjEmpresa: '11.222.333/0001-81', participanteC: '120', nomeC: 'Clientes nacionais', origem: 'minimum' });
@@ -280,7 +280,7 @@ describe('a planilha do SCI', () => {
     const importar = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Importar, { header: 1, raw: true, defval: '' });
     // títulos e 2 lançamentos, sem a linha do total (o gerador lê da linha 2 e descarta 0 no fim)
     expect(importar.length).toBe(3);
-    expect(importar[2].slice(1, 11)).toEqual([7, 16, 150, 1, 'Depósito', '10', '', '11.222.333/0001-81', '', '120']);
+    expect(importar[2].slice(1, 11)).toEqual([7, 16, 150, 1, 'Depósito', '10', '', '', '', '120']);
   });
 
   it('sem CNPJ válido, nada fica pronto', () => {
