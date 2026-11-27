@@ -295,19 +295,20 @@ export function RazaoDoSci({ vm, modo = 'razao' }: { vm: VmShadersCi; modo?: 'ra
 
       {/* sem consulta importada, nada (25/11/2026: "Remove isso", a caixa de trazer o arquivo): o Importar a consulta fica em cima */}
       {!guardado ? (contabilizacao ? (
-        // a Contabilização vazia: o botão Vitor no meio, com a competência do SCI
-        <div className="sci-contab-vazia">
-          <span className="sci-contab-marca" aria-hidden="true"><LogoSci altura={40} /></span>
-          {/* sem a caixa e sem o texto (27/11/2026: "Remove ssa box deixa livre"; "Deixa so a logo do sci e coloca o titulo"; depois: "Qual periodo vamos fazer?") */}
-          <h3>Qual período vamos fazer?</h3>
-          {robo.disponivel ? (
-            <PuxarDoSci robo={robo} />
-          ) : (
-            <>
-              <p>O SCI é puxado pelo robô do PC de quem tem o robô. Daqui, traga a <b>Impressão de campos da consulta</b> exportada do SCI.</p>
-              <button type="button" className="btn btn-primary" onClick={escolher}><Icone nome="upload" />Importar a consulta</button>
-            </>
-          )}
+        // a Contabilização vazia no padrão da tela inicial do minimum (27/11/2026: "tenta seguir o padrao da tela inicial do minimum"):
+        // a marca no meio (a logo do SCI e o título), e embaixo a barra larga do "Selecionar empresa", com o período e o botão Vitor
+        <div className="sci-inicio sci-contab-inicio">
+          <span className="sci-inicio-marca">
+            <span className="sci-contab-logo" aria-hidden="true"><LogoSci altura={52} /></span>
+            <h1 className="sci-contab-titulo">Qual período vamos fazer?</h1>
+          </span>
+          <div className="sci-inicio-corpo sci-contab-corpo">
+            {robo.disponivel ? (
+              <PuxarDoSci robo={robo} grande />
+            ) : (
+              <button type="button" className="sci-escolher" onClick={escolher}><Icone nome="upload" /><span className="sci-escolher-rotulo">Importar a consulta do SCI</span></button>
+            )}
+          </div>
         </div>
       ) : null) : (
         <>
@@ -457,7 +458,7 @@ const MESES_LONGOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'
  * setas, os 12 meses em grade e os atalhos do ano inteiro (o 00 do SCI) e de tudo (00/0000). O clique no Vitor pede ao robô do PC
  * e a planilha entra na tela quando volta.
  */
-function PuxarDoSci({ robo, temLancamentos = false }: { robo: RoboDoSci; temLancamentos?: boolean }) {
+function PuxarDoSci({ robo, temLancamentos = false, grande = false }: { robo: RoboDoSci; temLancamentos?: boolean; /** a barra larga da tela vazia */ grande?: boolean }) {
   // o que foi pedido por último fica escolhido (27/11/2026: voltava para o "Ano todo" quando a planilha chegava); sem pedido, tudo
   const [competencia, setCompetencia] = useState(() => (/^\d{2}\/\d{4}$/.test(robo.competencia) ? robo.competencia : '00/0000'));
   const [aberto, setAberto] = useState(false);
@@ -482,7 +483,7 @@ function PuxarDoSci({ robo, temLancamentos = false }: { robo: RoboDoSci; temLanc
     : 'Puxar os lançamentos de ' + rotuloDaCompetenciaDoSci(competencia) + ' do SCI (troca esse período na tela)';
   const hoje = new Date();
   return (
-    <span className="sci-puxar" ref={ref}>
+    <span className={'sci-puxar' + (grande ? ' sci-barra' + (aberto ? ' aberta' : '') : '')} ref={ref}>
       <button type="button" className={'sci-comp' + (aberto ? ' aberto' : '')} onClick={() => setAberto(a => !a)} aria-haspopup="dialog" aria-expanded={aberto} title="O que puxar do SCI">
         <Icone nome="calendar" width={16} height={16} />
         <span className="sci-comp-rotulo">{rotulo}</span>

@@ -8535,12 +8535,21 @@ section.card.cmc-lista > h3.cart-titulo{margin:0;padding:12px 16px;border-bottom
 .sci-upload.arrastando .sci-upload-area{border-color:var(--accent);background:var(--accent-soft);}
 .sci-upload-pe{margin-top:4px !important;font-size:var(--fs-12) !important;}
 /* a Contabilização do minimum (27/11/2026): a tela vazia com o botão Vitor do SCI no meio, a competência e o andamento do robô */
-/* livre, sem a caixa (27/11/2026: "Remove ssa box deixa livre"): a logo do SCI, o título e o botão */
-.sci-contab-vazia{display:flex;flex-direction:column;align-items:center;gap:14px;width:460px;max-width:100%;margin:12vh auto 0;text-align:center;}
-.sci-contab-vazia h3{margin:0 0 6px;font-size:var(--fs-22,22px);font-weight:600;color:var(--ink);}
-.sci-contab-vazia > p{margin:0 0 8px;max-width:360px;font-size:var(--fs-13);line-height:1.5;color:var(--ink-muted);}
-.sci-contab-vazia > p b{color:var(--ink);font-weight:600;}
-.sci-contab-marca{display:inline-grid;place-items:center;}
+/* a Contabilização vazia no padrão da tela inicial do minimum (27/11/2026): a marca (a logo do SCI e o título) e a barra larga do
+   "Selecionar empresa", com o período à esquerda e o botão Vitor encaixado à direita */
+.sci-contab-inicio .sci-inicio-marca{display:flex;flex-direction:column;align-items:center;gap:18px;margin-bottom:28px;}
+.sci-contab-logo{display:block;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));}
+.sci-contab-titulo{margin:0;font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.015em;color:var(--ink);}
+.sci-inicio.sci-contab-inicio .sci-contab-corpo{height:auto;align-items:center;}
+.sci-puxar.sci-barra{flex:none;height:58px;width:440px;max-width:100%;min-height:56px;padding:6px 6px 6px 8px;gap:6px;border-radius:14px;border:1px solid var(--border);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 92%,#fff 8%),var(--surface-2));
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(0,0,0,.55);transition:border-color .2s,box-shadow .2s;}
+.sci-puxar.sci-barra:hover,.sci-puxar.sci-barra.aberta{border-color:var(--accent-border);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 14px 36px -12px rgba(0,0,0,.6),0 0 0 4px var(--accent-soft);}
+.sci-puxar.sci-barra .sci-comp{flex:1;height:44px;min-width:0;padding:0 12px;border:0;border-radius:10px;background:transparent;box-shadow:none;font-size:var(--fs-15,15px);}
+.sci-puxar.sci-barra .sci-comp:hover,.sci-puxar.sci-barra .sci-comp.aberto{background:color-mix(in srgb,var(--ink) 5%,transparent);box-shadow:none;}
+.sci-puxar.sci-barra .sci-puxar-botao{height:44px;border-radius:10px;padding:0 18px;flex:none;}
+.sci-puxar.sci-barra .sci-comp-painel{top:calc(100% + 10px);left:50%;transform:translateX(-50%);animation:sci-comp-entra-meio .14s ease-out;}
+@keyframes sci-comp-entra-meio{from{opacity:0;transform:translate(-50%,-4px) scale(.98);}to{opacity:1;transform:translateX(-50%);}}
 /* a competência do SCI (27/11/2026: "Muda a forma de apresentacao pra algo mais premium"): a pílula e o painel de meses */
 .sci-puxar{position:relative;display:inline-flex;align-items:center;gap:8px;}
 .sci-puxar .sci-puxar-botao{height:38px;border-radius:999px;padding:0 18px;}
