@@ -218,7 +218,29 @@ export interface OpcoesDoFechamento {
   semCaixa?: boolean;
   /** as provisões que a pessoa deixou em aberto (chaveDaProvisao) */
   deixarAbertas?: ReadonlySet<string>;
+  /**
+   * As decisões da pessoa (27/11/2026, o Vitor: "em cada um dos lancamentos o usuario vai poder pesquisar no plano de contas"; "faz de
+   * uma maneira que e automatizavel depois"): são só dados, por chave, que um robô pode preencher do mesmo jeito.
+   *   trocas: a contrapartida do pagamento trocada (chaveDaProvisao → a conta no lugar do banco ou do caixa);
+   *   doExtrato: a linha do extrato sem provisão lançada (chaveDaLinhaDoExtrato → a conta da contrapartida do banco).
+   */
+  trocas?: Readonly<Record<string, string>>;
+  doExtrato?: Readonly<Record<string, string>>;
 }
+
+/** A chave de uma linha do extrato: a data, o valor, o histórico e a vez (duas linhas iguais no mesmo dia são duas). */
+export function chavesDoExtrato(linhas: readonly LinhaDoExtratoParaPagar[]): string[] {
+  const vistas = new Map<string, number>();
+  return linhas.map(e => {
+    const base = [e.data, e.valor, e.historico].join('|');
+    const n = (vistas.get(base) || 0) + 1;
+    vistas.set(base, n);
+    return base + '|' + n;
+  });
+}
+
+/** A linha do extrato sem provisão que a pessoa lançou: D a conta × C o banco (a saída) ou D o banco × C a conta (a entrada). */
+export interface LinhaDoExtratoLancada { chave: string; linha: LinhaDoExtratoParaPagar; lancamento: CamposDoLancamento }
 
 export interface PagamentoDoFechamento extends PagamentoGerado { conta: ContaParaFechar; chave: string }
 
@@ -231,8 +253,12 @@ export interface Fechamento {
   /** o que os pagamentos mexem no banco e no caixa (centavos; + entra, − sai) */
   movimentoNoBanco: number;
   movimentoNoCaixa: number;
-  /** as linhas do extrato do período que não pagaram nenhuma provisão (o que a pessoa resolve na aba Extratos) */
-  extratoSemProvisao: LinhaDoExtratoParaPagar[];
+  /** as linhas do extrato do período que não pagaram nenhuma provisão e ainda não têm conta (o que a pessoa resolve) */
+  extratoSemProvisao: (LinhaDoExtratoParaPagar & { chave: string })[];
+  /** as linhas do extrato sem provisão que já têm conta: viram lançamento */
+  doExtrato: LinhaDoExtratoLancada[];
+  /** todos os lançamentos da planilha: os pagamentos (com a multa e os juros) e as linhas do extrato lançadas */
+  lancamentos: CamposDoLancamento[];
 }
 
 /**
@@ -256,8 +282,16 @@ export function fechamentoDoPeriodo(todos: readonly LancamentoDaConsulta[], cont
       historico: p.lado === 'credito' ? o.historicoPagamento : o.historicoRecebimento,
     });
     const g: PagamentoDoFechamento[] = [];
-    for (const x of todas) {
-      const comConta = { ...x, conta, chave: chaveDaProvisao(conta.codigo, x.provisao) };
+    for (const x0 of todas) {
+      const chave = chaveDaProvisao(conta.codigo, x0.provisao);
+      // a contrapartida trocada pela pessoa: no lugar do banco ou do caixa (o lado do pagamento)
+      const troca = o.trocas?.[chave];
+      const x = troca ? {
+        ...x0,
+        lancamento: p.lado === 'credito' ? { ...x0.lancamento, credito: troca } : { ...x0.lancamento, debito: troca },
+        ...(x0.acrescimo ? { acrescimo: { ...x0.acrescimo, credito: troca } } : {}),
+      } : x0;
+      const comConta = { ...x, conta, chave };
       // deixada em aberto: a linha do extrato que ela usaria volta a ficar livre
       if (o.deixarAbertas?.has(comConta.chave) || (o.semCaixa && x.pelo === 'caixa')) {
         if (x.linhaDoExtrato != null) usadas.delete(x.linhaDoExtrato);
@@ -272,10 +306,29 @@ export function fechamentoDoPeriodo(todos: readonly LancamentoDaConsulta[], cont
       caixa: g.filter(x => x.pelo === 'caixa').reduce((t, x) => t + x.lancamento.valor, 0),
     });
   }
-  // + entra, − sai: o pagamento do passivo sai; o recebimento do a receber entra
-  const movimento = (pelo: 'banco' | 'caixa') => pagamentos.filter(x => x.pelo === pelo)
-    .reduce((t, x) => t + (x.lancamento.credito === (pelo === 'banco' ? o.banco : o.caixa) ? -x.lancamento.valor : x.lancamento.valor) - (x.acrescimo?.valor || 0), 0);
-  const extratoSemProvisao = (o.banco ? o.extrato || [] : []).filter((e, k) => !usadas.has(k) && noPeriodo(e.data));
-  return { pagamentos, abertas: deixadas, porConta, movimentoNoBanco: movimento('banco'), movimentoNoCaixa: movimento('caixa'), extratoSemProvisao };
+  // as linhas do extrato sem provisão: com a conta escolhida viram lançamento; sem, ficam para a pessoa
+  const extrato = o.banco ? o.extrato || [] : [];
+  const chaves = chavesDoExtrato(extrato);
+  const extratoSemProvisao: Fechamento['extratoSemProvisao'] = [];
+  const doExtrato: LinhaDoExtratoLancada[] = [];
+  extrato.forEach((e, k) => {
+    if (usadas.has(k) || !noPeriodo(e.data)) return;
+    const conta = o.doExtrato?.[chaves[k]];
+    if (!conta) { extratoSemProvisao.push({ ...e, chave: chaves[k] }); return; }
+    const sai = e.valor < 0;
+    const complemento = e.historico.replace(/\s+/g, ' ').trim().slice(0, 200);
+    doExtrato.push({
+      chave: chaves[k], linha: e,
+      lancamento: {
+        data: e.data, debito: sai ? conta : o.banco!, credito: sai ? o.banco! : conta, valor: Math.abs(e.valor),
+        historico: sai ? o.historicoPagamento : o.historicoRecebimento, complemento, documento: e.data.slice(8, 10) + e.data.slice(5, 7) + e.data.slice(0, 4),
+        participanteD: '', participanteC: '',
+      },
+    });
+  });
+  const lancamentos = [...pagamentos.flatMap(x => (x.acrescimo ? [x.lancamento, x.acrescimo] : [x.lancamento])), ...doExtrato.map(x => x.lancamento)];
+  // + entra, − sai, pelos lançamentos de verdade (com as trocas e as linhas do extrato)
+  const movimento = (conta: string | undefined) => (conta ? lancamentos.reduce((t, l) => t + (l.debito === conta ? l.valor : 0) - (l.credito === conta ? l.valor : 0), 0) : 0);
+  return { pagamentos, abertas: deixadas, porConta, movimentoNoBanco: movimento(o.banco), movimentoNoCaixa: movimento(o.caixa), extratoSemProvisao, doExtrato, lancamentos };
 }
 
