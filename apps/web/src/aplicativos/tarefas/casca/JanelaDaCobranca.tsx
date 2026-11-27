@@ -11,8 +11,8 @@ export function JanelaDaCobranca() {
   const vm = useJanelaDaCobranca();
   const janela = useRef<HTMLDivElement>(null);
   const id = useId();
-  // sem fechar: o Esc não faz nada (a pessoa responde ou pede mais tempo)
-  useJanela(janela, null, !!vm.cobranca);
+  // sem fechar: o Esc não faz nada (a pessoa responde ou pede mais tempo); no modo desenvolvedor, o Esc e o X fecham (27/11/2026)
+  useJanela(janela, vm.fechar, !!vm.cobranca);
   // mais tempo (Vitor, 18/11/2026: "ele seleciona o tempo, depois de selecionar o tempo, libera a caixa de escrever o motivo")
   const [tempo, setTempo] = useState<(typeof vm.minutos)[number] | null>(null);
   const c = vm.cobranca;
@@ -27,6 +27,7 @@ export function JanelaDaCobranca() {
             {c.cliente && <span className="cobranca-empresa">{c.cliente}</span>}
             <span className="hint">{c.quando}{c.outras > 0 ? ' · mais ' + c.outras + (c.outras === 1 ? ' cobrança esperando' : ' cobranças esperando') : ''}</span>
           </span>
+          {vm.fechar && <button type="button" className="icon-btn cobranca-fechar" onClick={vm.fechar} title="Fechar (Esc) · modo desenvolvedor: esta cobrança não abre mais neste navegador" aria-label="Fechar"><Icone nome="x" /></button>}
         </header>
         <div className="cobranca-corpo">
           {/* a tarefa, sem a mensagem de quem cobrou ("tira isso", 18/11/2026) */}

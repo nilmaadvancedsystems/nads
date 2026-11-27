@@ -4,7 +4,7 @@
 // passos do DP, nota do mês, responder e responder e concluir — e o anexo na resposta ("tem que ter a opcao de subir um
 // arquivo por aqui" / "nao tem como eu enviar um arquivo via area do cliente por aqui"): o arquivo vai pelo Drive para
 // Documentos › Do escritório e a resposta ganha a linha do arquivo. Sem chat: o cliente conversa pelo WhatsApp.
-import { areaCliente as ac } from '@nads/core';
+import { areaCliente as ac, sci } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -20,7 +20,7 @@ import { useEmpresasDaPessoa } from '../base/useEmpresasDaPessoa';
 
 export function useSolicitacoes() {
   const repo = useAreaCliente();
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   // (26/11/2026: "eu tenho que ter como aprovar pelo nads") a admissão no RH NET: a situação e o Liberar para a folha
   const rh = useRhNet();
   const [liberando, setLiberando] = useState('');
@@ -134,13 +134,23 @@ export function useSolicitacoes() {
       const r = c.rhnet;
       if (!r || !r.situacao) return null;
       const pedido = r.id ? rh.pedidos().lista.find(p => p.acao === 'liberarAdmissao' && (p.status === 'pendente' || p.status === 'processando') && p.codigo === c.codigos[0]) : undefined;
-      const texto = r.situacao === 'liberado' ? 'Liberada: foi para a folha.'
-        : r.situacao === 'cadastrado' || r.situacao === 'nao_liberado' ? 'Cadastrada como pré-admissão, ainda não liberada. Confira os dados e libere para ir à folha.'
-          : r.situacao === 'enviando' ? 'O robô está cadastrando…'
-            : r.situacao === 'nao-enviado' ? 'Não foi cadastrada: ' + (r.erro || 'faltou algum dado') + '. Cadastre direto no RH NET.'
-              : 'Não deu para cadastrar: ' + (r.erro || 'erro no RH NET') + '.';
-      return { texto, tom: r.situacao === 'liberado' ? 'ok' : r.situacao === 'cadastrado' || r.situacao === 'nao_liberado' ? 'warn' : r.situacao === 'enviando' ? 'neutral' : 'bad',
-        podeLiberar: !!r.id && (r.situacao === 'cadastrado' || r.situacao === 'nao_liberado'), liberando: liberando === c.id || !!pedido };
+      // as mesmas etapas do RH NET (26/11/2026: "pesquisa como faz no rh net e faz baseado nisso")
+      const s = sci.integracao.situacaoDaAdmissaoNaEquipe(r.situacao);
+      const texto = r.situacao === 'nao-enviado' || r.situacao === 'erro' ? 'Não foi para o RH NET: ' + (r.erro || 'faltou algum dado') + '. Cadastre direto lá.' : s.texto;
+      const apagando = r.id ? rh.pedidos().lista.some(p => p.acao === 'excluirAdmissao' && (p.status === 'pendente' || p.status === 'processando') && p.codigo === c.codigos[0]) : false;
+      return { rotulo: s.rotulo, texto, tom: s.tom, podeLiberar: !!r.id && s.podeLiberar, liberando: liberando === c.id || !!pedido,
+        podeApagar: !!r.id && sci.integracao.podeApagarNoRhNet(r.situacao), apagando,
+        // o RH NET só libera com o cadastro completo: o que faltou na última tentativa
+        pendencias: s.podeLiberar && r.erroLiberacao ? r.erroLiberacao.replace(/^o RH NET não liberou: /, '') : '' };
+    },
+    /** (27/11/2026: "Pode pôr") apaga a admissão no RH NET, depois de confirmar */
+    async apagarNoRhNet(c: ChamadoNaEquipe) {
+      if (!c.rhnet?.id || !c.codigos[0]) return;
+      const sim = await modal<boolean>({ titulo: 'Apagar a admissão no RH NET?', corpo: 'A admissão sai do RH NET de vez (não dá para desfazer). A solicitação continua aqui no nads.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar no RH NET', valor: true, variante: 'btn-danger' }] });
+      if (!sim) return;
+      try { await rh.pedirExclusao(c.codigos[0], c.rhnet.id, c.id); toast('Pedido para apagar na fila do robô.'); }
+      catch (e) { toast('Não deu para apagar: ' + mensagemDoErro(e)); }
     },
     async liberarNaFolha(c: ChamadoNaEquipe) {
       if (!c.rhnet?.id || !c.codigos[0]) return;

@@ -95,7 +95,8 @@ describe('extrato → SCI', () => {
     const wb = XLSX.read(planilhaDoSci(lancamentos), { type: 'array' });
     expect(wb.SheetNames).toEqual(['Importar']);
     const aoa = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets.Importar, { header: 1, raw: true });
-    expect(aoa[0]).toEqual([...COLUNAS_DO_SCI]);
+    // a coluna I sem título (27/11/2026)
+    expect(aoa[0]).toEqual(COLUNAS_DO_SCI.map(c => c || undefined));
     expect(aoa.slice(1, 4).map(r => r.slice(1, 5))).toEqual([[652, 614, 4500, 2000], [565, 652, 45.9, 1000], [397, 652, 100, 1000]]);
     expect(aoa).toHaveLength(4);
     expect(aoa.slice(1).map(r => r[7] ?? '')).toEqual(['', '', '']);

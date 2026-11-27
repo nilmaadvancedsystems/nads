@@ -18,7 +18,7 @@ import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { ACEITA_FOTO, fotoQuadrada, urlDaFoto } from '../partes/foto';
 import { Vazio } from '../partes/Vazio';
 import { AVISOS_DA_DEMISSAO, MOTIVOS_DA_DEMISSAO, avisosDoMotivo, contaDaAdmissao, contaDasFerias, marcarNoCalendario, mesDasFerias, primeiraDataDasFerias, type PedidoDeAdmissao, type PedidoDeDemissao, type PedidoDeFerias } from '../dados/regras';
-import { formatos } from '@nads/core';
+import { formatos, sci } from '@nads/core';
 import { Colunas } from './Administrativo';
 import { useDp, type DadosDoPedido, type Pedido } from './useDp';
 import type { DaCasca } from './useAreaCliente';
@@ -134,13 +134,34 @@ function CalendarioDasFerias({ pedido, hoje, aoMarcar }: { pedido: PedidoDeFeria
  *  (13/11/2026: "melhore visualmente esses dois, principalmente a parte de programar férias"): as férias escolhem a pessoa
  *  por cartões (com o selo das férias de cada um), os dias em botões e mostram a conta (o pagamento, de quando a quando e a
  *  volta); a admissão tem a foto no alto, os campos em dois blocos e o prazo do eSocial pela data. */
-/** a opção do Cargo para escrever um que não está no sistema de folha */
-const OUTRO_CARGO = 'Outro cargo (escrever)';
+/** (27/11/2026: "faz puxar o recibo de pró-labore pelo sci report") os recibos da pessoa (pró-labore, salário, férias, 13º) */
+function RecibosDaPessoa({ recibos, abrindo, onAbrir }: { recibos: { id: string; nome: string; quando: string }[]; abrindo: string; onAbrir: (id: string) => void }) {
+  if (!recibos.length) return null;
+  return (
+    <div className="cli-ficha-docs">
+      <p className="cli-ficha-sub">Recibos · {recibos.length}</p>
+      <ul className="cli-reg-docs">
+        {recibos.slice(0, 12).map(r => (
+          <li key={r.id} className="cli-recibo">
+            <span className="cli-recibo-nome"><b>{r.nome}</b><span className="hint">{r.quando}</span></span>
+            <button type="button" className="btn btn-outline btn-sm" disabled={abrindo === r.id} onClick={() => onAbrir(r.id)}>
+              <Icone nome="olho" width={15} height={15} />{abrindo === r.id ? 'Abrindo…' : 'Ver'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** as opções do cadastro completo (26/11/2026), as mesmas que o robô lê para o RH NET */
+const OPC = sci.integracao.OPCOES_DA_ADMISSAO;
+const rotulos = (l: readonly (readonly [string, number])[]) => l.map(([r]) => r);
+const UFS = [...sci.integracao.UFS];
+
 
 export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMudar, cargos = [] }: { pedido: Pedido; inicial: DadosDoPedido; erro: string; nomes: string[]; equipe: PessoaDasFerias[]; hoje: Date; aoMudar: (d: DadosDoPedido) => void; cargos?: string[] }) {
   const [d, setD] = useState(inicial);
-  // o Cargo escrito à mão (sem a lista do sistema de folha, ou escolhido "Outro cargo")
-  const [cargoLivre, setCargoLivre] = useState(() => !!(inicial as PedidoDeAdmissao).cargo && !cargos.includes((inicial as PedidoDeAdmissao).cargo));
   // pelo valor de antes (duas mudanças seguidas não se atropelam)
   const mudar = (m: Partial<PedidoDeAdmissao & PedidoDeFerias & PedidoDeDemissao>) => setD(antes => { const novo = { ...antes, ...m } as DadosDoPedido; aoMudar(novo); return novo; });
   const a = d as PedidoDeAdmissao, f = d as PedidoDeFerias, x = d as PedidoDeDemissao;
@@ -160,20 +181,43 @@ export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMud
         <>
           <TopoDaAdmissao nome={a.nome} foto={a.foto} aoMudar={foto => mudar({ foto })} />
           <p className="cli-pf-rotulo cli-largo">A pessoa</p>
-          <div className="field"><label htmlFor="cli-nome">Nome completo</label><input id="cli-nome" type="text" value={a.nome} onChange={e => mudar({ nome: e.target.value })} placeholder="Como está no documento" /></div>
+          <div className="field cli-pa-dois"><label htmlFor="cli-nome">Nome completo</label><input id="cli-nome" type="text" value={a.nome} onChange={e => mudar({ nome: e.target.value })} placeholder="Como está no documento" /></div>
           <div className="field"><label htmlFor="cli-cpf">CPF</label><input id="cli-cpf" type="text" inputMode="numeric" value={a.cpf} onChange={e => mudar({ cpf: e.target.value })} placeholder="000.000.000-00" /></div>
           {/* (26/11/2026: "aqui os campos necessarios para a pre admissao") o que a pré-admissão do SCI pede a mais */}
           <div className="field"><label htmlFor="cli-nasc">Data de nascimento</label><CampoData id="cli-nasc" rotulo="Data de nascimento" valor={a.nascimento ?? ''} onMudar={v => mudar({ nascimento: v })} /></div>
+          {/* (26/11/2026: "quero verificacao na tela de registro, que nao deixa nem passar") o cadastro completo que o RH NET
+              exige para liberar; o Enviar só passa com tudo preenchido */}
+          <div className="field"><label>Sexo</label><CampoEscolha rotulo="Sexo" valor={a.sexo ?? ''} opcoes={rotulos(OPC.sexo)} onMudar={v => mudar({ sexo: v })} /></div>
+          <div className="field"><label>Estado civil</label><CampoEscolha rotulo="Estado civil" valor={a.estadoCivil ?? ''} opcoes={rotulos(OPC.estadoCivil)} onMudar={v => mudar({ estadoCivil: v })} /></div>
+          <div className="field"><label>Raça/cor</label><CampoEscolha rotulo="Raça/cor" valor={a.racaCor ?? ''} opcoes={rotulos(OPC.racaCor)} onMudar={v => mudar({ racaCor: v })} /></div>
+          <div className="field"><label>Escolaridade</label><CampoEscolha rotulo="Escolaridade" valor={a.escolaridade ?? ''} opcoes={rotulos(OPC.escolaridade)} onMudar={v => mudar({ escolaridade: v })} /></div>
+          <div className="field"><label htmlFor="cli-nasc-cid">Cidade de nascimento</label><input id="cli-nasc-cid" type="text" value={a.nascCidade ?? ''} onChange={e => mudar({ nascCidade: e.target.value })} placeholder="Ex.: Montes Claros" /></div>
+          <div className="field cli-pa-dois"><label htmlFor="cli-mae">Nome da mãe</label><input id="cli-mae" type="text" value={a.maeNome ?? ''} onChange={e => mudar({ maeNome: e.target.value })} placeholder="Como está no documento" /></div>
+          <div className="field"><label>UF de nascimento</label><CampoEscolha rotulo="UF de nascimento" valor={a.nascUf ?? ''} opcoes={UFS} onMudar={v => mudar({ nascUf: v })} /></div>
+          <p className="cli-pf-rotulo cli-largo">O documento</p>
+          <div className="field"><label htmlFor="cli-rg">RG</label><input id="cli-rg" type="text" value={a.rg ?? ''} onChange={e => mudar({ rg: e.target.value })} placeholder="Número do RG" /></div>
+          <div className="field"><label htmlFor="cli-rg-emi">Emissão do RG</label><CampoData id="cli-rg-emi" rotulo="Emissão do RG" valor={a.rgEmissao ?? ''} onMudar={v => mudar({ rgEmissao: v })} /></div>
+          <div className="field"><label htmlFor="cli-rg-org">Órgão emissor</label><input id="cli-rg-org" type="text" value={a.rgOrgao ?? ''} onChange={e => mudar({ rgOrgao: e.target.value.toUpperCase() })} placeholder="Ex.: SSP" /></div>
+          <div className="field"><label>UF do RG</label><CampoEscolha rotulo="UF do RG" valor={a.rgUf ?? ''} opcoes={UFS} onMudar={v => mudar({ rgUf: v })} /></div>
           <div className="field"><label htmlFor="cli-pis">PIS <span className="cli-pf-opc">opcional</span></label><input id="cli-pis" type="text" inputMode="numeric" value={a.pis ?? ''} onChange={e => mudar({ pis: e.target.value })} placeholder="000.00000.00-0" /></div>
+          <p className="cli-pf-rotulo cli-largo">Contato e endereço</p>
+          <div className="field"><label htmlFor="cli-cel">Celular</label><input id="cli-cel" type="tel" inputMode="tel" value={a.celular ?? ''} onChange={e => mudar({ celular: e.target.value })} placeholder="(38) 99999-9999" /></div>
+          <div className="field"><label htmlFor="cli-cep">CEP</label><input id="cli-cep" type="text" inputMode="numeric" value={a.cep ?? ''} onChange={e => mudar({ cep: e.target.value })} placeholder="00000-000" /></div>
+          <div className="field"><label>Tipo</label><CampoEscolha rotulo="Tipo de logradouro" valor={a.logradouroTipo ?? 'Rua'} opcoes={rotulos(OPC.logradouro)} onMudar={v => mudar({ logradouroTipo: v })} /></div>
+          <div className="field cli-pa-dois"><label htmlFor="cli-log">Rua</label><input id="cli-log" type="text" value={a.logradouro ?? ''} onChange={e => mudar({ logradouro: e.target.value })} placeholder="Ex.: Doutor Santos" /></div>
+          <div className="field"><label htmlFor="cli-num">Número</label><input id="cli-num" type="text" value={a.numero ?? ''} onChange={e => mudar({ numero: e.target.value })} placeholder="Ex.: 100 ou S/N" /></div>
+          <div className="field"><label htmlFor="cli-comp">Complemento <span className="cli-pf-opc">opcional</span></label><input id="cli-comp" type="text" value={a.complemento ?? ''} onChange={e => mudar({ complemento: e.target.value })} placeholder="Apto, casa, fundos…" /></div>
+          <div className="field"><label htmlFor="cli-bairro">Bairro</label><input id="cli-bairro" type="text" value={a.bairro ?? ''} onChange={e => mudar({ bairro: e.target.value })} /></div>
+          <div className="field"><label htmlFor="cli-cid">Cidade</label><input id="cli-cid" type="text" value={a.cidade ?? ''} onChange={e => mudar({ cidade: e.target.value })} placeholder="Ex.: Montes Claros" /></div>
+          <div className="field"><label>UF</label><CampoEscolha rotulo="UF do endereço" valor={a.uf ?? ''} opcoes={UFS} onMudar={v => mudar({ uf: v })} /></div>
           <p className="cli-pf-rotulo cli-largo">O trabalho</p>
           {/* (26/11/2026: "funcao selecionavel puxando do rh net pois os cargos sao variaveis e criados por empresa") com os
-              cargos da empresa no sistema de folha, escolhe da lista; "Outro cargo" abre o campo para escrever */}
+              cargos da empresa no sistema de folha, escolhe da lista (só os do SCI) */}
           {cargos.length > 0 ? (
             <div className="field">
               <label>Cargo</label>
-              <CampoEscolha rotulo="Cargo" valor={cargoLivre ? OUTRO_CARGO : a.cargo} opcoes={[...cargos, OUTRO_CARGO]}
-                onMudar={v => { if (v === OUTRO_CARGO) { setCargoLivre(true); mudar({ cargo: '' }); } else { setCargoLivre(false); mudar({ cargo: v }); } }} />
-              {cargoLivre && <input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} placeholder="Escreva o cargo" aria-label="Outro cargo" />}
+              {/* (26/11/2026: "tira a parte de escrever", "e apenas para puxar o que ja foi cadastrado no sci") só os cargos do SCI */}
+              <CampoEscolha rotulo="Cargo" valor={cargos.includes(a.cargo) ? a.cargo : ''} opcoes={cargos} onMudar={v => mudar({ cargo: v })} />
             </div>
           ) : (
             <div className="field"><label htmlFor="cli-cargo">Cargo</label><input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} placeholder="Ex.: Auxiliar administrativo" /></div>
@@ -188,6 +232,8 @@ export function FormDoPedido({ pedido, inicial, erro, nomes, equipe, hoje, aoMud
             <label>Contrato</label>
             <CampoEscolha rotulo="Contrato" valor={a.contrato} opcoes={CONTRATOS} onMudar={v => mudar({ contrato: v })} />
           </div>
+          <div className="field"><label htmlFor="cli-horas">Horas por semana</label><input id="cli-horas" type="text" inputMode="numeric" value={a.horasSemana ?? '44'} onChange={e => mudar({ horasSemana: e.target.value.replace(/[^\d,]/g, '') })} placeholder="44" /></div>
+          <div className="field"><label>Trabalha à noite (22h às 5h)?</label><CampoEscolha rotulo="Trabalha à noite" valor={a.noturno ?? 'Não'} opcoes={['Não', 'Sim']} onMudar={v => mudar({ noturno: v })} /></div>
           {contaA ? (
             <ul className="cli-pf-resumo cli-largo">
               <PassoDoResumo icone="clock" rotulo="Registro no eSocial até" valor={contaA.registrarAte} detalhe="um dia antes do primeiro dia" />
@@ -395,6 +441,7 @@ export function DepartamentoPessoal(props: DaCasca) {
             <div><dt>{f.admissao ? 'Admissão' : 'No registro desde'}</dt><dd>{f.admissao || f.desde || '—'}</dd></div>
             <div><dt>CPF</dt><dd>{f.cpf || '—'}</dd></div>
           </dl>
+          <RecibosDaPessoa recibos={f.recibos} abrindo={vm.abrindoRecibo} onAbrir={vm.abrirRecibo} />
           <div className="cli-ficha-docs">
             <p className="cli-ficha-sub">Documentos{f.docs.length ? ' · ' + f.docs.length : ''}</p>
             {f.docs.length
@@ -415,7 +462,7 @@ export function DepartamentoPessoal(props: DaCasca) {
   /** (26/11/2026: "nao tem como abrir o funcionario com click") a ficha de quem veio do sistema de folha (RH NET): só o
    *  que o escritório mostra, sem salário */
   const fichaDoRh = async (c: VM['rhnet'][number]) => {
-    await modal<null>({
+    const escolha = await modal<'completar' | null>({
       titulo: c.nome,
       corpo: (
         <div className="cli-app cli-janela cli-ficha">
@@ -435,19 +482,26 @@ export function DepartamentoPessoal(props: DaCasca) {
             <div><dt>CPF</dt><dd>{c.cpf}</dd></div>
           </dl>
           <p className="hint cli-ficha-sem">{c.explica}</p>
-          <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Para mudar um dado ou mandar um documento, abra uma solicitação.</p>
+          <RecibosDaPessoa recibos={c.recibos} abrindo={vm.abrindoRecibo} onAbrir={vm.abrirRecibo} />
+          {c.podeCompletar
+            ? <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Falta completar o cadastro. Preencha tudo e libere: o departamento pessoal só importa para a folha.</p>
+            : <p className="hint cli-ficha-dica"><Icone nome="ajuda" width={14} height={14} />Para mudar um dado ou mandar um documento, abra uma solicitação.</p>}
         </div>
       ),
-      botoes: [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
+      // (26/11/2026: "coloca aqui para a pessoa mesmo liberar") a admissão não liberada: a própria empresa completa e libera
+      botoes: c.podeCompletar
+        ? [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }, { rotulo: 'Completar e liberar', valor: 'completar', variante: 'btn-primary' }]
+        : [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
     });
+    if (escolha === 'completar') await abrirPedido('admissao', vm.completarAdmissao({ id: c.id, nome: c.nome, entrada: c.pe.entrada }));
   };
 
   const abrirPedido = async (pedido: Pedido, dados: DadosDoPedido, erro = ''): Promise<void> => {
     let atual = dados;
     const enviar = await modal<boolean>({
-      titulo: TITULO[pedido],
+      titulo: pedido === 'admissao' && (dados as PedidoDeAdmissao).idNoRhNet ? 'Completar o cadastro e liberar' : TITULO[pedido],
       corpo: <FormDoPedido pedido={pedido} inicial={dados} erro={erro} nomes={vm.nomes} equipe={vm.equipeDasFerias} hoje={vm.hoje} cargos={vm.cargos} aoMudar={d => { atual = d; }} />,
-      botoes: [{ rotulo: pedido === 'admissao' ? 'Enviar ao departamento pessoal' : 'Enviar ao escritório', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+      botoes: [{ rotulo: pedido === 'admissao' ? ((dados as PedidoDeAdmissao).idNoRhNet ? 'Liberar admissão completa' : 'Liberar admissão preliminar') : 'Enviar ao escritório', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!enviar) return;
     const problema = await vm.pedir(pedido, atual);

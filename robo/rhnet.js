@@ -105,13 +105,31 @@ async function atenderPedido(db, p) {
     } else if (p.acao === 'liberarAdmissao') {
       const ids = (Array.isArray(d.ids) ? d.ids : [d.id]).map(Number).filter(n => n > 0);
       if (!ids.length) throw new Error('falta o funcionário a liberar');
-      await rh.liberarAdmissoes(ids, d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', String(d.observacao || ''));
+      const chamadoRef = d.chamadoId && typeof d.chamadoId === 'string' ? db.collection('chamados').doc(d.chamadoId) : null;
+      try {
+        await rh.liberarAdmissoes(ids, d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', String(d.observacao || ('Liberado pelo nads (' + String(p.criadoPor || 'escritório') + ')')).slice(0, 250));
+      } catch (err) {
+        // (26/11/2026) o RH NET só libera com o cadastro completo: as pendências aparecem na solicitação
+        if (chamadoRef) await chamadoRef.update({ 'rhnet.erroLiberacao': motivo(err), 'rhnet.tentouEm': agora() }).catch(() => {});
+        throw err;
+      }
       rhnet = { liberadas: ids.length };
       // (26/11/2026: "eu tenho que ter como aprovar pelo nads") a solicitação da Área que pediu a admissão mostra a liberação
       if (d.chamadoId && typeof d.chamadoId === 'string') {
-        await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', 'rhnet.liberadoEm': agora(), 'rhnet.liberadoPor': String(p.criadoPor || '') }).catch(() => {});
+        await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': d.situacao === 'nao_liberado' ? 'nao_liberado' : 'liberado', 'rhnet.liberadoEm': agora(), 'rhnet.liberadoPor': String(p.criadoPor || ''), 'rhnet.erroLiberacao': '' }).catch(() => {});
       }
       resumo = (d.situacao === 'nao_liberado' ? 'Voltou para não liberado: ' : 'Liberou para a folha: ') + ids.length + ' admissão(ões)';
+    } else if (p.acao === 'excluirAdmissao') {
+      // (27/11/2026: "Pode pôr") apaga a admissão no RH NET; só a desta empresa e antes de ir para a folha
+      const id = Number(d.id) || 0;
+      const da = (await rh.admissoes()).find(x => x.id === id);
+      if (!da) throw new Error('a admissão não está no RH NET desta empresa');
+      if (!S.podeApagarNoRhNet(da.situacao || 'nao_liberado')) throw new Error('a admissão já foi para a folha: apague pelo SCI do escritório');
+      await rh.excluirAdmissao(id);
+      if (d.chamadoId && typeof d.chamadoId === 'string') await db.collection('chamados').doc(d.chamadoId).update({ 'rhnet.situacao': 'excluido', 'rhnet.excluidoEm': agora(), 'rhnet.excluidoPor': String(p.criadoPor || '') }).catch(() => {});
+      gravadoNaNuvem.delete(Number(p.codigo));
+      rhnet = { excluida: id };
+      resumo = 'Apagou a admissão ' + id + ' do RH NET';
     } else if (p.acao === 'lancamentos') {
       const n = await rh.criarLancamentos(Array.isArray(d.lancamentos) ? d.lancamentos : [], d.tipo || 'normais');
       rhnet = { lancamentos: n };
@@ -150,6 +168,7 @@ async function atualizarListasDaArea(db, log = () => {}) {
       const marca = JSON.stringify([lista, cargos]);
       if (gravadoNaNuvem.get(codigo) === marca) continue;
       await db.collection(COLECAO_DA_AREA).doc(String(codigo)).set({ codigo, lista, cargos, em: new Date().toISOString() });
+      await acompanharAdmissoes(db, codigo, log);
       gravadoNaNuvem.set(codigo, marca);
       gravadas++;
     } catch (err) { log('RH NET: não consegui ler as pessoas da empresa', codigo, 'para a Área do Cliente -', motivo(err)); }
@@ -200,6 +219,60 @@ async function cadastrosParaArea(db, codigos, log = () => {}) {
   return algum ? todos : null;
 }
 
+// ---------- o cadastro completo (26/11/2026: "quero verificacao na tela de registro, que nao deixa nem passar") ----------
+// O RH NET só libera com o cadastro completo. O que a tela da Área não sabe em código, o robô completa: o código IBGE da
+// cidade do endereço (pelo CEP, no ViaCEP) e o da cidade de nascimento (pela lista de municípios da UF, no IBGE); e, quando
+// a empresa tem um só sindicato e um só quadro de horário no RH NET, esses dois. O resto o escritório completa no RH NET.
+const IBGE = 'https://servicodados.ibge.gov.br/api/v1/localidades/estados/';
+const municipios = new Map();
+async function buscarJson(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function completarAdmissao(r, cadastros, log = () => {}) {
+  const a = r.admissao;
+  const c = r.cidades || {};
+  try {
+    if (c.endereco && a.endereco) {
+      const v = await buscarJson('https://viacep.com.br/ws/' + String(c.endereco.cep).replace(/\D/g, '') + '/json/');
+      if (v && /^\d{7}$/.test(String(v.ibge || ''))) a.endereco.cidadeIbge = Number(v.ibge);
+    }
+  } catch (err) { log('RH NET: não achei a cidade do CEP da admissão -', motivo(err)); }
+  const pelaLista = async (cidade) => {
+    if (!cidade || !/^[A-Z]{2}$/.test(cidade.uf)) return 0;
+    if (!municipios.has(cidade.uf)) municipios.set(cidade.uf, (await buscarJson(IBGE + cidade.uf + '/municipios')).map(m => ({ id: Number(m.id), nome: String(m.nome) })));
+    return S.codigoIbgeDaCidade(municipios.get(cidade.uf), cidade.nome);
+  };
+  try {
+    // o CEP geral da cidade (39400-000) o ViaCEP não acha: vai pelo nome e a UF
+    if (c.endereco && a.endereco && !a.endereco.cidadeIbge) { const id = await pelaLista(c.endereco); if (id) a.endereco.cidadeIbge = id; }
+    const id = await pelaLista(c.nascimento);
+    if (id) a.nascimentoCidadeIbge = id;
+  } catch (err) { log('RH NET: não achei uma cidade da admissão no IBGE -', motivo(err)); }
+  if (!a.sindicatoId && cadastros.sindicatos.length === 1) a.sindicatoId = cadastros.sindicatos[0].id;
+  if (!a.quadroHorarioId && cadastros.quadrosHorario.length === 1) a.quadroHorarioId = cadastros.quadrosHorario[0].id;
+}
+
+/**
+ * A situação de cada admissão pedida pela Área acompanha o RH NET (26/11/2026: "pesquisa como faz no rh net e faz baseado
+ * nisso"): liberado → aguardando integração → integrado, ou recusado (só o SCI do escritório marca). Uma leitura das
+ * admissões da empresa e das solicitações de admissão dela; grava só o que mudou.
+ */
+async function acompanharAdmissoes(db, codigo, log = () => {}) {
+  try {
+    const chamados = await db.collection('chamados').where('tipo', '==', 'admissao').where('codigos', 'array-contains', String(codigo)).get();
+    const comId = chamados.docs.filter(c => Number((c.get('rhnet') || {}).id) > 0);
+    if (!comId.length) return;
+    const situacoes = new Map((await clienteDa(codigo).admissoes()).map(a => [a.id, a.situacao]));
+    for (const c of comId) {
+      const r = c.get('rhnet') || {};
+      const nova = situacoes.get(Number(r.id));
+      if (nova && nova !== r.situacao && !(r.situacao === 'cadastrado' && nova === 'nao_liberado')) await c.ref.update({ 'rhnet.situacao': nova, 'rhnet.vistoEm': agora() });
+    }
+  } catch (err) { log('RH NET: não consegui acompanhar as admissões da empresa', codigo, '-', motivo(err)); }
+}
+
 /** Os cargos (as funções do RH NET) das empresas do link, do que o cadastrosParaArea acabou de ler (sem ler de novo). */
 function cargosParaArea(codigos) {
   const todos = new Set();
@@ -235,11 +308,36 @@ async function atenderAdmissaoDaArea(db, ref, log = () => {}) {
   const texto = String(((Array.isArray(c.mensagens) ? c.mensagens : [])[0] || {}).texto || '');
   const rh = clienteDa(codigo);
   try {
-    const r = S.admissaoDoPedidoDaArea(texto, (await rh.cadastros()).funcoes);
+    const cadastros = await rh.cadastros();
+    const r = S.admissaoDoPedidoDaArea(texto, cadastros.funcoes);
+    if (!r.erro) await completarAdmissao(r, cadastros, log);
     if (r.erro) {
       await ref.update({ rhnet: { situacao: 'nao-enviado', erro: r.erro, em: agora() } });
       log('RH NET: o pedido de admissão', ref.id, 'da empresa', codigo, 'não foi ao RH NET -', r.erro);
       return 'nao-enviado';
+    }
+    // (26/11/2026: "coloca aqui para a pessoa mesmo liberar, ela vai terminar de preencher os 36 campos e ela libera para o
+    // cara do dp importar") o pedido que completa uma admissão já no RH NET: só se ela é desta empresa e ainda não foi
+    // liberada; troca o cadastro inteiro (PUT) e libera para o DP importar
+    if (r.idNoRhNet) {
+      const da = (await rh.admissoes()).find(x => x.id === r.idNoRhNet);
+      if (!da || (da.situacao !== 'nao_liberado' && da.situacao !== '')) {
+        const erro = !da ? 'a admissão não é desta empresa no RH NET' : 'a admissão já foi liberada';
+        await ref.update({ rhnet: { situacao: 'nao-enviado', erro, em: agora() } });
+        return 'nao-enviado';
+      }
+      await rh.atualizarAdmissao(r.idNoRhNet, r.admissao);
+      try {
+        await rh.liberarAdmissoes([r.idNoRhNet], 'liberado', 'Completado e liberado pelo cliente na Área do Cliente');
+        await ref.update({ rhnet: { situacao: 'liberado', id: r.idNoRhNet, liberadoPor: 'o cliente', liberadoEm: agora(), em: agora() } });
+        log('RH NET: a admissão', r.idNoRhNet, 'da empresa', codigo, 'foi completada e liberada pelo cliente');
+      } catch (err) {
+        await ref.update({ rhnet: { situacao: 'nao_liberado', id: r.idNoRhNet, erroLiberacao: motivo(err), em: agora() } });
+        log('RH NET: a admissão', r.idNoRhNet, 'da empresa', codigo, 'foi completada, mas não liberou -', motivo(err));
+      }
+      gravadoNaNuvem.delete(codigo);
+      atualizarListasDaArea(db, log).catch(() => {});
+      return 'cadastrado';
     }
     const criada = await rh.criarAdmissao(r.admissao);
     await ref.update({ rhnet: { situacao: 'cadastrado', id: criada.id, em: agora() } });

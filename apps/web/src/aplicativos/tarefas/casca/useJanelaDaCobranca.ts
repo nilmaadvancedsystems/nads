@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useTarefasDelegadas } from '../dados/repo';
 import { useNovidade } from '../../../comum/novidades';
+import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 const d = tarefas.delegadas;
 type TarefaDelegada = tarefas.delegadas.TarefaDelegada;
@@ -18,8 +19,26 @@ const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != nu
 /** a cobrança aberta da tarefa: a tarefa e a hora da cobrança (outra cobrança na mesma tarefa é outra janela) */
 const chaveDa = (t: TarefaDelegada) => t.id + '|' + (d.cobrancaAberta(t)?.em || '');
 
+// no modo desenvolvedor a gravação finge que gravou: a cobrança continua aberta no banco e a janela voltava a cada tela
+// (Vitor, 27/11/2026: "Ta bugando no meu modo dev vitor, toda hora aparecendo, corrige"; "Se fechar voce nao bipa mais").
+// Então o que foi fechado, respondido ou adiado no dev fica guardado neste navegador (a cobrança e até quando); uma
+// cobrança nova na mesma tarefa é outra chave e abre de novo
+const CHAVE_DO_DEV = 'nads-dev-cobrancas-dispensadas';
+function lerDoDev(): Record<string, number> {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE_DO_DEV) || '{}') as Record<string, number | null>;
+    // o "para sempre" vai como null no JSON (Infinity não cabe)
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x == null ? Infinity : x]));
+  } catch { return {}; }
+}
+function guardarNoDev(chave: string, ate: number) {
+  const tudo = { ...lerDoDev(), [chave]: ate };
+  try { localStorage.setItem(CHAVE_DO_DEV, JSON.stringify(Object.fromEntries(Object.entries(tudo).map(([k, x]) => [k, Number.isFinite(x) ? x : null])))); } catch { /* sem armazenamento */ }
+}
+
 export function useJanelaDaCobranca() {
   const ligada = useNovidade('cobranca-notificada');
+  const [dev] = useModoDesenvolvedor();
   const repo = useTarefasDelegadas();
   const { toast } = useRetorno();
   const uid = repo.eu()?.uid || '';
@@ -28,7 +47,7 @@ export function useJanelaDaCobranca() {
   const [agora, setAgora] = useState(() => Date.now());
   // o que a pessoa já respondeu (para sempre) ou adiou (até quando) nesta tela: no modo desenvolvedor a gravação é de
   // mentira e a cobrança continua aberta na lista; sem isto, a janela não sairia mais
-  const [dispensadas, setDispensadas] = useState<Record<string, number>>({});
+  const [dispensadas, setDispensadas] = useState<Record<string, number>>(() => (dev ? lerDoDev() : {}));
   const [form, setForm] = useState({ chave: '', resposta: '', justificativa: '', erro: '' });
   const [ocupado, setOcupado] = useState<'' | 'responder' | 5 | 10>('');
 
@@ -49,7 +68,11 @@ export function useJanelaDaCobranca() {
   // o formulário é o desta cobrança (outra cobrança começa vazia)
   const f = form.chave === chave ? form : { chave, resposta: '', justificativa: '', erro: '' };
   const mudar = (x: Partial<typeof form>) => setForm({ ...f, ...x });
-  const dispensar = (ate: number) => { setDispensadas(x => ({ ...x, [chave]: ate })); setAgora(Date.now()); };
+  const dispensar = (ate: number) => {
+    if (dev) guardarNoDev(chave, ate);
+    setDispensadas(x => ({ ...x, [chave]: ate }));
+    setAgora(Date.now());
+  };
 
   async function responder() {
     if (!t) return;
@@ -93,5 +116,7 @@ export function useJanelaDaCobranca() {
     minutos: d.MINUTOS_DE_ADIAMENTO,
     maiorTexto: d.MAIOR_PARECER,
     responder, adiar,
+    /** só no modo desenvolvedor: fechar sem responder (a cobrança não abre mais neste navegador) */
+    fechar: dev ? () => dispensar(Infinity) : null,
   };
 }

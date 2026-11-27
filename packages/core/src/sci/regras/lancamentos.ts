@@ -3,7 +3,6 @@
 // número (o histórico padrão do SCI), o complemento (o texto do histórico), o documento e o participante a débito
 // (o fornecedor) e a crédito (o cliente), pelo código dele no SCI. Sem lote ("lote nao tem, pode deixar vazio"). Sai na
 // planilha do gerador do SCI (planilhaDoSci). O copiar e colar é em texto com tabulação, o mesmo do Excel.
-import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci } from '../tipos';
 import { documentoComMascara, limparComplemento } from './planilha';
 import { diaSemLancamento } from './dias';
@@ -281,12 +280,11 @@ export function resumoDosLancamentos(ls: readonly CamposDoLancamento[], plano: P
 
 /** Os lançamentos na planilha do gerador do SCI (planilhaDoSci): os prontos vão para Importar, os outros para Conferir. */
 export function lancamentosDoShaderParaOSci(ls: readonly CamposDoLancamento[], plano: PlanoSci, cnpjEmpresa: string): LancamentoSci[] {
-  const cnpjOk = cnpjValido(cnpjEmpresa) || cpfValido(cnpjEmpresa);
   const todos = problemasDosLancamentos(ls, plano);
   // a partida do múltiplo vai com um lado só (como a exportação do SCI): as partidas seguidas, na mesma data
   return ls.map((l, i) => {
     const problemas = todos[i];
-    if (!cnpjOk) problemas.push('CNPJ da empresa inválido');
+    // o CNPJ não vai mais na planilha (a coluna I vazia) e não impede mais (27/11/2026: "Sim, tira")
     return {
       data: l.data, debito: l.debito, credito: l.credito, valor: l.valor, historico: l.historico, complemento: limparComplemento(l.complemento),
       documento: l.documento, lote: '', cnpjEmpresa: documentoComMascara(cnpjEmpresa), participanteD: l.participanteD, participanteC: l.participanteC,

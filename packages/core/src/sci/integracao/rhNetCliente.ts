@@ -6,7 +6,7 @@ import { ErroDoSci, type BuscarNoSci, type MetodoDoSci } from '../../areaCliente
 import type { CadastroNoRhNetNaArea } from '../../areaCliente/pessoal';
 import {
   admissaoDoRhNet, cadastrosParaArea, clienteIdDoJwt, corpoDaAdmissao, corpoDaLiberacao, corpoDaLiberacaoDaPlanilha, corpoDosLancamentos, empresaIdDoJwt, erroDaAdmissao,
-  erroDoLancamento, itensDoCadastro, lerPaginaDoRhNet, mensagemDoRhNet, CADASTROS_DO_RH, LIBERACAO_DA_PLANILHA, RH_NET, RH_NET_POR_PAGINA,
+  erroDoLancamento, itensDoCadastro, lerPaginaDoRhNet, mensagemDoRhNet, pendenciasDaLiberacao, CADASTROS_DO_RH, LIBERACAO_DA_PLANILHA, RH_NET, RH_NET_POR_PAGINA,
   type AdmissaoNoRhNet, type AdmissaoParaRhNet, type CadastrosDoRhNet, type LancamentoParaRhNet, type RecursoDeCadastroRh, type SituacaoNoRhNet, type TipoDePlanilhaRh,
 } from './rhNet';
 
@@ -23,6 +23,10 @@ export interface ClienteRhNet {
   admissoes(situacao?: SituacaoNoRhNet): Promise<AdmissaoNoRhNet[]>;
   /** as pessoas da empresa como a Área do Cliente mostra (o nome, o CPF mascarado, o tipo, a entrada e a situação; sem salário) */
   cadastrosParaArea(): Promise<CadastroNoRhNetNaArea[]>;
+  /** (27/11/2026: "Pode pôr") apaga a admissão no RH NET (sem registro de ponto, o RH NET remove de vez) */
+  excluirAdmissao(id: number): Promise<void>;
+  /** (26/11/2026) completa uma admissão já cadastrada (PUT: o RH NET troca o cadastro INTEIRO pelo que vai) */
+  atualizarAdmissao(id: number, a: AdmissaoParaRhNet): Promise<void>;
   /** cadastra (fica "não liberado"); devolve o id do funcionário no RH NET */
   criarAdmissao(a: AdmissaoParaRhNet): Promise<AdmissaoNoRhNet>;
   /** libera (vai para a folha do SCI) ou volta para não liberado */
@@ -105,6 +109,18 @@ export function criarClienteRhNet(deps: { buscar: BuscarNoSci; tokens: () => Tok
       const funcoes = new Map(itensDoCadastro('funcoes', await listar(CADASTROS_DO_RH.funcoes.caminho)).map(f => [f.id, f.nome] as const));
       return cadastrosParaArea(await listar('/api/v1/admissoes'), funcoes);
     },
+    async excluirAdmissao(id) {
+      if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, 'falta o número do funcionário no RH NET');
+      const { empresaId } = await identificacao();
+      await chamar('DELETE', '/api/v1/admissoes', { empresa_id: empresaId, funcionario_contribuinte_id: id });
+    },
+    async atualizarAdmissao(id, a) {
+      const erro = erroDaAdmissao(a);
+      if (erro) throw new ErroDoSci(0, erro);
+      if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, 'falta o número do funcionário no RH NET');
+      const { empresaId } = await identificacao();
+      await chamar('PUT', '/api/v1/admissoes', { ...corpoDaAdmissao(empresaId, a), funcionario_contribuinte_id: id });
+    },
     async criarAdmissao(a) {
       const erro = erroDaAdmissao(a);
       if (erro) throw new ErroDoSci(0, erro);
@@ -117,7 +133,10 @@ export function criarClienteRhNet(deps: { buscar: BuscarNoSci; tokens: () => Tok
     async liberarAdmissoes(lista, situacao, observacao) {
       const { empresaId } = await identificacao();
       if (!lista.length) return;
-      await chamar('POST', '/api/v1/liberacoes/admissoes', corpoDaLiberacao(empresaId, lista, situacao, observacao));
+      const r = await chamar('POST', '/api/v1/liberacoes/admissoes', corpoDaLiberacao(empresaId, lista, situacao, observacao));
+      // o 207 (liberação parcial) volta como sucesso: as que não liberaram vêm em retorno.erros
+      const pendencias = pendenciasDaLiberacao(r);
+      if (pendencias.length) throw new ErroDoSci(207, 'o RH NET não liberou: ' + pendencias.join(' ').slice(0, 280));
     },
     async criarLancamentos(lancamentos, tipo = 'normais') {
       const erro = lancamentos.map(l => erroDoLancamento(l, tipo)).find(Boolean);

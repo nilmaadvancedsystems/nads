@@ -102,6 +102,21 @@ export function IntegracaoSci() {
         <span className="hint">{vm.config.empresas.length ? vm.config.empresas.length + (vm.config.empresas.length === 1 ? ' empresa' : ' empresas') : 'Nenhuma empresa: nada vai ao SCI.'}</span>
       </div>
 
+      {/* (27/11/2026: "cria a lista para esconder a guia de teste da área") a API do SCI não apaga publicação */}
+      <div className="card cad-secao">
+        <div className="cad-secao-topo">
+          <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="olho" /></span>
+          <h3>Guias do SCI Report escondidas da Área
+            <Dica texto="Os números das publicações (publicadosId) que a Área do Cliente não mostra nem deixa abrir: uma guia de teste ou publicada por engano. A API da SCI não apaga publicação; para tirar do SCI Report, só pela tela do SCI." />
+          </h3>
+        </div>
+        <label className="cad-campo">
+          <span className="hint">Números das publicações</span>
+          <input className="input" type="text" inputMode="numeric" value={vm.ocultasTexto} onChange={e => vm.mudarOcultas(e.target.value)} placeholder="Ex.: 51643495" aria-label="Números das publicações escondidas da Área" />
+        </label>
+        <span className="hint">{vm.config.ocultas.length ? vm.config.ocultas.length + (vm.config.ocultas.length === 1 ? ' guia escondida' : ' guias escondidas') : 'Nenhuma guia escondida.'}</span>
+      </div>
+
       <div className="card cad-secao">
         <div className="cad-secao-topo">
           <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="recibo" /></span>

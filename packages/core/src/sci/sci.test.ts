@@ -6,7 +6,7 @@ import { planilhaDeImportacao } from '../extratudo/creditor/arquivos/gerar';
 import {
   COLUNAS_DO_SCI, centavos, dataIso, documentoComMascara, lancamentosParaOSci, lerDePara, lerPlanilhaDoNads,
   classificacaoNormal, conferirComOBalancete, deParaPeloPlano, lerBalanceteDoSci, naturezaDaConta, saldosInvertidos, valorDoBalancete, juntarDePara, mapaDoDePara, planilhaDoDePara, planoDoSci, resumoDoDePara,
-  loteDaOrigem, loteDoMes, mesPrincipal, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci,
+  chaveDoLancamento, chavesDaPlanilha, empresaDoLote, exclusaoPeloLote, lerLoteDoMinimum, anoDaPlanilha, loteDaOrigem, loteDaSequencia, loteDoMes, mesPrincipal, MAX_LOTES_POR_ANO, nomeDaPlanilhaSci, planilhaDoSci, planilhaDoSciDaTela, resumoDoSci, TAMANHO_DA_BASE_DO_LOTE, TAMANHO_DO_LOTE,
 } from './index';
 
 const CNPJ = '11222333000181';
@@ -72,9 +72,10 @@ describe('os lançamentos do SCI', () => {
     expect(s[1]).toMatchObject({ debito: '2101', historico: '116', lote: 'LANC2611' });
   });
 
-  it('recusa CNPJ inválido, mesma conta nos dois lados e linha sem valor', () => {
+  // o CNPJ inválido não impede mais (27/11/2026: ele não vai na planilha; "Sim, tira")
+  it('recusa mesma conta nos dois lados e linha sem valor; o CNPJ inválido não impede', () => {
     const s = lancamentosParaOSci([{ data: '2026-11-01', debito: '5', credito: '5', valor: 0, codHistorico: '1', complemento: '', documento: '', origem: 'x' }], { cnpjEmpresa: '11222333000100' });
-    expect(s[0].problemas).toEqual(['débito e crédito na mesma conta', 'sem valor', 'CNPJ da empresa inválido']);
+    expect(s[0].problemas).toEqual(['débito e crédito na mesma conta', 'sem valor']);
   });
 
   it('resume por origem e soma só os prontos', () => {
@@ -94,7 +95,13 @@ describe('a planilha do SCI', () => {
     expect(Object.keys(a)).toEqual(['Importar', 'Conferir']);
     expect(a.Importar[0]).toEqual([...COLUNAS_DO_SCI]);
     // só as 11 colunas do gerador (25/11/2026: "Nome da conta D? que isso nao ta no layout")
-    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', '', '11.222.333/0001-81', '', '']);
+    // a coluna I vazia, sem título e sem dado (27/11/2026: "Coluna CNPJ filial, a coluna I e vazia, nao eh pra ter nada! Nem cabecalho")
+    expect(a.Importar[1]).toEqual([46331, 2950, 1201, 1500, 116, 'PAGTO ALUGUEL NOVEMBRO', '123', '', '', '', '']);
+    const ws = XLSX.read(planilhaDoSci(s), { type: 'array' }).Sheets.Importar;
+    expect(ws.I1).toBeUndefined();
+    expect(ws.I2).toBeUndefined();
+    expect(ws.H1.v).toBe('Lote');
+    expect(ws.J1.v).toBe('Participante a débito');
     expect(a.Importar[0]).toHaveLength(11);
     expect(a.Importar[2].slice(0, 5)).toEqual([46336, 2101, 1201, 830.4, 116]);
     expect(a.Importar).toHaveLength(3);
@@ -102,6 +109,59 @@ describe('a planilha do SCI', () => {
     expect(a.Importar.slice(1).map(r => r[7])).toEqual(['', '']);
     expect(a.Conferir[0].slice(11)).toEqual(['Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo']);
     expect(a.Conferir[1][14]).toBe('teste');
+  });
+
+  // 27/11/2026: "ao exportar os arquivos, voce vai colocar na coluna lote, um codigo propio … que dentre desses numeros tenha o
+  // codigo da empresa"; "vai ser um lote por planilha"
+  // 27/11/2026: cada linha leva [lote]001, [lote]002… ("Buscar só o lote filtra todos os lançamentos do lote; o código inteiro
+  // filtra um"); "a codificacao faz como quiser, nao tem problema, vc sabendo identificar depois"
+  // a regra final (27/11/2026): "Vai ser, empresa, lote, ano os parametros"; sem o código da empresa no lote
+  it('o lote do minimum: M + o número da sequência (6) e a chave de 3 algarismos em cada lançamento', () => {
+    expect(loteDaSequencia(1)).toBe('M000001');
+    expect(loteDaSequencia(583)).toBe('M000583');
+    expect(loteDaSequencia(MAX_LOTES_POR_ANO)).toBe('M999999');
+    expect(loteDaSequencia(1)).toHaveLength(TAMANHO_DA_BASE_DO_LOTE);
+    expect(() => loteDaSequencia(0)).toThrow();
+    expect(() => loteDaSequencia(MAX_LOTES_POR_ANO + 1)).toThrow();
+    expect(chaveDoLancamento('M000001', 1)).toBe('M000001001');
+    expect(lerLoteDoMinimum('M000012007')).toEqual({ empresa: null, base: 'M000012', lancamento: 7 });
+    expect(lerLoteDoMinimum('M000012')).toEqual({ empresa: null, base: 'M000012', lancamento: null });
+    expect(lerLoteDoMinimum('M00001')).toBeNull();
+    expect(exclusaoPeloLote('M000012007', 583)).toEqual({ lote: 'M000012', chave: 'M000012007' });
+    expect(exclusaoPeloLote('M000012', 590)).toEqual({ lote: 'M000012', chave: null });
+    expect(empresaDoLote('M000012007')).toBeNull();
+    // o ano: o dos prontos; dois anos na mesma planilha aparecem em anos
+    const pronto = (data: string) => ({ data, problemas: [] as string[] });
+    expect(anoDaPlanilha([pronto('2026-11-05'), pronto('2026-01-02'), { data: '2025-12-31', problemas: ['x'] }])).toEqual({ ano: 2026, anos: [2026] });
+    expect(anoDaPlanilha([pronto('2025-12-31'), pronto('2026-01-02')]).anos).toEqual([2025, 2026]);
+    expect(anoDaPlanilha([], new Date(2027, 0, 1))).toEqual({ ano: 2027, anos: [] });
+    // o formato de antes (M + empresa + letras) continua sendo lido, para excluir o que já foi importado
+    expect(chaveDoLancamento('M583KQT', 1)).toBe('M583KQT001');
+    expect(chaveDoLancamento('M583KQT', 999)).toHaveLength(TAMANHO_DO_LOTE);
+    expect(lerLoteDoMinimum('m583kqt012')).toEqual({ empresa: 583, base: 'M583KQT', lancamento: 12 });
+    expect(lerLoteDoMinimum('M583KQT')).toEqual({ empresa: 583, base: 'M583KQT', lancamento: null });
+    expect(empresaDoLote('M7ABCDE001')).toBe(7);
+    expect(empresaDoLote('NADS2611')).toBeNull();
+    expect(empresaDoLote('M583KQ001')).toBeNull();
+    // o que dá para excluir no SCI: a chave e a base; o primeiro formato só o lote; de outra empresa ou de fora, nada
+    expect(exclusaoPeloLote('m583kqt012', 583)).toEqual({ lote: 'M583KQT', chave: 'M583KQT012' });
+    expect(exclusaoPeloLote('M583KQT', 583)).toEqual({ lote: 'M583KQT', chave: null });
+    expect(exclusaoPeloLote('M00583BR6W', 583)).toEqual({ lote: 'M00583BR6W', chave: null });
+    expect(exclusaoPeloLote('M583KQT012', 584)).toBeNull();
+    expect(exclusaoPeloLote('M00584BR6W', 583)).toBeNull();
+    expect(exclusaoPeloLote('NADS2611', 583)).toBeNull();
+    expect(exclusaoPeloLote('', 583)).toBeNull();
+    const s = lancamentosParaOSci(lerPlanilhaDoNads(doNads, 'lancatudo.xls'), { cnpjEmpresa: CNPJ, historicoPadrao: '116' });
+    s[1].problemas.push('teste');
+    expect(chavesDaPlanilha(s, 'M583KQT')).toEqual(['M583KQT001', '', 'M583KQT002']);
+    expect(chavesDaPlanilha(s, 'M000004')).toEqual(['M000004001', '', 'M000004002']);
+    const a = abas(planilhaDoSci(s, 'M583KQT'));
+    expect(a.Importar.slice(1).map(r => r[7])).toEqual(['M583KQT001', 'M583KQT002']);
+    expect(a.Conferir[1][7]).toBe('M583KQT');
+    expect(nomeDaPlanilhaSci(CNPJ, '2026-11', 'minimum', 'M583KQT')).toBe('sci_11222333000181_2026-11_minimum_M583KQT.xlsx');
+    // mais de 999 prontos não cabe na chave
+    const muitos = Array.from({ length: 1000 }, () => s[0]);
+    expect(() => planilhaDoSci(muitos, 'M583KQT')).toThrow(/vai até 999/);
   });
 
   it('sem problema não tem a aba Conferir', () => {

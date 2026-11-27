@@ -101,7 +101,9 @@ function lerPublicacaoDoSci(x) {
 		visualizado: sim(p.visualizado),
 		vistoEm: dataDoSci(p.dataHoraPrimeiraVisualizacao),
 		pagamentoEm: dataDoSci(p.dataPagamento),
-		valorPago: Number.isFinite(valorPago) ? valorPago : 0
+		valorPago: Number.isFinite(valorPago) ? valorPago : 0,
+		funcionario: texto$1(p.nomeFuncionario),
+		tipoFolha: texto$1(p.tipoFolha)
 	};
 }
 function lerPaginaDePublicados(resposta) {
@@ -125,12 +127,12 @@ function janelaDoSci(hoje, meses = 3) {
 }
 function consultaDePublicados(p) {
 	const q = new URLSearchParams({
-		tipoDocumento: "imposto",
+		tipoDocumento: p.recibos ? "relatorio" : "imposto",
 		status: "todos",
 		empresaId: String(p.empresaId),
 		referenciaInicial: referenciaDoSci(p.de),
 		referenciaFinal: referenciaDoSci(p.ate),
-		individual: "false",
+		individual: p.recibos ? "true" : "false",
 		page: String(p.pagina ?? 1),
 		registrosPorPagina: String(200)
 	});
@@ -149,10 +151,25 @@ function urlDoPdfDoSci(resposta) {
 //#endregion
 //#region packages/core/src/areaCliente/sciReportCliente.ts
 function publicadosIdDaResposta(resposta) {
-	const lista = resposta && typeof resposta === "object" ? resposta.publicados : null;
-	const primeiro = Array.isArray(lista) && lista[0] && typeof lista[0] === "object" ? lista[0].publicadosId : 0;
-	const n = Number(primeiro);
-	return Number.isInteger(n) && n > 0 ? n : 0;
+	const achar = (x, fundo) => {
+		if (!x || typeof x !== "object" || fundo > 4) return 0;
+		if (Array.isArray(x)) {
+			for (const i of x) {
+				const n = achar(i, fundo + 1);
+				if (n) return n;
+			}
+			return 0;
+		}
+		const o = x;
+		const n = Number(o.publicadosId);
+		if (Number.isInteger(n) && n > 0) return n;
+		for (const v of Object.values(o)) {
+			const m = achar(v, fundo + 1);
+			if (m) return m;
+		}
+		return 0;
+	};
+	return achar(resposta, 0);
 }
 var ErroDoSci = class extends Error {
 	status;
@@ -230,6 +247,22 @@ function criarClienteSciReport(deps) {
 			empresas.set(d, id);
 			return id;
 		},
+		async individuais(empresaId, de, ate, publicadosId) {
+			const todas = [];
+			for (let pagina = 1; pagina <= MAX_PAGINAS$2; pagina++) {
+				const p = lerPaginaDePublicados(await chamar("GET", "/api/v1/publicados/busca?" + consultaDePublicados({
+					empresaId,
+					de,
+					ate,
+					pagina,
+					publicadosId,
+					recibos: true
+				})));
+				todas.push(...p.itens.filter((x) => x.empresaId === empresaId && x.individual));
+				if (p.paginaAtual >= p.ultimaPagina) break;
+			}
+			return todas;
+		},
 		async publicacoes(empresaId, de, ate, publicadosId) {
 			const todas = [];
 			for (let pagina = 1; pagina <= MAX_PAGINAS$2; pagina++) {
@@ -261,8 +294,13 @@ function criarClienteSciReport(deps) {
 				f.append("arquivo", new Blob([new Uint8Array(pdf)], { type: "application/pdf" }), nomeDoArquivo.replace(/[^\w.-]+/g, "_") || "guia.pdf");
 				return f;
 			}));
-			if (!id) throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
-			return id;
+			if (id) return id;
+			const competencia = campos.anoRef + "-" + campos.mesRef;
+			const venc = String(campos.dataVencimento || "").replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3/$2/$1");
+			const valor = Math.round(Number(campos.valor) * 100);
+			const achada = (await this.publicacoes(Number(campos.empresaId), competencia, competencia)).filter((p) => p.vencimento === venc && Math.round(p.valor * 100) === valor && (!p.relatorioId || p.relatorioId === campos.relatorioId)).sort((x, y) => y.publicadosId - x.publicadosId)[0];
+			if (achada) return achada.publicadosId;
+			throw new ErroDoSci(0, "o SCI Report não devolveu o número da publicação");
 		}
 	};
 }
@@ -289,6 +327,10 @@ const GUIAS_DO_SCI = [
 	{
 		chave: "DARF-CSLL",
 		rotulo: "DARF da CSLL"
+	},
+	{
+		chave: "DARF-DCTFWEB",
+		rotulo: "DARF da DCTFWeb (INSS/IRRF)"
 	},
 	{
 		chave: "DARF",
@@ -336,6 +378,7 @@ const CONFIG_DO_SCI_DESLIGADA = {
 	rhNet: false,
 	empresas: [],
 	relatorios: {},
+	ocultas: [],
 	atualizadoEm: "",
 	atualizadoPor: ""
 };
@@ -364,6 +407,7 @@ function configDoSci(doc) {
 		rhNet: sim("rhNet"),
 		empresas,
 		relatorios,
+		ocultas: publicacoesDoTexto(Array.isArray(d.ocultas) ? d.ocultas.join(" ") : ""),
 		atualizadoEm: typeof d.atualizadoEm === "string" ? d.atualizadoEm : "",
 		atualizadoPor: typeof d.atualizadoPor === "string" ? d.atualizadoPor : ""
 	};
@@ -383,12 +427,20 @@ function documentoDaConfigDoSci(c, por, agora) {
 		rhNet: limpa.rhNet,
 		empresas: limpa.empresas,
 		relatorios: limpa.relatorios,
+		ocultas: limpa.ocultas,
 		atualizadoEm: agora.toISOString(),
 		atualizadoPor: por
 	};
 }
 function empresasDoTexto(texto) {
 	return [...new Set(String(texto ?? "").split(/[^\d]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+}
+function publicacoesDoTexto(texto) {
+	return [...new Set(String(texto ?? "").split(/[^\d]+/).filter((n) => /^\d{1,12}$/.test(n) && Number(n) > 0))].slice(0, 200);
+}
+function semAsOcultas(guias, ocultas) {
+	const fora = new Set(ocultas);
+	return guias.filter((g) => !fora.has(String(g.id)));
 }
 const empresaNoSci = (c, codigo) => c.empresas.includes(Number(codigo));
 const DAE_PELA_COLUNA = {
@@ -406,6 +458,7 @@ function chaveDaGuiaNoSci(tipo, tributo, coluna = "") {
 	if (t === "DAE" && DAE_PELA_COLUNA[String(coluna ?? "").trim()]) return DAE_PELA_COLUNA[String(coluna).trim()];
 	if (t === "DAS") return "DAS";
 	if (t === "FGTS") return "FGTS";
+	if (t === "DARF" && /^(INSS|IRRF|DCTFWEB)\b/.test(tr.replace(/\s+/g, ""))) return "DARF-DCTFWEB";
 	if (t === "DARF") return [
 		"PIS",
 		"COFINS",
@@ -815,6 +868,8 @@ function lerPaginaDoRhNet(resposta) {
 }
 function mensagemDoRhNet(resposta, status) {
 	const r = objeto$1(resposta);
+	const pendencias = pendenciasDaLiberacao(resposta);
+	if (pendencias.length) return ("o RH NET não liberou: " + pendencias.join(" ")).slice(0, 300);
 	const base = texto(r?.mensagem) || "o RH NET respondeu " + status;
 	const erros = objeto$1(r?.erros) || objeto$1(r?.errors);
 	const detalhe = erros ? Object.entries(erros).map(([k, v]) => k + ": " + (Array.isArray(v) ? v.map(texto).join(", ") : texto(v))).join("; ") : "";
@@ -978,6 +1033,31 @@ function corpoDaAdmissao(empresaId, a) {
 		categoria_esocial_id: a.categoriaEsocial ?? 101,
 		funcionario_tipo_id: a.remuneracao ?? 0,
 		contrato_tipo_id: a.contratoTipo === void 0 ? 1 : a.contratoTipo,
+		etnia_id: a.etnia ?? null,
+		estado_civil_id: a.estadoCivil ?? null,
+		grau_instrucao_id: a.grauInstrucao ?? null,
+		nacionalidade_id: 105,
+		pais_nacionalidade_id: 105,
+		nascimento_cidade_id: a.nascimentoCidadeIbge ?? null,
+		rg: texto(a.rg) || null,
+		rg_orgao_emissor: texto(a.rgOrgao).toUpperCase() || null,
+		rg_uf: texto(a.rgUf).toUpperCase() || null,
+		rg_emissao: a.rgEmissao || null,
+		...a.endereco ? {
+			endereco_cep: digitos(a.endereco.cep).replace(/^(\d{5})(\d{3})$/, "$1-$2") || null,
+			endereco_logradouro_id: a.endereco.logradouroTipo || null,
+			endereco: texto(a.endereco.logradouro).toUpperCase() || null,
+			endereco_numero: texto(a.endereco.numero) || null,
+			endereco_complemento: texto(a.endereco.complemento).toUpperCase() || null,
+			endereco_bairro: texto(a.endereco.bairro).toUpperCase() || null,
+			endereco_cidade_id: a.endereco.cidadeIbge ?? null
+		} : {},
+		hora_semanal: a.horasSemana ?? 44,
+		hora_mensal: Math.min(220, Math.round((a.horasSemana ?? 44) * 5)),
+		hora_diaria: Math.round((a.horasSemana ?? 44) / 6 * 100) / 100,
+		horario_noturno: a.horarioNoturno ? 1 : 0,
+		fgts_ocorrencia_id: 1,
+		forma_pagamento: 0,
 		prazo_experiencia: a.experienciaDias ?? 0,
 		prazo_experiencia_fim: a.experienciaDias ? fimDoPrazo(a.admissao, a.experienciaDias) : null,
 		...a.experienciaDias && a.prorrogacaoDias ? {
@@ -1135,6 +1215,7 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 	const recebe = campos.get("recebe por") ?? "";
 	const nascido = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get("nascimento") ?? "");
 	const pis = (campos.get("pis") ?? "").replace(/\D/g, "");
+	const completo = cadastroCompletoDoPedido(campos);
 	const observacao = [
 		"Pedido pela Área do Cliente.",
 		cargo && "Cargo pedido: " + cargo + ".",
@@ -1152,10 +1233,16 @@ function admissaoDoPedidoDaArea(texto, funcoes = []) {
 		...salario > 0 ? { salario } : {},
 		...funcao ? { funcaoId: funcao.id } : {},
 		...doContratoDaArea(contrato),
-		remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0
+		remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0,
+		...completo.admissao
 	};
 	const erro = erroDaAdmissao(admissao);
-	return erro ? { erro } : { admissao };
+	const idNoRhNet = Number((campos.get("id no rh net") ?? "").replace(/\D/g, "")) || 0;
+	return erro ? { erro } : {
+		admissao,
+		cidades: completo.cidades,
+		...idNoRhNet ? { idNoRhNet } : {}
+	};
 }
 function cargosParaArea(funcoes) {
 	const nomes = /* @__PURE__ */ new Map();
@@ -1164,6 +1251,219 @@ function cargosParaArea(funcoes) {
 		if (n && !nomes.has(n.toUpperCase())) nomes.set(n.toUpperCase(), n);
 	}
 	return [...nomes.values()].sort((a, b) => a.localeCompare(b, "pt-BR")).slice(0, 300);
+}
+function pendenciasDaLiberacao(resposta) {
+	const lista = objeto$1(objeto$1(resposta)?.retorno)?.erros;
+	if (!Array.isArray(lista)) return [];
+	const saida = /* @__PURE__ */ new Set();
+	for (const item of lista) {
+		const o = objeto$1(item);
+		if (!o) continue;
+		const erros = objeto$1(o.erros);
+		if (erros) for (const v of Object.values(erros)) for (const m of Array.isArray(v) ? v : [v]) {
+			const t = texto(m).trim();
+			if (t) saida.add(t);
+		}
+		const m = texto(o.mensagem).trim();
+		if (m) saida.add(m);
+	}
+	return [...saida].slice(0, 20);
+}
+function situacaoDaAdmissaoNaEquipe(situacao) {
+	switch (situacao) {
+		case "cadastrado":
+		case "nao_liberado": return {
+			rotulo: "Não liberada",
+			texto: "Pré-admissão no RH NET, ainda não liberada. Confira os dados e libere: o RH NET só aceita com o cadastro completo.",
+			tom: "warn",
+			podeLiberar: true
+		};
+		case "liberado": return {
+			rotulo: "Liberada",
+			texto: "Liberada no RH NET. Falta o SCI do escritório importar para a folha.",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		case "aguardando_integracao": return {
+			rotulo: "Aguardando integração",
+			texto: "O SCI do escritório está importando para a folha.",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		case "integrado": return {
+			rotulo: "Na folha",
+			texto: "Integrada: a pessoa já está na folha do SCI.",
+			tom: "ok",
+			podeLiberar: false
+		};
+		case "recusado": return {
+			rotulo: "Recusada",
+			texto: "O SCI do escritório recusou a admissão. Veja o motivo no RH NET.",
+			tom: "bad",
+			podeLiberar: false
+		};
+		case "enviando": return {
+			rotulo: "Cadastrando",
+			texto: "O robô está cadastrando no RH NET…",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		case "excluido": return {
+			rotulo: "Apagada",
+			texto: "A admissão foi apagada do RH NET.",
+			tom: "neutral",
+			podeLiberar: false
+		};
+		default: return {
+			rotulo: "Não cadastrada",
+			texto: "Não foi para o RH NET. Cadastre direto lá.",
+			tom: "bad",
+			podeLiberar: false
+		};
+	}
+}
+const OPCOES_DA_ADMISSAO = {
+	sexo: [["Feminino", 0], ["Masculino", 1]],
+	estadoCivil: [
+		["Solteiro(a)", 0],
+		["Casado(a)", 1],
+		["União estável", 6],
+		["Divorciado(a)", 2],
+		["Separado(a) judicialmente", 5],
+		["Viúvo(a)", 3],
+		["Outro", 4]
+	],
+	racaCor: [
+		["Branca", 1],
+		["Parda", 3],
+		["Preta", 4],
+		["Amarela", 0],
+		["Indígena", 2],
+		["Não quero informar", 5]
+	],
+	escolaridade: [
+		["Analfabeto", 1],
+		["Fundamental incompleto (até o 5º ano)", 2],
+		["5º ano completo", 3],
+		["Fundamental incompleto (6º ao 9º ano)", 4],
+		["Fundamental completo", 5],
+		["Médio incompleto", 6],
+		["Médio completo", 7],
+		["Superior incompleto", 8],
+		["Superior completo", 9],
+		["Pós-graduação", 12],
+		["Mestrado", 10],
+		["Doutorado", 11]
+	],
+	logradouro: [
+		["Rua", 1],
+		["Avenida", 2],
+		["Travessa", 37],
+		["Praça", 31],
+		["Alameda", 3],
+		["Estrada", 16],
+		["Rodovia", 4],
+		["Fazenda", 18],
+		["Sítio", 36],
+		["Outros", 5]
+	]
+};
+const UFS = [
+	"AC",
+	"AL",
+	"AM",
+	"AP",
+	"BA",
+	"CE",
+	"DF",
+	"ES",
+	"GO",
+	"MA",
+	"MG",
+	"MS",
+	"MT",
+	"PA",
+	"PB",
+	"PE",
+	"PI",
+	"PR",
+	"RJ",
+	"RN",
+	"RO",
+	"RR",
+	"RS",
+	"SC",
+	"SE",
+	"SP",
+	"TO"
+];
+const codigoDaOpcao = (lista, v) => {
+	const alvo = semAcento(v ?? "");
+	return alvo ? lista.find(([r]) => semAcento(r) === alvo)?.[1] : void 0;
+};
+const cidadeUf = (v) => {
+	const m = /^(.+?)\s*[/-]\s*([A-Za-z]{2})$/.exec(String(v ?? "").trim());
+	return m ? {
+		nome: m[1].trim(),
+		uf: m[2].toUpperCase()
+	} : void 0;
+};
+const diaIso = (v) => {
+	const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v ?? "").trim());
+	return m ? m[3] + "-" + m[2] + "-" + m[1] : void 0;
+};
+function cadastroCompletoDoPedido(campos) {
+	const c = (k) => campos.get(k) ?? "";
+	const O = OPCOES_DA_ADMISSAO;
+	const nascimento = cidadeUf(c("cidade de nascimento"));
+	const cidade = cidadeUf(c("cidade"));
+	const cep = c("cep").replace(/\D/g, "");
+	const celular = c("celular").replace(/\D/g, "");
+	const horas = Number(c("horas por semana").replace(",", "."));
+	return {
+		admissao: {
+			...codigoDaOpcao(O.sexo, c("sexo")) !== void 0 ? { sexo: codigoDaOpcao(O.sexo, c("sexo")) } : {},
+			...codigoDaOpcao(O.estadoCivil, c("estado civil")) !== void 0 ? { estadoCivil: codigoDaOpcao(O.estadoCivil, c("estado civil")) } : {},
+			...codigoDaOpcao(O.racaCor, c("raca/cor")) !== void 0 ? { etnia: codigoDaOpcao(O.racaCor, c("raca/cor")) } : {},
+			...codigoDaOpcao(O.escolaridade, c("escolaridade")) !== void 0 ? { grauInstrucao: codigoDaOpcao(O.escolaridade, c("escolaridade")) } : {},
+			...c("nome da mae") ? { maeNome: c("nome da mae") } : {},
+			...c("rg") ? { rg: c("rg") } : {},
+			...c("orgao emissor") ? { rgOrgao: c("orgao emissor") } : {},
+			.../^[A-Za-z]{2}$/.test(c("uf do rg")) ? { rgUf: c("uf do rg").toUpperCase() } : {},
+			...diaIso(c("emissao do rg")) ? { rgEmissao: diaIso(c("emissao do rg")) } : {},
+			...celular.length >= 10 ? { celular } : {},
+			...cep.length === 8 && c("logradouro") ? { endereco: {
+				cep,
+				logradouroTipo: codigoDaOpcao(O.logradouro, c("tipo de logradouro")) ?? 1,
+				logradouro: c("logradouro"),
+				numero: c("numero") || "S/N",
+				...c("complemento") ? { complemento: c("complemento") } : {},
+				bairro: c("bairro")
+			} } : {},
+			...horas > 0 && horas <= 44 ? { horasSemana: horas } : {},
+			...c("trabalha a noite") ? { horarioNoturno: /^sim/i.test(c("trabalha a noite")) } : {}
+		},
+		cidades: {
+			...nascimento ? { nascimento } : {},
+			...cidade && cep.length === 8 ? { endereco: {
+				...cidade,
+				cep
+			} } : {}
+		}
+	};
+}
+function codigoIbgeDaCidade(lista, nome) {
+	const alvo = semAcento(nome).replace(/[^a-z0-9 ]/g, "");
+	const achadas = lista.filter((m) => semAcento(m.nome).replace(/[^a-z0-9 ]/g, "") === alvo);
+	return achadas.length === 1 && /^\d{7}$/.test(String(achadas[0].id)) ? Number(achadas[0].id) : 0;
+}
+function podeApagarNoRhNet(situacao) {
+	return [
+		"cadastrado",
+		"nao_liberado",
+		"liberado",
+		"recusado"
+	].includes(situacao);
 }
 
 //#endregion
@@ -1261,6 +1561,24 @@ function criarClienteRhNet(deps) {
 			const funcoes = new Map(itensDoCadastro("funcoes", await listar(CADASTROS_DO_RH.funcoes.caminho)).map((f) => [f.id, f.nome]));
 			return cadastrosParaArea(await listar("/api/v1/admissoes"), funcoes);
 		},
+		async excluirAdmissao(id) {
+			if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, "falta o número do funcionário no RH NET");
+			const { empresaId } = await identificacao();
+			await chamar("DELETE", "/api/v1/admissoes", {
+				empresa_id: empresaId,
+				funcionario_contribuinte_id: id
+			});
+		},
+		async atualizarAdmissao(id, a) {
+			const erro = erroDaAdmissao(a);
+			if (erro) throw new ErroDoSci(0, erro);
+			if (!(Number.isInteger(id) && id > 0)) throw new ErroDoSci(0, "falta o número do funcionário no RH NET");
+			const { empresaId } = await identificacao();
+			await chamar("PUT", "/api/v1/admissoes", {
+				...corpoDaAdmissao(empresaId, a),
+				funcionario_contribuinte_id: id
+			});
+		},
 		async criarAdmissao(a) {
 			const erro = erroDaAdmissao(a);
 			if (erro) throw new ErroDoSci(0, erro);
@@ -1273,7 +1591,9 @@ function criarClienteRhNet(deps) {
 		async liberarAdmissoes(lista, situacao, observacao) {
 			const { empresaId } = await identificacao();
 			if (!lista.length) return;
-			await chamar("POST", "/api/v1/liberacoes/admissoes", corpoDaLiberacao(empresaId, lista, situacao, observacao));
+			const r = await chamar("POST", "/api/v1/liberacoes/admissoes", corpoDaLiberacao(empresaId, lista, situacao, observacao));
+			const pendencias = pendenciasDaLiberacao(r);
+			if (pendencias.length) throw new ErroDoSci(207, "o RH NET não liberou: " + pendencias.join(" ").slice(0, 280));
 		},
 		async criarLancamentos(lancamentos, tipo = "normais") {
 			const erro = lancamentos.map((l) => erroDoLancamento(l, tipo)).find(Boolean);
@@ -1404,11 +1724,13 @@ exports.INTEGRA_NET = INTEGRA_NET;
 exports.INTEGRA_POR_LOTE = INTEGRA_POR_LOTE;
 exports.LIBERACAO_DA_PLANILHA = LIBERACAO_DA_PLANILHA;
 exports.MAIOR_PDF_NO_SCI = MAIOR_PDF_NO_SCI;
+exports.OPCOES_DA_ADMISSAO = OPCOES_DA_ADMISSAO;
 exports.RH_NET = RH_NET;
 exports.RH_NET_POR_PAGINA = RH_NET_POR_PAGINA;
 exports.ROTULO_DA_SITUACAO_RH = ROTULO_DA_SITUACAO_RH;
 exports.SITUACAO_NA_AREA = SITUACAO_NA_AREA;
 exports.TIPOS_NO_INTEGRA = TIPOS_NO_INTEGRA;
+exports.UFS = UFS;
 exports.admissaoDoPedidoDaArea = admissaoDoPedidoDaArea;
 exports.admissaoDoRhNet = admissaoDoRhNet;
 exports.cadastroParaArea = cadastroParaArea;
@@ -1421,6 +1743,7 @@ exports.chavesDasUrls = chavesDasUrls;
 exports.cifrarToken = cifrarToken;
 exports.clienteIdDoJwt = clienteIdDoJwt;
 exports.codigoDoRelatorio = codigoDoRelatorio;
+exports.codigoIbgeDaCidade = codigoIbgeDaCidade;
 exports.conferirComOSci = conferirComOSci;
 exports.configDoSci = configDoSci;
 exports.corpoDaAdmissao = corpoDaAdmissao;
@@ -1457,11 +1780,16 @@ exports.lerResumoDoIntegra = lerResumoDoIntegra;
 exports.marcaDoEnviado = marcaDoEnviado;
 exports.mensagemDoRhNet = mensagemDoRhNet;
 exports.nomeNoIntegra = nomeNoIntegra;
+exports.pendenciasDaLiberacao = pendenciasDaLiberacao;
 exports.periodoNoIntegra = periodoNoIntegra;
+exports.podeApagarNoRhNet = podeApagarNoRhNet;
+exports.publicacoesDoTexto = publicacoesDoTexto;
 exports.publicadasDoRegistro = publicadasDoRegistro;
 exports.relatorioDaGuia = relatorioDaGuia;
 exports.resumoDoIntegra = resumoDoIntegra;
 exports.resumoDosCadastros = resumoDosCadastros;
+exports.semAsOcultas = semAsOcultas;
+exports.situacaoDaAdmissaoNaEquipe = situacaoDaAdmissaoNaEquipe;
 exports.situacaoDeVolta = situacaoDeVolta;
 exports.situacaoDoToken = situacaoDoToken;
 exports.situacaoNoRhNet = situacaoNoRhNet;

@@ -27,8 +27,8 @@ const mesDaData = (br: string) => br.slice(6, 10) + '-' + br.slice(3, 5);
 const diaDaData = (br: string) => Number(br.slice(0, 2)) || 0;
 
 export function useGuias(props: DaCasca) {
-  const { token, area, hoje, irPara, copiar } = props;
-  const { toast } = useRetorno();
+  const { token, area, hoje, irPara, copiar, marcarGuiaPaga } = props;
+  const { toast, modal } = useRetorno();
   // o "Já paguei: mandar o comprovante" (plano do Acessórias, 17/11/2026, ficha comprovante-da-guia, parte A)
   const abrirComprovante = useJanelaDoComprovante(props);
   const [baixando, setBaixando] = useState('');
@@ -141,6 +141,13 @@ export function useGuias(props: DaCasca) {
       setAba(abaDoDia<AbaDasGuias>(d, linhasDasGuias.map(x => x.dia), linhasDasPagas.map(x => x.dia), aba, 'apagar', 'pagas'));
     },
     pedirGuiaNova: (g: ac.GuiaDoCliente) => irPara('chamados', { novoChamado: { tipo: 'documento', titulo: tituloDaGuiaNova(g) } }),
+    /** "Já paguei: tirar da lista" (26/11/2026): confirma e a guia sai do "A pagar" neste aparelho */
+    jaPaguei: marcarGuiaPaga ? (g: ac.GuiaDoCliente) => {
+      const nome = ac.rotuloDaGuia(g);
+      void modal<boolean>({ titulo: 'Já pagou esta guia?', corpo: nome + ' de ' + formatos.reais(g.valor) + ' sai da lista de guias a pagar neste aparelho. Se quiser, mande o comprovante pelo "Já paguei: mandar o comprovante".',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Já paguei', valor: true, variante: 'btn-primary' }] })
+        .then(sim => { if (sim) { marcarGuiaPaga(g.id); toast(nome + ' saiu das guias a pagar.'); } });
+    } : undefined,
     vista, verGuia, baixando, baixar, comprovante, copiarCodigo: (c: string) => copiar(c, 'Código'),
     // o Pix copia e cola do boleto dos honorários (24/11/2026: "se possivel poder gerar um codigo pix")
     copiarPix: (c: string) => copiar(c, 'Pix copia e cola'),

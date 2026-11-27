@@ -45,6 +45,9 @@ export function lerPaginaDoRhNet(resposta: unknown): PaginaDoRhNet {
 /** A mensagem de erro do RH NET (mensagem e, se vier, a lista de erros de validação), sem dados pessoais do pedido. */
 export function mensagemDoRhNet(resposta: unknown, status: number): string {
   const r = objeto(resposta);
+  // a liberação recusada (400) traz as pendências em retorno.erros, item por item
+  const pendencias = pendenciasDaLiberacao(resposta);
+  if (pendencias.length) return ('o RH NET não liberou: ' + pendencias.join(' ')).slice(0, 300);
   const base = texto(r?.mensagem) || 'o RH NET respondeu ' + status;
   const erros = objeto(r?.erros) || objeto(r?.errors);
   const detalhe = erros ? Object.entries(erros).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.map(texto).join(', ') : texto(v))).join('; ') : '';
@@ -179,6 +182,22 @@ export interface AdmissaoParaRhNet {
   /** a categoria do eSocial: 101 empregado geral (o padrão), 103 aprendiz, 901 estagiário */
   categoriaEsocial?: number;
   observacao?: string;
+  // (26/11/2026: "quero verificacao na tela de registro, que nao deixa nem passar") o que o RH NET exige para LIBERAR
+  // (o "cadastro completo"; a lista veio do próprio RH NET, na tentativa de liberar a admissão de teste da 590)
+  etnia?: number;
+  estadoCivil?: number;
+  grauInstrucao?: number;
+  /** o código IBGE (7 dígitos) da cidade de nascimento; o robô acha pelo nome e a UF */
+  nascimentoCidadeIbge?: number;
+  rg?: string;
+  rgOrgao?: string;
+  rgUf?: string;
+  /** 'aaaa-mm-dd' */
+  rgEmissao?: string;
+  endereco?: { cep: string; logradouroTipo: number; logradouro: string; numero: string; complemento?: string; bairro: string; cidadeIbge?: number };
+  /** horas por semana (a mensal e a diária saem dela) */
+  horasSemana?: number;
+  horarioNoturno?: boolean;
 }
 
 /** O dia 'aaaa-mm-dd' somado de n dias (o 1º dia conta: 45 dias a partir de 01/12 terminam em 14/01). */
@@ -219,6 +238,18 @@ export function corpoDaAdmissao(empresaId: number, a: AdmissaoParaRhNet): Record
     // recebe, o tipo de contrato e o 1º prazo da experiência com o fim (0 e sem fim quando não tem experiência)
     classe_id: a.classe ?? 0, admissao_tipo_id: 1, categoria_esocial_id: a.categoriaEsocial ?? 101,
     funcionario_tipo_id: a.remuneracao ?? 0, contrato_tipo_id: a.contratoTipo === undefined ? 1 : a.contratoTipo,
+    // o cadastro completo (26/11/2026): a pessoa, o documento, o endereço e a jornada; brasileiro por padrão (105)
+    etnia_id: a.etnia ?? null, estado_civil_id: a.estadoCivil ?? null, grau_instrucao_id: a.grauInstrucao ?? null,
+    nacionalidade_id: 105, pais_nacionalidade_id: 105, nascimento_cidade_id: a.nascimentoCidadeIbge ?? null,
+    rg: texto(a.rg) || null, rg_orgao_emissor: texto(a.rgOrgao).toUpperCase() || null, rg_uf: texto(a.rgUf).toUpperCase() || null, rg_emissao: a.rgEmissao || null,
+    ...(a.endereco ? {
+      endereco_cep: digitos(a.endereco.cep).replace(/^(\d{5})(\d{3})$/, '$1-$2') || null, endereco_logradouro_id: a.endereco.logradouroTipo || null,
+      endereco: texto(a.endereco.logradouro).toUpperCase() || null, endereco_numero: texto(a.endereco.numero) || null,
+      endereco_complemento: texto(a.endereco.complemento).toUpperCase() || null, endereco_bairro: texto(a.endereco.bairro).toUpperCase() || null,
+      endereco_cidade_id: a.endereco.cidadeIbge ?? null,
+    } : {}),
+    hora_semanal: a.horasSemana ?? 44, hora_mensal: Math.min(220, Math.round((a.horasSemana ?? 44) * 5)), hora_diaria: Math.round(((a.horasSemana ?? 44) / 6) * 100) / 100,
+    horario_noturno: a.horarioNoturno ? 1 : 0, fgts_ocorrencia_id: 1, forma_pagamento: 0,
     prazo_experiencia: a.experienciaDias ?? 0,
     prazo_experiencia_fim: a.experienciaDias ? fimDoPrazo(a.admissao, a.experienciaDias) : null,
     ...(a.experienciaDias && a.prorrogacaoDias ? {
@@ -354,7 +385,7 @@ function doContratoDaArea(contrato: string): Pick<AdmissaoParaRhNet, 'classe' | 
   return { classe: 0, categoriaEsocial: 101, contratoTipo: 1, ...(exp ? { experienciaDias: Number(exp[1]), prorrogacaoDias: Number(exp[2]) } : {}) };
 }
 
-export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCadastroRh[] = []): { admissao: AdmissaoParaRhNet } | { erro: string } {
+export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCadastroRh[] = []): { admissao: AdmissaoParaRhNet; cidades?: CidadesDoPedido; idNoRhNet?: number } | { erro: string } {
   const campos = new Map<string, string>();
   for (const linha of String(texto ?? '').split(/\r?\n/)) {
     const m = /^([^:]{2,30}):\s*(.*)$/.exec(linha.trim());
@@ -374,6 +405,7 @@ export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCa
   const recebe = campos.get('recebe por') ?? '';
   const nascido = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(campos.get('nascimento') ?? '');
   const pis = (campos.get('pis') ?? '').replace(/\D/g, '');
+  const completo = cadastroCompletoDoPedido(campos);
   const observacao = ['Pedido pela Área do Cliente.', cargo && 'Cargo pedido: ' + cargo + '.', contrato && 'Contrato: ' + contrato + '.', recebe && 'Recebe: ' + recebe + '.', campos.get('observacoes') && 'Observações: ' + campos.get('observacoes')]
     .filter(Boolean).join(' ');
   const admissao: AdmissaoParaRhNet = {
@@ -381,9 +413,13 @@ export function admissaoDoPedidoDaArea(texto: string, funcoes: readonly ItemDoCa
     ...(nascido ? { nascimento: nascido[3] + '-' + nascido[2] + '-' + nascido[1] } : {}), ...(pis.length === 11 ? { pis } : {}),
     ...(salario > 0 ? { salario } : {}), ...(funcao ? { funcaoId: funcao.id } : {}),
     ...doContratoDaArea(contrato), remuneracao: REMUNERACAO.find(([r]) => r.test(semAcento(recebe)))?.[1] ?? 0,
+    ...completo.admissao,
   };
   const erro = erroDaAdmissao(admissao);
-  return erro ? { erro } : { admissao };
+  // (26/11/2026: "coloca aqui para a pessoa mesmo liberar") o pedido que COMPLETA uma admissão já no RH NET traz o número dela
+  const idNoRhNet = Number((campos.get('id no rh net') ?? '').replace(/\D/g, '')) || 0;
+  // as cidades em texto: o robô procura o código IBGE pelo nome e a UF
+  return erro ? { erro } : { admissao, cidades: completo.cidades, ...(idNoRhNet ? { idNoRhNet } : {}) };
 }
 
 /** Os nomes das funções do RH NET como o Cargo da admissão da Área mostra: sem repetir, em ordem, no máximo 300 (26/11/2026). */
@@ -394,4 +430,116 @@ export function cargosParaArea(funcoes: readonly { nome: string }[] | null | und
     if (n && !nomes.has(n.toUpperCase())) nomes.set(n.toUpperCase(), n);
   }
   return [...nomes.values()].sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 300);
+}
+
+/**
+ * (26/11/2026: "pesquisa como faz no rh net e faz baseado nisso") As pendências da liberação de admissão: o RH NET só
+ * libera com o cadastro completo e, quando falta algo, responde 207 (parte liberada) ou 400 (nada liberado) com
+ * retorno.erros = [{ funcionario_contribuinte_id, erros: { campo: [mensagens] } } ou { ..., mensagem }]. Só as mensagens,
+ * sem repetir.
+ */
+export function pendenciasDaLiberacao(resposta: unknown): string[] {
+  const lista = objeto(objeto(resposta)?.retorno)?.erros;
+  if (!Array.isArray(lista)) return [];
+  const saida = new Set<string>();
+  for (const item of lista) {
+    const o = objeto(item);
+    if (!o) continue;
+    const erros = objeto(o.erros);
+    if (erros) for (const v of Object.values(erros)) for (const m of Array.isArray(v) ? v : [v]) { const t = texto(m).trim(); if (t) saida.add(t); }
+    const m = texto(o.mensagem).trim();
+    if (m) saida.add(m);
+  }
+  return [...saida].slice(0, 20);
+}
+
+/** A situação no RH NET → o que a solicitação de admissão da equipe mostra (as mesmas etapas do RH NET). */
+export function situacaoDaAdmissaoNaEquipe(situacao: string): { rotulo: string; texto: string; tom: 'ok' | 'warn' | 'neutral' | 'bad'; podeLiberar: boolean } {
+  switch (situacao) {
+    case 'cadastrado': case 'nao_liberado':
+      return { rotulo: 'Não liberada', texto: 'Pré-admissão no RH NET, ainda não liberada. Confira os dados e libere: o RH NET só aceita com o cadastro completo.', tom: 'warn', podeLiberar: true };
+    case 'liberado':
+      return { rotulo: 'Liberada', texto: 'Liberada no RH NET. Falta o SCI do escritório importar para a folha.', tom: 'neutral', podeLiberar: false };
+    case 'aguardando_integracao':
+      return { rotulo: 'Aguardando integração', texto: 'O SCI do escritório está importando para a folha.', tom: 'neutral', podeLiberar: false };
+    case 'integrado':
+      return { rotulo: 'Na folha', texto: 'Integrada: a pessoa já está na folha do SCI.', tom: 'ok', podeLiberar: false };
+    case 'recusado':
+      return { rotulo: 'Recusada', texto: 'O SCI do escritório recusou a admissão. Veja o motivo no RH NET.', tom: 'bad', podeLiberar: false };
+    case 'enviando':
+      return { rotulo: 'Cadastrando', texto: 'O robô está cadastrando no RH NET…', tom: 'neutral', podeLiberar: false };
+    case 'excluido':
+      return { rotulo: 'Apagada', texto: 'A admissão foi apagada do RH NET.', tom: 'neutral', podeLiberar: false };
+    default:
+      return { rotulo: 'Não cadastrada', texto: 'Não foi para o RH NET. Cadastre direto lá.', tom: 'bad', podeLiberar: false };
+  }
+}
+
+// ---------------------------------- o cadastro completo da admissão da Área (26/11/2026) ----------------------------------
+// "quero verificacao na tela de registro, que nao deixa nem passar": o formulário da Área pede tudo o que o RH NET exige
+// para LIBERAR. As opções da tela e a leitura do pedido usam as mesmas listas daqui (o texto do pedido vira os códigos).
+
+/** As opções do formulário (o rótulo da tela → o código do RH NET). */
+export const OPCOES_DA_ADMISSAO = {
+  sexo: [['Feminino', 0], ['Masculino', 1]],
+  estadoCivil: [['Solteiro(a)', 0], ['Casado(a)', 1], ['União estável', 6], ['Divorciado(a)', 2], ['Separado(a) judicialmente', 5], ['Viúvo(a)', 3], ['Outro', 4]],
+  racaCor: [['Branca', 1], ['Parda', 3], ['Preta', 4], ['Amarela', 0], ['Indígena', 2], ['Não quero informar', 5]],
+  escolaridade: [
+    ['Analfabeto', 1], ['Fundamental incompleto (até o 5º ano)', 2], ['5º ano completo', 3], ['Fundamental incompleto (6º ao 9º ano)', 4],
+    ['Fundamental completo', 5], ['Médio incompleto', 6], ['Médio completo', 7], ['Superior incompleto', 8], ['Superior completo', 9],
+    ['Pós-graduação', 12], ['Mestrado', 10], ['Doutorado', 11],
+  ],
+  logradouro: [['Rua', 1], ['Avenida', 2], ['Travessa', 37], ['Praça', 31], ['Alameda', 3], ['Estrada', 16], ['Rodovia', 4], ['Fazenda', 18], ['Sítio', 36], ['Outros', 5]],
+} as const satisfies Record<string, readonly (readonly [string, number])[]>;
+
+export const UFS = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'] as const;
+
+/** As cidades do pedido em texto ('Montes Claros/MG'), para o robô achar o código IBGE. */
+export interface CidadesDoPedido { nascimento?: { nome: string; uf: string }; endereco?: { nome: string; uf: string; cep: string } }
+
+const codigoDaOpcao = (lista: readonly (readonly [string, number])[], v: string | undefined) => {
+  const alvo = semAcento(v ?? '');
+  return alvo ? lista.find(([r]) => semAcento(r) === alvo)?.[1] : undefined;
+};
+const cidadeUf = (v: string | undefined) => { const m = /^(.+?)\s*[/-]\s*([A-Za-z]{2})$/.exec(String(v ?? '').trim()); return m ? { nome: m[1].trim(), uf: m[2].toUpperCase() } : undefined; };
+const diaIso = (v: string | undefined) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v ?? '').trim()); return m ? m[3] + '-' + m[2] + '-' + m[1] : undefined; };
+
+/** O que o pedido traz do cadastro completo (as linhas do textoDaAdmissao da Área). */
+function cadastroCompletoDoPedido(campos: Map<string, string>): { admissao: Partial<AdmissaoParaRhNet>; cidades: CidadesDoPedido } {
+  const c = (k: string) => campos.get(k) ?? '';
+  const O = OPCOES_DA_ADMISSAO;
+  const nascimento = cidadeUf(c('cidade de nascimento'));
+  const cidade = cidadeUf(c('cidade'));
+  const cep = c('cep').replace(/\D/g, '');
+  const celular = c('celular').replace(/\D/g, '');
+  const horas = Number(c('horas por semana').replace(',', '.'));
+  const a: Partial<AdmissaoParaRhNet> = {
+    ...(codigoDaOpcao(O.sexo, c('sexo')) !== undefined ? { sexo: codigoDaOpcao(O.sexo, c('sexo')) as 0 | 1 } : {}),
+    ...(codigoDaOpcao(O.estadoCivil, c('estado civil')) !== undefined ? { estadoCivil: codigoDaOpcao(O.estadoCivil, c('estado civil')) } : {}),
+    ...(codigoDaOpcao(O.racaCor, c('raca/cor')) !== undefined ? { etnia: codigoDaOpcao(O.racaCor, c('raca/cor')) } : {}),
+    ...(codigoDaOpcao(O.escolaridade, c('escolaridade')) !== undefined ? { grauInstrucao: codigoDaOpcao(O.escolaridade, c('escolaridade')) } : {}),
+    ...(c('nome da mae') ? { maeNome: c('nome da mae') } : {}),
+    ...(c('rg') ? { rg: c('rg') } : {}), ...(c('orgao emissor') ? { rgOrgao: c('orgao emissor') } : {}),
+    ...(/^[A-Za-z]{2}$/.test(c('uf do rg')) ? { rgUf: c('uf do rg').toUpperCase() } : {}), ...(diaIso(c('emissao do rg')) ? { rgEmissao: diaIso(c('emissao do rg')) } : {}),
+    ...(celular.length >= 10 ? { celular } : {}),
+    ...(cep.length === 8 && c('logradouro') ? { endereco: {
+      cep, logradouroTipo: codigoDaOpcao(O.logradouro, c('tipo de logradouro')) ?? 1, logradouro: c('logradouro'), numero: c('numero') || 'S/N',
+      ...(c('complemento') ? { complemento: c('complemento') } : {}), bairro: c('bairro'),
+    } } : {}),
+    ...(horas > 0 && horas <= 44 ? { horasSemana: horas } : {}),
+    ...(c('trabalha a noite') ? { horarioNoturno: /^sim/i.test(c('trabalha a noite')) } : {}),
+  };
+  return { admissao: a, cidades: { ...(nascimento ? { nascimento } : {}), ...(cidade && cep.length === 8 ? { endereco: { ...cidade, cep } } : {}) } };
+}
+
+/** O código IBGE da cidade na lista do IBGE da UF ({ id, nome }), pelo nome sem acento; 0 se não achou um só. */
+export function codigoIbgeDaCidade(lista: readonly { id: number; nome: string }[], nome: string): number {
+  const alvo = semAcento(nome).replace(/[^a-z0-9 ]/g, '');
+  const achadas = lista.filter(m => semAcento(m.nome).replace(/[^a-z0-9 ]/g, '') === alvo);
+  return achadas.length === 1 && /^\d{7}$/.test(String(achadas[0].id)) ? Number(achadas[0].id) : 0;
+}
+
+/** Pode apagar a admissão no RH NET? Só antes de ir para a folha (não depois de integrada ou na integração). (27/11/2026) */
+export function podeApagarNoRhNet(situacao: string): boolean {
+  return ['cadastrado', 'nao_liberado', 'liberado', 'recusado'].includes(situacao);
 }

@@ -212,3 +212,81 @@ export function ouvirMaquinaDoPc(maquina: string, chegou: (m: { contabil: string
     }, () => chegou(null));
   } catch { chegou(null); return () => {}; }
 }
+
+// ---------- os lançamentos do SCI (27/11/2026, o caminho que o Vitor ensinou no SCI: Lançamentos › Contábeis, a lupa, Retirar
+// filtro, Impressão de campos da consulta, Excel) ----------
+// {status: 'pendentePc', tipo: 'sciLancamentos', codigo, empresa, competencia (MM/AAAA do SCI; 00 = o ano todo; 00/0000 = tudo),
+//  criadoEm, criadoPor, criadoPorUid}: só o robô do PC do dono (o SCI está lá); a planilha volta em partes/fiscal-nnn e entra
+//  na Contabilização do minimum.
+export function ouvirLancamentosDoSci(codigo: number, chegou: (l: PedidoDoFiscal[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'sciLancamentos')),
+      s => chegou(s.docs.map(x => doBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirLancamentosDoSci(o: { codigo: number; empresa: string; competencia: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  if (!roboDePcDoUsuario()) throw new Error('O SCI só é puxado pelo robô do PC de quem tem o robô.');
+  if (!/^(0\d|1[0-2])\/\d{4}$/.test(o.competencia)) throw new Error('A competência do SCI é MM/AAAA (00 = o ano todo).');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: 'pendentePc', tipo: 'sciLancamentos', codigo: o.codigo, empresa: o.empresa.slice(0, 200), competencia: o.competencia,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
+}
+
+// Excluir no SCI pelo minimum (27/11/2026, o Vitor: um lançamento excluído no nads sai do SCI pela chave na coluna Lote):
+// pedidosAlterdata {status:'pendentePc', tipo:'sciExcluir', codigo, empresa, lote, chave ('' = o lote inteiro), criadoEm, criadoPor,
+// criadoPorUid}. Só o robô do PC do dono (o SCI está lá). Com a chave, a lixeira verde (sem senha); sem ela, a vermelha, e a senha de
+// segurança quem digita é a pessoa, no SCI do PC: nenhuma senha vai no pedido.
+export interface PedidoDeExcluirNoSci {
+  id: string;
+  status: string;
+  erro: string;
+  pct: number;
+  etapa: string;
+  criadoEm: string;
+  recebido: boolean;
+  lote: string;
+  chave: string;
+  /** o ano do lote (AAAA): o robô abre a consulta do SCI só nele ('' = todos, 00/0000) */
+  ano: string;
+}
+
+export function ouvirExclusoesNoSci(codigo: number, chegou: (l: PedidoDeExcluirNoSci[]) => void, falhou: (e: Error) => void): () => void {
+  const auth = getAuth(appDoEntregas());
+  let parar = () => {};
+  let parado = false;
+  auth.authStateReady().then(() => {
+    if (parado) return;
+    parar = onSnapshot(query(collection(banco(), 'pedidosAlterdata'), where('codigo', '==', codigo), where('tipo', '==', 'sciExcluir')),
+      s => chegou(s.docs.map(x => {
+        const d = x.data();
+        const and = (d.andamento || {}) as Record<string, unknown>;
+        return {
+          id: x.id, status: texto(d.status), erro: texto(d.erro), pct: Math.max(0, Math.min(100, Number(and.pct) || 0)), etapa: texto(and.etapa),
+          criadoEm: texto(d.criadoEm), recebido: !!d.recebidoEm, lote: texto(d.lote), chave: texto(d.chave), ano: texto(d.ano),
+        };
+      }).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))), falhou);
+  }, falhou);
+  return () => { parado = true; parar(); };
+}
+
+export async function pedirExclusaoNoSci(o: { codigo: number; empresa: string; lote: string; chave: string; ano: string }): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
+  if (!roboDePcDoUsuario()) throw new Error('O SCI só é mexido pelo robô do PC de quem tem o robô.');
+  if (!/^M[0-9A-Z]{6,9}$/.test(o.lote) || (o.chave && !/^M[0-9A-Z]{6}\d{3}$/.test(o.chave)) || !/^(\d{4})?$/.test(o.ano)) throw new Error('Esse lote não é do minimum.');
+  const r = await addDoc(collection(banco(), 'pedidosAlterdata'), {
+    status: 'pendentePc', tipo: 'sciExcluir', codigo: o.codigo, empresa: o.empresa.slice(0, 200), lote: o.lote, chave: o.chave, ano: o.ano,
+    criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
+  });
+  return r.id;
+}

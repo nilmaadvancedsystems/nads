@@ -21,8 +21,15 @@ import type { DaCasca } from './useAreaCliente';
 const GUIAS = 5;
 const DOCUMENTOS = 3;
 
-export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirEnvio: () => void) {
-  const { toast } = useRetorno();
+export function useInicio({ token, area, hoje, irPara, copiar, marcarGuiaPaga }: DaCasca, abrirEnvio: () => void) {
+  const { toast, modal } = useRetorno();
+  /** "Já paguei" (26/11/2026): confirma e tira a guia do "A pagar" neste aparelho */
+  const jaPaguei = async (id: string, nome: string, valor: string) => {
+    if (!marcarGuiaPaga) return;
+    const sim = await modal<boolean>({ titulo: 'Já pagou esta guia?', corpo: nome + ' de ' + valor + ' sai da lista de guias a pagar neste aparelho. Se quiser, mande o comprovante pelo Enviar documentos.',
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Já paguei', valor: true, variante: 'btn-primary' }] });
+    if (sim) { marcarGuiaPaga(id); toast(nome + ' saiu das guias a pagar.'); }
+  };
   const [baixando, setBaixando] = useState('');
 
   // a pré-visualização da guia (12/11/2026: "quero que a pessoa tenha uma pré-visualização")
@@ -53,6 +60,7 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirE
     const curto = guia.tipo === 'outra' ? 'Guia' : guia.tipo;
     return {
       id, nome, curto, tipo: guia.tipo, quando, tom, valor: formatos.reais(guia.valor), acao, pedirNova,
+      jaPaguei: marcarGuiaPaga ? () => void jaPaguei(id, nome, formatos.reais(guia.valor)) : null,
       /** tocar na guia abre a prévia (só a que tem o PDF) */
       abrir: guia.temPdf ? () => verGuia(id) : null, abrindo: vista.abrindo === id,
     };

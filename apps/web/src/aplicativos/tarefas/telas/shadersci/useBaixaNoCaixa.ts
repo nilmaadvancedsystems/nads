@@ -6,6 +6,7 @@
 import { sci } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
+import { loteParaAPlanilha } from './loteDaPlanilha';
 import type { VmShadersCi } from './useShadersCi';
 
 interface Guardado {
@@ -102,11 +103,16 @@ export function useBaixaNoCaixa(min: VmShadersCi) {
     jaBaixadas: r.jaBaixadas,
     outras: r.outras,
     lote,
-    baixar: () => {
-      if (!min.cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
+    baixar: () => { void (async () => {
       if (!prontos.length) { aviso({ tom: 'info', titulo: 'Nenhuma baixa pronta', texto: 'Passe o mouse na linha para ver o que falta: o caixa e o histórico precisam estar no plano.' }); return; }
-      baixarBytes(sci.planilhaDoSci(lancamentos), sci.nomeDaPlanilhaSci(min.cnpj, mes, 'baixa no caixa'), sci.TIPO_XLSX_SCI);
-    },
+      // o lote da planilha, controlado pelo nads: empresa + lote + ano (27/11/2026)
+      const loteDaPlanilha = await loteParaAPlanilha({ codigo, empresa: min.empresa?.nome || '', lancamentos, origem: 'baixa no caixa', aviso });
+      if (loteDaPlanilha == null) return;
+      let bytes: Uint8Array;
+      try { bytes = sci.planilhaDoSci(lancamentos, loteDaPlanilha); } catch (e) { aviso({ tom: 'info', titulo: 'Planilha grande demais para um lote', texto: e instanceof Error ? e.message : String(e) }); return; }
+      baixarBytes(bytes, sci.nomeDaPlanilhaSci(min.cnpj, mes, 'baixa no caixa', loteDaPlanilha), sci.TIPO_XLSX_SCI);
+      if (loteDaPlanilha) aviso({ tom: 'ok', titulo: (prontos.length === 1 ? '1 baixa' : prontos.length + ' baixas') + ' na planilha do SCI', texto: 'Lote ' + loteDaPlanilha + '.' });
+    })(); },
     carregarExemplo: () => guardar({ arquivo: 'Consulta de exemplo (fictícia).xls', importadoEm: new Date().toISOString(), lancamentos: consultaDeExemplo(), caixa: '', historico: '' }),
     limpar: () => guardar(null),
   };

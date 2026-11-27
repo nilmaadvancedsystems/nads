@@ -52,7 +52,7 @@ export interface ChamadoNaEquipe {
   /** os passos marcados do pedido do DP ({ nome: ISO }; 23/11/2026, ficha processos-visiveis) */
   passos: Record<string, string>;
   /** (26/11/2026: "eu tenho que ter como aprovar pelo nads") a admissão no sistema de folha (RH NET), que o robô grava */
-  rhnet?: { situacao: string; id: number; erro: string } | null;
+  rhnet?: { situacao: string; id: number; erro: string; erroLiberacao?: string } | null;
 }
 
 /** areaClienteRecebidos/{id}: um arquivo que o cliente mandou (o robô guarda no Drive do cliente). */
@@ -182,7 +182,7 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
       id: 'ex-1', token: tokenDe(462), codigos: [462], empresa: '3M EMPREENDIMENTOS FLORESTAIS LTDA', tipo: 'admissao',
       titulo: 'Contratar um ajudante de campo', situacao: 'aberto', criadoEm: ha(190), atualizadoEm: ha(35), avaliacao: null,
       // a admissão já cadastrada no RH NET, esperando o Liberar para a folha (26/11/2026)
-      rhnet: { situacao: 'cadastrado', id: 900001, erro: '' },
+      rhnet: { situacao: 'cadastrado', id: 900001, erro: '', erroLiberacao: 'o RH NET não liberou: O campo PIS é obrigatório. O campo quadro de horário é obrigatório.' },
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Vamos contratar o Marcos como ajudante de campo, começa dia 1º de novembro. O que preciso mandar?', em: ha(190) },
         { de: 'escritorio', autor: 'Camila', texto: 'Oi! Precisamos do RG, CPF, comprovante de residência, carteira de trabalho e o exame admissional.', em: ha(120) },

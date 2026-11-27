@@ -76,7 +76,7 @@ export function Guias(props: DaCasca) {
               <ul className="cli-gu-itens">
                 {vm.guias.map(x => (
                   <LinhaGuiaDoMes key={x.guia.id} guia={x.guia} codigo={x.codigo} quando={x.quando} destaque={x.destaque} escolhida={x.escolhida} dia={x.dia}
-                    ocupado={vm.baixando === x.guia.id || vm.vista.abrindo === x.guia.id} onVer={vm.verGuia} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova}
+                    ocupado={vm.baixando === x.guia.id || vm.vista.abrindo === x.guia.id} onVer={vm.verGuia} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova} onJaPaguei={vm.jaPaguei}
                     onComprovante={vm.mandarComprovante} comprovanteEm={vm.comprovanteEm(x.guia)} />
                 ))}
               </ul>

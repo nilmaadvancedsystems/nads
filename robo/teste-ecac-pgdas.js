@@ -157,6 +157,22 @@ function contexto(pedidos, portal, extra = {}) {
     igual('sem procuração: erro direto (tentar de novo não resolve)', p1.ref.estado.status, 'erro');
   }
 
+  // ---------- a tela vai para o pedido quando algo não fecha (27/11/2026) ----------
+  {
+    const p1 = pedido('a', base());
+    const portal = Object.assign(portalDeMentira({ perfil: () => 'não achei o "Alterar perfil de acesso" no e-CAC' }), { diagnostico: async () => 'https://cav.receita.fazenda.gov.br/ecac/ · Bem-vindo' });
+    const { o } = contexto([p1], portal);
+    await R.atenderLote(o);
+    verdade('falhou: a tela de agora fica nos passos do pedido', p1.ref.estado.passos.some(s => /^tela: https:\/\/cav/.test(s.texto)));
+  }
+  {
+    const p1 = pedido('a', base());
+    const portal = Object.assign(portalDeMentira({ entrada: 'login' }), { diagnostico: async () => 'https://cav.receita.fazenda.gov.br/autenticacao/login · eCAC' });
+    const { o } = contexto([p1], portal);
+    const r = await R.atenderLote(o);
+    igual('o login não fechou: para a noite e guarda a tela no pedido', [r.parouPor, /autenticacao/.test(p1.ref.estado.tela)], ['login', true]);
+  }
+
   // ---------- o ensaio não grava nada ----------
   {
     const p1 = pedido('a', base({ modo: 'ensaio' }));

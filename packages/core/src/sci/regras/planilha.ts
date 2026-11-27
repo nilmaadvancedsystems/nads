@@ -5,7 +5,6 @@
 // A regra (26/11/2026: "Leva como regra nesses arquivos exportados da sci, eu quero ele 100% pronto, não quero editar. Então
 // remova: esse total e os dados da coluna lote, deixa vazia!"): sem a linha Total no fim e a coluna Lote só com o título.
 import * as XLSX from 'xlsx';
-import { cnpjValido, cpfValido } from '../../empresas/cadastro/receita';
 import type { LancamentoSci, LinhaDoNads, OpcoesDoSci, ResumoDoSci } from '../tipos';
 import { lerPlanilhaDoNads } from './leitura';
 import { classificacaoNormal } from './dePara';
@@ -17,10 +16,19 @@ import { contaDoPlano, type ContaDoPlanoSci, type PlanoSci } from './plano';
  * sentido"; "Nome da conta D? que isso nao ta no layout"). As colunas de análise (o nome das contas, a origem e o motivo) ficam
  * só na aba Conferir, que não vai para o SCI.
  */
+/**
+ * A coluna I (o CNPJ da filial) fica VAZIA, sem título e sem dado (27/11/2026, Vitor, depois de o SCI recusar a planilha com
+ * "Arquivo não corresponde ao leiaute esperado": "Coluna CNPJ filial, a coluna I e vazia, nao eh pra ter nada! Nem cabecalho").
+ * O '' aqui segura a posição; na planilha a célula nem existe.
+ */
 export const COLUNAS_DO_SCI = [
-  'Data', 'Débito', 'Crédito', 'Valor principal', 'Histórico', 'Complemento', 'Documento', 'Lote', 'CNPJ da filial',
+  'Data', 'Débito', 'Crédito', 'Valor principal', 'Histórico', 'Complemento', 'Documento', 'Lote', '',
   'Participante a débito', 'Participante a crédito',
 ] as const;
+/** a coluna I (índice 8): sem nada */
+const COLUNA_VAZIA = 8;
+type Celula = string | number | null;
+const titulos = (cs: readonly string[]): Celula[] => cs.map((c, i) => (i === COLUNA_VAZIA ? null : c));
 
 /** A aba Conferir: as colunas do SCI e, depois, as da análise. */
 export const COLUNAS_DA_CONFERENCIA = [...COLUNAS_DO_SCI, 'Nome da conta D', 'Nome da conta C', 'Origem', 'Motivo'] as const;
@@ -36,6 +44,87 @@ export function documentoComMascara(doc: string): string {
   if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
   return doc.trim();
+}
+
+
+/** A base do lote do minimum tem 7 caracteres; os 3 do fim (001, 002…) são a chave de cada lançamento: 7 + 3 = os 10 do SCI. */
+export const TAMANHO_DA_BASE_DO_LOTE = 7;
+/** a chave de cada lançamento: 3 algarismos, então até 999 lançamentos por planilha */
+export const MAX_LANCAMENTOS_POR_LOTE = 999;
+
+/** o número do lote: 6 algarismos, então até 999.999 lotes por empresa em cada ano */
+export const MAX_LOTES_POR_ANO = 999_999;
+
+/**
+ * O lote do minimum (27/11/2026, a regra final do Vitor: "Vai ser, empresa, lote, ano os parametros"; "pode ter o mesmo numero de
+ * lote em empresas diferente e em anos diferentes"; "Pode tirar a regra de deixar o codigo da empresa no lote, o nads tendo
+ * controle sobre isso ta tranquilo"): M + o número do lote com 6 algarismos (M000001). O número é a sequência da empresa no ano,
+ * guardada no banco (lotesDoMinimum/{empresa}-{ano}): nunca repete na mesma empresa e no mesmo ano. Na planilha, cada lançamento leva
+ * o lote + 001, 002… (M000001001). Todos com o mesmo tamanho: o SCI filtra pelo começo do texto, e um lote nunca é o começo de outro.
+ */
+export function loteDaSequencia(n: number): string {
+  if (!Number.isInteger(n) || n < 1 || n > MAX_LOTES_POR_ANO) throw new Error('o número do lote vai de 1 a ' + MAX_LOTES_POR_ANO.toLocaleString('pt-BR') + ' (veio ' + n + ')');
+  return 'M' + String(n).padStart(TAMANHO_DA_BASE_DO_LOTE - 1, '0');
+}
+
+/**
+ * O ano da planilha (o lote vale numa empresa num ano): o dos lançamentos prontos (os da aba Importar). anos: todos os que
+ * aparecem; com mais de um, a planilha tem de sair em duas (uma por ano). Sem lançamento pronto com data, o ano de hoje.
+ */
+export function anoDaPlanilha(lancamentos: readonly { data: string; problemas: readonly string[] }[], hoje = new Date()): { ano: number; anos: number[] } {
+  const anos = [...new Set(lancamentos.filter(l => !l.problemas.length && /^\d{4}-/.test(l.data)).map(l => Number(l.data.slice(0, 4))))].sort((a, b) => a - b);
+  return { ano: anos.length === 1 ? anos[0] : anos.length ? anos[anos.length - 1] : hoje.getFullYear(), anos };
+}
+
+/** A chave do lançamento n (1, 2…) no lote: a base + 3 algarismos (M583KQT + 1 → M583KQT001). */
+export function chaveDoLancamento(base: string, n: number): string {
+  return base + String(n).padStart(3, '0');
+}
+
+/** Se o texto é a base de um lote do minimum: o de agora (M000001) ou o de antes (M583KQT: M + empresa + letras), 7 cada. */
+const ehBaseDoMinimum = (lote: string) => lote.length === TAMANHO_DA_BASE_DO_LOTE && (/^M\d{6}$/.test(lote) || /^M\d{1,5}[A-Z]+$/.test(lote));
+
+/**
+ * O que um lote do minimum diz: a base, o número do lançamento (se tiver) e a empresa, que só o formato de antes trazia
+ * (M000001001 → null, M000001, 1; M583KQT001 → 583, M583KQT, 1; M583KQT → 583, M583KQT, null). null se não é um lote do minimum.
+ */
+export function lerLoteDoMinimum(lote: string): { empresa: number | null; base: string; lancamento: number | null } | null {
+  const t = lote.trim().toUpperCase();
+  const seq = /^(M\d{6})(\d{3})?$/.exec(t);
+  if (seq) return { empresa: null, base: seq[1], lancamento: seq[2] ? Number(seq[2]) : null };
+  const m = /^(M(\d{1,5})[A-Z]+)(\d{3})?$/.exec(t);
+  if (!m || m[1].length !== TAMANHO_DA_BASE_DO_LOTE) return null;
+  return { empresa: Number(m[2]), base: m[1], lancamento: m[3] ? Number(m[3]) : null };
+}
+
+/**
+ * O que dá para excluir no SCI a partir do Lote de um lançamento da consulta (27/11/2026, o Vitor: "para excluir lote, voce coloca o
+ * lote apenas, o lancamento vc digita o numero todo da chave"): o lote (a base, que filtra todos os dele) e a chave do lançamento
+ * (null quando o lote não tem chave por linha, como o primeiro formato, M00583BR6W). Só lotes do minimum: o SCI filtra pelo começo
+ * do texto, e um lote curto pegaria lançamentos que não são dele. O de agora (M000001) não traz a empresa (a linha já é da consulta
+ * dela, e a exclusão filtra também o ano); os de antes, só da própria empresa. null quando não dá.
+ */
+export function exclusaoPeloLote(lote: string, codigoDaEmpresa: number): { lote: string; chave: string | null } | null {
+  const t = lote.trim().toUpperCase();
+  const l = lerLoteDoMinimum(t);
+  if (l) return l.empresa == null || l.empresa === codigoDaEmpresa ? { lote: l.base, chave: l.lancamento != null ? t : null } : null;
+  const antigo = /^M(\d{5})[A-Z0-9]{4}$/.exec(t);
+  return antigo && Number(antigo[1]) === codigoDaEmpresa ? { lote: t, chave: null } : null;
+}
+
+/** A empresa de um lote do formato de antes (M583KQT001 ou M583KQT → 583); null no de agora (M000001) ou fora do minimum. */
+export function empresaDoLote(lote: string): number | null {
+  return lerLoteDoMinimum(lote)?.empresa ?? null;
+}
+
+/**
+ * A chave de cada lançamento na planilha (na ordem dos lançamentos): os prontos levam a base + 001, 002… na ordem em que vão para
+ * o Importar; os com problema não vão para o SCI e ficam sem chave (''). Lote que não é do minimum: o mesmo em todos.
+ */
+export function chavesDaPlanilha(lancamentos: readonly LancamentoSci[], lote: string): string[] {
+  if (!ehBaseDoMinimum(lote)) return lancamentos.map(() => lote);
+  let n = 0;
+  return lancamentos.map(l => (l.problemas.length ? '' : chaveDoLancamento(lote, ++n)));
 }
 
 /** O lote padrão do nads: NADS + AAMM do mês (NADS2611). */
@@ -78,7 +167,6 @@ function problemasNoPlano(plano: PlanoSci, lado: 'débito' | 'crédito', codigo:
 /** Os lançamentos do SCI a partir das linhas do nads: troca as contas pelo de/para e aponta o que impede a importação. */
 export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDoSci): LancamentoSci[] {
   const cnpj = documentoComMascara(op.cnpjEmpresa);
-  const cnpjOk = cnpjValido(op.cnpjEmpresa) || cpfValido(op.cnpjEmpresa);
   const lote = (op.lote?.trim() || loteDoMes(mesPrincipal(linhas))).slice(0, TAMANHO_DO_LOTE);
   const dePara = op.dePara && op.dePara.size ? op.dePara : null;
   const conta = (c: string) => {
@@ -100,7 +188,7 @@ export function lancamentosParaOSci(linhas: readonly LinhaDoNads[], op: OpcoesDo
     if (l.debito && l.credito && d.codigo === c.codigo) problemas.push('débito e crédito na mesma conta');
     if (!(l.valor > 0)) problemas.push('sem valor');
     if (!historico) problemas.push('sem histórico');
-    if (!cnpjOk) problemas.push('CNPJ da empresa inválido');
+    // o CNPJ não vai mais na planilha (a coluna I vazia) e não impede mais (27/11/2026: "Sim, tira")
     if (op.planoSci) {
       if (!d.semPar) problemas.push(...problemasNoPlano(op.planoSci, 'débito', d.codigo, ''));
       if (!c.semPar) problemas.push(...problemasNoPlano(op.planoSci, 'crédito', c.codigo, ''));
@@ -138,18 +226,22 @@ function serialExcel(iso: string): number | string {
 
 const numeroOuTexto = (s: string): number | string => (/^\d{1,15}$/.test(s) ? Number(s) : s);
 
-function linhaDaPlanilha(l: LancamentoSci): (string | number)[] {
+/**
+ * lote: o da planilha toda (o do minimum, um por planilha; 27/11/2026: "ao exportar os arquivos, voce vai colocar na coluna lote, um
+ * codigo propio"). Sem ele, a coluna Lote vai vazia, como antes (26/11/2026: "os dados da coluna lote, deixa vazia!").
+ */
+function linhaDaPlanilha(l: LancamentoSci, lote = ''): Celula[] {
   return [
     serialExcel(l.data), numeroOuTexto(l.debito), numeroOuTexto(l.credito), l.valor / 100, numeroOuTexto(l.historico),
-    // a coluna Lote vai vazia (26/11/2026: "os dados da coluna lote, deixa vazia!")
-    l.complemento, l.documento, '', l.cnpjEmpresa, l.participanteD, l.participanteC,
+    // a coluna I vazia: nada, nem o CNPJ (27/11/2026)
+    l.complemento, l.documento, lote, null, l.participanteD, l.participanteC,
   ];
 }
 
 /** A linha da aba Conferir: a do SCI, o nome das contas, a origem e o motivo de não estar pronto. */
-const linhaDaConferencia = (l: LancamentoSci): (string | number)[] => [...linhaDaPlanilha(l), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
+const linhaDaConferencia = (l: LancamentoSci, lote = ''): Celula[] => [...linhaDaPlanilha(l, lote), l.nomeD, l.nomeC, l.origem, l.problemas.join('; ')];
 
-function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkSheet {
+function aba(aoa: Celula[][], linhasDeLancamento: number): XLSX.WorkSheet {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   for (let r = 1; r <= linhasDeLancamento; r++) {
     const d = ws[XLSX.utils.encode_cell({ r, c: 0 })];
@@ -168,24 +260,31 @@ function aba(aoa: (string | number)[][], linhasDeLancamento: number): XLSX.WorkS
  * e os lançamentos prontos, sem a linha Total (o gerador lê da linha 2 e descarta 0 no fim). Aba "Conferir" (só se houver): os
  * que têm problema, com o nome das contas, a origem e o motivo depois das colunas do SCI.
  */
-export function planilhaDoSci(lancamentos: readonly LancamentoSci[]): Uint8Array {
+export function planilhaDoSci(lancamentos: readonly LancamentoSci[], lote = ''): Uint8Array {
   const prontos = lancamentos.filter(l => !l.problemas.length);
   const comProblema = lancamentos.filter(l => l.problemas.length);
-  const importar: (string | number)[][] = [[...COLUNAS_DO_SCI], ...prontos.map(linhaDaPlanilha)];
+  if (ehBaseDoMinimum(lote) && prontos.length > MAX_LANCAMENTOS_POR_LOTE) {
+    throw new Error('A planilha tem ' + prontos.length + ' lançamentos prontos: o lote vai até ' + MAX_LANCAMENTOS_POR_LOTE + ' (a chave de cada um tem 3 algarismos). Divida em mais de uma planilha.');
+  }
+  const chaves = chavesDaPlanilha(lancamentos, lote);
+  const chaveDe = new Map(lancamentos.map((l, i) => [l, chaves[i]]));
+  // o lote do minimum: cada lançamento com a sua chave (a base + 001, 002…); os da aba Conferir, só a base (não vão para o SCI)
+  const importar: Celula[][] = [titulos(COLUNAS_DO_SCI), ...prontos.map(l => linhaDaPlanilha(l, chaveDe.get(l) ?? lote))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, aba(importar, prontos.length), 'Importar');
   if (comProblema.length) {
-    XLSX.utils.book_append_sheet(wb, aba([[...COLUNAS_DA_CONFERENCIA], ...comProblema.map(linhaDaConferencia)], comProblema.length), 'Conferir');
+    XLSX.utils.book_append_sheet(wb, aba([titulos(COLUNAS_DA_CONFERENCIA), ...comProblema.map(l => linhaDaConferencia(l, lote))], comProblema.length), 'Conferir');
   }
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
 }
 
 export const TIPO_XLSX_SCI = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** sci_<CNPJ só números>_<aaaa-mm>[_<origem>].xlsx */
-export function nomeDaPlanilhaSci(cnpjEmpresa: string, mes: string, origem = ''): string {
+/** sci_<CNPJ só números>_<aaaa-mm>[_<origem>][_<lote>].xlsx (o lote do minimum no nome: o arquivo e o lote no SCI se acham) */
+export function nomeDaPlanilhaSci(cnpjEmpresa: string, mes: string, origem = '', lote = ''): string {
   const o = origem.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return 'sci_' + (so(cnpjEmpresa) || 'empresa') + '_' + (mes || 'sem-mes') + (o ? '_' + o : '') + '.xlsx';
+  const l = lote.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return 'sci_' + (so(cnpjEmpresa) || 'empresa') + '_' + (mes || 'sem-mes') + (o ? '_' + o : '') + (l ? '_' + l : '') + '.xlsx';
 }
 
 /**

@@ -2486,6 +2486,13 @@ html.cli-tut-aberto::-webkit-scrollbar,html.cli-tut-aberto body::-webkit-scrollb
   .cli-app .cli-impostos-topo .cli-botao-excel{padding:6px 10px;font-size:13px;}
 }
 
+/* (26/11/2026: "deixa mais gordinho pra caber mais coisa e o layout ficar melhor") a admissão com o cadastro completo: a
+   janela larga e três campos por linha no computador; duas no meio; uma no celular */
+.modal.modal-centro:has(.cli-pa){max-width:min(1040px,calc(100vw - 32px));}
+@media (min-width:900px){
+  .cli-app.cli-pedido.cli-pa{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px;}
+  .cli-app.cli-pedido.cli-pa .cli-pa-dois{grid-column:span 2;}
+}
 
 /* o WhatsApp do escritório no centro, no celular (27/11/2026: "centraliza isso no celular") */
 @media (max-width:767px){

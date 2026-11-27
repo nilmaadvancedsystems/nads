@@ -6,9 +6,12 @@ import { sci } from '@nads/core';
 import { baixarBytes, useCarregando, useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { ehDiretor } from '../../casca/navegacao';
+import { useOperador } from '../../casca/operador';
 import { useDadosDaEmpresaNoEntregas, useTodosOsCadastros } from '../../dados/repo';
 import { useEmpresasDaPessoa } from '../empresas/andamento';
 import { useLancatudo } from '../lancatudo/useLancatudo';
+import { loteParaAPlanilha } from './loteDaPlanilha';
 
 type Lancamento = sci.LancamentoDoShader;
 
@@ -16,8 +19,8 @@ type Lancamento = sci.LancamentoDoShader;
  * Os apps do minimum, depois de escolher a empresa: os Lançamentos do SCI, o Extratudo (o Lançatudo, o extrato que vira lançamento),
  * o Visualizar lançamentos (o razão do SCI) e o Extrato → SCI (25/11/2026: o PDF do extrato direto na planilha do SCI, só no navegador).
  */
-export type AppDoMinimum = 'lancamentos' | 'extratudo' | 'razao' | 'extrato' | 'baixa';
-const appDoEndereco = (m: string | null): AppDoMinimum | null => (m === 'lancamentos' || m === 'extratudo' || m === 'razao' || m === 'extrato' || m === 'baixa' ? m : null);
+export type AppDoMinimum = 'lancamentos' | 'extratudo' | 'razao' | 'extrato' | 'baixa' | 'contabilizacao';
+const appDoEndereco = (m: string | null): AppDoMinimum | null => (m === 'lancamentos' || m === 'extratudo' || m === 'razao' || m === 'extrato' || m === 'baixa' || m === 'contabilizacao' ? m : null);
 
 /** As colunas da tabela que ordenam e filtram (o clique no cabeçalho). */
 export type ColunaDosLancamentos = 'data' | 'debito' | 'credito' | 'valor' | 'historico' | 'documento' | 'participanteD' | 'participanteC';
@@ -116,6 +119,7 @@ const doLancamento = (l: sci.CamposDoLancamento): Formulario => ({
 export function useShadersCi() {
   const { toast, aviso, modal } = useRetorno();
   const [dev] = useModoDesenvolvedor();
+  const { operador: op } = useOperador();
   // só as empresas que estão no SCI (24/11/2026: "Apenas empresas que estão na sci"): o "Está no SCI" do Cadastro e, no
   // modo desenvolvedor, as marcadas pelo ⚡ Dados de teste
   // e, delas, só as de que a pessoa é a responsável do Contábil no Cadastro, para todo mundo, o diretor também (25/11/2026: "minimum
@@ -194,11 +198,16 @@ export function useShadersCi() {
   // na versão final, só os Lançamentos (e o Visualizar lançamentos, que abre dele); o Extratudo só no modo desenvolvedor
   // (25/11/2026: "pode publicar o minimum para a versao final do usuario, liberando apenas a aba lancamentos, irei trabalhar no extratudo")
   // o Extrato → SCI também só no modo desenvolvedor até o teste da importação no SCI (25/11/2026)
-  const apps: readonly AppDoMinimum[] = dev ? ['lancamentos', 'extratudo', 'extrato', 'baixa', 'razao'] : ['lancamentos', 'razao'];
+  // a Contabilização (27/11/2026: "Coloca um app chamado contabilizacao"; "pega o layout completo de lancamentos, e cria um botao
+  // chamado vitor com o icone da sci"): os lançamentos que o robô do PC puxa do SCI. No modo desenvolvedor e, na versão final, para
+  // os diretores ("Publica o minimum na final apenas para diretores … irei precisar gravar algumas coisas no banco")
+  const diretor = ehDiretor(op);
+  const apps: readonly AppDoMinimum[] = dev ? ['lancamentos', 'extratudo', 'extrato', 'baixa', 'contabilizacao', 'razao'] : diretor ? ['lancamentos', 'contabilizacao', 'razao'] : ['lancamentos', 'razao'];
   const pedido = entrada.empresa ? appDoEndereco(entrada.doEndereco('m')) : null;
   // fora do modo desenvolvedor só há os Lançamentos: a empresa escolhida já abre neles, sem a tela dos apps (25/11/2026: "O minumum
-  // pode abrir na aba de lancamento direto, apos selecionar a empresa na versao final")
-  const app = pedido && apps.includes(pedido) ? pedido : entrada.empresa && !dev ? 'lancamentos' : null;
+  // pode abrir na aba de lancamento direto, apos selecionar a empresa na versao final"); o diretor tem a Contabilização também, e
+  // vê a tela dos apps
+  const app = pedido && apps.includes(pedido) ? pedido : entrada.empresa && !dev && !diretor ? 'lancamentos' : null;
 
   const guardar = useCallback((muda: (g: Guardado) => Guardado) => {
     setGuardado(g => { const novo = muda(g); if (chave) gravarGuardado(chave, novo); return novo; });
@@ -677,16 +686,20 @@ export function useShadersCi() {
     },
     // a planilha do SCI
     podeExportar: resumo.quantos > 0,
-    exportar() {
+    exportar() { void (async () => {
       if (!entrada.empresa) return;
-      if (!cnpjOk) { aviso({ tom: 'info', titulo: 'Falta o CNPJ da empresa', texto: 'Ele vai em todas as linhas da planilha e o SCI confere com o da empresa. Preencha em Cadastro › Dados da empresa.' }); return; }
       const lsci = sci.lancamentosDoShaderParaOSci(guardado.lancamentos, plano, cnpj);
       const mes = sci.mesPrincipal(guardado.lancamentos);
-      baixarBytes(sci.planilhaDoSci(lsci), sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum'), sci.TIPO_XLSX_SCI);
+      // o lote da planilha, controlado pelo nads: empresa + lote + ano (27/11/2026)
+      const lote = await loteParaAPlanilha({ codigo: entrada.empresa.codigo, empresa: entrada.empresa.nome, lancamentos: lsci, origem: 'lançamentos', aviso });
+      if (lote == null) return;
+      let bytes: Uint8Array;
+      try { bytes = sci.planilhaDoSci(lsci, lote); } catch (e) { aviso({ tom: 'info', titulo: 'Planilha grande demais para um lote', texto: e instanceof Error ? e.message : String(e) }); return; }
+      baixarBytes(bytes, sci.nomeDaPlanilhaSci(cnpj, mes, 'minimum', lote), sci.TIPO_XLSX_SCI);
       const fora = lsci.filter(l => l.problemas.length).length;
-      if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
-      else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento.' : ' lançamentos.'));
-    },
+      if (fora) aviso({ tom: 'info', titulo: 'Planilha baixada, com ' + fora + (fora === 1 ? ' lançamento' : ' lançamentos') + ' para conferir', texto: (lote ? 'Lote ' + lote + '. ' : '') + 'Os prontos estão na aba Importar; os que têm problema ficaram na aba Conferir, com o motivo.' });
+      else toast('Planilha do SCI baixada: ' + lsci.length + (lsci.length === 1 ? ' lançamento' : ' lançamentos') + (lote ? ', lote ' + lote + '.' : '.'));
+    })(); },
     /** a tela inicial: as empresas do SCI, por nome, e se a lista já chegou do banco */
     empresasDoSci: entrada.lista,
     carregada,

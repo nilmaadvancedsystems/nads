@@ -45,6 +45,7 @@ export function criarRhNetFirestore(quem: () => string): RepoRhNet {
       if (erro) throw new Error(erro);
       await pedir(codigo, 'admissao', { admissao: { ...a } });
     },
+    pedirExclusao: (codigo, id, chamadoId) => pedir(codigo, 'excluirAdmissao', { id, ...(chamadoId ? { chamadoId } : {}) }),
     pedirLiberacao: (codigo, ids, situacao, chamadoId) => pedir(codigo, 'liberarAdmissao', { ids, situacao, ...(chamadoId ? { chamadoId } : {}) }),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

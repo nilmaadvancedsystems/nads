@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { LugarDasAcoes, useTituloDoTopo, useTrilhaDoTopo } from '../../../comum/topo';
 import { LogoDoMinimum } from '../telas/shadersci/LogoDoMinimum';
-import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
+import { useAvisoDeBloqueio, useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 import { JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
@@ -58,6 +58,7 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   const seloDoTitulo = !empresa && tituloDaPagina.texto ? tituloDaPagina.selo : undefined;
   const trocarDoTitulo = !empresa && tituloDaPagina.texto ? tituloDaPagina.trocar : undefined;
   const trilha = useTrilhaDoTopo();
+  const [dev] = useModoDesenvolvedor();
   // o minimum (25/11/2026: "Troca o nome tarefas, pela logo do minimum, deixando ela centralizada no cabeçalho"): a logo no
   // centro; o clique volta aos apps da empresa aberta (tira o ?m=), ou fica na escolha da empresa
   const [, setParams] = useSearchParams();
@@ -86,8 +87,9 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
       {children}
-      {/* a cobrança de quem delegou, por cima de tudo até responder (16/11/2026; só no modo desenvolvedor) */}
-      <JanelaDaCobranca />
+      {/* a cobrança de quem delegou, por cima de tudo até responder (16/11/2026); no modo desenvolvedor não abre (27/11/2026: "isso
+          ta bugado no modo dev, remove isso!"): fora dele, segue igual */}
+      {!dev && <JanelaDaCobranca />}
       {/* o e-mail principal de quem ainda entra pelo nome (16/11/2026; só no modo desenvolvedor) */}
       <JanelaDoEmailPrincipal />
     </Casca>

@@ -19,6 +19,8 @@ export const GUIAS_DO_SCI = [
   { chave: 'DARF-COFINS', rotulo: 'DARF da COFINS' },
   { chave: 'DARF-IRPJ', rotulo: 'DARF do IRPJ' },
   { chave: 'DARF-CSLL', rotulo: 'DARF da CSLL' },
+  // (27/11/2026) o DARF da DCTFWeb (INSS e IRRF da folha) vai no modelo da guia unificada da DCTFWeb
+  { chave: 'DARF-DCTFWEB', rotulo: 'DARF da DCTFWeb (INSS/IRRF)' },
   { chave: 'DARF', rotulo: 'DARF (outros)' },
   { chave: 'DAE-ICMS', rotulo: 'DAE do ICMS normal' },
   // (26/11/2026: "Pode separar") o DAE por coluna do Relatório: cada um com o modelo dele no SCI Report
@@ -43,12 +45,15 @@ export interface ConfigDoSci {
   empresas: number[];
   /** chave da guia → código do relatório no SCI Report (4 posições, maiúsculo) */
   relatorios: Partial<Record<ChaveDaGuiaNoSci, string>>;
+  /** (27/11/2026: "cria a lista para esconder a guia de teste da área") as publicações do SCI Report (publicadosId) que a
+   *  Área do Cliente não mostra (uma guia de teste, uma publicada por engano), já que a API não apaga publicação */
+  ocultas: string[];
   atualizadoEm: string;
   atualizadoPor: string;
 }
 
 export const CONFIG_DO_SCI_DESLIGADA: ConfigDoSci = {
-  areaCliente: false, publicarGuias: false, lerDeVolta: false, enviarXmls: false, conferirXmls: false, rhNet: false, empresas: [], relatorios: {}, atualizadoEm: '', atualizadoPor: '',
+  areaCliente: false, publicarGuias: false, lerDeVolta: false, enviarXmls: false, conferirXmls: false, rhNet: false, empresas: [], relatorios: {}, ocultas: [], atualizadoEm: '', atualizadoPor: '',
 };
 
 const CHAVES = new Set<string>(GUIAS_DO_SCI.map(g => g.chave));
@@ -71,6 +76,7 @@ export function configDoSci(doc: unknown): ConfigDoSci {
   return {
     areaCliente: sim('areaCliente'), publicarGuias: sim('publicarGuias'), lerDeVolta: sim('lerDeVolta') && sim('publicarGuias'),
     enviarXmls: sim('enviarXmls'), conferirXmls: sim('conferirXmls'), rhNet: sim('rhNet'), empresas, relatorios,
+    ocultas: publicacoesDoTexto(Array.isArray(d.ocultas) ? d.ocultas.join(' ') : ''),
     atualizadoEm: typeof d.atualizadoEm === 'string' ? d.atualizadoEm : '', atualizadoPor: typeof d.atualizadoPor === 'string' ? d.atualizadoPor : '',
   };
 }
@@ -80,13 +86,24 @@ export function documentoDaConfigDoSci(c: ConfigDoSci, por: string, agora: Date)
   const limpa = configDoSci({ ...c, atualizadoEm: '', atualizadoPor: '' });
   return {
     areaCliente: limpa.areaCliente, publicarGuias: limpa.publicarGuias, lerDeVolta: limpa.lerDeVolta, enviarXmls: limpa.enviarXmls, conferirXmls: limpa.conferirXmls, rhNet: limpa.rhNet,
-    empresas: limpa.empresas, relatorios: limpa.relatorios, atualizadoEm: agora.toISOString(), atualizadoPor: por,
+    empresas: limpa.empresas, relatorios: limpa.relatorios, ocultas: limpa.ocultas, atualizadoEm: agora.toISOString(), atualizadoPor: por,
   };
 }
 
 /** "583, 602 607" → [583, 602, 607] (a lista de empresas digitada na tela). */
 export function empresasDoTexto(texto: string): number[] {
   return [...new Set(String(texto ?? '').split(/[^\d]+/).map(Number).filter(n => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+}
+
+/** "51643495, 51643496" → ['51643495', '51643496'] (os números das publicações escondidas, digitados na tela). */
+export function publicacoesDoTexto(texto: string): string[] {
+  return [...new Set(String(texto ?? '').split(/[^\d]+/).filter(n => /^\d{1,12}$/.test(n) && Number(n) > 0))].slice(0, 200);
+}
+
+/** As guias do SCI Report sem as escondidas (a Área não mostra nem abre o PDF delas). */
+export function semAsOcultas<G extends { id: string }>(guias: readonly G[], ocultas: readonly string[]): G[] {
+  const fora = new Set(ocultas);
+  return guias.filter(g => !fora.has(String(g.id)));
 }
 
 /** A empresa está com o SCI ligado? */
@@ -105,6 +122,7 @@ export function chaveDaGuiaNoSci(tipo: string, tributo: string, coluna = ''): Ch
   if (t === 'DAE' && DAE_PELA_COLUNA[String(coluna ?? '').trim()]) return DAE_PELA_COLUNA[String(coluna).trim()];
   if (t === 'DAS') return 'DAS';
   if (t === 'FGTS') return 'FGTS';
+  if (t === 'DARF' && /^(INSS|IRRF|DCTFWEB)\b/.test(tr.replace(/\s+/g, ''))) return 'DARF-DCTFWEB';
   if (t === 'DARF') return (['PIS', 'COFINS', 'IRPJ', 'CSLL'].includes(tr) ? 'DARF-' + tr : 'DARF') as ChaveDaGuiaNoSci;
   if (t === 'DAE' && tr === 'ICMS') return 'DAE-ICMS';
   if (t === 'DAM' && tr === 'ISS') return 'DAM-ISS';

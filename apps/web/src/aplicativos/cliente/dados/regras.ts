@@ -138,6 +138,14 @@ export interface PedidoDeAdmissao {
   /** (26/11/2026) o que a pré-admissão do SCI pede a mais: o nascimento (obrigatório), o PIS (opcional) e como recebe
    *  (mensalista, horista...). Opcionais no tipo porque o rascunho antigo de um pedido não tem. */
   nascimento?: string; pis?: string; recebePor?: string;
+  /** (26/11/2026: "quero verificacao na tela de registro, que nao deixa nem passar") o cadastro completo que o RH NET exige
+   *  para liberar: a pessoa, o documento, o endereço e a jornada (as opções vêm do core, sci.integracao.OPCOES_DA_ADMISSAO) */
+  sexo?: string; estadoCivil?: string; racaCor?: string; escolaridade?: string; maeNome?: string; nascCidade?: string; nascUf?: string;
+  rg?: string; rgOrgao?: string; rgUf?: string; rgEmissao?: string;
+  celular?: string; cep?: string; logradouroTipo?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string;
+  horasSemana?: string; noturno?: string;
+  /** (26/11/2026) completar uma admissão que já está no sistema de folha (o número dela lá): vai liberada para o DP importar */
+  idNoRhNet?: string;
   /** a foto do funcionário, opcional (o JPEG 256×256 em base64, sem o prefixo data:) */
   foto?: string;
 }
@@ -156,18 +164,46 @@ export function erroDaAdmissao(p: PedidoDeAdmissao): string {
   if (!nascimento) return 'Escreva a data de nascimento (dd/mm/aaaa).';
   const inicio = deBr(p.inicio);
   if (inicio && nascimento.getFullYear() > inicio.getFullYear() - 14) return 'Confira a data de nascimento: a pessoa precisa ter pelo menos 14 anos.';
+  // o cadastro completo, na ordem da tela (o RH NET não libera sem isto)
+  const vazio = (v?: string) => !(v ?? '').trim();
+  if (vazio(p.sexo)) return 'Escolha o sexo.';
+  if (vazio(p.estadoCivil)) return 'Escolha o estado civil.';
+  if (vazio(p.racaCor)) return 'Escolha a raça/cor (pode ser "Não quero informar").';
+  if (vazio(p.escolaridade)) return 'Escolha a escolaridade.';
+  if ((p.maeNome ?? '').trim().length < 3) return 'Escreva o nome da mãe.';
+  if (vazio(p.nascCidade) || vazio(p.nascUf)) return 'Escreva a cidade e a UF de nascimento.';
+  if (vazio(p.rg)) return 'Escreva o número do RG.';
+  if (vazio(p.rgOrgao) || vazio(p.rgUf)) return 'Escreva o órgão emissor e a UF do RG.';
+  const emissao = deBr(p.rgEmissao ?? '');
+  if (!emissao || emissao.getTime() > Date.now()) return 'Escreva a data de emissão do RG (dd/mm/aaaa).';
   if ((p.pis ?? '').trim() && (p.pis ?? '').replace(/\D/g, '').length !== 11) return 'Confira o PIS: são 11 números.';
-  if (!p.cargo.trim()) return 'Escreva o cargo.';
+  const cel = (p.celular ?? '').replace(/\D/g, '');
+  if (cel.length < 10 || cel.length > 11) return 'Escreva o celular com DDD.';
+  if ((p.cep ?? '').replace(/\D/g, '').length !== 8) return 'Confira o CEP: são 8 números.';
+  if (vazio(p.logradouro)) return 'Escreva a rua (o logradouro) do endereço.';
+  if (vazio(p.numero)) return 'Escreva o número do endereço (ou S/N).';
+  if (vazio(p.bairro)) return 'Escreva o bairro.';
+  if (vazio(p.cidade) || vazio(p.uf)) return 'Escreva a cidade e a UF do endereço.';
+  if (!p.cargo.trim()) return 'Escolha o cargo.';
   if (!(valorDoSalario(p.salario) > 0)) return 'Escreva o salário.';
   if (!DATA.test(p.inicio)) return 'Escreva a data de início (dd/mm/aaaa).';
+  const horas = Number((p.horasSemana ?? '').replace(',', '.'));
+  if (!(horas > 0 && horas <= 44)) return 'Escreva as horas por semana (até 44).';
   return '';
 }
 /** '2.000,50' ou 'R$ 2000' em número (0 quando não dá) */
 const valorDoSalario = (t: string) => { const n = Number(String(t ?? '').replace(/[^\d,]/g, '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
 export function textoDaAdmissao(p: PedidoDeAdmissao): string {
-  return linhas('Admissão: ' + p.nome.trim() + ' (' + p.cargo.trim() + ')', [
-    ['Nome completo', p.nome], ['CPF', p.cpf], ['Nascimento', p.nascimento ?? ''], ['PIS', p.pis ?? ''], ['Cargo', p.cargo], ['Salário', p.salario],
-    ['Recebe por', p.recebePor ?? ''], ['Início', p.inicio], ['Contrato', p.contrato], ['Observações', p.observacoes],
+  return linhas((p.idNoRhNet ? 'Completar admissão: ' : 'Admissão: ') + p.nome.trim() + ' (' + p.cargo.trim() + ')', [
+    ['ID no RH NET', p.idNoRhNet ?? ''],
+    ['Nome completo', p.nome], ['CPF', p.cpf], ['Nascimento', p.nascimento ?? ''],
+    ['Sexo', p.sexo ?? ''], ['Estado civil', p.estadoCivil ?? ''], ['Raça/cor', p.racaCor ?? ''], ['Escolaridade', p.escolaridade ?? ''],
+    ['Nome da mãe', p.maeNome ?? ''], ['Cidade de nascimento', p.nascCidade && p.nascUf ? p.nascCidade.trim() + '/' + p.nascUf : ''],
+    ['RG', p.rg ?? ''], ['Órgão emissor', p.rgOrgao ?? ''], ['UF do RG', p.rgUf ?? ''], ['Emissão do RG', p.rgEmissao ?? ''], ['PIS', p.pis ?? ''],
+    ['Celular', p.celular ?? ''], ['CEP', p.cep ?? ''], ['Tipo de logradouro', p.logradouroTipo ?? ''], ['Logradouro', p.logradouro ?? ''],
+    ['Número', p.numero ?? ''], ['Complemento', p.complemento ?? ''], ['Bairro', p.bairro ?? ''], ['Cidade', p.cidade && p.uf ? p.cidade.trim() + '/' + p.uf : ''],
+    ['Cargo', p.cargo], ['Salário', p.salario], ['Recebe por', p.recebePor ?? ''], ['Início', p.inicio], ['Contrato', p.contrato],
+    ['Horas por semana', p.horasSemana ?? ''], ['Trabalha à noite', p.noturno ?? ''], ['Observações', p.observacoes],
     ['Foto', p.foto ? 'enviada junto com o pedido' : ''],
   ]);
 }

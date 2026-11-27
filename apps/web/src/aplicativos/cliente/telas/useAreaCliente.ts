@@ -12,6 +12,7 @@ import { AREA_VAZIA, type ContaDoCliente, type EstadoDaArea } from '../dados/are
 import { repoAreaCliente } from '../dados/repo';
 import { abasDoCelular, diaRelativo, seloDoRegime, tokenDoLink, iniciaisDaEmpresa, linkDoWhatsapp, nomeDaPessoa, notificacoes, perfisComEste, ultimaEmpresa, comAsDaConta, type PerfilGuardado } from '../dados/regras';
 import { guardarPerfis, lerPerfis } from '../dados/perfis';
+import { guardarGuiaPaga, guiasPagasAqui } from '../dados/guiasPagas';
 import { guardarLidas, lidasDoSino, soAsQueAindaExistem } from '../dados/sinoLido';
 import { TOKEN_COMO_NO_BANCO, TOKEN_DE_EXEMPLO } from '../dados/areaCliente.memoria';
 import { guiasDoMomento } from '../dados/visaoGeral';
@@ -48,7 +49,12 @@ export function useAreaCliente() {
   // a pergunta e o aviso do "Confirmar que recebi" (18/11/2026, ficha confirmar-entrega)
   const { modal, toast: toastDoRetorno } = useRetorno();
   const copiar = useCopiar();
-  const [area, setArea] = useState<EstadoDaArea>(AREA_VAZIA);
+  const [areaBruta, setArea] = useState<EstadoDaArea>(AREA_VAZIA);
+  // (26/11/2026: "tem como eu fazer um jeito de remover isso da tela em algum botao? caso a pessoa ja tenha pago") as guias
+  // que o cliente marcou "Já paguei" neste aparelho saem do "A pagar" em todas as abas
+  const [pagasAqui, setPagasAqui] = useState(() => guiasPagasAqui(token));
+  useEffect(() => { setPagasAqui(guiasPagasAqui(token)); }, [token]);
+  const area = useMemo(() => (pagasAqui.size ? { ...areaBruta, guias: areaBruta.guias.filter(g => !pagasAqui.has(g.id)) } : areaBruta), [areaBruta, pagasAqui]);
   // o dia de hoje fixo enquanto a página está aberta (a situação das guias vem dele)
   const [hoje] = useState(() => new Date());
 
@@ -212,6 +218,8 @@ export function useAreaCliente() {
 
   return {
     token, area, hoje, logo: area.logo, aba: atual, abas,
+    /** "Já paguei": a guia sai do "A pagar" neste aparelho */
+    marcarGuiaPaga: (id: string) => setPagasAqui(guardarGuiaPaga(token, id)),
     // a barra de baixo do celular (13/11/2026): as abas principais e o "Mais", aceso quando a aba aberta não está nela
     abasDeBaixo: abasDoCelular(abas.map(a => a.id)).map(id => {
       const a = abas.find(x => x.id === id)!;
@@ -280,4 +288,6 @@ export type AreaCliente = ReturnType<typeof useAreaCliente>;
 export type DaCasca = Pick<AreaCliente, 'token' | 'area' | 'hoje' | 'irPara' | 'copiar'> & {
   /** marca um aviso do sino como lido (as Solicitações, ao abrir uma respondida; ficha aviso-de-resposta, 17/11/2026) */
   marcarLida?: AreaCliente['marcarLida'];
+  /** "Já paguei" (26/11/2026): tira a guia do "A pagar" neste aparelho */
+  marcarGuiaPaga?: AreaCliente['marcarGuiaPaga'];
 };

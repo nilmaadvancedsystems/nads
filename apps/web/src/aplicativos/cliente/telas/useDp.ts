@@ -8,10 +8,11 @@
 // embaixo, a folha do mês por categoria.
 import { areaCliente as ac, formatos } from '@nads/core';
 import { formatoPeloNome, useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
+import { repoSciReport } from '../dados/sciReport';
 import { nomeDoZip } from '../dados/biblioteca';
 import { tempoDeEmpresa } from '../dados/regras';
 import { donoQueNaoRepete, fraseCurtaDasFerias, notaDasFerias, resumoDoRegistro } from '../dados/registroEnxuto';
@@ -25,6 +26,13 @@ import type { DaCasca, PedidoDaTela } from './useAreaCliente';
 import { curto, topoDoEixo, type ColunaDoGrafico } from './useAdministrativo';
 
 export type Pedido = 'admissao' | 'ferias' | 'demissao';
+/** a admissão em branco (com os padrões: SSP, Rua, 44 horas, não trabalha à noite) */
+const criarAdmissaoVazia = (): PedidoDeAdmissao => ({
+  nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '',
+  sexo: '', estadoCivil: '', racaCor: '', escolaridade: '', maeNome: '', nascCidade: '', nascUf: '', rg: '', rgOrgao: 'SSP', rgUf: '', rgEmissao: '',
+  celular: '', cep: '', logradouroTipo: 'Rua', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', horasSemana: '44', noturno: 'Não',
+});
+
 export type DadosDoPedido = PedidoDeAdmissao | PedidoDeFerias | PedidoDeDemissao;
 const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 /** 'aaaa-mm' → '10/2026' */
@@ -37,6 +45,26 @@ export function useDp({ token, area, hoje }: DaCasca) {
   const [busca, setBusca] = useState(() => ((state ?? {}) as PedidoDaTela).busca ?? '');
   const [mostrarSaidas, setMostrarSaidas] = useState(false);
   const [focoDaFolha, setFocoDaFolha] = useState<number | null>(null);
+  // (27/11/2026: "faz puxar o recibo de pró-labore pelo sci report") os recibos de cada pessoa, publicados no SCI Report
+  const [recibos, setRecibos] = useState<ac.ReciboDoSci[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    void repoSciReport.recibos(token).then(r => { if (vivo) setRecibos(r); });
+    return () => { vivo = false; };
+  }, [token]);
+  const recibosDe = (nome: string) => recibos.filter(r => ac.reciboDaPessoa(r, nome)).map(r => ({ id: r.id, nome: r.nome, quando: mesBr(r.competencia) }));
+  const [abrindoRecibo, setAbrindoRecibo] = useState('');
+  /** abre o recibo numa aba nova (aberta já no clique, senão o navegador bloqueia; o PDF chega depois) */
+  async function abrirRecibo(id: string) {
+    const aba = window.open('', '_blank');
+    setAbrindoRecibo(id);
+    try {
+      const pdf = await repoSciReport.pdfDoRecibo(token, id);
+      if (!pdf) { aba?.close(); toast('Não deu para abrir o recibo agora. Tente de novo em alguns minutos.'); return; }
+      const url = URL.createObjectURL(pdf.arquivo);
+      if (aba) aba.location.href = url; else baixarArquivo(pdf.nome, pdf.arquivo);
+    } finally { setAbrindoRecibo(''); }
+  }
   // as abas do Registro (13/11/2026: "quero trabalhar no DP"): a equipe, as férias, a folha e o calendário
   const [abaDoRegistro, setAbaDoRegistro] = useState<'equipe' | 'ferias' | 'folha' | 'calendario'>('equipe');
   // o mês do calendário do DP (o de hoje; as setas andam)
@@ -202,6 +230,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
           : c.situacao === 'Indo para a folha' ? 'O escritório liberou a admissão; ela está indo para a folha.'
             : 'A admissão chegou ao escritório e está sendo conferida pelo departamento pessoal antes de ir para a folha.',
       tempo: c.naFolha && c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '',
+      // a admissão ainda não liberada: a empresa completa o cadastro e libera (26/11/2026)
+      podeCompletar: c.situacao === 'Aguardando o escritório',
+      recibos: recibosDe(c.nome),
       // o selo só quando pede atenção: ainda não está na folha
       selo: c.naFolha ? null : c.situacao === 'Recusado' ? { rotulo: 'Recusada', tom: 'ruim' } : c.situacao === 'Indo para a folha' ? { rotulo: 'Liberada', tom: 'neutro' } : { rotulo: 'Em admissão', tom: 'atencao' },
       pe: {
@@ -210,7 +241,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
         valor: c.naFolha ? (c.entrada ? tempoDeEmpresa(c.entrada, hoje).replace(/^há /, '') : '—') : c.cpf || '—',
       },
     })),
+    abrirRecibo: (id: string) => void abrirRecibo(id), abrindoRecibo,
     funcionarios: visiveis.map(f => ({
+      recibos: recibosDe(f.nome),
       id: f.id, nome: nomeDaPessoa(f.nome), iniciais: iniciais(nomeDaPessoa(f.nome)), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),
       ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length,
       // há quanto tempo está no registro (13/11/2026: a ficha refeita)
@@ -260,7 +293,12 @@ export function useDp({ token, area, hoje }: DaCasca) {
       .sort((a, b) => (a.x ? ac.ORDEM_DAS_FERIAS[a.x.situacao] : 9) - (b.x ? ac.ORDEM_DAS_FERIAS[b.x.situacao] : 9) || a.f.nome.localeCompare(b.f.nome))
       .map(({ f, x }) => ({ nome: nomeDaPessoa(f.nome), rotulo: x ? ROTULO_DAS_FERIAS[x.situacao] : '', tom: x ? TOM_DAS_FERIAS[x.situacao] : 'neutro', texto: x?.texto ?? '', limite: x?.limite ?? '' })),
     hoje,
-    novaAdmissao: (): PedidoDeAdmissao => ({ nome: '', cpf: '', nascimento: '', pis: '', cargo: '', recebePor: 'Por mês (mensalista)', salario: '', inicio: '', contrato: 'Prazo indeterminado', observacoes: '' }),
+    /** (26/11/2026: "coloca aqui para a pessoa mesmo liberar") completar a admissão que está no sistema de folha: o nome e o
+     *  primeiro dia já vêm; o resto a pessoa preenche (o RH NET troca o cadastro inteiro) e vai liberado para o DP importar */
+    completarAdmissao: (c: { id: string; nome: string; entrada: string }): PedidoDeAdmissao => ({
+      ...criarAdmissaoVazia(), nome: c.nome, inicio: c.entrada !== '—' ? c.entrada : '', idNoRhNet: c.id.replace(/\D/g, ''),
+    }),
+    novaAdmissao: (): PedidoDeAdmissao => criarAdmissaoVazia(),
     novasFerias: (empregado = ''): PedidoDeFerias => ({ empregado, inicio: '', dias: '30 dias', adiantar13: false, observacoes: '' }),
     novaDemissao: (empregado = ''): PedidoDeDemissao => ({ empregado, ultimoDia: '', motivo: '', aviso: 'Trabalhado', observacoes: '' }),
     dataBr,
