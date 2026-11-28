@@ -13,11 +13,16 @@ import type { LancamentoDaConsulta } from './consulta';
 import { diaSemLancamento } from './dias';
 import type { CamposDoLancamento } from './lancamentos';
 
-/** De que lado a conta provisiona: o passivo no crédito, o a receber no débito. null = a conta não tem provisão (caixa, receita…). */
+/**
+ * De que lado a conta provisiona: o passivo exigível (02.1 circulante e 02.2 não circulante: fornecedores, impostos, salários a pagar)
+ * no crédito; os créditos do ativo (01.1.2: clientes, adiantamentos) no débito. null = a conta não tem provisão: o disponível, os
+ * estoques, o imobilizado, o patrimônio líquido (02.3: o capital social não é conta a pagar) e o resultado (03 e 04) (27/11/2026, a 590:
+ * o "Capital Social Integralizado" aparecia em aberto).
+ */
 export function ladoDaProvisao(classificacao: string): 'credito' | 'debito' | null {
-  const c = classificacao.replace(/\s/g, '');
-  if (/^0?2(\.|$)/.test(c)) return 'credito';
-  if (/^0?1(\.|$)/.test(c) && !/^0?1\.0?1\.0?1(\.|$)/.test(c)) return 'debito';
+  const p = classificacao.replace(/\s/g, '').split('.').map(x => String(Number(x)));
+  if (p[0] === '2' && (p[1] === '1' || p[1] === '2')) return 'credito';
+  if (p[0] === '1' && p[1] === '1' && p[2] === '2') return 'debito';
   return null;
 }
 
