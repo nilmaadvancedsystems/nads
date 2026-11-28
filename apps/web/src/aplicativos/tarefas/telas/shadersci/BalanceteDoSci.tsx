@@ -355,25 +355,50 @@ export function ContaAberta({ vm, b, conta }: { vm: VmShadersCi; b: sci.Balancet
           )}
         </>
       )}
-      <h4>Lançamentos da conta <span className="hint">{c.lancamentos.length === 1 ? '1 lançamento' : c.lancamentos.length + ' lançamentos'} puxados do SCI</span></h4>
-      <table className="table-compact">
-        <thead><tr><th>Data</th><th className="num">Débito</th><th className="num">Crédito</th><th>Contrapartida</th><th>Histórico</th></tr></thead>
-        <tbody>
-          {c.lancamentos.slice(0, 300).map((l, i) => {
-            const debito = l.debito === conta.codigo;
-            const contra = debito ? l.credito : l.debito;
-            return (
-              <tr key={i}>
-                <td>{dataTexto(l.data)}</td>
-                <td className="num">{debito ? valorTexto(l.valor) : ''}</td>
-                <td className="num">{debito ? '' : valorTexto(l.valor)}</td>
-                <td>{contra ? contra + (c.nomeDa(contra) ? ' · ' + c.nomeDa(contra) : '') : '—'}</td>
-                <td>{l.complemento}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <h4>Lançamentos da conta <span className="hint">{c.lancamentos.length === 1 ? '1 lançamento' : c.lancamentos.length + ' lançamentos'} do SCI</span></h4>
+      <RazaoDaConta conta={conta} lancamentos={c.lancamentos} nomeDa={c.nomeDa} />
     </div>
+  );
+}
+
+/**
+ * Os lançamentos da conta como um razão (27/11/2026, o Vitor: "Voce tá entendendo algo aqui, nem eu. melhora isso"): a data, o
+ * histórico inteiro, a contrapartida pelo nome (o código apagado), o débito em azul, o crédito em vermelho e o saldo correndo, com o
+ * mês numa faixa. A partida da folha vem do SCI em duas linhas, cada uma com um lado só: o core junta e põe a do outro lado em
+ * `contrapartida`.
+ */
+function RazaoDaConta({ conta, lancamentos, nomeDa }: { conta: sci.ContaDoBalanceteSci; lancamentos: readonly sci.LancamentoDaConsulta[]; nomeDa: (codigo: string) => string }) {
+  const ordenados = [...lancamentos].sort((x, y) => x.data.localeCompare(y.data));
+  const contraDa = (l: sci.LancamentoDaConsulta, debito: boolean) => (debito ? l.credito : l.debito) || l.contrapartida || '';
+  let saldo = conta.anterior;
+  let mes = '';
+  return (
+    <table className="table-compact bal-razao">
+      <thead><tr><th>Data</th><th>Histórico</th><th>Contrapartida</th><th className="num">Débito</th><th className="num">Crédito</th><th className="num">Saldo</th></tr></thead>
+      <tbody>
+        {conta.anterior !== 0 && <tr className="bal-razao-mes"><td colSpan={5}>Saldo anterior</td><td className="num"><span className={conta.anterior > 0 ? 'bm-d' : 'bm-c'}>{valorTexto(Math.abs(conta.anterior))}</span></td></tr>}
+        {ordenados.slice(0, 500).map((l, i) => {
+          const debito = l.debito === conta.codigo;
+          saldo += debito ? l.valor : -l.valor;
+          const contra = contraDa(l, debito);
+          const nome = contra ? nomeDa(contra) : '';
+          const novoMes = l.data.slice(0, 7) !== mes;
+          mes = l.data.slice(0, 7);
+          return (
+            <Fragment key={i}>
+              {novoMes && <tr className="bal-razao-mes"><td colSpan={6}>{mesCurto(l.data.slice(0, 7))}</td></tr>}
+              <tr>
+                <td className="bal-razao-data">{dataTexto(l.data).slice(0, 5)}</td>
+                <td className="bal-razao-hist">{l.complemento || l.historico || <span className="hint">sem histórico</span>}</td>
+                <td className="bal-razao-contra">{contra ? <>{nome || 'Conta ' + contra}{nome && <small> {contra}</small>}</> : <span className="hint">—</span>}</td>
+                <td className="num bm-d">{debito ? valorTexto(l.valor) : ''}</td>
+                <td className="num bm-c">{debito ? '' : valorTexto(l.valor)}</td>
+                <td className="num"><span className={saldo > 0 ? 'bm-d' : saldo < 0 ? 'bm-c' : 'bm-zero'}>{saldo ? valorTexto(Math.abs(saldo)) : '—'}</span></td>
+              </tr>
+            </Fragment>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }

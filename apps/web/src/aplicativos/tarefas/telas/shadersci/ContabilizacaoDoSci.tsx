@@ -7,11 +7,11 @@
 //   3. Fechamento: os pagamentos, o banco conferido com o extrato e a planilha.
 // Só desenha: o que entra e o que se calcula vem dos ganchos e do core.
 import { sci } from '@nads/core';
-import { Icone, LogoSci, Segmentado, SeletorMes, Vazio } from '@nads/ui';
-import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AcoesDoTopo } from '../../../../comum/topo';
+import { Icone, LogoSci, SeletorMes } from '@nads/ui';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { JanelaBuscarNoEmail } from '../../etapas/extrator/telas/tarefa/JanelaBuscarNoEmail';
-import { ContaAberta, FechamentoDoPeriodo } from './BalanceteDoSci';
+import { FechamentoDoPeriodo } from './BalanceteDoSci';
+import { BalanceteMesAMes } from './BalanceteMesAMes';
 import { PuxarDoSci, SituacaoDoRobo } from './RazaoDoSci';
 import { useImportacaoDaContabilizacao, type ImportacaoDaContabilizacao } from './useImportacaoDaContabilizacao';
 import type { RoboDoSci } from './useLancamentosDoSciPeloRobo';
@@ -40,13 +40,14 @@ export function ContabilizacaoDoSci({ vm }: { vm: VmShadersCi }) {
   const i = etapas.findIndex(e => e.id === etapa);
   return (
     <>
-      <AcoesDoTopo>
-        <button type="button" className="btn btn-outline sci-btn-icone" onClick={() => vm.abrirApp(null)} title="Voltar aos apps" aria-label="Voltar aos apps"><Icone nome="chevronLeft" /></button>
-      </AcoesDoTopo>
       <div className="contab-layout">
         {/* o menu lateral da tarefa (o mesmo .subnav, com a caixinha de cada etapa) */}
         <nav className="subnav contab-subnav" aria-label="Etapas da Contabilização">
-          <p className="subnav-titulo">Etapas</p>
+          {/* voltar aos apps do minimum no alto do menu (o Vitor, 27/11/2026: "Esse botao voltar nada haver", o do topo) */}
+          <div className="subnav-itens">
+            <button type="button" className="subnav-item" onClick={() => vm.abrirApp(null)}><Icone nome="chevronLeft" /><span>Apps do minimum</span></button>
+          </div>
+          <p className="subnav-titulo depois">Etapas</p>
           <div className="subnav-itens">
             {etapas.map(e => (
               <button key={e.id} type="button" className={'subnav-item' + (e.id === etapa ? ' active' : '')} onClick={() => ir(e.id)} aria-current={e.id === etapa ? 'page' : undefined}>
@@ -57,7 +58,7 @@ export function ContabilizacaoDoSci({ vm }: { vm: VmShadersCi }) {
           </div>
         </nav>
         <div className="contab-etapa">
-          {etapa === 'importacao' ? <Importacao imp={imp} /> : etapa === 'balancete' ? <BalanceteCalculado vm={vm} b={b} calculado={calculado} todos={imp.consulta?.lancamentos || []} /> : <FechamentoDoPeriodo vm={vm} />}
+          {etapa === 'importacao' ? <Importacao imp={imp} /> : etapa === 'balancete' ? <BalanceteMesAMes vm={vm} b={b} calculado={calculado} todos={imp.consulta?.lancamentos || []} /> : <FechamentoDoPeriodo vm={vm} />}
           {etapas[i + 1] && (
             <div className="sci-contab-proximo">
               <button type="button" className="btn btn-primary" onClick={() => ir(etapas[i + 1].id)}>Próximo: {etapas[i + 1].rotulo}<Icone nome="chevronRight" /></button>
@@ -193,125 +194,6 @@ function Importacao({ imp }: { imp: ImportacaoDaContabilizacao }) {
         )}
       </div>
       <JanelaBuscarNoEmail vm={p.email} />
-    </section>
-  );
-}
-
-// ------------------------------------------------------------------------------------------------- 2. o Balancete mês a mês
-const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-const mesCurto = (m: string) => MESES_CURTOS[Number(m.slice(5, 7)) - 1] + '/' + m.slice(2, 4);
-type Visao = 'saldos' | 'movimento' | 'aberto';
-
-/**
- * O balancete calculado pelo nads, mês a mês (27/11/2026, o Vitor: "vire um segundo sistema contabil ... pegando o saldo anterior do
- * balancete, que fique exatamente como o balancete da empresa"; "na segunda tela vai apresentar o que esta em aberto e os saldos, mes a
- * mes de cada conta do balancete, de maneira dinamica"): cada conta numa linha, cada mês numa coluna, com a visão dos saldos, do
- * movimento ou do que está em aberto; a célula abre os lançamentos daquele mês; a classificação abre a conta (os lançamentos, as
- * provisões e o pagar); a última coluna confere com o SCI.
- */
-function BalanceteCalculado({ vm, b, calculado, todos }: { vm: VmShadersCi; b: sci.BalanceteSci | null; calculado: sci.BalanceteCalculado | null; todos: readonly sci.LancamentoDaConsulta[] }) {
-  const [visao, setVisao] = useState<Visao>('saldos');
-  const [soAnaliticas, setSoAnaliticas] = useState(false);
-  const [soDivergentes, setSoDivergentes] = useState(false);
-  const [aberta, setAberta] = useState<string | null>(null);
-  const [celula, setCelula] = useState<{ classificacao: string; mes: string } | null>(null);
-  const mm = useMemo(() => (b && todos.length ? sci.balanceteMesAMes(b, todos) : null), [b, todos]);
-  if (!b || !calculado || !mm) {
-    return <section className="card"><Vazio icone="scale" titulo="Faltam arquivos" texto="Na Importação, traga os lançamentos e o balancete do SCI: o balancete mês a mês usa o saldo anterior e o período dele." /></section>;
-  }
-  const linhas = mm.linhas.filter(c => (!soAnaliticas || c.analitica) && (!soDivergentes || !c.confere) && (visao !== 'aberto' || c.meses.some(m => m.aberto != null)));
-  const recuo = (c: sci.ContaDoBalanceteSci) => Math.max(0, (c.nivel ?? c.classificacao.split('.').length) - 1);
-  const totalAberto = mm.linhas.filter(c => c.analitica && !c.participante).reduce((t, c) => t + c.meses.reduce((u, m) => u + (m.aberto || 0), 0), 0);
-  const colunas = 5 + mm.meses.length;
-  const lancamentosDaCelula = (c: sci.LinhaMesAMes, mes: string) => todos.filter(l => l.data.startsWith(mes) && (l.debito === c.codigo || l.credito === c.codigo)).sort((x, y) => x.data.localeCompare(y.data));
-  return (
-    <section className="card">
-      <div className="card-head">
-        <h3>Balancete de {dataTexto(calculado.inicio)} a {dataTexto(calculado.fim)}</h3>
-        {calculado.divergentes ? <span className="badge badge-bad">{calculado.divergentes === 1 ? '1 conta não bate com o SCI' : calculado.divergentes + ' contas não batem com o SCI'}</span> : <span className="badge badge-ok">igual ao do SCI</span>}
-        {totalAberto > 0 && <span className="badge badge-warn">{sci.valorParaTexto(totalAberto)} em aberto</span>}
-        <span style={{ flex: 1 }} />
-        <label className="card-head-ctl"><input type="checkbox" checked={soAnaliticas} onChange={e => setSoAnaliticas(e.target.checked)} />Só as analíticas</label>
-        <label className="card-head-ctl"><input type="checkbox" checked={soDivergentes} onChange={e => setSoDivergentes(e.target.checked)} />Só as que não batem</label>
-        <Segmentado<Visao> valor={visao} onMudar={v => { setVisao(v); setCelula(null); }} opcoes={[{ valor: 'saldos', rotulo: 'Saldos' }, { valor: 'movimento', rotulo: 'Movimento' }, { valor: 'aberto', rotulo: 'Em aberto' }]} />
-      </div>
-      <p className="hint" style={{ margin: '0 0 8px' }}>Calculado pelo nads: o saldo anterior do SCI e os lançamentos somados conta a conta. Clique no mês para ver os lançamentos; na classificação, para abrir a conta.</p>
-      <div className="table-wrap bal-tabela bal-meses">
-        <table className="table-compact">
-          <thead>
-            <tr>
-              <th>Classificação</th><th>Nome</th><th className="num">Saldo anterior</th>
-              {mm.meses.map(m => <th key={m} className="num">{mesCurto(m)}</th>)}
-              <th className="num">{visao === 'aberto' ? 'Em aberto' : 'Saldo atual'}</th><th>SCI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((c, k) => {
-              const abre = c.analitica && !c.participante;
-              const estaAberta = abre && aberta === c.classificacao;
-              const sel = celula && celula.classificacao === c.classificacao ? celula.mes : null;
-              const aberto = c.meses.reduce((t, m) => t + (m.aberto || 0), 0);
-              return (
-                <Fragment key={c.classificacao + '|' + k}>
-                  <tr className={(c.analitica || c.participante ? '' : 'bal-sintetica') + (c.participante ? ' bal-participante' : '')}>
-                    <td className={'bal-class' + (abre ? ' bal-abre' : '')} onClick={abre ? () => setAberta(a => (a === c.classificacao ? null : c.classificacao)) : undefined} title={abre ? 'Abrir a conta: os lançamentos, as provisões e o pagar' : undefined}>
-                      {abre && <Icone nome={estaAberta ? 'chevronDown' : 'chevronRight'} width={14} height={14} />}{c.classificacao}
-                    </td>
-                    <td className="bal-nome"><span style={{ paddingLeft: recuo(c) * 12 }}>{c.participante ? c.nome : (c.codigo ? c.codigo + ' · ' : '') + c.nome}</span></td>
-                    <td className="num">{visao === 'aberto' ? '' : saldoTexto(c.anterior)}</td>
-                    {c.meses.map(m => {
-                      const vazio = !m.lancamentos;
-                      const clica = abre && !vazio;
-                      return (
-                        <td key={m.mes} className={'num bal-mes' + (vazio ? ' vazio' : '') + (clica ? ' clica' : '') + (sel === m.mes ? ' sel' : '')}
-                          onClick={clica ? () => setCelula(x => (x && x.classificacao === c.classificacao && x.mes === m.mes ? null : { classificacao: c.classificacao, mes: m.mes })) : undefined}>
-                          {visao === 'saldos' ? saldoTexto(m.saldo)
-                            : visao === 'movimento' ? (vazio ? '' : <><span className="bal-d">{m.debito ? 'D ' + sci.valorParaTexto(m.debito) : ''}</span><span className="bal-c">{m.credito ? 'C ' + sci.valorParaTexto(m.credito) : ''}</span></>)
-                              : m.aberto ? <span className="badge badge-bad">{sci.valorParaTexto(m.aberto)}</span> : ''}
-                        </td>
-                      );
-                    })}
-                    <td className="num">{visao === 'aberto' ? (aberto ? <b>{sci.valorParaTexto(aberto)}</b> : '') : <b>{saldoTexto(c.atual)}</b>}</td>
-                    <td title={c.confere ? undefined : 'No SCI: débito ' + valorTexto(c.doSci.debito) + ' · crédito ' + valorTexto(c.doSci.credito) + ' · saldo ' + saldoTexto(c.doSci.atual)}>
-                      {c.confere ? <span className="badge badge-ok">igual</span> : <span className="badge badge-bad">SCI {saldoTexto(c.doSci.atual)}</span>}
-                    </td>
-                  </tr>
-                  {sel && (
-                    <tr className="bal-painel">
-                      <td colSpan={colunas}>
-                        <div className="bal-conta">
-                          <h4>{c.codigo} · {c.nome} em {mesCurto(sel)}</h4>
-                          <table className="table-compact">
-                            <thead><tr><th>Data</th><th className="num">Débito</th><th className="num">Crédito</th><th>Contrapartida</th><th>Histórico</th><th>Lote</th></tr></thead>
-                            <tbody>
-                              {lancamentosDaCelula(c, sel).map((l, n) => {
-                                const debito = l.debito === c.codigo;
-                                return <tr key={n}><td>{dataTexto(l.data)}</td><td className="num">{debito ? valorTexto(l.valor) : ''}</td><td className="num">{debito ? '' : valorTexto(l.valor)}</td><td>{(debito ? l.credito : l.debito) || '—'}</td><td>{l.complemento}</td><td>{l.lote}</td></tr>;
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {estaAberta && <tr className="bal-painel"><td colSpan={colunas}><ContaAberta vm={vm} b={b} conta={c} /></td></tr>}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {calculado.foraDoBalancete.length > 0 && (
-        <>
-          <p className="hint" style={{ margin: '12px 0 6px' }}>Lançamentos do período em contas que o balancete do SCI não tem:</p>
-          <div className="table-wrap">
-            <table className="table-compact">
-              <thead><tr><th>Conta</th><th className="num">Lançamentos</th><th className="num">Débito</th><th className="num">Crédito</th></tr></thead>
-              <tbody>{calculado.foraDoBalancete.map(f => <tr key={f.codigo}><td>{f.codigo}</td><td className="num">{f.lancamentos}</td><td className="num">{valorTexto(f.debito)}</td><td className="num">{valorTexto(f.credito)}</td></tr>)}</tbody>
-            </table>
-          </div>
-        </>
-      )}
     </section>
   );
 }
