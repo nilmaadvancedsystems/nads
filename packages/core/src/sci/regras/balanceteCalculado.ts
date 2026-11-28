@@ -7,7 +7,7 @@
 //   - a sintética: a soma das analíticas abaixo dela.
 // Cada linha leva o que o SCI disse, para mostrar onde não fecha. Os lançamentos em contas que o balancete não tem ficam à parte.
 import type { BalanceteSci, ContaDoBalanceteSci } from './balancete';
-import type { LancamentoDaConsulta } from './consulta';
+import { juntarPartidas, type LancamentoDaConsulta } from './consulta';
 import { classificacaoNormal } from './dePara';
 import { provisoesDaConta } from './provisoes';
 
@@ -34,7 +34,40 @@ export interface BalanceteCalculado {
 const participanteDa = (classificacao: string) => String(Number(classificacao.split('.').pop() || '0'));
 const mesmoParticipante = (a: string, b: string) => !!a && String(Number(a)) === b;
 
-export function balanceteCalculado(b: BalanceteSci, todos: readonly LancamentoDaConsulta[]): BalanceteCalculado {
+/**
+ * O apelido do código da consulta (27/11/2026, a 590: o Banco Inter é a 93 no balancete e vem como 84 nos lançamentos, com o mesmo
+ * débito e o mesmo crédito): o código dos lançamentos do período que o balancete não tem, com o débito e o crédito iguais aos de uma
+ * analítica do balancete que não tem lançamento nenhum, é essa conta. Só o par único (um código para uma conta); senão, nada.
+ */
+export function apelidosDaConsulta(b: BalanceteSci, todos: readonly LancamentoDaConsulta[]): Map<string, string> {
+  const noPeriodo = todos.filter(l => l.data && (!b.inicio || l.data >= b.inicio) && (!b.fim || l.data <= b.fim));
+  const doBalancete = new Set(b.contas.filter(c => !c.participante && c.codigo).map(c => c.codigo));
+  const totais = new Map<string, { d: number; c: number }>();
+  const somar = (cod: string, d: number, c: number) => { if (!cod) return; const t = totais.get(cod) || { d: 0, c: 0 }; t.d += d; t.c += c; totais.set(cod, t); };
+  for (const l of noPeriodo) { somar(l.debito, l.valor, 0); somar(l.credito, 0, l.valor); }
+  const semLancamento = b.contas.filter(c => c.analitica && !c.participante && c.codigo && !totais.has(c.codigo) && (c.debito || c.credito));
+  const fora = [...totais.entries()].filter(([cod, t]) => !doBalancete.has(cod) && (t.d || t.c));
+  const r = new Map<string, string>();
+  for (const [cod, t] of fora) {
+    const contas = semLancamento.filter(c => c.debito === t.d && c.credito === t.c);
+    if (contas.length !== 1) continue;
+    const outros = fora.filter(([, u]) => u.d === t.d && u.c === t.c);
+    if (outros.length !== 1) continue;
+    r.set(cod, contas[0].codigo);
+  }
+  return r;
+}
+
+/** Os lançamentos da consulta prontos para o balancete: os códigos com apelido trocados pela conta do balancete e as partidas juntas. */
+export function consultaNoBalancete(b: BalanceteSci, todos: readonly LancamentoDaConsulta[]): LancamentoDaConsulta[] {
+  const apelidos = apelidosDaConsulta(b, todos);
+  const troca = (c: string | undefined) => (c && apelidos.get(c)) || c || '';
+  const trocados = apelidos.size ? todos.map(l => ({ ...l, debito: troca(l.debito), credito: troca(l.credito), ...(l.contrapartida ? { contrapartida: troca(l.contrapartida) } : {}) })) : [...todos];
+  return juntarPartidas(trocados);
+}
+
+export function balanceteCalculado(b: BalanceteSci, brutos: readonly LancamentoDaConsulta[]): BalanceteCalculado {
+  const todos = consultaNoBalancete(b, brutos);
   const noPeriodo = todos.filter(l => l.data && (!b.inicio || l.data >= b.inicio) && (!b.fim || l.data <= b.fim));
   const contas: ContaCalculada[] = [];
   let mae: ContaDoBalanceteSci | null = null;
@@ -134,7 +167,8 @@ function mesesEntre(inicio: string, fim: string): string[] {
  * O balancete calculado mês a mês: para cada conta do balancete, o débito, o crédito e o saldo no fim de cada mês do período (do saldo
  * anterior do SCI em diante) e, nas contas que provisionam, o que cada mês tem em aberto. A sintética soma as analíticas abaixo.
  */
-export function balanceteMesAMes(b: BalanceteSci, todos: readonly LancamentoDaConsulta[]): BalanceteMesAMes {
+export function balanceteMesAMes(b: BalanceteSci, brutos: readonly LancamentoDaConsulta[]): BalanceteMesAMes {
+  const todos = consultaNoBalancete(b, brutos);
   const base = balanceteCalculado(b, todos);
   const meses = b.inicio && b.fim ? mesesEntre(b.inicio, b.fim) : [];
   const noPeriodo = todos.filter(l => l.data && (!b.inicio || l.data >= b.inicio) && (!b.fim || l.data <= b.fim));

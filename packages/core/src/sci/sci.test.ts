@@ -330,4 +330,25 @@ describe('o balancete do SCI de volta (o formato real, com dados fictícios)', (
     // o participante (repete o reduzido da conta-mãe) não é analítica: não soma em dobro
     expect(b.contas.map(c => [c.analitica, !!c.participante])).toEqual([[false, false], [true, false], [true, false], [false, true]]);
   });
+
+  // 27/11/2026 (a 583 real): o SCI pode trazer só o grupo e os participantes, sem a linha da conta-mãe; o primeiro cliente não vira a conta
+  it('sem a linha da conta-mãe, o nads põe a analítica (o nome do grupo, a soma) e todos os clientes ficam participantes', () => {
+    const linha = (c: Record<number, string>) => Array.from({ length: 16 }, (_, i) => c[i] ?? '');
+    const aoa = [
+      linha({ 0: 'BALANCETE DE 01/01/2026 A 31/12/2026' }),
+      linha({ 0: 'CONTA', 1: 'CLASSIFICAÇÃO', 2: 'NOME DA CONTA CONTÁBIL', 9: 'SALDO ANTERIOR', 11: 'DÉBITO', 14: 'CRÉDITO', 15: 'SALDO ATUAL' }),
+      linha({ 0: '15', 1: '01.1.2.01', 5: 'CLIENTES', 9: '0,00', 11: '300,00', 14: '100,00', 15: '200,00' }),
+      linha({ 0: '16', 1: '01.1.2.01.000000215', 8: 'REDE FICTICIA', 9: '0,00', 11: '200,00', 14: '100,00', 15: '100,00' }),
+      linha({ 0: '16', 1: '01.1.2.01.000000245', 8: 'MUNICIPIO FICTICIO', 9: '0,00', 11: '100,00', 14: '0,00', 15: '100,00' }),
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Planilha1');
+    const b = lerBalanceteDoSci(new Uint8Array(XLSX.write(wb, { bookType: 'xls', type: 'array' }) as ArrayBuffer), 'b.xls').balancete!;
+    expect(b.contas.map(c => [c.codigo, c.nome, c.analitica, !!c.participante, c.atual])).toEqual([
+      ['15', 'CLIENTES', false, false, 20000],
+      ['16', 'CLIENTES', true, false, 20000],
+      ['16', 'REDE FICTICIA', false, true, 10000],
+      ['16', 'MUNICIPIO FICTICIO', false, true, 10000],
+    ]);
+  });
 });

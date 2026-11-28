@@ -2,7 +2,7 @@
 // o título na primeira linha, uma coluna vazia entre os campos, o valor no jeito americano.
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { dataDaConsulta, juntarConsultas, lancamentosDaConsulta, lerConsultaDoSci, nomesDosParticipantes, periodoDaCompetenciaDoSci, planoDaConsulta, valorDaConsulta, type LancamentoDaConsulta } from './index';
+import { dataDaConsulta, juntarConsultas, juntarPartidas, lancamentosDaConsulta, lerConsultaDoSci, nomesDosParticipantes, periodoDaCompetenciaDoSci, planoDaConsulta, valorDaConsulta, type LancamentoDaConsulta } from './index';
 
 const TITULOS = [' ', '', 'Data', '', 'Débito', '', 'Crédito', '', 'Valor', '', 'Histórico', '', 'Complemento', '', 'Nº Doc.', '', 'Tipo de lançamento', '',
   'Participante a débito', '', 'Participante a crédito', '', 'Data lançamento', '', 'Data última alteração'];
@@ -108,5 +108,14 @@ describe('juntar o que o robô puxa do SCI', () => {
     const r = juntarConsultas(antes, [l('2026-09-30', 111), l('2026-10-10', 200), l('2026-10-20', 250), l('2026-11-01', 5)], '10/2026');
     expect(r.novos).toBe(2);
     expect(r.lancamentos.map(x => x.data + ':' + x.valor)).toEqual(['2026-10-10:200', '2026-10-20:250', '2026-09-30:100']);
+  });
+
+  // 27/11/2026 (a 590 real): a folha vem partida em duas linhas, um lado em cada
+  it('junta as partidas de um lado só: cada uma ganha a conta da outra; as de dois lados ficam', () => {
+    const p = (debito: string, credito: string, valor = 178000, complemento = 'Líquido da folha 02/2026'): LancamentoDaConsulta => ({
+      data: '2026-03-03', debito, credito, valor, historico: '', complemento, documento: '', tipo: 'Lançamento on-line folha', participanteD: '', participanteC: '', lancadoEm: '', alteradoEm: '',
+    });
+    const r = juntarPartidas([p('', '84'), p('1368', ''), p('5', '16', 100), p('1369', '', 5000, 'outro')]);
+    expect(r.map(l => l.contrapartida)).toEqual(['1368', '84', undefined, undefined]);
   });
 });
