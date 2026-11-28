@@ -416,6 +416,14 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     igual('no dia seguinte, o que já foi não vai de novo (a guia agora vence amanhã: não é aviso)', await Z.rodarAvisos(DIA + 864e5), 0);
   }
 
+  // ---------- 7a. o freio das respostas é à parte (100 por hora) ----------
+  {
+    const { sock } = cenario({ autoatendimento: true, empresaDeTeste: '123' });
+    // 35 conversas (menu + opção 4) = 70 respostas na hora: passam, mesmo com o freio de 30 do que o escritório manda
+    for (let i = 0; i < 35; i++) { await Z.receber(texto(CELULAR_DO_TESTE, 'menu')); await Z.receber(texto(CELULAR_DO_TESTE, '4')); }
+    igual('as respostas a quem escreveu não param no 30', sock.mandadas.length, 70);
+  }
+
   // ---------- 7. o freio ----------
   {
     const { db } = cenario({ guias: true });

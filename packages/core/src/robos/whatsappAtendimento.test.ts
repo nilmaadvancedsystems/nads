@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, comCabecalho, nomeParaOCliente, vencimentoDoNome, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, motivoDoFreioDaResposta, comCabecalho, nomeParaOCliente, vencimentoDoNome, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -481,5 +481,14 @@ describe('o nome em toda mensagem e o nome dos arquivos', () => {
     expect(nomeParaOCliente({ tipo: 'boleto', nome: 'b.pdf', competencia: '2026-11' }, 'X')).toBe('Boleto honorários Novembro 2026 - X.pdf');
     expect(nomeParaOCliente({ tipo: 'dp', nome: 'HOLERITE MARIA.pdf', competencia: '2026-10' }, 'X')).toBe('HOLERITE MARIA - Outubro 2026 - X.pdf');
     expect(vencimentoDoNome('10-2026 - DAE ICMS - VALOR R$2,55 - VENCIMENTO 02-12-2026.pdf')).toBe('02-12-2026');
+  });
+});
+
+describe('o freio das respostas', () => {
+  it('100 por hora e 500 por dia, à parte dos 30 do que o escritório manda', () => {
+    const agora = Date.parse('2026-11-27T20:00:00Z');
+    expect(motivoDoFreioDaResposta(Array.from({ length: 99 }, (_, i) => agora - i * 1000), agora)).toBe('');
+    expect(motivoDoFreioDaResposta(Array.from({ length: 100 }, (_, i) => agora - i * 1000), agora)).toMatch(/100 respostas/);
+    expect(motivoDoFreioDaResposta(Array.from({ length: 500 }, (_, i) => agora - 2 * 36e5 - i * 1000), agora)).toMatch(/500 respostas/);
   });
 });

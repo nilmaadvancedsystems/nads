@@ -1130,3 +1130,19 @@ export function nomeParaOCliente(d: { tipo: TipoDoDocumento; nome: string; compe
   }
   return (semProibidos(partes.filter(Boolean).join(' - ')).slice(0, 140) || 'documento') + ext;
 }
+
+// ---------- o freio das respostas (27/11/2026, o dono: "faz a opção 2") ----------
+// O freio de 30 por hora e 150 por dia (robo/whatsapp-regras.js) segue para o que o escritório manda sozinho (guias,
+// boletos, Mandei, Pedir extratos, avisos). A resposta a quem acabou de escrever (o menu, o Claude, os arquivos pedidos, a
+// confirmação) tem o freio próprio, maior: mensagem pedida pelo cliente é a que menos arrisca o bloqueio do número.
+export const RESPOSTAS_POR_HORA = 100;
+export const RESPOSTAS_POR_DIA = 500;
+
+/** Por que a resposta não pode sair agora ('' = pode). `enviadas`: os instantes (ms) das respostas já mandadas. */
+export function motivoDoFreioDaResposta(enviadas: number[], agora: number): string {
+  const naHora = enviadas.filter(t => agora - t < 36e5).length;
+  const noDia = enviadas.filter(t => agora - t < 864e5).length;
+  if (naHora >= RESPOSTAS_POR_HORA) return 'limite de ' + RESPOSTAS_POR_HORA + ' respostas de WhatsApp por hora atingido; tente mais tarde';
+  if (noDia >= RESPOSTAS_POR_DIA) return 'limite de ' + RESPOSTAS_POR_DIA + ' respostas de WhatsApp por dia atingido; tente amanhã';
+  return '';
+}

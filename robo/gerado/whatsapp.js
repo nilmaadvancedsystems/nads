@@ -1313,6 +1313,15 @@ function nomeParaOCliente(d, empresa) {
 	];
 	return (semProibidos(partes.filter(Boolean).join(" - ")).slice(0, 140) || "documento") + ext;
 }
+const RESPOSTAS_POR_HORA = 100;
+const RESPOSTAS_POR_DIA = 500;
+function motivoDoFreioDaResposta(enviadas, agora) {
+	const naHora = enviadas.filter((t) => agora - t < 36e5).length;
+	const noDia = enviadas.filter((t) => agora - t < 864e5).length;
+	if (naHora >= 100) return "limite de 100 respostas de WhatsApp por hora atingido; tente mais tarde";
+	if (noDia >= 500) return "limite de 500 respostas de WhatsApp por dia atingido; tente amanhã";
+	return "";
+}
 
 //#endregion
 //#region packages/core/src/empresas/lista.ts
@@ -6024,6 +6033,8 @@ exports.NOME_DO_ATENDIMENTO = NOME_DO_ATENDIMENTO;
 exports.NUMERO_DO_ESCRITORIO = NUMERO_DO_ESCRITORIO;
 exports.PEDACO_DO_ARQUIVO_RECEBIDO = PEDACO_DO_ARQUIVO_RECEBIDO;
 exports.RESPONDENDO_MS = RESPONDENDO_MS;
+exports.RESPOSTAS_POR_DIA = RESPOSTAS_POR_DIA;
+exports.RESPOSTAS_POR_HORA = RESPOSTAS_POR_HORA;
 exports.RESPOSTA_MAX_MS = RESPOSTA_MAX_MS;
 exports.RESPOSTA_MIN_MS = RESPOSTA_MIN_MS;
 exports.RESPOSTA_VALE_MS = RESPOSTA_VALE_MS;
@@ -6060,6 +6071,7 @@ exports.mensagemDoMandei = mensagemDoMandei;
 exports.mesPorExtenso = mesPorExtenso;
 exports.mesesParaProcurar = mesesParaProcurar;
 exports.mesmoNumero = mesmoNumero;
+exports.motivoDoFreioDaResposta = motivoDoFreioDaResposta;
 exports.motivoParaNaoGuardar = motivoParaNaoGuardar;
 exports.mudancasDasChaves = mudancasDasChaves;
 exports.nomeDaEmpresa = nomeDaEmpresa;

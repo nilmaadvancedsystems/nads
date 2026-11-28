@@ -35,6 +35,8 @@ const R = require('./whatsapp-regras');
 const W = require('./gerado/whatsapp');
 const PASTA_DA_SESSAO = path.join(__dirname, 'whatsapp-sessao');
 let ARQUIVO_DOS_ENVIOS = path.join(__dirname, 'whatsapp-envios.json');
+/** os instantes das respostas a quem escreveu (o freio delas, à parte) */
+let ARQUIVO_DAS_RESPOSTAS = path.join(__dirname, 'whatsapp-respostas-envios.json');
 /** as mensagens mandadas esperando o tique de entregue/lido: id → { caminho do pedido, em, entregueEm, lidoEm } */
 let ARQUIVO_DO_RASTREIO = path.join(__dirname, 'whatsapp-rastreio.json');
 /** a quem o robô mandou: número → { caminho do pedido, em, n (respostas já guardadas) } */
@@ -60,6 +62,7 @@ let tentativas = 0;
 let religar = null;
 let renovar = null;
 let enviados = [];
+let respostasEnviadas = [];
 let ultimoEnvio = 0;
 let rastreio = {};
 let chaves = Object.assign({}, W.CHAVES_DESLIGADAS);
@@ -104,6 +107,18 @@ function guardarEnvio(t) {
   enviados = R.enviosQueContam(enviados.concat(t), t);
   ultimoEnvio = t;
   try { fs.writeFileSync(ARQUIVO_DOS_ENVIOS, JSON.stringify(enviados)); } catch (e) { st.log('whatsapp: não guardei o envio no disco:', e.message); }
+}
+// as respostas a quem escreveu (27/11/2026, "faz a opção 2"): o freio próprio, maior (100 por hora, 500 por dia)
+function lerRespostasEnviadas() {
+  try {
+    const l = JSON.parse(fs.readFileSync(ARQUIVO_DAS_RESPOSTAS, 'utf8'));
+    respostasEnviadas = R.enviosQueContam(Array.isArray(l) ? l.filter(Number.isFinite) : [], Date.now());
+  } catch (e) { respostasEnviadas = []; }
+}
+function guardarRespostaEnviada(t) {
+  respostasEnviadas = R.enviosQueContam(respostasEnviadas.concat(t), t);
+  ultimoEnvio = t;
+  try { fs.writeFileSync(ARQUIVO_DAS_RESPOSTAS, JSON.stringify(respostasEnviadas)); } catch (e) { st.log('whatsapp: não guardei a resposta no disco:', e.message); }
 }
 
 function lerRastreio() {
@@ -296,6 +311,7 @@ function iniciarWhatsapp({ db, log, roboRef, painel }) {
   st = { db, log, roboRef, painel };
   filtrarConsole();
   lerEnvios();
+  lerRespostasEnviadas();
   lerRastreio();
   conversas = conversasQueContam(lerJson(ARQUIVO_DAS_CONVERSAS), Date.now());
   atendimentos = lerJson(ARQUIVO_DO_ATENDIMENTO);
@@ -332,7 +348,8 @@ function naoLigado() {
  */
 async function enviar(numero, conteudo, responder) {
   if (estado.situacao !== 'conectado' || !sock) throw new Error('o WhatsApp do robô não está conectado (' + (estado.motivo || estado.situacao) + ')');
-  const freio = R.motivoDoFreio(enviados, Date.now());
+  // o freio: o que o escritório manda sozinho, 30 por hora e 150 por dia; a resposta a quem escreveu, 100 e 500 (27/11/2026)
+  const freio = responder ? W.motivoDoFreioDaResposta(respostasEnviadas, Date.now()) : R.motivoDoFreio(enviados, Date.now());
   if (freio) throw new Error(freio);
   const espera = (responder ? W.esperaParaResponder : R.esperaAntesDeMandar)(ultimoEnvio, Date.now(), Math.random());
   if (espera) await esperar(espera);
@@ -349,7 +366,7 @@ async function enviar(numero, conteudo, responder) {
   if (typeof comNome.text === 'string') comNome.text = W.comCabecalho(comNome.text);
   if (typeof comNome.caption === 'string' && comNome.caption.trim()) comNome.caption = W.comCabecalho(comNome.caption);
   const msg = await sock.sendMessage(achado.jid, comNome);
-  guardarEnvio(Date.now());
+  if (responder) guardarRespostaEnviada(Date.now()); else guardarEnvio(Date.now());
   return (msg && msg.key && msg.key.id) || '';
 }
 
@@ -870,11 +887,12 @@ function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, l
   estado = { situacao: 'conectado', numero: '553800000000', motivo: '' };
   chaves = W.lerChaves(chavesDoTeste);
   ARQUIVO_DOS_ENVIOS = path.join(pasta, 'whatsapp-envios.json');
+  ARQUIVO_DAS_RESPOSTAS = path.join(pasta, 'whatsapp-respostas-envios.json');
   ARQUIVO_DO_RASTREIO = path.join(pasta, 'whatsapp-rastreio.json');
   ARQUIVO_DAS_CONVERSAS = path.join(pasta, 'whatsapp-conversas.json');
   ARQUIVO_DO_ATENDIMENTO = path.join(pasta, 'whatsapp-atendimento.json');
   ARQUIVO_DOS_AVISOS = path.join(pasta, 'whatsapp-avisos.json');
-  enviados = []; ultimoEnvio = 0; rastreio = {}; conversas = {}; atendimentos = {};
+  enviados = []; respostasEnviadas = []; ultimoEnvio = 0; rastreio = {}; conversas = {}; atendimentos = {};
   esperar = esperarFalso || (async () => {});
   if (driveFalso) drive = () => driveFalso;
 }
