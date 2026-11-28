@@ -383,6 +383,30 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     igual('e o arquivo vai, renomeado', sock.mandadas[1] && sock.mandadas[1].fileName, 'HOLERITE JANEIRO - Janeiro ' + ano + ' - Padaria Boa.pdf');
   }
 
+  // ---------- 6f4. a guia de um mês antigo: direto no mapa da pasta do cliente ----------
+  {
+    const { db, sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
+    const ano = new Date(Date.now() - 3 * 3600000).getUTCFullYear();
+    db._docs.set('driveIndice/raiz', { pastaNome: String(ano), clientes: [{ id: 'pastaPB', codigo: '123', nome: 'Padaria Boa' }] });
+    db._docs.set('driveIndice/pastaPB', { partes: 1 });
+    db._docs.set('driveIndice/pastaPB/partes/0', { itens: [
+      { i: 'fis', n: 'FISCAL', p: 'pastaPB', t: 'd' },
+      { i: 'sn', n: 'SIMPLES NACIONAL', p: 'fis', t: 'd' },
+      { i: 'darf', n: '16. DARF', p: 'sn', t: 'd' },
+      { i: 'darfJan', n: '01-' + ano + ' - DARF INSS - VALOR R$502,51 - VENCIMENTO 20-02-' + ano + '.pdf', p: 'darf', t: 'f', s: 10 },
+      { i: 'outra', n: 'extrato.pdf', p: 'fis', t: 'f' },
+    ] });
+    saidaDoClaude = p => {
+      const linha = p.split('\n').find(l => l.includes('DARF INSS'));
+      return '{"resposta": "Segue o DARF do INSS de janeiro.", "documentos": ["' + (linha ? linha.split(' | ')[0] : '') + '"], "equipe": false}';
+    };
+    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda o darf do inss de janeiro'));
+    verdade('o DARF de janeiro (fora da lista curta) vem do mapa da pasta', (perguntasAoClaude[0] || '').includes('01-' + ano + ' - DARF INSS'));
+    igual('e vai, renomeado, baixado do Drive pelo id do mapa', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString()],
+      // o vencimento lido no PDF (o leitor de mentira dá 20/12/2026) vale sobre o do nome
+      ['DARF INSS Janeiro ' + ano + ' - venc 20-12-2026 - Padaria Boa.pdf', '%PDF-guia-darfJan']);
+  }
+
   // ---------- 6g. os arquivos que o cliente manda (chave arquivos) ----------
   {
     const { db, sock } = cenario({ autoatendimento: true, arquivos: true, empresaDeTeste: '123' });

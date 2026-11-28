@@ -777,6 +777,31 @@ async function doDrive(id) {
   return { nome: String(meta.data.name || 'documento'), mime: String(meta.data.mimeType || 'application/octet-stream'), buffer: Buffer.from(r.data) };
 }
 
+/** o mapa das pastas (driveIndice/raiz: o ano e a lista dos clientes), guardado 10 min: é um documento grande */
+let raizDoMapa = { em: 0, dados: null };
+
+/**
+ * As guias do Fiscal dos meses pedidos, pelo mapa da pasta do cliente (driveIndice/{id} + partes, o mesmo que o robô do
+ * Drive mantém): o mesmo filtro da lista curta (guias-do-fiscal.js › guiasDoFiscalNaPasta). Só o ano do mapa (raiz.pastaNome).
+ * Os ids vêm do mapa daquela empresa: nunca um id qualquer do Drive.
+ */
+async function guiasDoMapa(e, meses) {
+  const db = st.db;
+  if (!raizDoMapa.dados || Date.now() - raizDoMapa.em > 10 * 60000) raizDoMapa = { em: Date.now(), dados: (await db.collection('driveIndice').doc('raiz').get()).data() || {} };
+  const raiz = raizDoMapa.dados;
+  const doAno = meses.filter(m => m.slice(0, 4) === String(raiz.pastaNome || ''));
+  if (!doAno.length) return [];
+  const cli = (raiz.clientes || []).find(x => String(x.codigo == null ? '' : x.codigo).trim() === String(e.codigo));
+  if (!cli || !cli.id) return [];
+  const ref = db.collection('driveIndice').doc(cli.id);
+  const partes = Math.min(Number(((await ref.get()).data() || {}).partes || 0), 20);
+  const itens = [];
+  for (let n = 0; n < partes; n++) itens.push(...((((await ref.collection('partes').doc(String(n)).get()).data()) || {}).itens || []));
+  const di = require('./drive-indice');
+  const porMes = require('./guias-do-fiscal').guiasDoFiscalNaPasta(itens, cli.id, di.caminhos, di.chaveDeNome);
+  return doAno.filter(m => porMes.has(m)).map(m => ({ competencia: m, enviadoEm: '', arquivos: porMes.get(m).map(a => ({ nome: a.n, id: a.i })) }));
+}
+
 /**
  * Os documentos da empresa: { registros, baixar(arquivo) }. Guias e DP: o que o escritório já enviou pelo nads e, desde
  * 27/11/2026 ("procura no drive"), as listas da pasta do Drive dos últimos meses (fiscalArquivos / dpArquivos, sem o que o
@@ -801,6 +826,12 @@ async function registrosDe(tipo, e, citados = []) {
       return { competencia, doc: d.exists ? d.data() : null, fora: fora && fora.exists ? fora.data() : null };
     }));
     const daPasta = W.registrosDaPasta(meses, String(e.codigo));
+    // as guias de um mês citado que a lista curta (fiscalArquivos) não tem: direto no mapa da pasta do cliente
+    // (27/11/2026, "Sim, faz aqui"): o mapa do ano tem todos os meses; só lê quando falta o mês pedido
+    if (tipo === 'guias') {
+      const faltam = citados.filter(c => !daPasta.some(x => x.competencia === c) && !enviados.some(x => x.competencia === c && x.arquivos.length));
+      if (faltam.length) daPasta.push(...await guiasDoMapa(e, faltam).catch(err => { st.log('whatsapp: não li o mapa da pasta de', e.codigo, '-', err.message); return []; }));
+    }
     // o envio do DP guarda só os ids: o nome vem da lista da pasta
     const nomes = new Map();
     daPasta.forEach(x => x.arquivos.forEach(a => nomes.set(a.id, a.nome)));
@@ -884,6 +915,7 @@ async function atenderComando(p) {
 function prepararParaOTeste({ db, sockFalso, driveFalso, chavesDoTeste, pasta, log, esperarFalso, claudeFalso, leitorFalso, midiaFalsa }) {
   if (midiaFalsa) baixarMidia = midiaFalsa;
   if (claudeFalso) perguntarAoClaude = claudeFalso;
+  raizDoMapa = { em: 0, dados: null };
   if (leitorFalso) lerAGuia = leitorFalso;
   st = { db, log: log || (() => {}), roboRef: { set: async () => {} }, painel: null };
   sock = sockFalso;
