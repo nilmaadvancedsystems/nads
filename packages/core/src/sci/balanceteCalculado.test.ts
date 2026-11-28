@@ -1,7 +1,7 @@
 // O balancete calculado pelo nads (27/11/2026: "vire um segundo sistema contabil ... que fique exatamente como o balancete da empresa").
 // Dados fictícios.
 import { describe, expect, it } from 'vitest';
-import { balanceteCalculado, balanceteMesAMes, type BalanceteSci, type ContaDoBalanceteSci, type LancamentoDaConsulta } from './index';
+import { apelidosDaConsulta, balanceteCalculado, balanceteMesAMes, type BalanceteSci, type ContaDoBalanceteSci, type LancamentoDaConsulta } from './index';
 
 const conta = (classificacao: string, codigo: string, nome: string, v: Partial<ContaDoBalanceteSci> = {}): ContaDoBalanceteSci =>
   ({ classificacao, codigo, nome, analitica: true, anterior: 0, debito: 0, credito: 0, atual: 0, ...v });
@@ -63,5 +63,30 @@ describe('o balancete calculado pelo nads', () => {
     const s200 = r.linhas.find(x => x.codigo === '200')!;
     expect(s200.meses.map(m => [m.debito, m.credito, m.saldo, m.aberto])).toEqual([[0, 30000, -40000, 0], [30000, 40000, -50000, 40000], [0, 0, -50000, 0]]);
     expect(r.linhas.find(x => x.codigo === '50')!.meses.map(m => [m.saldo, m.aberto])).toEqual([[-40000, 0], [-50000, 40000], [-50000, 0]]);
+  });
+
+  // 27/11/2026 (a 590 real): o Banco Inter é a 93 no balancete e vem como 84 nos lançamentos, com o mesmo débito e crédito
+  it('o código da consulta que o balancete não tem e bate no total com uma analítica sem lançamento é a mesma conta', () => {
+    const bb: BalanceteSci = {
+      empresa: '', cnpj: '', inicio: '2026-01-01', fim: '2026-12-31', contas: [
+        conta('01.1.1.02.007', '93', 'Banco Inter', { debito: 500000, credito: 178000, atual: 322000 }),
+        conta('02.1.1.04.001', '1368', 'Salários a pagar', { debito: 178000, credito: 0, atual: 178000 }),
+        conta('03.1.1.01.001', '265', 'Vendas', { credito: 500000, atual: -500000 }),
+      ],
+    };
+    const ls = [
+      l('2026-03-01', '84', '265', 500000),
+      // a folha partida: '' × 84 e 1368 × ''
+      l('2026-03-03', '', '84', 178000, { complemento: 'Líquido da folha', tipo: 'folha' }),
+      l('2026-03-03', '1368', '', 178000, { complemento: 'Líquido da folha', tipo: 'folha' }),
+    ];
+    expect([...apelidosDaConsulta(bb, ls)]).toEqual([['84', '93']]);
+    const r = balanceteCalculado(bb, ls);
+    expect(r.contas.find(c => c.codigo === '93')).toMatchObject({ debito: 500000, credito: 178000, atual: 322000, confere: true });
+    expect(r.foraDoBalancete).toEqual([]);
+    expect(r.divergentes).toBe(0);
+    // sem o par único (duas contas com o mesmo total), nada muda
+    const duas: BalanceteSci = { ...bb, contas: [...bb.contas, conta('01.1.1.02.008', '94', 'Outro banco', { debito: 500000, credito: 178000, atual: 322000 })] };
+    expect(apelidosDaConsulta(duas, ls).size).toBe(0);
   });
 });

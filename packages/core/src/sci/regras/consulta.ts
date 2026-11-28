@@ -32,9 +32,15 @@ export interface LancamentoDaConsulta {
    * ali o lote e a chave do lançamento (M583EDT001). Ausente nas consultas guardadas antes disso.
    */
   lote?: string;
+  /**
+   * a contrapartida da partida de um lado só (27/11/2026: a folha e a "Baixa de cálculo" vêm partidas em duas linhas, '' × 84 e
+   * 1368 × '', com a mesma data, o mesmo valor e o mesmo complemento): a conta do outro lado, achada por juntarPartidas. Não entra na
+   * soma (a outra linha já soma do lado dela); serve para mostrar.
+   */
+  contrapartida?: string;
 }
 
-type Campo = keyof LancamentoDaConsulta;
+type Campo = Exclude<keyof LancamentoDaConsulta, 'contrapartida'>;
 /** os títulos de cada campo, sem acento e em minúsculas */
 const TITULOS: Record<Campo, readonly string[]> = {
   data: ['data'], debito: ['debito'], credito: ['credito'], valor: ['valor'], historico: ['historico'], complemento: ['complemento'],
@@ -100,7 +106,28 @@ export function lancamentosDaConsulta(aoa: readonly (readonly unknown[])[]): Lan
       lote: texto(r, 'lote').toUpperCase(),
     });
   }
-  return lidos;
+  return juntarPartidas(lidos);
+}
+
+/**
+ * Junta as partidas de um lado só (27/11/2026): a linha só com o débito e a linha só com o crédito, com a mesma data, o mesmo valor,
+ * o mesmo complemento e o mesmo tipo, são o mesmo lançamento; cada uma ganha a conta da outra em `contrapartida`. Em ordem, uma com a
+ * outra (duas partidas iguais no mesmo dia casam a 1ª com a 1ª). As de dois lados ficam como estão.
+ */
+export function juntarPartidas<T extends LancamentoDaConsulta>(ls: readonly T[]): T[] {
+  const chave = (l: LancamentoDaConsulta) => [l.data, l.valor, l.complemento.trim(), l.tipo].join('\u0001');
+  const soCredito = new Map<string, number[]>();
+  ls.forEach((l, i) => { if (!l.debito && l.credito) soCredito.set(chave(l), [...(soCredito.get(chave(l)) || []), i]); });
+  const r = ls.map(l => ({ ...l }));
+  ls.forEach((l, i) => {
+    if (!l.debito || l.credito) return;
+    const fila = soCredito.get(chave(l));
+    const j = fila?.shift();
+    if (j == null) return;
+    r[i].contrapartida = ls[j].credito;
+    r[j].contrapartida = l.debito;
+  });
+  return r;
 }
 
 /**

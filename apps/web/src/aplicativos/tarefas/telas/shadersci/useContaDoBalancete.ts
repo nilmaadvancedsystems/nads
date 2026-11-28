@@ -41,7 +41,7 @@ const lancamentosDos = (ps: readonly sci.PagamentoGerado[]) => ps.flatMap(p => (
 export function useContaDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci, conta: sci.ContaDoBalanceteSci) {
   const codigo = vm.empresa?.codigo ?? null;
   const { aviso, toast } = useRetorno();
-  const todos = useMemo(() => lancamentosDaContabilizacao(codigo), [codigo]);
+  const todos = useMemo(() => sci.consultaNoBalancete(b, lancamentosDaContabilizacao(codigo)), [codigo, b]);
   const provisoes = useMemo(() => sci.provisoesDaConta(todos, conta.codigo, conta.classificacao), [todos, conta]);
   const lancamentos = useMemo(() => todos.filter(l => l.debito === conta.codigo || l.credito === conta.codigo).sort((x, y) => x.data.localeCompare(y.data)), [todos, conta]);
   const extrato = useMemo(() => extratoDaEmpresa(codigo), [codigo]);
@@ -111,7 +111,7 @@ export type ContaDoBalancete = ReturnType<typeof useContaDoBalancete>;
 export function useFechamentoDoBalancete(vm: VmShadersCi, b: sci.BalanceteSci) {
   const codigo = vm.empresa?.codigo ?? null;
   const { aviso, toast } = useRetorno();
-  const todos = useMemo(() => lancamentosDaContabilizacao(codigo), [codigo]);
+  const todos = useMemo(() => sci.consultaNoBalancete(b, lancamentosDaContabilizacao(codigo)), [codigo, b]);
   const extrato = useMemo(() => extratoDaEmpresa(codigo), [codigo]);
   const guardadas = lerEscolhas(codigo);
   const bancosDoBalancete = doDisponivel(b, /^(?!caixa)/);

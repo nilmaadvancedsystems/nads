@@ -134,18 +134,41 @@ export function lerBalanceteDoSci(bytes: Uint8Array, nome = 'balancete.csv'): Le
     contas.push({ classificacao, codigo: String(pega('codigo') ?? '').trim(), nome, analitica: true, ...(nivel ? { nivel } : {}), anterior, debito, credito, atual });
   }
   if (!contas.length) return { balancete: null, erro: 'Achei os títulos, mas nenhuma conta com valor.' };
-  // sintética = tem alguma conta abaixo (o balancete pode pular níveis: todos os prefixos contam)
+  // os participantes (27/11/2026, o .xls do SCI): a linha do cliente ou do fornecedor tem a classificação terminada no código dele (6
+  // algarismos ou mais: 01.1.2.01.000001577) e repete o reduzido da conta-mãe. Quando o SCI não traz a linha da conta-mãe (só o grupo
+  // e os participantes), o nads põe a analítica no lugar: o reduzido deles, o nome do grupo e a soma deles. Assim a analítica é a
+  // conta e todos os participantes ficam embaixo dela, nunca o primeiro cliente no lugar da conta.
+  const ehParticipante = (c: ContaDoBalanceteSci) => /\.\d{6,}$/.test(c.classificacao.trim());
+  const comMae: ContaDoBalanceteSci[] = [];
+  contas.forEach((c, i) => {
+    if (!ehParticipante(c)) { comMae.push(c); return; }
+    const grupo = c.classificacao.trim().replace(/\.\d{6,}$/, '');
+    if (!comMae.some(x => !x.participante && x.codigo === c.codigo && !ehParticipante(x))) {
+      const pai = [...comMae].reverse().find(x => !x.participante && classificacaoNormal(x.classificacao) === classificacaoNormal(grupo));
+      const irmaos = contas.slice(i).filter(x => ehParticipante(x) && x.codigo === c.codigo && x.classificacao.trim().startsWith(grupo + '.'));
+      const soma = (k: 'anterior' | 'debito' | 'credito' | 'atual') => irmaos.reduce((t, x) => t + x[k], 0);
+      comMae.push({
+        classificacao: grupo + '.000', codigo: c.codigo, nome: pai?.nome || 'Conta ' + c.codigo, analitica: true,
+        ...(pai?.nivel ? { nivel: pai.nivel + 1 } : {}),
+        anterior: soma('anterior'), debito: soma('debito'), credito: soma('credito'), atual: soma('atual'),
+      });
+    }
+    comMae.push({ ...c, participante: true, analitica: false });
+  });
+  contas.splice(0, contas.length, ...comMae);
+  // sintética = tem alguma conta abaixo (o balancete pode pular níveis: todos os prefixos contam); o participante não conta
   const comFilhas = new Set<string>();
   for (const c of contas) {
+    if (c.participante) continue;
     const p = classificacaoNormal(c.classificacao).split('.');
     for (let n = 1; n < p.length; n++) comFilhas.add(p.slice(0, n).join('.'));
   }
-  for (const c of contas) c.analitica = !comFilhas.has(classificacaoNormal(c.classificacao));
-  // o participante repete o código reduzido de uma conta que veio antes: fica marcado e não conta como analítica
+  for (const c of contas) c.analitica = !c.participante && !comFilhas.has(classificacaoNormal(c.classificacao));
+  // o participante também pelo reduzido repetido de uma conta que veio antes (o balancete sem o código longo do participante)
   const codigosVistos = new Set<string>();
   for (const c of contas) {
     if (c.codigo && codigosVistos.has(c.codigo)) { c.participante = true; c.analitica = false; }
-    if (c.codigo) codigosVistos.add(c.codigo);
+    if (c.codigo && !c.participante) codigosVistos.add(c.codigo);
   }
   return { balancete: { empresa, cnpj, inicio, fim, contas }, erro: null };
 }
