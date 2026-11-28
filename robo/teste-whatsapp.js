@@ -369,6 +369,20 @@ const pendentes = db => [...db._docs.entries()].filter(([k, v]) => k.startsWith(
     igual('o Claude escolheu a certidão: vai o PDF da Área do Cliente', [sock.mandadas[1] && sock.mandadas[1].fileName, sock.mandadas[1] && sock.mandadas[1].document.toString()], ['Certidão FGTS - Padaria Boa.pdf', '%PDF-certidao']);
   }
 
+  // ---------- 6f3. o mês que o cliente cita: o robô procura aquele mês também ----------
+  {
+    const { db, sock } = cenario({ autoatendimento: true, ia: true, empresaDeTeste: '123' });
+    const ano = new Date(Date.now() - 3 * 3600000).getUTCFullYear();
+    db._docs.set('dpArquivos/' + ano + '-01', { clientes: { '123': { arquivos: [{ i: 'holJan', n: 'HOLERITE JANEIRO.pdf' }] } } });
+    saidaDoClaude = p => {
+      const linha = p.split('\n').find(l => l.includes('HOLERITE JANEIRO.pdf'));
+      return '{"resposta": "Segue o holerite de janeiro.", "documentos": ["' + (linha ? linha.split(' | ')[0] : '') + '"], "equipe": false}';
+    };
+    await Z.receber(texto(CELULAR_DO_TESTE, 'me manda os documentos de janeiro'));
+    verdade('janeiro (fora dos 3 últimos meses) entra na lista do Claude', (perguntasAoClaude[0] || '').includes('HOLERITE JANEIRO.pdf'));
+    igual('e o arquivo vai, renomeado', sock.mandadas[1] && sock.mandadas[1].fileName, 'HOLERITE JANEIRO - Janeiro ' + ano + ' - Padaria Boa.pdf');
+  }
+
   // ---------- 6g. os arquivos que o cliente manda (chave arquivos) ----------
   {
     const { db, sock } = cenario({ autoatendimento: true, arquivos: true, empresaDeTeste: '123' });

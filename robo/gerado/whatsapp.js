@@ -997,11 +997,12 @@ const rotuloDoDocumento = (x) => {
 	const especie = x.tipo === "guia" ? especieDaGuia(x.nome) : "";
 	return especie ? "Guia " + especie : ROTULO_DO_TIPO[x.tipo];
 };
-function documentosParaOClaude(grupos) {
+function documentosParaOClaude(grupos, citados = []) {
 	const vistos = /* @__PURE__ */ new Set();
 	const lista = [];
+	const pedido = (c) => citados.includes(c) ? 1 : 0;
 	for (const g of grupos) {
-		const ordenados = g.registros.filter((r) => /^\d{4}-\d{2}$/.test(r.competencia)).sort((a, b) => b.competencia.localeCompare(a.competencia) || b.enviadoEm.localeCompare(a.enviadoEm));
+		const ordenados = g.registros.filter((r) => /^\d{4}-\d{2}$/.test(r.competencia)).sort((a, b) => pedido(b.competencia) - pedido(a.competencia) || b.competencia.localeCompare(a.competencia) || b.enviadoEm.localeCompare(a.enviadoEm));
 		let n = 0;
 		for (const r of ordenados) for (const a of r.arquivos) {
 			if (n >= MAX_POR_TIPO || vistos.has(a.id)) continue;
@@ -1321,6 +1322,43 @@ function motivoDoFreioDaResposta(enviadas, agora) {
 	if (naHora >= 100) return "limite de 100 respostas de WhatsApp por hora atingido; tente mais tarde";
 	if (noDia >= 500) return "limite de 500 respostas de WhatsApp por dia atingido; tente amanhã";
 	return "";
+}
+const NOMES_DOS_MESES = [
+	[/\bjan(eiro)?\b/, 1],
+	[/\bfev(ereiro)?\b/, 2],
+	[/\bmar(co)?\b/, 3],
+	[/\babr(il)?\b/, 4],
+	[/\bmai(o)?\b/, 5],
+	[/\bjun(ho)?\b/, 6],
+	[/\bjul(ho)?\b/, 7],
+	[/\bago(sto)?\b/, 8],
+	[/\bset(embro)?\b/, 9],
+	[/\bout(ubro)?\b/, 10],
+	[/\bnov(embro)?\b/, 11],
+	[/\bdez(embro)?\b/, 12]
+];
+const MAX_MESES_CITADOS = 3;
+function mesesCitados(recebido, agora) {
+	const t = normal(recebido.replace(/(\d{1,2})\/(\d{2,4})/g, " $1barra$2 "));
+	const hoje = /* @__PURE__ */ new Date(agora - 108e5);
+	const anoAtual = hoje.getUTCFullYear();
+	const mesAtual = hoje.getUTCMonth() + 1;
+	const ano = (a, mes) => {
+		if (a) {
+			const n = Number(a);
+			return n < 100 ? 2e3 + n : n;
+		}
+		return mes <= mesAtual ? anoAtual : anoAtual - 1;
+	};
+	const achados = [];
+	const pos = [];
+	for (const m of t.matchAll(/\b(\d{1,2})barra(\d{2,4})\b/g)) {
+		const mes = Number(m[1]);
+		if (mes >= 1 && mes <= 12) pos.push([m.index ?? 0, ano(m[2], mes) + "-" + String(mes).padStart(2, "0")]);
+	}
+	for (const [re, mes] of NOMES_DOS_MESES) for (const m of t.matchAll(new RegExp(re.source + String.raw`(?:\s+(?:de\s+)?(20\d{2}))?`, "g"))) pos.push([m.index ?? 0, ano(m[m.length - 1], mes) + "-" + String(mes).padStart(2, "0")]);
+	for (const [, c] of pos.sort((a, b) => a[0] - b[0])) if (!achados.includes(c)) achados.push(c);
+	return achados.slice(0, MAX_MESES_CITADOS);
 }
 
 //#endregion
@@ -6069,6 +6107,7 @@ exports.mensagemDasGuias = mensagemDasGuias;
 exports.mensagemDoBoleto = mensagemDoBoleto;
 exports.mensagemDoMandei = mensagemDoMandei;
 exports.mesPorExtenso = mesPorExtenso;
+exports.mesesCitados = mesesCitados;
 exports.mesesParaProcurar = mesesParaProcurar;
 exports.mesmoNumero = mesmoNumero;
 exports.motivoDoFreioDaResposta = motivoDoFreioDaResposta;

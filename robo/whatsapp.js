@@ -709,16 +709,17 @@ async function extrasDaEmpresa(e) {
  * texto e os arquivos. false = o Claude não respondeu direito: quem chamou segue com o menu.
  */
 async function escreverComOClaude(r, empresa, guardada, agora) {
+  const citados = W.mesesCitados(r.texto, agora);
   const achados = {};
   const grupos = [];
   for (const [tipo, acao] of [['guia', 'guias'], ['boleto', 'boleto'], ['dp', 'dp']]) {
-    const a = await registrosDe(acao, empresa).catch(err => { st.log('whatsapp: não li os documentos (' + acao + ') de', empresa.codigo, '-', err.message); return null; });
+    const a = await registrosDe(acao, empresa, citados).catch(err => { st.log('whatsapp: não li os documentos (' + acao + ') de', empresa.codigo, '-', err.message); return null; });
     if (a) { achados[tipo] = a; grupos.push({ tipo, registros: a.registros }); }
   }
   // as certidões (da Área do Cliente), as NFS-e do escritório e as informações (certidões, o que falta, honorários)
   const extras = await extrasDaEmpresa(empresa).catch(err => { st.log('whatsapp: não li as informações de', empresa.codigo, '-', err.message); return null; });
   if (extras) for (const [tipo, a] of Object.entries(extras.achados)) { achados[tipo] = a; grupos.push({ tipo, registros: a.registros }); }
-  const documentos = W.documentosParaOClaude(grupos);
+  const documentos = W.documentosParaOClaude(grupos, citados);
   // o valor e o vencimento de cada guia, lidos no PDF (27/11/2026: "que dia vence"): as mais recentes, ao mesmo tempo
   if (achados.guia) {
     const guias = documentos.filter(d => d.tipo === 'guia').slice(0, MAX_GUIAS_LIDAS);
@@ -781,7 +782,7 @@ async function doDrive(id) {
  * 27/11/2026 ("procura no drive"), as listas da pasta do Drive dos últimos meses (fiscalArquivos / dpArquivos, sem o que o
  * DP tirou em dpEnviosFora). Boleto: só o lote já mandado por e-mail. Só lê quando o cliente pede.
  */
-async function registrosDe(tipo, e) {
+async function registrosDe(tipo, e, citados = []) {
   const db = st.db;
   if (tipo === 'guias' || tipo === 'dp') {
     const snap = await db.collection('solicitacoesEmail').where('codigo', '==', e.codigo).where('tipo', '==', tipo === 'guias' ? 'envioFiscal' : 'envioDp').get();
@@ -792,7 +793,9 @@ async function registrosDe(tipo, e) {
         : (Array.isArray(x.arquivos) ? x.arquivos : []).filter(id => typeof id === 'string' && id).map(id => ({ nome: '', id })),
     }));
     const colecao = tipo === 'guias' ? 'fiscalArquivos' : 'dpArquivos';
-    const meses = await Promise.all(W.mesesParaProcurar(Date.now()).map(async competencia => {
+    // os últimos meses e os que o cliente citou ("me manda os documentos de janeiro", 27/11/2026)
+    const procurar = [...new Set(W.mesesParaProcurar(Date.now()).concat(citados))];
+    const meses = await Promise.all(procurar.map(async competencia => {
       const d = await db.collection(colecao).doc(competencia).get();
       const fora = tipo === 'dp' ? await db.collection('dpEnviosFora').doc(competencia).get() : null;
       return { competencia, doc: d.exists ? d.data() : null, fora: fora && fora.exists ? fora.data() : null };

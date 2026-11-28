@@ -781,13 +781,17 @@ const rotuloDoDocumento = (x: DocumentoParaOClaude) => {
   return especie ? 'Guia ' + especie : ROTULO_DO_TIPO[x.tipo];
 };
 
-/** Os documentos que o Claude pode escolher: por tipo, do mês mais novo para o mais velho, sem repetir, com o código. */
-export function documentosParaOClaude(grupos: { tipo: TipoDoDocumento; registros: RegistroDeEnvio[] }[]): DocumentoParaOClaude[] {
+/**
+ * Os documentos que o Claude pode escolher: por tipo, do mês mais novo para o mais velho, sem repetir, com o código. Os
+ * meses que o cliente citou (`citados`, 27/11/2026: "me manda os documentos janeiro") vêm primeiro, para caberem na lista.
+ */
+export function documentosParaOClaude(grupos: { tipo: TipoDoDocumento; registros: RegistroDeEnvio[] }[], citados: string[] = []): DocumentoParaOClaude[] {
   const vistos = new Set<string>();
   const lista: Omit<DocumentoParaOClaude, 'codigo'>[] = [];
+  const pedido = (c: string) => (citados.includes(c) ? 1 : 0);
   for (const g of grupos) {
     const ordenados = g.registros.filter(r => /^\d{4}-\d{2}$/.test(r.competencia))
-      .sort((a, b) => b.competencia.localeCompare(a.competencia) || b.enviadoEm.localeCompare(a.enviadoEm));
+      .sort((a, b) => pedido(b.competencia) - pedido(a.competencia) || b.competencia.localeCompare(a.competencia) || b.enviadoEm.localeCompare(a.enviadoEm));
     let n = 0;
     for (const r of ordenados) {
       for (const a of r.arquivos) {
@@ -1145,4 +1149,41 @@ export function motivoDoFreioDaResposta(enviadas: number[], agora: number): stri
   if (naHora >= RESPOSTAS_POR_HORA) return 'limite de ' + RESPOSTAS_POR_HORA + ' respostas de WhatsApp por hora atingido; tente mais tarde';
   if (noDia >= RESPOSTAS_POR_DIA) return 'limite de ' + RESPOSTAS_POR_DIA + ' respostas de WhatsApp por dia atingido; tente amanhã';
   return '';
+}
+
+// ---------- o mês que o cliente cita (27/11/2026, o dono: "faz o 1") ----------
+// "me manda os documentos de janeiro", "o DAS de março de 2026", "folha 05/2026": o robô procura esses meses também (as listas
+// da pasta do Drive e o que foi enviado), além dos últimos MESES_DA_PASTA, e eles vão primeiro na lista do Claude.
+
+const NOMES_DOS_MESES: [RegExp, number][] = [
+  [/\bjan(eiro)?\b/, 1], [/\bfev(ereiro)?\b/, 2], [/\bmar(co)?\b/, 3], [/\babr(il)?\b/, 4], [/\bmai(o)?\b/, 5], [/\bjun(ho)?\b/, 6],
+  [/\bjul(ho)?\b/, 7], [/\bago(sto)?\b/, 8], [/\bset(embro)?\b/, 9], [/\bout(ubro)?\b/, 10], [/\bnov(embro)?\b/, 11], [/\bdez(embro)?\b/, 12],
+];
+/** no máximo tantos meses citados numa mensagem */
+const MAX_MESES_CITADOS = 3;
+
+/**
+ * Os meses citados na mensagem ('aaaa-mm', sem repetir, até 3). Sem o ano, vale o mais recente que já começou (em
+ * novembro, "janeiro" é janeiro deste ano; "dezembro", o do ano passado). "05/2026" e "5/26" também valem.
+ */
+export function mesesCitados(recebido: string, agora: number): string[] {
+  const t = normal(recebido.replace(/(\d{1,2})\/(\d{2,4})/g, ' $1barra$2 '));
+  const hoje = new Date(agora - 3 * 3600000);
+  const anoAtual = hoje.getUTCFullYear();
+  const mesAtual = hoje.getUTCMonth() + 1;
+  const ano = (a: string | undefined, mes: number) => {
+    if (a) { const n = Number(a); return n < 100 ? 2000 + n : n; }
+    return mes <= mesAtual ? anoAtual : anoAtual - 1;
+  };
+  const achados: string[] = [];
+  const pos: [number, string][] = [];
+  for (const m of t.matchAll(/\b(\d{1,2})barra(\d{2,4})\b/g)) {
+    const mes = Number(m[1]);
+    if (mes >= 1 && mes <= 12) pos.push([m.index ?? 0, ano(m[2], mes) + '-' + String(mes).padStart(2, '0')]);
+  }
+  for (const [re, mes] of NOMES_DOS_MESES) {
+    for (const m of t.matchAll(new RegExp(re.source + String.raw`(?:\s+(?:de\s+)?(20\d{2}))?`, 'g'))) pos.push([m.index ?? 0, ano(m[m.length - 1], mes) + '-' + String(mes).padStart(2, '0')]);
+  }
+  for (const [, c] of pos.sort((a, b) => a[0] - b[0])) if (!achados.includes(c)) achados.push(c);
+  return achados.slice(0, MAX_MESES_CITADOS);
 }

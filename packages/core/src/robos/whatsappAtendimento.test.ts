@@ -3,7 +3,7 @@ import {
   CHAVES_DESLIGADAS, chavesParaGravar, envioMaisRecente, lerChaves, lerMensagemRecebida, mensagemDasGuias, mensagemDoBoleto, mensagemDoMandei,
   numeroDoWhatsapp, numeroFormatado, passoDoAtendimento, pedidoParaCliente, pedidoRespondido, respostaParaGravar, textoDaResposta, textoDosDocumentos,
   desdeDasRespostas, esperaParaResponder, lerRespostaRecebida, linhaComChaves, mudancasDasChaves, respostasDoPedido,
-  CONVERSA_NOVA, MENU_DE_NOVO_MS, motivoDoFreioDaResposta, comCabecalho, nomeParaOCliente, vencimentoDoNome, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
+  CONVERSA_NOVA, MENU_DE_NOVO_MS, mesesCitados, motivoDoFreioDaResposta, comCabecalho, nomeParaOCliente, vencimentoDoNome, avisosDoDia, conversouHaPouco, dataIso, informacoesDaEmpresa, envioDoArquivoRecebido, motivoParaNaoGuardar, nomeDoArquivoRecebido, textoDoArquivoRecebido, idDaTarefaDoWhatsapp, tarefaDoWhatsapp, especieDaGuia, conversaParaOClaude, documentosParaOClaude, historicoCom, MAX_HISTORICO, mesesParaProcurar, registrosDaPasta, respostaDoEscritor, INSTRUCOES_DO_CLAUDE, opcaoDoClaude, passoComOClaude, perguntaAoClaude, vaiAoClaude, TEXTO_NAO_ENTENDI, TEXTO_NAO_ENTENDI_EQUIPE, TEXTO_DE_ENCERRAR, TEXTO_DE_MAIS_ALGUMA, nomeDaEmpresa, saudacaoDoAtendimento, NOME_DO_ATENDIMENTO, MENU_VALE_MS, NUMERO_DO_ESCRITORIO, RESPOSTA_VALE_MS, TEXTO_DO_ESCRITORIO, TEXTO_FORA_DO_CADASTRO,
   type EmpresaDoAtendimento,
 } from './whatsappAtendimento';
 
@@ -490,5 +490,27 @@ describe('o freio das respostas', () => {
     expect(motivoDoFreioDaResposta(Array.from({ length: 99 }, (_, i) => agora - i * 1000), agora)).toBe('');
     expect(motivoDoFreioDaResposta(Array.from({ length: 100 }, (_, i) => agora - i * 1000), agora)).toMatch(/100 respostas/);
     expect(motivoDoFreioDaResposta(Array.from({ length: 500 }, (_, i) => agora - 2 * 36e5 - i * 1000), agora)).toMatch(/500 respostas/);
+  });
+});
+
+describe('o mês que o cliente cita', () => {
+  const NOV = Date.parse('2026-11-27T15:00:00Z');
+  it('o nome do mês, com ou sem o ano; a barra; o mais recente que já começou', () => {
+    expect(mesesCitados('me manda os documentos janeiro', NOV)).toEqual(['2026-01']);
+    expect(mesesCitados('o DAS de dezembro', NOV)).toEqual(['2025-12']);
+    expect(mesesCitados('a folha de março de 2025 e a de abril', NOV)).toEqual(['2025-03', '2026-04']);
+    expect(mesesCitados('guia 05/2026 e 6/26', NOV)).toEqual(['2026-05', '2026-06']);
+    expect(mesesCitados('me manda o das', NOV)).toEqual([]);
+    expect(mesesCitados('outubro, setembro, agosto e julho', NOV)).toEqual(['2026-10', '2026-09', '2026-08']);
+  });
+  it('não confunde palavras do dia a dia ("mais", "set" no meio)', () => {
+    expect(mesesCitados('preciso de mais coisas', NOV)).toEqual([]);
+  });
+  it('os meses citados vão primeiro na lista do Claude', () => {
+    const docs = documentosParaOClaude([{ tipo: 'dp', registros: [
+      { competencia: '2026-11', enviadoEm: '', arquivos: Array.from({ length: 12 }, (_, i) => ({ nome: 'nov' + i, id: 'n' + i })) },
+      { competencia: '2026-01', enviadoEm: '', arquivos: [{ nome: 'HOLERITE JANEIRO.pdf', id: 'jan' }] },
+    ] }], ['2026-01']);
+    expect(docs[0].nome).toBe('HOLERITE JANEIRO.pdf');
   });
 });
