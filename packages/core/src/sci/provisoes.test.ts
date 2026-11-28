@@ -13,6 +13,11 @@ describe('as provisões da conta', () => {
     expect(ladoDaProvisao('01.1.2.01.001')).toBe('debito');
     expect(ladoDaProvisao('01.1.1.01.001')).toBeNull();
     expect(ladoDaProvisao('03.1.1.01.001')).toBeNull();
+    // o patrimônio líquido (o capital social), os estoques e o imobilizado não são provisão
+    expect(ladoDaProvisao('02.3.1.01.002')).toBeNull();
+    expect(ladoDaProvisao('02.2.1.01.001')).toBe('credito');
+    expect(ladoDaProvisao('01.1.3.01.001')).toBeNull();
+    expect(ladoDaProvisao('01.2.3.01.001')).toBeNull();
   });
 
   it('casa cada pagamento com a provisão do mesmo valor; o resto quita as mais antigas; os meses abertos ficam de fora', () => {
